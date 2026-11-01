@@ -1,0 +1,917 @@
+{
+  "workspace": {
+    "course": "Introduction to Programming",
+    "assessment": "Final Exam",
+    "number": "Q5",
+    "question": "Write a recursive function sum_digits(n) that returns the sum of n's digits. Don't use loops.",
+    "question_set": {
+      "Q5": {
+        "type": "code",
+        "max_marks": 3
+      }
+    },
+    "questions": [
+      {
+        "number": "Q1",
+        "method": "gradeflow/multiple-choice@1",
+        "average": 82
+      },
+      {
+        "number": "Q2",
+        "method": "gradeflow/accepted-answers@1",
+        "average": 76
+      },
+      {
+        "number": "Q3",
+        "method": "gradeflow/key-points@1",
+        "average": 64
+      },
+      {
+        "number": "Q4",
+        "method": "gradeflow/code-tests@1",
+        "average": 71
+      },
+      {
+        "number": "Q5",
+        "method": "gradeflow/combination@1",
+        "average": 80
+      },
+      {
+        "number": "Q6",
+        "method": "gradeflow/custom-code@1",
+        "average": 49
+      },
+      {
+        "number": "Q7",
+        "method": "gradeflow/conditional@1",
+        "average": 66,
+        "grouped": true
+      },
+      {
+        "number": "Q8"
+      }
+    ],
+    "marking": {
+      "question": "Q5",
+      "uses": "gradeflow/combination@1",
+      "with": {
+        "combine": "proportional",
+        "checks": [
+          {
+            "uses": "gradeflow/code-tests@1",
+            "with": {
+              "tests": [
+                {
+                  "expression": "sum_digits(7)",
+                  "expected": "7"
+                }
+              ]
+            }
+          },
+          {
+            "uses": "gradeflow/code-tests@1",
+            "with": {
+              "tests": [
+                {
+                  "expression": "sum_digits(1234)",
+                  "expected": "10"
+                }
+              ]
+            }
+          },
+          {
+            "uses": "gradeflow/code-uses@1",
+            "with": {
+              "looks_for": "recursion"
+            }
+          }
+        ]
+      }
+    },
+    "setting": "combine",
+    "checks": [
+      {
+        "name": "sum_digits(7)",
+        "check": {
+          "question": "Q5",
+          "uses": "gradeflow/code-tests@1",
+          "with": {
+            "tests": [
+              {
+                "expression": "sum_digits(7)",
+                "expected": "7"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "name": "sum_digits(1234)",
+        "check": {
+          "question": "Q5",
+          "uses": "gradeflow/code-tests@1",
+          "with": {
+            "tests": [
+              {
+                "expression": "sum_digits(1234)",
+                "expected": "10"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "name": "Recursive",
+        "check": {
+          "question": "Q5",
+          "uses": "gradeflow/code-uses@1",
+          "with": {
+            "looks_for": "recursion"
+          }
+        }
+      }
+    ],
+    "answers": [
+      {
+        "code": "def sum_digits(n):\n    if n == 0:\n        return 0\n    return n % 10 + sum_digits(n // 10)",
+        "others": 37,
+        "students": 214
+      },
+      {
+        "code": "def sum_digits(n):\n    return sum(int(d) for d in str(n))",
+        "others": 18,
+        "students": 96
+      },
+      {
+        "code": "def sum_digits(n):\n    if n < 10:\n        return 0\n    return n % 10 + sum_digits(n // 10)",
+        "others": 6,
+        "students": 41
+      },
+      {
+        "code": "def sum_digits(n):\n    return n % 10 + sum_digits(n // 10)",
+        "others": 3,
+        "students": 23
+      }
+    ]
+  },
+  "grouping": {
+    "number": "Q1",
+    "question": "What do mitochondria do in a cell?",
+    "question_set": {
+      "Q1": {
+        "type": "text",
+        "max_marks": 1
+      }
+    },
+    "accepted": [
+      "Release energy"
+    ],
+    "answers": [
+      {
+        "text": "Release energy",
+        "students": 286,
+        "meaning": "energy"
+      },
+      {
+        "text": "Releases energy for the cell",
+        "students": 117,
+        "meaning": "energy for the cell"
+      },
+      {
+        "text": "Produce energy for the cell",
+        "students": 74,
+        "meaning": "energy for the cell"
+      },
+      {
+        "text": "Store genetic information",
+        "students": 41,
+        "meaning": "genetics"
+      },
+      {
+        "text": "Make proteins",
+        "students": 33,
+        "meaning": "proteins"
+      }
+    ],
+    "markings": {
+      "before": [
+        {
+          "question": "Q1",
+          "uses": "gradeflow/accepted-answers@1",
+          "with": {
+            "answers": [
+              "Release energy"
+            ]
+          }
+        }
+      ],
+      "after": [
+        {
+          "question": "Q1",
+          "uses": "gradeflow/accepted-answers@1",
+          "with": {
+            "answers": [
+              "Release energy",
+              "Releases energy for the cell",
+              "Produce energy for the cell",
+              "Store genetic information",
+              "Make proteins"
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "examples": {
+    "assumption": {
+      "method": "gradeflow/combination@1",
+      "number": "Q2",
+      "question": "A stone is dropped from 20 m. Take g = 9.8 m/s². How long does it take to land, in seconds?",
+      "marked": "Q2",
+      "question_set": {
+        "Q2": {
+          "type": "number",
+          "max_marks": 2
+        }
+      },
+      "answers": [
+        {
+          "answers": {
+            "Q2": "2.02"
+          },
+          "students": 211
+        },
+        {
+          "answers": {
+            "Q2": "2"
+          },
+          "students": 74
+        },
+        {
+          "answers": {
+            "Q2": "4.08"
+          },
+          "students": 26
+        }
+      ],
+      "choices": {
+        "1": "100%",
+        "0.5": "50%",
+        "0": "0%"
+      },
+      "markings": {
+        "1": [
+          {
+            "question": "Q2",
+            "uses": "gradeflow/combination@1",
+            "with": {
+              "combine": "any",
+              "checks": [
+                {
+                  "name": "g = 9.8",
+                  "uses": "gradeflow/accepted-answers@1",
+                  "with": {
+                    "answers": [
+                      "2.02"
+                    ],
+                    "tolerance": 0.01
+                  }
+                },
+                {
+                  "name": "g = 10",
+                  "uses": "gradeflow/accepted-answers@1",
+                  "with": {
+                    "answers": [
+                      "2"
+                    ],
+                    "tolerance": 0.01
+                  }
+                }
+              ]
+            }
+          }
+        ],
+        "0.5": [
+          {
+            "question": "Q2",
+            "uses": "gradeflow/combination@1",
+            "with": {
+              "combine": "any",
+              "checks": [
+                {
+                  "name": "g = 9.8",
+                  "uses": "gradeflow/accepted-answers@1",
+                  "with": {
+                    "answers": [
+                      "2.02"
+                    ],
+                    "tolerance": 0.01
+                  }
+                },
+                {
+                  "name": "g = 10",
+                  "weight": 0.5,
+                  "uses": "gradeflow/accepted-answers@1",
+                  "with": {
+                    "answers": [
+                      "2"
+                    ],
+                    "tolerance": 0.01
+                  }
+                }
+              ]
+            }
+          }
+        ],
+        "0": [
+          {
+            "question": "Q2",
+            "uses": "gradeflow/combination@1",
+            "with": {
+              "combine": "any",
+              "checks": [
+                {
+                  "name": "g = 9.8",
+                  "uses": "gradeflow/accepted-answers@1",
+                  "with": {
+                    "answers": [
+                      "2.02"
+                    ],
+                    "tolerance": 0.01
+                  }
+                },
+                {
+                  "name": "g = 10",
+                  "weight": 0.0,
+                  "uses": "gradeflow/accepted-answers@1",
+                  "with": {
+                    "answers": [
+                      "2"
+                    ],
+                    "tolerance": 0.01
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "conditional": {
+      "method": "gradeflow/conditional@1",
+      "number": "Q4",
+      "question": "a) Artery or vein? b) Does it carry blood towards or away from the heart?",
+      "marked": "Q4b",
+      "question_set": {
+        "Q4a": {
+          "type": "choice",
+          "options": [
+            "artery",
+            "vein"
+          ]
+        },
+        "Q4b": {
+          "type": "choice",
+          "max_marks": 1,
+          "options": [
+            "towards",
+            "away"
+          ]
+        }
+      },
+      "answers": [
+        {
+          "answers": {
+            "Q4a": "artery",
+            "Q4b": "away"
+          },
+          "students": 182
+        },
+        {
+          "answers": {
+            "Q4a": "vein",
+            "Q4b": "towards"
+          },
+          "students": 141
+        },
+        {
+          "answers": {
+            "Q4a": "artery",
+            "Q4b": "towards"
+          },
+          "students": 23
+        },
+        {
+          "answers": {
+            "Q4a": "vein",
+            "Q4b": "away"
+          },
+          "students": 17
+        }
+      ],
+      "markings": {
+        "on": [
+          {
+            "uses": "gradeflow/conditional@1",
+            "with": {
+              "condition": [
+                {
+                  "question": "Q4a",
+                  "uses": "gradeflow/multiple-choice@1",
+                  "with": {
+                    "correct": [
+                      "artery"
+                    ]
+                  }
+                }
+              ],
+              "then": [
+                {
+                  "question": "Q4b",
+                  "uses": "gradeflow/multiple-choice@1",
+                  "with": {
+                    "correct": [
+                      "away"
+                    ]
+                  }
+                }
+              ],
+              "otherwise": [
+                {
+                  "question": "Q4b",
+                  "uses": "gradeflow/multiple-choice@1",
+                  "with": {
+                    "correct": [
+                      "towards"
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        ],
+        "": [
+          {
+            "question": "Q4b",
+            "uses": "gradeflow/multiple-choice@1",
+            "with": {
+              "correct": [
+                "away"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "custom": {
+      "method": "gradeflow/custom-code@1",
+      "number": "Q6",
+      "question": "A car travels 150 km in 2.5 h. What is its average speed? Give the unit.",
+      "marked": "Q6",
+      "question_set": {
+        "Q6": {
+          "type": "text",
+          "max_marks": 2
+        }
+      },
+      "answers": [
+        {
+          "answers": {
+            "Q6": "60 km/h"
+          },
+          "students": 146
+        },
+        {
+          "answers": {
+            "Q6": "60"
+          },
+          "students": 41
+        },
+        {
+          "answers": {
+            "Q6": "16.7 m/s"
+          },
+          "students": 23
+        },
+        {
+          "answers": {
+            "Q6": "375 km/h"
+          },
+          "students": 12
+        }
+      ],
+      "choices": {
+        "0": "0",
+        "0.5": "0.5",
+        "1": "1"
+      },
+      "markings": {
+        "0": [
+          {
+            "question": "Q6",
+            "uses": "gradeflow/custom-code@1",
+            "with": {
+              "code": "import re\nm = re.match(r\"([\\d.]+) *(km/h|m/s)?$\", answer)\nkmh = m and float(m[1])\nif m and m[2] == \"m/s\":\n    kmh *= 3.6\nif not kmh or abs(kmh - 60) > 0.5:\n    proportion, feedback = 0, \"Expected 60 km/h.\"\nelif m[2]:\n    proportion, feedback = 1, \"Correct.\"\nelse:\n    proportion = 1 - unit_penalty\n    feedback = \"Right speed, but no unit.\"",
+              "parameters": {
+                "unit_penalty": {
+                  "type": "number",
+                  "value": 0.0
+                }
+              }
+            }
+          }
+        ],
+        "0.5": [
+          {
+            "question": "Q6",
+            "uses": "gradeflow/custom-code@1",
+            "with": {
+              "code": "import re\nm = re.match(r\"([\\d.]+) *(km/h|m/s)?$\", answer)\nkmh = m and float(m[1])\nif m and m[2] == \"m/s\":\n    kmh *= 3.6\nif not kmh or abs(kmh - 60) > 0.5:\n    proportion, feedback = 0, \"Expected 60 km/h.\"\nelif m[2]:\n    proportion, feedback = 1, \"Correct.\"\nelse:\n    proportion = 1 - unit_penalty\n    feedback = \"Right speed, but no unit.\"",
+              "parameters": {
+                "unit_penalty": {
+                  "type": "number",
+                  "value": 0.5
+                }
+              }
+            }
+          }
+        ],
+        "1": [
+          {
+            "question": "Q6",
+            "uses": "gradeflow/custom-code@1",
+            "with": {
+              "code": "import re\nm = re.match(r\"([\\d.]+) *(km/h|m/s)?$\", answer)\nkmh = m and float(m[1])\nif m and m[2] == \"m/s\":\n    kmh *= 3.6\nif not kmh or abs(kmh - 60) > 0.5:\n    proportion, feedback = 0, \"Expected 60 km/h.\"\nelif m[2]:\n    proportion, feedback = 1, \"Correct.\"\nelse:\n    proportion = 1 - unit_penalty\n    feedback = \"Right speed, but no unit.\"",
+              "parameters": {
+                "unit_penalty": {
+                  "type": "number",
+                  "value": 1.0
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "tests": {
+      "method": "gradeflow/code-tests@1",
+      "number": "Q7",
+      "question": "Write is_even(n), which returns True when n is even.",
+      "marked": "Q7",
+      "question_set": {
+        "Q7": {
+          "type": "code",
+          "max_marks": 2
+        }
+      },
+      "answers": [
+        {
+          "answers": {
+            "Q7": "def is_even(n):\n    return n % 2 == 0"
+          },
+          "students": 131
+        },
+        {
+          "answers": {
+            "Q7": "def is_even(n):\n    return n % 2 == 0 and n > 0"
+          },
+          "students": 33
+        },
+        {
+          "answers": {
+            "Q7": "def is_even(n):\n    print(n % 2 == 0)"
+          },
+          "students": 18
+        }
+      ],
+      "choices": {
+        "0": "is_even(4) → True",
+        "1": "is_even(7) → False",
+        "2": "is_even(0) → True",
+        "3": "is_even(-2) → True"
+      },
+      "markings": {
+        "": [],
+        "0": [
+          {
+            "question": "Q7",
+            "uses": "gradeflow/code-tests@1",
+            "with": {
+              "combine": "proportional",
+              "tests": [
+                {
+                  "expression": "is_even(4)",
+                  "expected": "True"
+                }
+              ]
+            }
+          }
+        ],
+        "1": [
+          {
+            "question": "Q7",
+            "uses": "gradeflow/code-tests@1",
+            "with": {
+              "combine": "proportional",
+              "tests": [
+                {
+                  "expression": "is_even(7)",
+                  "expected": "False"
+                }
+              ]
+            }
+          }
+        ],
+        "2": [
+          {
+            "question": "Q7",
+            "uses": "gradeflow/code-tests@1",
+            "with": {
+              "combine": "proportional",
+              "tests": [
+                {
+                  "expression": "is_even(0)",
+                  "expected": "True"
+                }
+              ]
+            }
+          }
+        ],
+        "3": [
+          {
+            "question": "Q7",
+            "uses": "gradeflow/code-tests@1",
+            "with": {
+              "combine": "proportional",
+              "tests": [
+                {
+                  "expression": "is_even(-2)",
+                  "expected": "True"
+                }
+              ]
+            }
+          }
+        ],
+        "0,1": [
+          {
+            "question": "Q7",
+            "uses": "gradeflow/code-tests@1",
+            "with": {
+              "combine": "proportional",
+              "tests": [
+                {
+                  "expression": "is_even(4)",
+                  "expected": "True"
+                },
+                {
+                  "expression": "is_even(7)",
+                  "expected": "False"
+                }
+              ]
+            }
+          }
+        ],
+        "0,2": [
+          {
+            "question": "Q7",
+            "uses": "gradeflow/code-tests@1",
+            "with": {
+              "combine": "proportional",
+              "tests": [
+                {
+                  "expression": "is_even(4)",
+                  "expected": "True"
+                },
+                {
+                  "expression": "is_even(0)",
+                  "expected": "True"
+                }
+              ]
+            }
+          }
+        ],
+        "0,3": [
+          {
+            "question": "Q7",
+            "uses": "gradeflow/code-tests@1",
+            "with": {
+              "combine": "proportional",
+              "tests": [
+                {
+                  "expression": "is_even(4)",
+                  "expected": "True"
+                },
+                {
+                  "expression": "is_even(-2)",
+                  "expected": "True"
+                }
+              ]
+            }
+          }
+        ],
+        "1,2": [
+          {
+            "question": "Q7",
+            "uses": "gradeflow/code-tests@1",
+            "with": {
+              "combine": "proportional",
+              "tests": [
+                {
+                  "expression": "is_even(7)",
+                  "expected": "False"
+                },
+                {
+                  "expression": "is_even(0)",
+                  "expected": "True"
+                }
+              ]
+            }
+          }
+        ],
+        "1,3": [
+          {
+            "question": "Q7",
+            "uses": "gradeflow/code-tests@1",
+            "with": {
+              "combine": "proportional",
+              "tests": [
+                {
+                  "expression": "is_even(7)",
+                  "expected": "False"
+                },
+                {
+                  "expression": "is_even(-2)",
+                  "expected": "True"
+                }
+              ]
+            }
+          }
+        ],
+        "2,3": [
+          {
+            "question": "Q7",
+            "uses": "gradeflow/code-tests@1",
+            "with": {
+              "combine": "proportional",
+              "tests": [
+                {
+                  "expression": "is_even(0)",
+                  "expected": "True"
+                },
+                {
+                  "expression": "is_even(-2)",
+                  "expected": "True"
+                }
+              ]
+            }
+          }
+        ],
+        "0,1,2": [
+          {
+            "question": "Q7",
+            "uses": "gradeflow/code-tests@1",
+            "with": {
+              "combine": "proportional",
+              "tests": [
+                {
+                  "expression": "is_even(4)",
+                  "expected": "True"
+                },
+                {
+                  "expression": "is_even(7)",
+                  "expected": "False"
+                },
+                {
+                  "expression": "is_even(0)",
+                  "expected": "True"
+                }
+              ]
+            }
+          }
+        ],
+        "0,1,3": [
+          {
+            "question": "Q7",
+            "uses": "gradeflow/code-tests@1",
+            "with": {
+              "combine": "proportional",
+              "tests": [
+                {
+                  "expression": "is_even(4)",
+                  "expected": "True"
+                },
+                {
+                  "expression": "is_even(7)",
+                  "expected": "False"
+                },
+                {
+                  "expression": "is_even(-2)",
+                  "expected": "True"
+                }
+              ]
+            }
+          }
+        ],
+        "0,2,3": [
+          {
+            "question": "Q7",
+            "uses": "gradeflow/code-tests@1",
+            "with": {
+              "combine": "proportional",
+              "tests": [
+                {
+                  "expression": "is_even(4)",
+                  "expected": "True"
+                },
+                {
+                  "expression": "is_even(0)",
+                  "expected": "True"
+                },
+                {
+                  "expression": "is_even(-2)",
+                  "expected": "True"
+                }
+              ]
+            }
+          }
+        ],
+        "1,2,3": [
+          {
+            "question": "Q7",
+            "uses": "gradeflow/code-tests@1",
+            "with": {
+              "combine": "proportional",
+              "tests": [
+                {
+                  "expression": "is_even(7)",
+                  "expected": "False"
+                },
+                {
+                  "expression": "is_even(0)",
+                  "expected": "True"
+                },
+                {
+                  "expression": "is_even(-2)",
+                  "expected": "True"
+                }
+              ]
+            }
+          }
+        ],
+        "0,1,2,3": [
+          {
+            "question": "Q7",
+            "uses": "gradeflow/code-tests@1",
+            "with": {
+              "combine": "proportional",
+              "tests": [
+                {
+                  "expression": "is_even(4)",
+                  "expected": "True"
+                },
+                {
+                  "expression": "is_even(7)",
+                  "expected": "False"
+                },
+                {
+                  "expression": "is_even(0)",
+                  "expected": "True"
+                },
+                {
+                  "expression": "is_even(-2)",
+                  "expected": "True"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  },
+  "students": [
+    [
+      "24081537",
+      41
+    ],
+    [
+      "24019862",
+      36.5
+    ],
+    [
+      "24113405",
+      44
+    ],
+    [
+      "24057218",
+      22
+    ],
+    [
+      "24090741",
+      33.5
+    ],
+    [
+      "24036659",
+      51
+    ]
+  ]
+}

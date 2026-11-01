@@ -1,0 +1,31 @@
+{# The Copy to… dialog's body: the libraries the person can copy the version to, searchable, and the copy's name. #}
+<form x-data="choiceList" x-on:change="choose" hx-post="{{ action }}" hx-target="#copy-body" hx-swap="innerHTML" hx-status:422="swap:innerHTML" data-close-on-success>
+  {% csrf_token %}
+  <input type="hidden" name="number" value="{{ version.number }}">
+  <c-dialog.head id="copy" title="Copy {{ label }} to…" class="min-w-0 truncate" />
+  <div class="grid gap-5 px-6 pt-2">
+    <c-form-errors :errors="form.non_field_errors" />
+    <div class="grid gap-1.5">
+      <fieldset class="overflow-hidden rounded-box border border-base-300 focus-within:border-base-content/25">
+        <legend class="sr-only">Where to</legend>
+        <label class="flex items-center gap-3 border-b border-base-300 px-4"><span class="grid w-8 shrink-0 place-items-center" aria-hidden="true">{% icon "magnifying-glass" "size-4 text-subtle" %}</span><input type="search" class="h-10 w-full bg-transparent text-sm outline-none placeholder:text-subtle" placeholder="Search" aria-label="Search" x-on:input="search" x-on:keydown.enter.prevent{% if not form.label.errors %} autofocus{% endif %}></label>
+        <ul class="grid max-h-60 grid-cols-[minmax(0,1fr)] content-start gap-0.5 overflow-y-auto p-1.5">
+          {% for key, where in form.fields.library.choices %}
+          <li data-search="{{ where|lower }}"><label class="group flex cursor-pointer items-center gap-3 rounded-field px-2.5 py-2 hover:bg-base-200 has-checked:bg-primary/8 has-focus-visible:outline-2 has-focus-visible:outline-primary">
+            <input type="radio" name="library" value="{{ key }}" class="sr-only"{% if key == form.library.value %} checked{% endif %}>
+            <span class="grid size-8 shrink-0 place-items-center rounded-field bg-base-200 text-muted group-has-checked:bg-primary/12 group-has-checked:text-primary" aria-hidden="true">{% if key == mine %}{% icon "user" "size-4" %}{% else %}{% icon "academic-cap" "size-4" %}{% endif %}</span>
+            <span class="min-w-0 flex-1 truncate font-medium">{{ where }}</span>
+            {% icon "check" "size-5 shrink-0 text-primary invisible group-has-checked:visible" %}
+          </label></li>
+          {% empty %}
+          <li class="px-3 py-6 text-center text-sm text-muted">You don't edit a course to copy it to.</li>
+          {% endfor %}
+          <li class="px-3 py-6 text-center text-sm text-muted" data-empty hidden>Nothing matches.</li>
+        </ul>
+      </fieldset>
+      <c-field-errors :errors="form.library.errors" />
+    </div>
+    {{ form.label.as_field_group }}
+  </div>
+  <c-dialog.footer submit="Copy" x-bind:disabled="!chosen" disabled />
+</form>

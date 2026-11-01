@@ -1,0 +1,21 @@
+{% if widget.attrs.disabled %}<div class="prose-core break-words" id="{{ widget.attrs.id }}" x-data="math">{{ widget.value|default_if_none:""|math_markdown }}</div>{% else %}
+<div class="grid gap-1.5" x-data="markdownEditor" data-preview="{% url 'markdown_preview' %}">
+  <div class="flex flex-wrap items-center justify-between gap-2">
+    <div class="segmented" role="tablist">
+      <button type="button" role="tab" class="segment py-1" aria-selected="true" :aria-selected="writing" x-on:click="write">Write</button>
+      <button type="button" role="tab" class="segment py-1" aria-selected="false" :aria-selected="!writing" x-on:click="preview">Preview</button>
+    </div>
+    {# The library sets no role on its buttons. #}
+    <markdown-toolbar for="{{ widget.attrs.id }}" class="flex" x-show="writing">
+      <md-bold role="button" class="btn btn-ghost btn-square btn-sm text-muted" aria-label="Bold" title="Bold">{% icon "bold" "size-4" mini=True %}</md-bold>
+      <md-italic role="button" class="btn btn-ghost btn-square btn-sm text-muted" aria-label="Italic" title="Italic">{% icon "italic" "size-4" mini=True %}</md-italic>
+      <md-code role="button" class="btn btn-ghost btn-square btn-sm text-muted" aria-label="Code" title="Code">{% icon "code-bracket" "size-4" mini=True %}</md-code>
+      <md-link role="button" class="btn btn-ghost btn-square btn-sm text-muted" aria-label="Link" title="Link">{% icon "link" "size-4" mini=True %}</md-link>
+      <md-unordered-list role="button" class="btn btn-ghost btn-square btn-sm text-muted" aria-label="Bulleted list" title="Bulleted list">{% icon "list-bullet" "size-4" mini=True %}</md-unordered-list>
+      <md-ordered-list role="button" class="btn btn-ghost btn-square btn-sm text-muted" aria-label="Numbered list" title="Numbered list">{% icon "numbered-list" "size-4" mini=True %}</md-ordered-list>
+    </markdown-toolbar>
+  </div>
+  {% include "django/forms/widgets/textarea.html" %}
+  <div x-ref="preview" x-show="!writing" x-cloak class="min-h-20 rounded-field border border-base-300 px-3 py-2" role="tabpanel" hx-morph-skip-children></div>
+</div>
+{% endif %}

@@ -1,0 +1,15 @@
+{% extends "account/base_entrance.html" %}
+{% load allauth %}
+{% block content %}
+  {% setvar action_url %}{% block action_url %}{% endblock %}{% endsetvar %}
+  <c-intro><c-slot name="title">{% block head_title %}{% endblock %}</c-slot>We sent a code to {{ email }}. It expires in a few minutes.</c-intro>
+  {% element form form=verify_form method="post" action=action_url tags="entrance" %}
+    {% slot body %}{% csrf_token %}{% element fields form=verify_form unlabeled=True %}{% endelement %}{{ redirect_field }}{% endslot %}
+    {% slot actions %}{% element button type="submit" tags="confirm" %}Continue{% endelement %}{% endslot %}
+  {% endelement %}
+  <form id="resend" method="post" action="{{ action_url }}" hidden><input type="hidden" name="action" value="resend">{{ redirect_field }}{% csrf_token %}</form>
+{% endblock %}
+{% block links %}
+  {% if can_resend %}<button class="quiet-link cursor-pointer" form="resend">Send a new code</button>{% endif %}
+  {% include "account/snippets/cancel.html" %}
+{% endblock %}

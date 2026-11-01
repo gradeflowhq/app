@@ -1,0 +1,14 @@
+<c-sheet.form action="{% url 'question_settings' membership.assessment.pk question.pk %}" title="{{ question.key }} settings">
+  <div class="grid gap-5 p-6">
+  <p class="text-sm text-muted">Changes other than Maximum marks mark the question again.</p>
+  <div class="grid gap-1.5">
+    <label class="font-medium" for="question-type">Answer type</label>
+    <select id="question-type" name="question_type" class="select w-full" aria-describedby="question-type-summary" hx-post="{% url 'question_settings' membership.assessment.pk question.pk %}" hx-trigger="change" hx-target="#sheet-body">
+      {% for kind, label in types %}<option value="{{ kind }}"{% if kind == chosen %} selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+    <p id="question-type-summary" class="text-sm text-muted">{{ summary }}</p>
+  </div>
+  {{ form }}
+  </div>
+  <c-slot name="foot"><c-sheet.foot submit="Save" name="save" value="1" /></c-slot>
+</c-sheet.form>

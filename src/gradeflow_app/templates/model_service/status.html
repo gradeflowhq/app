@@ -1,0 +1,48 @@
+{# In the Choose models dialog: how the models picked did when last tried, testing them, and every model tried so far. Refreshes as the picks change and tests finish. #}
+<div id="model-status" class="grid gap-5" hx-post="{% url 'model_service_status' %}" hx-include="#model-chooser-form select" hx-sync="this:replace" hx-trigger="change from:#model-chooser-form select, {% listen 'models' request.user.pk %}" hx-swap="outerHTML">
+  <div class="hidden gap-2 group-has-[#how-myself:checked]:grid">
+    {% if status_problem %}<c-alert>{{ status_problem }}</c-alert>{% endif %}
+    {% for pick in picks %}
+      <div class="flex items-center gap-3 rounded-field bg-base-200/60 px-3 py-2 text-sm">
+        {% if pick.testing %}<span class="loading loading-spinner loading-sm text-muted" aria-hidden="true"></span>
+        {% elif pick.tried and not pick.tried.failure %}{% icon "check-circle" "size-5 shrink-0 text-success" %}
+        {% elif pick.tried %}{% icon "x-circle" "size-5 shrink-0 text-error" %}
+        {% else %}{% icon "minus-circle" "size-5 shrink-0 text-subtle" %}{% endif %}
+        <span class="min-w-0 flex-1">
+          <span class="block"><span class="font-medium">{{ pick.label }}</span> <code class="text-xs">{{ pick.model }}</code></span>
+          <span class="block text-muted">{% if pick.testing %}Testing{% if pick.role == "reasoning" %}, up to a minute{% endif %}…{% elif pick.tried and not pick.tried.failure %}{{ pick.tried.matched }} of {{ pick.tried.total }} examples right · {{ pick.tried.seconds|floatformat:0 }} s{% elif pick.tried %}{{ pick.tried.failure }}{% else %}Not tested yet.{% endif %}</span>
+        </span>
+      </div>
+    {% endfor %}
+    {% if picks %}
+      <div><button type="button" class="btn btn-sm" hx-post="{% url 'model_service_test' %}" hx-include="#model-chooser-form select" hx-target="#model-status" hx-swap="outerHTML"{% if testing %} disabled{% endif %}>{% icon "beaker" "size-4" %}{% if testing %}Testing…{% else %}Test{% endif %}</button></div>
+    {% endif %}
+  </div>
+  {% if compared %}
+    <c-more label="Tested models · {{ compared|length }}">
+      <div class="grid gap-2">
+        <div class="max-h-64 overflow-y-auto rounded-box border border-base-300">
+          <table class="table table-sm">
+            <thead class="sticky top-0 bg-base-100"><tr><th>Model</th><th>Fast</th><th>Careful</th></tr></thead>
+            <tbody>
+              {% for model, tries in compared %}
+              <tr>
+                <td><code class="text-xs">{{ model }}</code></td>
+                {% for tried, chosen in tries %}
+                <td>
+                  {% if not tried %}<span class="text-subtle">Not tried</span>
+                  {% elif tried.failure %}<span class="text-muted" title="{{ tried.failure }}">{% if tried.total %}{{ tried.matched }}/{{ tried.total }}{% else %}{{ tried.failure|cut:"." }}{% endif %}</span>
+                  {% else %}<span class="flex flex-wrap items-center gap-1.5"><span class="font-medium">{{ tried.matched }}/{{ tried.total }}</span><span class="text-muted">{{ tried.seconds|floatformat:0 }} s</span>{% if chosen %}<span class="badge badge-primary badge-soft badge-sm">In use</span>{% endif %}</span>
+                  {% endif %}
+                </td>
+                {% endfor %}
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <p class="text-xs text-muted">Sample answers marked right, and how long each took. Choosing automatically keeps the fastest that gets them all right.</p>
+      </div>
+    </c-more>
+  {% endif %}
+</div>

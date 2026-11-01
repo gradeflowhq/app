@@ -1,0 +1,5 @@
+{% load allauth %}
+<form method="{{ attrs.method }}"{% if attrs.action %} action="{{ attrs.action }}"{% endif %} class="grid gap-5"{% if attrs.no_visible_fields %} hidden{% endif %}>
+  {% slot body %}{% endslot %}
+  {% if slots.actions %}<div class="flex flex-wrap items-center gap-3">{% slot actions %}{% endslot %}</div>{% endif %}
+</form>

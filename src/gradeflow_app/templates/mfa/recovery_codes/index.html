@@ -1,0 +1,17 @@
+{% extends "mfa/base_manage.html" %}
+{% block head_title %}Recovery codes{% endblock %}
+{% block content %}
+<h1>Recovery codes</h1>
+<c-card>
+  <p class="text-sm text-muted">{{ unused_codes|length }} of {{ total_count }} unused. Keep them somewhere safe; each signs you in once.</p>
+  {% if can_view_codes %}
+  <ul class="mt-4 grid w-fit grid-cols-2 gap-x-10 gap-y-2 rounded-box bg-base-200 px-5 py-4 font-mono tracking-wider">{% for code in unused_codes %}<li>{{ code }}</li>{% endfor %}</ul>
+  {% endif %}
+  {% if can_download_codes or can_generate_codes %}
+  <c-slot name="footer">
+    {% if can_generate_codes %}<a class="btn ml-auto" href="{% url 'mfa_generate_recovery_codes' %}">New codes</a>{% endif %}
+    {% if can_download_codes %}<a class="btn{% if not can_generate_codes %} ml-auto{% endif %}" href="{% url 'mfa_download_recovery_codes' %}" hx-boost="false">{% icon "arrow-down-tray" "size-4" %}Download</a>{% endif %}
+  </c-slot>
+  {% endif %}
+</c-card>
+{% endblock %}

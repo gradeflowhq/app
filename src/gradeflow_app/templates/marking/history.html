@@ -1,0 +1,20 @@
+<c-sheet.head title="{{ question.key }} history" />
+<div class="grid gap-4 p-6">
+  <p class="text-sm text-muted">Restoring a version opens it as your draft.</p>
+  <ol class="grid gap-3">
+    {% for entry in entries %}
+    <li class="rounded-box border border-base-300 p-4">
+      <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+          <p class="flex flex-wrap items-center gap-2 font-medium">{{ entry.summary.method|default:"Marking" }}{% if entry.current %}<span class="badge badge-primary badge-soft badge-sm font-normal">Current</span>{% endif %}</p>
+          <p class="text-sm text-muted">{{ entry.version.history_user|default:"Someone" }} · {{ entry.version.history_date|ago }}</p>
+        </div>
+        {% if membership.can_edit and not entry.current %}<button class="btn btn-sm" hx-post="{% url 'marking_restore' membership.assessment.pk question.pk entry.version.history_id %}">Restore</button>{% endif %}
+      </div>
+      {% if entry.summary.description %}<div class="prose-core mt-2 text-sm text-muted">{{ entry.summary.description|markdown }}</div>{% endif %}
+    </li>
+    {% empty %}
+    <li class="text-muted">No saved versions yet.</li>
+    {% endfor %}
+  </ol>
+</div>

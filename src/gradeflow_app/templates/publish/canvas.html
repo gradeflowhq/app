@@ -1,0 +1,31 @@
+{% extends "layouts/course.html" %}
+{% block page_title %}Canvas · {% endblock %}
+{% block page %}
+<c-page title="Canvas">
+  {% if not available %}
+  <c-empty class="surface" icon="link" title="Canvas isn't set up on this server">Each assessment's marks can still be downloaded from its Publish page.</c-empty>
+  {% else %}
+  <div class="settings" x-data="canvasCourse" data-config="{{ config }}">
+    <c-card title="Course" x-show="!connected" x-cloak>
+      <c-canvas-connect why="This device needs your Canvas access token to choose the course." shows_error />
+    </c-card>
+    <c-form-card id="canvas-course" title="Course" x-show="connected" x-cloak>
+      <c-alert x-show="error" x-cloak><span x-text="error"></span></c-alert>
+      {% include "publish/picker.html" with key="course" Key="Course" label="Canvas course" choose="Choose a course" search="Search your courses" empty="No courses match." %}
+      <input type="hidden" name="canvas_course" value="{{ form.instance.canvas_course }}" :value="course">
+      <input type="hidden" name="canvas_course_name" value="{{ form.instance.canvas_course_name }}" :value="courseName">
+      <div class="grid gap-3" x-show="course">
+        {% include "publish/picker.html" with key="group" Key="Group" label="New assignments go in" choose="Choose an assignment group" search="Search assignment groups" empty="No assignment groups match." create="New assignment group" panel="publish/new_group.html" %}
+      </div>
+      <input type="hidden" name="canvas_group" value="{{ form.instance.canvas_group }}" :value="group">
+      <input type="hidden" name="canvas_group_name" value="{{ form.instance.canvas_group_name }}" :value="groupName">
+      <c-more label="How marks are sent" :open="form.errors">
+        {{ form.marks_mode.as_field_group }}
+        {{ form.rounding.as_field_group }}
+        {{ form.include_feedback.as_field_group }}
+      </c-more>
+    </c-form-card>
+  </div>
+  {% endif %}
+</c-page>
+{% endblock %}

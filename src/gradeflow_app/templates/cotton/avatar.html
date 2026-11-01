@@ -1,0 +1,3 @@
+<c-vars user size="size-8" />
+{% if user %}<span class="grid {{ size }} shrink-0 place-items-center rounded-full bg-secondary text-xs font-semibold text-secondary-content" aria-hidden="true">{{ user|initials }}</span>
+{% else %}<span class="grid {{ size }} shrink-0 place-items-center rounded-full bg-base-200 text-muted" aria-hidden="true">{% icon "user" "size-4" %}</span>{% endif %}

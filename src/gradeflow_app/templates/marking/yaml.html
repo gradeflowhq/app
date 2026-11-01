@@ -1,0 +1,13 @@
+{# The draft as YAML. Once saved with problems, the editor behind it is swapped in up to date. #}
+<c-sheet.form action="{{ action }}" title="Edit as YAML" hx-include="#marking-form [name=path]">
+  <c-sheet.yaml :text="text" label="Marking as YAML">
+    <p class="text-sm text-muted">Saving keeps it as your draft.</p>
+    {% if problems %}
+    <c-alert warning="{% if editor %}1{% endif %}">
+      <p>{% if editor %}Saved to your draft. Still to fix:{% else %}Not saved. Fix this first:{% endif %}</p>
+      <ul class="mt-1 grid gap-1">{% for problem in problems %}<li>{{ problem }}</li>{% endfor %}</ul>
+    </c-alert>
+    {% endif %}
+  </c-sheet.yaml>
+</c-sheet.form>
+{% if editor %}{% include "marking/panel.html" %}{% endif %}

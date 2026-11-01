@@ -1,0 +1,26 @@
+<c-landing.window course="Introductory Biology" assessment="Final Exam" class="mx-auto max-w-3xl" x-data="answerGroups" data-accepted="{{ grouping.accepted_json }}">
+  <div class="flex items-baseline gap-3 border-b border-base-300 p-4"><h3 class="text-base font-semibold">{{ grouping.number }}</h3><span class="text-sm text-muted">{{ grouping.question }}</span></div>
+  <div class="flex flex-wrap items-center gap-2 border-b border-base-300 px-4 py-3"><span class="text-sm text-muted">Accepted answers</span><template x-for="answer in accepted" :key="answer"><span class="badge badge-primary badge-soft" x-text="answer"></span></template></div>
+  <div class="flex items-center gap-2 px-4 py-3"><label for="grouping-by" class="text-sm text-muted">Answer groups</label><select id="grouping-by" class="select select-sm w-40" x-model="grouping"><option value="answers">Same answers</option><option value="meaning" selected>Similar meaning</option></select></div>
+  {% for by, groups in answer_groups.items %}
+  <ul class="@container divide-y divide-base-300 border-t border-base-300" aria-label="Answers" x-show="grouping === '{{ by }}'"{% if by != "meaning" %} x-cloak{% endif %}>
+    {% for group in groups %}
+    <li class="landing-answer" x-data="answerGroup" data-answers="{{ group.texts_json }}"{% if group.before != group.accepted %} :class="done && 'bg-primary/5'"{% endif %}>
+      <div class="min-w-0 flex-1">
+        <p class="font-medium">{{ group.answers.0.text }}</p>
+        {% if group.answers|length > 1 %}<ul class="mt-1.5 flex flex-wrap gap-1.5">{% for other in group.answers|slice:"1:" %}<li class="badge badge-ghost h-auto gap-1.5 py-1 text-left">{{ other.text }}<span class="tabular-nums text-muted">{{ other.students }}</span></li>{% endfor %}</ul>{% endif %}
+      </div>
+      <div>
+        <div class="contents" x-show="!done"{% if group.accepted_at_first %} x-cloak{% endif %}>
+          <c-marks :low="group.before.low" :high="group.before.high" :max_marks="1" /><span class="tabular-nums text-sm text-muted">{{ group.students }} student{{ group.students|pluralize }}</span>
+          <button type="button" class="btn btn-sm mt-1" x-on:click="fullMarks">Full marks</button>
+        </div>
+        <div class="contents" x-show="done"{% if not group.accepted_at_first %} x-cloak{% endif %}>
+          <c-marks :low="group.accepted.low" :high="group.accepted.high" :before_low="group.before.low" :before_high="group.before.high" :max_marks="1" /><span class="tabular-nums text-sm text-muted">{{ group.students }} student{{ group.students|pluralize }}</span>
+        </div>
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+  {% endfor %}
+</c-landing.window>

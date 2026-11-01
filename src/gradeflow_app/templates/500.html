@@ -1,0 +1,5 @@
+{% extends "base.html" %}
+{% block title %}Something went wrong · GradeFlow{% endblock %}
+{% block content %}
+<c-empty class="surface mx-auto mt-16 max-w-lg" icon="exclamation-triangle" title="Something went wrong">Try again in a moment.<c-slot name="action"><a href="{% url 'courses' %}" class="btn">Go to courses</a></c-slot></c-empty>
+{% endblock %}

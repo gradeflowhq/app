@@ -1,0 +1,21 @@
+  {% for example, rows in examples %}
+  <section class="grid gap-3" aria-labelledby="example-{{ forloop.counter }}">
+    <div>
+      <p class="text-sm font-medium text-muted">Example</p>
+      <h3 id="example-{{ forloop.counter }}" class="font-semibold">{{ example.title }}</h3>
+      {% if example.questions|length > 1 %}<dl class="mt-1 grid grid-cols-[auto_1fr] gap-x-2 text-sm">{% for key, question in example.questions.items %}{% if question.description %}<dt class="text-muted">{{ key }}</dt><dd>{{ question.description }}</dd>{% endif %}{% endfor %}</dl>{% endif %}
+      <div class="prose-core mt-1 grid gap-1 text-sm text-muted">{{ example.description|markdown }}</div>
+    </div>
+    <ul class="divide-y divide-base-300 rounded-box border border-base-300" aria-label="Answers and their marks">
+      {% for row in rows %}
+      <li class="flex items-baseline justify-between gap-3 px-4 py-2.5">
+        <span class="min-w-0 break-words">
+          {% for key, answer in row.answers.items %}{% if row.answers|length > 1 %}<span class="text-muted">{{ key }}</span> {% endif %}{% if answer %}<span class="whitespace-pre-wrap{% if example.questions|code_answers:key %} block font-mono text-sm{% endif %}">{{ answer }}</span>{% else %}<span class="italic text-muted">Blank</span>{% endif %}{% if not forloop.last %}<span class="text-subtle"> · </span>{% endif %}{% endfor %}
+          {% for key, feedback in row.feedback %}<span class="block whitespace-pre-line text-sm text-muted">{% if key %}<span class="text-subtle">{{ key }}</span> {% endif %}{{ feedback }}</span>{% endfor %}
+        </span>
+        <div class="shrink-0"><c-marks :low="row.marks" :high="row.marks" :max_marks="row.max_marks" /></div>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endfor %}

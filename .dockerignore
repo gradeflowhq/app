@@ -1,0 +1,13 @@
+.git/
+.github/
+.venv/
+**/__pycache__/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.django_tailwind_cli/
+/staticfiles/
+/src/gradeflow_app/static/css/
+/sandbox/
+/tests/
+*.env

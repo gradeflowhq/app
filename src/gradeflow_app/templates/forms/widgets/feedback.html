@@ -1,0 +1,16 @@
+{% if widget.text %}
+<textarea class="textarea field-sizing-content min-h-20 w-full font-mono text-sm" rows="3" name="{{ widget.name }}-text"{% if widget.attrs.disabled %} disabled{% endif %}{% if widget.attrs.id %} id="{{ widget.attrs.id }}"{% endif %}>{{ widget.value|default_if_none:'' }}</textarea>
+{% else %}
+<div class="grid gap-3" data-inserts{% if widget.attrs.id %} id="{{ widget.attrs.id }}"{% endif %}>
+  {% for box, value in widget.boxes %}
+  <label class="grid gap-1"><span class="text-sm text-muted">{{ box.1 }}</span>
+    <textarea class="textarea field-sizing-content min-h-10 w-full resize-none" rows="1" name="{{ widget.name }}-{{ box.0 }}" placeholder="Its own feedback"{% if widget.attrs.disabled %} disabled{% endif %}>{{ value }}</textarea>
+  </label>
+  {% endfor %}
+  {% if not widget.attrs.disabled %}
+  <div class="flex flex-wrap items-center gap-1.5 text-sm"><span class="text-muted">Insert</span>
+    {% for value, label in widget.inserts.items %}<button type="button" class="btn btn-sm" data-insert="{{ value }}">{{ label }}</button>{% endfor %}
+  </div>
+  {% endif %}
+</div>
+{% endif %}

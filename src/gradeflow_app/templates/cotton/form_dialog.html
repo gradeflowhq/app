@@ -1,0 +1,9 @@
+<c-vars id title action submit form />
+{# A dialog that is one form, open again when the page comes back with its errors. Other attributes go on the submit button. #}
+<c-dialog id="{{ id }}" title="{{ title }}" :open="form.errors">
+  <form method="post" action="{{ action }}">
+    {% csrf_token %}
+    <div class="px-6 pt-2">{{ form }}</div>
+    <c-dialog.footer submit="{{ submit }}" :attrs="attrs" />
+  </form>
+</c-dialog>

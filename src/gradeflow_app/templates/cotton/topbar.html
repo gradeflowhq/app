@@ -1,0 +1,36 @@
+<c-vars course=None assessment=None />
+{# A page can add links after the logo (`nav`) and, for people signed out, buttons at the end (`actions`). #}
+<header class="sticky top-0 z-30 h-14 border-b border-base-300 bg-base-100/90 backdrop-blur">
+  <nav class="flex h-full items-center gap-2 px-4 sm:px-6" aria-label="Main">
+    <a href="{% if user.is_authenticated %}{% url 'courses' %}{% else %}/{% endif %}" class="flex shrink-0 items-center gap-2 rounded-field py-1 pr-2 font-semibold tracking-tight">
+      <c-logo />
+      <span{% if course %} class="max-sm:sr-only"{% endif %}>GradeFlow</span>
+    </a>
+    {% if course %}
+    <ol class="flex min-w-0 items-center gap-2 text-sm xl:hidden" aria-label="Breadcrumb">
+      <li class="crumb min-w-0{% if assessment %} max-sm:hidden{% endif %}"><a href="{% url 'course' course.pk %}"{% if not assessment %} aria-current="page"{% endif %}>{{ course.name }}</a></li>
+      {% if assessment %}<li class="crumb min-w-0"><a href="{% url 'overview' assessment.pk %}" aria-current="page">{{ assessment.name }}</a></li>{% endif %}
+    </ol>
+    {% endif %}
+    {{ nav }}
+    <div class="ml-auto flex shrink-0 items-center gap-1">
+      {% if user.is_authenticated %}
+        <c-menu id="account-menu" label="Account" button_class="btn btn-ghost btn-circle btn-sm" width="w-64">
+          <c-slot name="trigger"><c-avatar :user="user" /></c-slot>
+          <c-slot name="header">
+            <div class="px-4 pb-1 pt-2.5">
+              <p class="truncate font-medium">{{ user.name|default:user.email }}</p>
+              {% if user.name %}<p class="truncate text-sm text-muted">{{ user.email }}</p>{% endif %}
+            </div>
+          </c-slot>
+          <li><a href="{% url 'settings' %}">{% icon "user-circle" "size-4" %}Account</a></li>
+          <li><a href="{% url 'your_methods' %}">{% icon "puzzle-piece" "size-4" %}Your methods</a></li>
+          <li><button form="sign-out">{% icon "arrow-right-start-on-rectangle" "size-4" %}Sign out</button></li>
+        </c-menu>
+        <form id="sign-out" method="post" action="{% url 'account_logout' %}" hidden hx-boost="false">{% csrf_token %}</form>
+      {% else %}
+        {{ actions }}
+      {% endif %}
+    </div>
+  </nav>
+</header>

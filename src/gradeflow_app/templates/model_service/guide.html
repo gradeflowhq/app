@@ -1,0 +1,19 @@
+<c-guide.dialog id="ai-service-guide" title="AI service" intro="Marking that uses AI sends answers to the AI service you connect.">
+  <c-guide.section title="Connect">
+    <ol class="grid gap-4">
+      <c-guide.step number="1"><p>Get a token, or API key, from one of the services listed</p></c-guide.step>
+      <c-guide.step number="2"><p>Choose the service, enter the token and click <b>Connect</b></p></c-guide.step>
+      <c-guide.step number="3"><p>Click <b>Choose models</b>: automatically, or pick them yourself and test them</p></c-guide.step>
+    </ol>
+  </c-guide.section>
+  <c-guide.section title="Models">
+    <dl class="grid gap-2">
+      <div><dt class="inline font-medium">Fast</dt> <dd class="inline text-muted">decides in seconds.</dd></div>
+      <div><dt class="inline font-medium">Careful</dt> <dd class="inline text-muted">thinks first, takes minutes, and leaves what it’s unsure of to you. Optional: only markings set to decide carefully use it.</dd></div>
+    </dl>
+  </c-guide.section>
+  <c-slot name="notes">
+    <c-guide.note icon="lock-closed">The token and models stay in this browser. Connect each device you mark on.</c-guide.note>
+    <c-guide.note icon="adjustments-horizontal">If the service turns requests away as too long, lower Answers per request.</c-guide.note>
+  </c-slot>
+</c-guide.dialog>

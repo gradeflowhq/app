@@ -1,0 +1,11 @@
+<article class="grid gap-6">
+  <header>
+    <div class="flex items-start justify-between gap-4"><h2 id="method-heading" class="text-xl">{{ guide.label }}</h2>{% if saved %}<span class="badge badge-ghost badge-sm tabular-nums mt-1 shrink-0">Version {{ guide.version }}</span>{% endif %}</div>
+    <p class="mt-1 text-muted">{{ guide.summary }}</p>
+    {% if owner %}<p class="mt-1 text-sm text-muted">by {{ owner }}</p>{% endif %}
+    {% if used_for %}<p class="mt-3 text-sm text-muted">{{ used_for }}</p>{% endif %}
+  </header>
+  {% if asks %}<p class="text-sm"><span class="font-medium">You fill in:</span> {{ asks|join:", " }}</p>{% endif %}
+  {% if guide.guide %}<div class="prose-core grid gap-3" x-data="math">{{ guide.guide|math_markdown }}</div>{% elif saved and not examples %}<p class="text-sm text-muted">No guide or examples yet.</p>{% endif %}
+  {% include "marking/method_examples.html" %}
+</article>

@@ -1,0 +1,101 @@
+{% partialdef answers inline %}
+<div id="answers" class="flex min-h-full flex-col"{% if oob %} hx-swap-oob="outerMorph"{% endif %}
+     hx-get="{% url 'answers' question.assessment_id question.pk %}" hx-target="this" hx-swap="outerMorph"
+     hx-trigger="{% listen 'marks' question.assessment_id %}, {% listen 'jobs' question.assessment_id %}, {% listen 'grouping' question.assessment_id %}, {% listen 'preview' question.assessment_id request.user.pk %}">
+  <header class="column-sticky">
+    <div class="column-head">
+      <c-questions-toggle />
+      <h2>{{ question.key }}</h2>
+      <c-question-subtitle :question="question.core" />
+      {% if membership.can_edit %}<button class="btn btn-ghost btn-sm ml-auto" hx-get="{% url 'question_settings' question.assessment_id question.pk %}" hx-target="#sheet-body" hx-swap="innerHTML" data-dialog="sheet">{% icon "adjustments-horizontal" "size-4" %}Settings</button>{% endif %}
+    </div>
+    {% if question.definition.description %}<details class="group/about -mt-2 px-4 pb-3 text-muted"><summary class="cursor-pointer list-none"><div class="prose-core clamp-closed break-words text-sm group-open/about:max-h-[40vh] group-open/about:overflow-y-auto" x-data="math">{{ question.definition.description|math_markdown }}</div></summary></details>{% endif %}
+    <form class="flex items-center gap-2 px-4 pb-3" hx-get="{% url 'answers' question.assessment_id question.pk %}" hx-target="#answers" hx-swap="outerMorph" hx-trigger="change delay:150ms" hx-sync="this:replace">
+      <label class="select select-sm min-w-0 max-w-52 flex-1" title="Answer groups">
+        {% icon "rectangle-stack" "size-4 text-muted" %}
+        <select name="group" aria-label="Answer groups">
+          {% for value, label in groupings.items %}<option value="{{ value }}"{% if grouping == value %} selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+      </label>
+      {% if options.similar != 'exact' %}
+      <c-popover id="answers-similarity" label="How similar" panel_class="w-64 p-4">
+        <c-slot name="trigger">{% icon "adjustments-vertical" "size-4" %}</c-slot>
+        <div class="grid gap-2">
+          <label for="answers-threshold" class="flex justify-between text-sm"><span class="font-medium">How similar</span><span class="tabular-nums text-muted">{{ options.threshold|percent }}</span></label>
+          <input id="answers-threshold" type="range" name="threshold" min="0.5" max="1" step="0.05" value="{{ options.threshold }}" class="range range-xs range-primary">
+          <p class="text-sm text-muted">Lower puts more answers together.</p>
+        </div>
+      </c-popover>
+      {% endif %}
+      <label class="select select-sm min-w-0 max-w-52 flex-1" title="Show">
+        {% icon "funnel" "size-4 text-muted" %}
+        <select name="filter" aria-label="Show">
+          {% for value, label in filters.items %}<option value="{{ value }}"{% if filter == value %} selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+      </label>
+    </form>
+    {% partial preview_bar %}
+  </header>
+
+  <div class="grid content-start gap-3 p-4">
+    {% if not draft %}{% for notice in evaluation_notices %}<p role="status" class="alert alert-warning alert-soft text-sm">{{ notice }}</p>{% endfor %}{% endif %}
+    {% if asks_models %}<div x-data="modelService"><p role="status" class="alert alert-info alert-soft text-sm" x-show="disconnected" x-cloak>{% icon "information-circle" %}<span>This marking uses AI, and this device isn't connected to an AI service. <a class="link" href="{% url 'integrations' %}">Connect one</a> to mark these answers.</span></p></div>{% endif %}
+    {% if grouping_failed %}
+      <div role="alert" class="alert alert-warning alert-soft">{% icon "exclamation-triangle" %}<span class="flex-1">Couldn't group by meaning, so equal answers are grouped instead.</span><button class="btn btn-sm" hx-post="{% url 'answer_grouping' question.assessment_id question.pk %}" hx-target="#answers" hx-swap="outerMorph">Try again</button></div>
+    {% endif %}
+    {% if too_many %}
+      <p class="rounded-box bg-base-100 px-4 py-3 text-sm text-muted" role="status">Too many answers to compare. Showing equal answers only.</p>
+    {% elif waiting or grouping_due %}
+      <div class="relative flex items-center gap-3 overflow-hidden rounded-box bg-base-100 px-4 py-3 text-sm text-muted" role="status"{% if grouping_due %} hx-post="{% url 'answer_grouping' question.assessment_id question.pk %}" hx-trigger="load" hx-target="#answers" hx-swap="outerMorph"{% endif %}><span class="loading loading-spinner loading-sm"></span>Grouping by meaning. Equal answers are grouped meanwhile.{% if waiting.progress %}<progress class="progress progress-primary absolute inset-x-0 bottom-0 h-0.5 rounded-none" value="{{ waiting.progress|floatformat:2 }}" max="1" aria-hidden="true"></progress>{% endif %}</div>
+    {% endif %}
+    {% if answer_groups %}
+      <ul class="answer-groups divide-y divide-base-300" aria-label="Answers">
+        {% for answer_group in answer_groups %}{% include "results/answer_group.html" %}{% endfor %}
+      </ul>
+    {% else %}
+      <c-empty class="surface" icon="inbox" title="{% if filter == 'all' %}No answers{% else %}No answers match{% endif %}" />
+    {% endif %}
+  </div>
+</div>
+{% endpartialdef %}
+
+{% partialdef preview_bar %}
+<div id="preview-bar" aria-live="polite"{% if oob %} hx-swap-oob="outerMorph"{% endif %}{% if preview_due %} data-stale{% endif %}>
+  {% if draft %}
+    {% url 'draft_preview' draft.assessment_id draft.pk as preview_url %}
+    {% if preview_due %}
+      <div class="preview-bar">
+        {% if preview_ready %}<span class="font-medium">Marking changed</span>{% else %}<span class="min-w-0 text-sm text-muted">Finish the marking to preview</span>{% endif %}
+        <button class="btn btn-sm ml-auto shrink-0" hx-post="{{ preview_url }}" hx-target="#answers" hx-swap="outerMorph"{% if not preview_ready %} disabled{% endif %}>{% icon "eye" "size-4" %}Preview</button>
+      </div>
+    {% elif preview_job.status == "failed" %}
+      <div class="preview-bar text-error" role="alert">
+        {% icon "exclamation-circle" "size-5" %}<span class="min-w-0 flex-1">Preview failed: {{ preview_job.error|default:"something went wrong" }}</span>
+        <button class="btn btn-sm" hx-post="{{ preview_url }}" hx-target="#answers" hx-swap="outerMorph">Try again</button>
+      </div>
+    {% elif preview_job and not preview_summary %}
+      <div class="preview-bar relative" role="status">
+        <span class="loading loading-spinner loading-sm text-primary"></span>
+        {% if preview_job.status == "queued" %}Waiting to start…{% else %}Previewing…{% endif %}
+        {% if preview_job.progress %}<span class="tabular-nums text-sm text-muted">{% widthratio preview_job.progress 1 100 %}%</span><progress class="progress progress-primary absolute inset-x-0 bottom-0 h-0.5 rounded-none" value="{{ preview_job.progress|floatformat:2 }}" max="1" aria-hidden="true"></progress>{% endif %}
+      </div>
+    {% elif preview_summary %}
+      <div class="preview-bar" role="status">
+        {% icon "eye" "size-4 text-primary" %}<span class="font-medium">Preview</span>
+        {% if across %}
+          <span class="tabular-nums text-sm text-muted">{{ preview_summary.changed }} {% if preview_summary.changed == 1 %}student's results change{% else %}students' results change{% endif %}</span>
+        {% else %}
+          <span class="tabular-nums text-sm text-muted">{{ preview_summary.full }} full · {{ preview_summary.part }} partial · {{ preview_summary.zero }} no marks</span>
+          {% if preview_summary.changed %}<span class="badge badge-primary badge-soft badge-sm ml-auto">{{ preview_summary.changed }} changed</span>{% endif %}
+        {% endif %}
+      </div>
+      {% if preview_summary.unmarked %}
+      <div class="flex items-start gap-2 border-t border-warning/30 bg-warning/10 px-4 py-2 text-sm" role="alert">
+        {% icon "exclamation-triangle" "size-4 mt-0.5 shrink-0 text-warning" %}
+        <p class="min-w-0"><span class="font-medium">Couldn't mark {{ preview_summary.unmarked }} student{{ preview_summary.unmarked|pluralize }}</span>{% if preview_summary.problem %}<span class="block break-words text-muted">{{ preview_summary.problem|truncatechars:300 }}</span>{% endif %}</p>
+      </div>
+      {% endif %}
+    {% endif %}
+  {% endif %}
+</div>
+{% endpartialdef %}

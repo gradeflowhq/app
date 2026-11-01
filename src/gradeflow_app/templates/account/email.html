@@ -1,0 +1,31 @@
+{% extends "account/base_manage_email.html" %}
+{% block head_title %}Email{% endblock %}
+{% block content %}
+<h1>Email</h1>
+<c-card body_class="">
+    <ul class="divide-y divide-base-300" aria-label="Your addresses">
+      {% for radio in emailaddress_radios|dictsortreversed:"emailaddress.primary" %}{% with address=radio.emailaddress %}
+      <li class="item-row">
+        <div class="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1">
+          <span class="min-w-0 truncate font-medium">{{ address.email }}</span>
+          {% if address.primary %}<span class="badge badge-sm badge-ghost">Primary</span>{% endif %}
+          {% if not address.verified %}<span class="badge badge-sm badge-warning badge-soft">Not confirmed</span>{% endif %}
+        </div>
+        {% if not address.primary %}
+        <form id="email-{{ forloop.counter }}" method="post" action="{% url 'account_email' %}" hidden>{% csrf_token %}<input type="hidden" name="email" value="{{ address.email }}"></form>
+        <c-menu id="email-menu-{{ forloop.counter }}" label="Actions for {{ address.email }}">
+          {% if address.verified %}<li><button form="email-{{ forloop.counter }}" name="action_primary">Make primary</button></li>{% else %}<li><button form="email-{{ forloop.counter }}" name="action_send">Send confirmation again</button></li>{% endif %}
+          <li><button form="email-{{ forloop.counter }}" name="action_remove" class="text-error" data-confirm="Remove {{ address.email }}?" data-confirm-detail="You can't sign in with it after this." data-confirm-button="Remove">Remove</button></li>
+        </c-menu>
+        {% elif not address.verified %}
+        <form method="post" action="{% url 'account_email' %}">{% csrf_token %}<input type="hidden" name="email" value="{{ address.email }}"><button class="btn btn-sm" name="action_send">Send confirmation again</button></form>
+        {% endif %}
+      </li>
+      {% endwith %}{% endfor %}
+    </ul>
+    {% if can_add_email %}<c-slot name="footer"><button type="button" class="btn ml-auto" data-dialog="add-email">{% icon "plus" %}Add email</button></c-slot>{% endif %}
+</c-card>
+{% if can_add_email %}
+<c-form-dialog id="add-email" title="Add email" action="{% url 'account_email' %}" submit="Add email" :form="form" name="action_add" />
+{% endif %}
+{% endblock %}

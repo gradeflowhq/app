@@ -1,0 +1,2 @@
+<c-form-errors :errors="attrs.form.non_field_errors" />
+<div class="grid gap-5">{% for field in attrs.form %}{% if field.is_hidden %}{{ field }}{% else %}{{ field.as_field_group }}{% endif %}{% endfor %}</div>

@@ -1,0 +1,1 @@
+New recovery codes made.{% if MFA_RECOVERY_CODES_SHOW_ONCE %} Save them now; they're shown only once.{% endif %}

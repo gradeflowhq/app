@@ -1,0 +1,21 @@
+<c-guide.dialog id="document-guide" title="Question document" intro="Sets each question’s type, options, marks and text as they are in ExamSoft.">
+  <c-guide.section title="From ExamSoft">
+    <ol class="grid gap-4">
+      <c-guide.step number="1"><p>Open the assessment, then <c-guide.path :steps="['Contents', 'Print/Export']" /></p></c-guide.step>
+      <c-guide.step number="2"><p>Choose the posting, <b>Custom Settings</b> and <b>DOC</b></p></c-guide.step>
+      <c-guide.step number="3">
+        <p>Tick these</p>
+        <ul class="flex flex-wrap gap-1.5">
+          <c-guide.ticked>Multiple Choice/True False Choices</c-guide.ticked>
+          <c-guide.ticked>Blanks for FITB</c-guide.ticked>
+          <c-guide.ticked>Indicate Correct Answer</c-guide.ticked>
+          <c-guide.ticked>Question Weight</c-guide.ticked>
+        </ul>
+      </c-guide.step>
+      <c-guide.step number="4"><p>Click <b>Print/Export</b>, unzip the download and drop the .doc here</p></c-guide.step>
+    </ol>
+  </c-guide.section>
+  <c-slot name="notes">
+    <c-guide.note icon="arrow-path">Importing again replaces changes made to those questions.</c-guide.note>
+  </c-slot>
+</c-guide.dialog>

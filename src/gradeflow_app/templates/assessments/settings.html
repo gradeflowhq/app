@@ -1,0 +1,25 @@
+{% extends "layouts/assessment.html" %}
+{% block page_title %}Settings · {% endblock %}
+{% block content %}
+{% with assessment=membership.assessment %}
+<c-page title="Settings">
+  <div class="settings">
+    <c-form-card id="assessment-details" title="Details">{{ form }}</c-form-card>
+    <c-card body_class="rows">
+      {% if sample %}
+      <div x-data="passphraseSettings" data-assessment-id="{{ assessment.pk }}" data-sample="{{ sample }}">
+        <c-row label="Student ID passphrase">
+          <c-slot name="detail"><span x-text="status">Not remembered on this device</span></c-slot>
+          <button type="button" class="btn" x-show="!known" x-on:click="enter">Enter passphrase</button>
+          <button type="button" class="btn btn-error btn-outline" x-show="known" x-cloak x-on:click="forget" data-confirm="Forget the passphrase on this device?" data-confirm-detail="Student IDs show as encrypted here until it's entered again." data-confirm-button="Forget">Forget</button>
+        </c-row>
+      </div>
+      {% endif %}
+      <c-row label="Delete assessment">
+        <form method="post" action="{% url 'delete_assessment' assessment.pk %}">{% csrf_token %}<button class="btn btn-error btn-outline" data-confirm="Delete “{{ assessment.name }}”?" data-confirm-detail="Its answers, marking and marks are deleted for everyone. This can't be undone." data-confirm-button="Delete">Delete assessment</button></form>
+      </c-row>
+    </c-card>
+  </div>
+</c-page>
+{% endwith %}
+{% endblock %}

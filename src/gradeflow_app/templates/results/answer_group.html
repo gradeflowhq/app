@@ -1,0 +1,92 @@
+{% partialdef decision %}
+{% if answer_group.mixed_decisions %}<span class="badge badge-ghost badge-sm">Mixed decisions</span>{% else %}
+{% for label, badge in answer_group.decisions %}<span class="badge {{ badge }} badge-soft badge-sm">{{ label }}</span>{% endfor %}
+{% endif %}
+{% endpartialdef %}
+{% with low=answer_group.marks.0 high=answer_group.marks.1 max_marks=question.core.max_marks feedback=answer_group.preview.feedback|default:answer_group.feedback code=question.core|code_answers %}
+<li>
+<details class="group/answer{% if answer_group.preview.changed %} bg-primary/5{% endif %}">
+  <summary class="flex cursor-pointer list-none items-start gap-4 px-4 py-3 hover:bg-base-200/60">
+    <div class="min-w-0 flex-1">
+      {% include "results/answer_text.html" with answer=answer_group.answer blank=answer_group.blank %}
+      {% if answer_group.answers|length > 1 %}{% with others=answer_group.answers|length|add:"-1" %}<p class="text-sm text-muted">and {{ others }} {% if grouping == "spelling" %}other spelling{{ others|pluralize }}{% else %}other{{ others|pluralize }}{% endif %}</p>{% endwith %}{% endif %}
+      {% include "results/answer_feedback.html" %}
+    </div>
+    <div class="flex shrink-0 flex-col items-end gap-0.5 text-right">
+      {% if answer_group.preview.all_unmarked or not answer_group.preview and answer_group.all_unmarked %}
+        <span class="text-sm text-warning" data-marks>Couldn't mark</span>
+      {% elif answer_group.preview %}
+        <c-marks :low="answer_group.preview.low" :high="answer_group.preview.high" :before_low="low" :before_high="high" :max_marks="max_marks" />
+      {% else %}
+        <c-marks :low="low" :high="high" :max_marks="max_marks" />
+      {% endif %}
+      <span class="tabular-nums text-sm text-muted">{{ answer_group.count }} student{{ answer_group.count|pluralize }}</span>
+      {% if answer_group.adjusted %}<span class="badge badge-info badge-soft badge-sm">{{ answer_group.adjusted }} adjusted</span>{% endif %}
+      {% partial decision %}
+    </div>
+  </summary>
+  <div class="group/body grid gap-4 border-t border-base-300 px-4 py-4">
+    {% if answer_group.approximate or answer_group.mixed_decisions %}
+    <p class="text-sm text-muted">{% if answer_group.approximate %}Similar answers can have different meanings.{% else %}These answers have different decisions.{% endif %} <a class="text-link" hx-get="{% url 'answers' question.assessment_id question.pk %}?group=answers" hx-target="#answers" hx-swap="outerHTML" href="{% url 'question' question.assessment_id question.pk %}?group=answers">Mark separately</a></p>
+    {% endif %}
+    {% if draft and by_example and not answer_group.blank and not answer_group.approximate %}
+    <form class="flex flex-wrap items-center gap-2" hx-post="{% url 'mark_example' question.assessment_id question.pk %}" hx-target="#marking-panel" hx-swap="outerMorph" hx-sync="#question-work:queue all">
+      {% csrf_token %}
+      {% for answer, count in answer_group.answers %}<input type="hidden" name="answer" value="{{ answer }}">{% endfor %}
+      <span class="text-sm font-medium">{% if answer_group.mixed_decisions %}This answer group has{% else %}This answer group gets{% endif %}</span>
+      {% if answer_group.decisions %}
+      {% partial decision %}
+      <button class="btn btn-ghost btn-sm text-muted" name="given" value="cancel">{% icon "x-mark" "size-4" %}Clear</button>
+      {% else %}
+      {% for value, label in decisions %}<button class="btn btn-sm" name="given" value="{{ value }}">{{ label }}</button>{% endfor %}
+      {% endif %}
+    </form>
+    {% endif %}
+    {% if code %}
+      {% if answer_group.answers|length > 1 or answer_group.answers.0.0 != answer_group.answer %}
+      <details class="group/exported">
+        <summary class="inline-flex cursor-pointer list-none items-center gap-1.5 text-sm font-medium text-muted hover:text-base-content">{% icon "chevron-right" "size-4 transition-transform group-open/exported:rotate-90" %}As exported{% if answer_group.answers|length > 1 %} <span class="tabular-nums font-normal">{{ answer_group.answers|length }}</span>{% endif %}</summary>
+        <ul class="mt-2 grid gap-2">
+          {% for answer, count in answer_group.answers %}
+          <li class="rounded-box bg-base-200 px-3 py-2"><pre class="whitespace-pre-wrap break-words font-mono text-sm">{% if answer %}{{ answer }}{% else %}<span class="italic text-muted">Blank</span>{% endif %}</pre>{% if answer_group.answers|length > 1 %}<p class="tabular-nums mt-1 text-sm text-muted">{{ count }} student{{ count|pluralize }}</p>{% endif %}</li>
+          {% endfor %}
+        </ul>
+      </details>
+      {% endif %}
+    {% elif answer_group.answers|length > 1 %}
+      <div>
+        <p class="text-sm font-medium">Answers</p>
+        <ul class="mt-1.5 flex flex-wrap gap-1.5">
+          {% for answer, count in answer_group.answers %}
+          <li class="badge badge-ghost h-auto gap-1.5 py-1 text-left">{% if answer %}{{ answer }}{% else %}<span class="italic text-muted">Blank</span>{% endif %} <span class="tabular-nums text-muted">{{ count }}</span></li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+    <div class="flex flex-wrap gap-2">
+      {% if membership.can_edit and not draft and not answer_group.approximate %}<label class="btn btn-sm has-checked:btn-active">{% icon "pencil-square" "size-4" %}Adjust marks<input type="checkbox" class="sr-only" data-adjust></label>{% endif %}
+      <label class="btn btn-sm has-checked:btn-active">{% icon "users" "size-4" %}Students<span class="tabular-nums font-normal text-muted">{{ answer_group.count }}</span><input type="checkbox" class="sr-only" data-students></label>
+    </div>
+    {% if membership.can_edit and not draft and not answer_group.approximate %}
+    <form class="hidden gap-3 group-has-[[data-adjust]:checked]/body:grid" hx-post="{% url 'adjust' question.assessment_id question.pk %}" hx-target="#answers" hx-swap="outerMorph">
+      {% csrf_token %}
+      {% for student in answer_group.students %}<input type="hidden" name="student" value="{{ student }}">{% endfor %}
+      <div class="flex flex-wrap items-start gap-3">
+        <label class="input w-36"><input type="number" name="marks" min="0" max="{{ max_marks }}" step="any" placeholder="Marks" aria-label="Marks"><span class="text-muted">/ {{ max_marks|marks }}</span></label>
+        <textarea name="feedback" rows="1" class="textarea min-h-10 flex-1" placeholder="Feedback (optional)" aria-label="Feedback"></textarea>
+      </div>
+      <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="clear_feedback" class="checkbox checkbox-sm">Clear feedback</label>
+      <div class="flex gap-2">
+        <button class="btn" name="action" value="apply">Adjust {% if answer_group.count == 1 %}1 student{% else %}{{ answer_group.count }} students{% endif %}</button>
+        {% if answer_group.adjusted %}<button class="btn btn-ghost text-error" name="action" value="clear" data-resets data-confirm="Clear {{ answer_group.adjusted }} adjustment{{ answer_group.adjusted|pluralize }}?" data-confirm-detail="{% if answer_group.adjusted == 1 %}This student gets{% else %}These students get{% endif %} the marking's marks and feedback again." data-confirm-button="Clear">Clear {{ answer_group.adjusted }} adjustment{{ answer_group.adjusted|pluralize }}</button>{% endif %}
+      </div>
+    </form>
+    {% endif %}
+    <ul class="hidden flex-wrap gap-1.5 group-has-[[data-students]:checked]/body:flex" aria-label="Students">
+      {% for entry in answer_group.entries|slice:":40" %}<li><button class="badge badge-ghost h-auto cursor-pointer py-1 hover:badge-neutral" hx-get="{% url 'student' question.assessment_id entry.student %}" hx-target="#sheet-body" data-dialog="sheet"><c-sid value="{{ entry.key }}" />{% if entry.adjustment %} {% icon "pencil" "size-3" %}{% endif %}</button></li>{% endfor %}
+      {% if answer_group.count > 40 %}<li class="text-sm text-muted">and {{ answer_group.count|add:"-40" }} more</li>{% endif %}
+    </ul>
+  </div>
+</details>
+</li>
+{% endwith %}

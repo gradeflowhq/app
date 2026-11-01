@@ -1,0 +1,2 @@
+{# Leaving a sign-in stage: to `cancel_url` where allauth gives one, otherwise by signing out of the stage. #}
+{% if cancel_url %}<a class="quiet-link" href="{{ cancel_url }}">Cancel</a>{% else %}<form method="post" action="{% url 'account_logout' %}">{% csrf_token %}<input type="hidden" name="next" value="{% url 'account_login' %}"><button class="quiet-link cursor-pointer">Cancel</button></form>{% endif %}

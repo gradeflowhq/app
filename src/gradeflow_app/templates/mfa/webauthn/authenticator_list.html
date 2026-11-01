@@ -1,0 +1,26 @@
+{% extends "mfa/base_manage.html" %}
+{% block head_title %}Passkeys{% endblock %}
+{% block content %}
+<h1>Passkeys</h1>
+<c-card body_class="">
+    {% if authenticators %}
+    <ul class="divide-y divide-base-300" aria-label="Your passkeys">
+      {% for authenticator in authenticators %}
+      <li class="item-row">
+        <div class="min-w-0 flex-1">
+          <p class="flex items-center gap-2 font-medium"><span class="min-w-0 truncate">{{ authenticator }}</span>{% if authenticator.wrap.is_passwordless is False %}<span class="badge badge-ghost badge-sm">2FA only</span>{% endif %}</p>
+          <p class="text-sm text-muted">{% if authenticator.last_used_at %}Last used {{ authenticator.last_used_at|ago }}{% else %}Not used yet{% endif %}</p>
+        </div>
+        <c-menu id="passkey-menu-{{ authenticator.pk }}" label="Actions for {{ authenticator }}">
+          <li><a href="{% url 'mfa_edit_webauthn' pk=authenticator.pk %}">Rename</a></li>
+          <li><a class="text-error" href="{% url 'mfa_remove_webauthn' pk=authenticator.pk %}">Remove</a></li>
+        </c-menu>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="px-5 py-4 text-muted">None yet</p>
+    {% endif %}
+    <c-slot name="footer"><a class="btn ml-auto" href="{% url 'mfa_add_webauthn' %}">{% icon "plus" %}Add passkey</a></c-slot>
+  </c-card>
+{% endblock %}

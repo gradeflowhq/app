@@ -1,0 +1,30 @@
+{% extends "layouts/sidebar.html" %}
+{% block title %}{% block page_title %}{% endblock %}{{ membership.assessment.name }} · GradeFlow{% endblock %}
+{% block topbar %}
+  <c-topbar :course="membership.course" :assessment="membership.assessment" />
+{% endblock %}
+{% block nav_label %}Assessment{% endblock %}
+{% block nav_header %}
+  <c-sidebar-header back="{% url 'course' membership.course.pk %}" back_label="{{ membership.course.name }}" title="{{ membership.assessment.name }}" state="{{ membership.assessment.description }}" />
+{% endblock %}
+{% block nav %}
+  {% with assessment=membership.assessment %}
+  <c-sidebar-link href="{% url 'overview' assessment.pk %}" icon="home" label="Overview" sections="overview" />
+  <c-sidebar-link href="{% url 'questions' assessment.pk %}" icon="queue-list" label="Questions" sections="question questions question_group question_group_new question_group_draft" />
+  <c-sidebar-link href="{% url 'students' assessment.pk %}" icon="users" label="Students" sections="students" />
+  <c-sidebar-link href="{% url 'publish' assessment.pk %}" icon="paper-airplane" label="Publish" sections="publish" />
+  {% if membership.can_edit %}
+  <c-sidebar-group title="Setup" />
+  <c-sidebar-link href="{% url 'import' assessment.pk %}" icon="arrow-up-tray" label="Import" sections="import" />
+  {% if membership.is_owner %}<c-sidebar-link href="{% url 'assessment_settings' assessment.pk %}" icon="cog-6-tooth" label="Settings" sections="assessment_settings" />{% endif %}
+  {% endif %}
+  {% endwith %}
+{% endblock %}
+{% block page %}
+  {# Student IDs anywhere inside, drawers too, decrypt with this assessment's passphrase. #}
+  <div data-assessment="{{ membership.assessment.pk }}" class="contents">
+    {% block content %}{% endblock %}
+    <c-passphrase />
+    <c-workspace-dialogs />
+  </div>
+{% endblock %}

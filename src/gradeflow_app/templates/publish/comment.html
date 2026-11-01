@@ -1,0 +1,12 @@
+{% url 'publish_comment' membership.assessment.pk as here %}
+<div class="grid gap-4 px-6 pb-6 pt-2">
+  <div class="flex items-center gap-3">
+    <c-sid value="{{ student.key }}" />
+    <span class="tabular-nums ml-auto text-sm text-muted">{{ page.number }} of {{ page.paginator.count }}</span>
+    <div class="join">
+      <button class="btn btn-square btn-sm join-item" hx-get="{{ here }}?page={{ page.number|add:-1 }}" hx-target="#comment-body" aria-label="Previous student"{% if not page.has_previous %} disabled{% endif %}>{% icon "chevron-left" "size-4" %}</button>
+      <button class="btn btn-square btn-sm join-item" hx-get="{{ here }}?page={{ page.number|add:1 }}" hx-target="#comment-body" aria-label="Next student"{% if not page.has_next %} disabled{% endif %}>{% icon "chevron-right" "size-4" %}</button>
+    </div>
+  </div>
+  {% if comment %}<p class="whitespace-pre-wrap break-words rounded-box bg-base-200 p-4 text-sm">{{ comment|safe }}</p>{% else %}<p class="text-sm text-muted">Nothing marked yet.</p>{% endif %}
+</div>

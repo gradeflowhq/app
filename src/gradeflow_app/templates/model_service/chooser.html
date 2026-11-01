@@ -1,0 +1,48 @@
+{# The Choose models dialog's body: automatically, by trying each model, or by picking them from the endpoint's list and testing them. #}
+<form id="model-chooser-form" class="group" hx-post="{% url 'model_service_choose' %}" hx-target="#model-service-models" hx-swap="outerHTML" data-close-on-success>
+  <c-dialog.head id="model-chooser" title="Choose models" />
+  <div class="grid gap-5 px-6 pt-2">
+    {% if loading %}
+      <div class="grid place-items-center py-10"><span class="loading loading-spinner" aria-label="Loading"></span></div>
+    {% else %}
+      {% if running %}
+        <div role="status" class="alert alert-info alert-soft">
+          <span class="loading loading-spinner loading-sm"></span>
+          <span class="flex-1">Choosing automatically since {{ running.created_at|time:"H:i" }}. It takes about 10 minutes; you can close this.</span>
+          <button type="button" class="btn btn-sm" hx-post="{% url 'model_service_stop' %}" hx-target="#model-service-models" hx-swap="outerHTML" data-close>Stop</button>
+        </div>
+      {% endif %}
+      <fieldset class="grid gap-2">
+        <legend class="sr-only">How</legend>
+        {% for value, icon, title, detail in ways %}
+        <label class="group/way flex cursor-pointer items-start gap-3 rounded-box border border-base-300 p-4 hover:bg-base-200/40 has-checked:border-primary has-checked:bg-primary/5 has-focus-visible:outline-2 has-focus-visible:outline-primary">
+          <input type="radio" name="how" value="{{ value }}" id="how-{{ value }}" class="sr-only"{% if value == how %} checked{% endif %}>
+          <span class="grid size-9 shrink-0 place-items-center rounded-field bg-base-200 text-muted group-has-checked/way:bg-primary/12 group-has-checked/way:text-primary" aria-hidden="true">{% icon icon "size-5" %}</span>
+          <span class="min-w-0 flex-1"><span class="block font-medium">{{ title }}</span><span class="mt-0.5 block text-sm text-muted">{{ detail }}</span></span>
+          {% icon "check-circle" "size-5 shrink-0 text-primary invisible group-has-checked/way:visible" %}
+        </label>
+        {% endfor %}
+      </fieldset>
+      <div class="hidden gap-4 group-has-[#how-myself:checked]:grid">
+        {% if problem %}
+          <c-alert>{{ problem }}</c-alert>
+        {% else %}
+          <label class="grid gap-1.5"><span class="font-medium">Fast model</span>
+            <select name="decision_model" class="select w-full"><option value="" disabled{% if not state.decision_model %} selected{% endif %}>Choose a model</option>{% for name in names %}<option{% if name == state.decision_model %} selected{% endif %}>{{ name }}</option>{% endfor %}</select>
+          </label>
+          <label class="grid gap-1.5"><span class="font-medium">Careful model <span class="font-normal text-muted">(optional)</span></span>
+            <select name="reasoning_model" class="select w-full"><option value="">None</option>{% for name in names %}<option{% if name == state.reasoning_model %} selected{% endif %}>{{ name }}</option>{% endfor %}</select>
+          </label>
+        {% endif %}
+      </div>
+      {% include "model_service/status.html" %}
+    {% endif %}
+  </div>
+  <c-dialog.footer>
+    <button type="button" class="btn" data-close>Cancel</button>
+    {% if not loading %}
+      <button class="btn btn-primary group-has-[#how-myself:checked]:hidden"{% if running %} disabled{% endif %}>{% if running %}Choosing…{% else %}Start{% endif %}</button>
+      <button class="btn btn-primary hidden group-has-[#how-myself:checked]:inline-flex"{% if problem %} disabled{% endif %}>Use these models</button>
+    {% endif %}
+  </c-dialog.footer>
+</form>

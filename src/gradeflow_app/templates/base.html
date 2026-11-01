@@ -1,0 +1,48 @@
+{% load static tailwind_cli %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}GradeFlow{% endblock %}</title>
+  <link rel="icon" href="{% static 'gradeflow/logo.svg' %}" type="image/svg+xml">
+  <script nonce="{{ csp_nonce }}">
+    try {
+      const theme = localStorage.getItem("theme");
+      if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
+    } catch {}
+  </script>
+  {% tailwind_css %}
+  <link rel="stylesheet" href="{% static 'vendor/tom-select-2.6.2/tom-select.css' %}">
+  <link rel="stylesheet" href="{% static 'vendor/katex-0.19.0/katex.min.css' %}">
+  <meta name="htmx-config" content='{"noSwap": [204, 304, "4xx", "5xx"], "defaultTimeout": 0, "defaultSettleDelay": 0, "morphIgnore": ["data-htmx-powered", "open"]}'>
+  <script src="{% static 'vendor/htmx-4.0.0/htmx.min.js' %}"></script>
+  <script src="{% static 'vendor/htmx-4.0.0/ext/hx-alpine-compat.min.js' %}"></script>
+  <script src="{% static 'vendor/htmx-4.0.0/ext/hx-sse.min.js' %}"></script>
+  <script type="module" src="{% static 'gradeflow/ui.js' %}"></script>
+</head>
+<body class="min-h-screen" x-data hx-boost:inherited="true">
+  <a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-3 focus:z-50 btn btn-sm">Skip to content</a>
+  {% block body %}
+    <c-topbar />
+    <main id="main">{% block content %}{% endblock %}</main>
+  {% endblock %}
+  {% page_messages %}
+  <div class="toast toast-center toast-bottom z-50" aria-live="polite">
+    <template x-for="toast in $store.toasts.shown" :key="toast.id"><div class="alert shadow-lg" :class="toast.style" role="status"><template x-if="toast.ok">{% icon "check-circle" %}</template><span x-text="toast.message"></span></div></template>
+  </div>
+  <c-dialog id="confirm" title="">
+    <form method="dialog">
+      <p class="px-6 pb-2 text-muted" data-detail></p>
+      <c-dialog.footer><button class="btn">Cancel</button><button class="btn btn-error" value="confirm"></button></c-dialog.footer>
+    </form>
+  </c-dialog>
+  <c-dialog id="code" title="" box_class="max-w-6xl">
+    <p class="px-6 text-sm text-muted empty:hidden" data-detail></p>
+    <div class="mx-6 mt-3 h-[calc(100dvh-16rem)] min-h-64 overflow-hidden rounded-field border border-base-300" data-editor></div>
+    <form method="dialog"><c-dialog.footer><button class="btn btn-primary">Done</button></c-dialog.footer></form>
+  </c-dialog>
+  <template id="code-expand"><button type="button" class="btn btn-ghost btn-square btn-sm absolute right-4 top-1.5 z-10 bg-base-100/80" aria-label="Expand" title="Expand">{% icon "arrows-pointing-out" "size-4" %}</button></template>
+  {% live_stream %}
+  {% block extra_body %}{% endblock %}
+</body>
+</html>

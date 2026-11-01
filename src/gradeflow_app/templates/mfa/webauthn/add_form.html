@@ -1,0 +1,19 @@
+{% extends "mfa/base_manage.html" %}
+{% load allauth %}
+{% block head_title %}Add passkey{% endblock %}
+{% block content %}
+<h1>Add passkey</h1>
+<c-card>
+  <form method="post" action="{% url 'mfa_add_webauthn' %}" class="grid gap-5">
+    {% csrf_token %}
+    <c-form-errors :errors="form.non_field_errors" />
+    {{ form.credential }}
+    {{ form.name.as_field_group }}
+    {% if form.passwordless %}{% element field type="checkbox" id=form.passwordless.auto_id name=form.passwordless.html_name checked=True %}{% slot label %}Use it to sign in without a password{% endslot %}{% endelement %}{% endif %}
+  </form>
+  <c-slot name="footer"><span class="text-sm text-muted">Your browser asks for your fingerprint, face or security key.</span><button id="mfa_webauthn_add" type="button" class="btn btn-primary ml-auto">{% icon "finger-print" "size-5" %}Add passkey</button></c-slot>
+</c-card>
+{% include "mfa/webauthn/snippets/scripts.html" %}
+{{ js_data|json_script:"js_data" }}
+<script data-allauth-onload="allauth.webauthn.forms.addForm" type="application/json">{"ids": {"add": "mfa_webauthn_add", "passwordless": "{{ form.passwordless.auto_id }}", "credential": "{{ form.credential.auto_id }}", "data": "js_data"}}</script>
+{% endblock %}

@@ -1,0 +1,1 @@
+{% load allauth %}{% comment %}allauth's code fields repeat their label as a placeholder.{% endcomment %}{% element field id=field.auto_id name=field.html_name type="text" autocomplete="one-time-code" errors=field.errors %}{% slot label %}{{ field.label }}{% endslot %}{% endelement %}

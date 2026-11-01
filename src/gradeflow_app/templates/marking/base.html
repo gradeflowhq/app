@@ -1,0 +1,16 @@
+{% extends "layouts/assessment.html" %}
+{% block content %}
+<div class="workspace workspace-columns group/workspace">
+  {% include "marking/question_list.html" %}
+  <div id="question-work" class="contents" hx-sync:inherited="#question-work:queue all">
+    {% block work %}
+    <section class="workspace-answers" aria-label="Answers">
+      {{ answers }}
+    </section>
+    <aside class="workspace-marking" aria-label="Marking"{% block marking_attrs %}{% endblock %}>
+      {% block marking %}{% endblock %}
+    </aside>
+    {% endblock %}
+  </div>
+</div>
+{% endblock %}

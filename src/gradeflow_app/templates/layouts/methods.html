@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{# Methods outside a course, under the top bar alone: Your methods, and a method's page, which leads back to it when it's the person's own. #}
+{% block title %}{% block page_title %}{% endblock %}GradeFlow{% endblock %}
+{% block body %}
+<c-topbar>
+  <c-slot name="nav">{% if method.library.user_id == user.pk %}<ol class="flex min-w-0 items-center gap-2 text-sm" aria-label="Breadcrumb"><li class="crumb min-w-0"><a href="{% url 'your_methods' %}">Your methods</a></li></ol>{% endif %}</c-slot>
+</c-topbar>
+<main id="main">{% block page %}{% endblock %}</main>
+{% endblock %}

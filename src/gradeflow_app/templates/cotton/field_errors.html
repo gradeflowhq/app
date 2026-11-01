@@ -1,0 +1,3 @@
+{# A field's errors: `<c-field-errors :errors="field.errors" />`, with an `id` where they're swapped in. #}
+<c-vars errors />
+<div {{ attrs }}>{% for error in errors %}<p class="flex items-center gap-1.5 text-sm text-error">{% icon "exclamation-circle" "size-4" %}{{ error }}</p>{% endfor %}</div>

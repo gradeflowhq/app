@@ -1,0 +1,6 @@
+{# The whole method as YAML: to read, or in a draft to write. #}
+<c-method-form action="{{ action }}">
+  <c-sheet.head title="{% if workspace.editable %}Edit as YAML{% else %}YAML{% endif %}" />
+  <c-sheet.yaml :text="text" label="Method as YAML" :editable="workspace.editable">{% if problem %}<c-alert>{{ problem }}</c-alert>{% endif %}</c-sheet.yaml>
+  {% if workspace.editable %}<c-sheet.foot submit="Save" />{% endif %}
+</c-method-form>

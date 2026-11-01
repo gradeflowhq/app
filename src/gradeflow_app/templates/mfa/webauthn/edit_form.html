@@ -1,0 +1,9 @@
+{% extends "mfa/base_manage.html" %}
+{% block head_title %}Rename passkey{% endblock %}
+{% block content %}
+<h1>Rename passkey</h1>
+<c-card>
+  <form id="passkey" method="post" action="{% url 'mfa_edit_webauthn' pk=authenticator.pk %}" class="grid gap-5">{% csrf_token %}{{ form }}</form>
+  <c-slot name="footer"><a class="btn ml-auto" href="{% url 'mfa_list_webauthn' %}">Cancel</a><button id="mfa_webauthn_edit" form="passkey" class="btn btn-primary">Save</button></c-slot>
+</c-card>
+{% endblock %}

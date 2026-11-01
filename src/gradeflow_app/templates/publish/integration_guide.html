@@ -1,0 +1,21 @@
+<c-guide.dialog id="canvas-guide" title="Canvas" intro="Sending marks to Canvas uses an access token from your own Canvas account.">
+  <c-guide.section title="Connect">
+    <ol class="grid gap-4">
+      <c-guide.step number="1"><p>In Canvas, open <c-guide.path :steps="['Account', 'Settings']" /> and click <b>New Access Token</b></p></c-guide.step>
+      <c-guide.step number="2"><p>Enter a purpose, click <b>Generate Token</b> and copy the token</p></c-guide.step>
+      <c-guide.step number="3"><p>Enter your Canvas address and the token, then click <b>Connect</b></p></c-guide.step>
+    </ol>
+  </c-guide.section>
+  <c-guide.section title="Send marks">
+    <ol class="grid gap-4">
+      <c-guide.step number="1"><p>In a course, open <b>Canvas</b> and choose its Canvas course</p></c-guide.step>
+      <c-guide.step number="2"><p>On an assessment’s <b>Publish</b> page, choose its assignment or a new one, then click <b>Send to Canvas</b></p></c-guide.step>
+    </ol>
+  </c-guide.section>
+  <c-slot name="notes">
+    <c-guide.note icon="lock-closed">The address and token are kept in this browser. Connect each device you send marks from.</c-guide.note>
+    <c-guide.note icon="user-group">Only a course’s editors can link it to Canvas and send marks.</c-guide.note>
+    <c-guide.note icon="information-circle">No New Access Token button? Your school lets only its Canvas admins make tokens.</c-guide.note>
+    <c-guide.note icon="key">If Canvas stops accepting the token, connect again with a new one.</c-guide.note>
+  </c-slot>
+</c-guide.dialog>

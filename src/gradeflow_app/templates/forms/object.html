@@ -1,0 +1,9 @@
+<c-form-errors :errors="form.non_field_errors" />
+{% with groups=form.basic %}{% partialdef groups inline %}
+{% for label, fields in groups %}
+  {% if label %}<fieldset class="grid gap-5 rounded-box border border-base-300 p-4"><legend class="px-1 text-sm font-semibold">{{ label }}</legend>{% endif %}
+  {% for field in fields %}{{ field.as_field_group }}{% endfor %}
+  {% if label %}</fieldset>{% endif %}
+{% endfor %}
+{% endpartialdef %}{% endwith %}
+{% if form.more %}<c-more :open="form.more_open" label="More options{% if form.more_changed %} · {{ form.more_changed }} changed{% endif %}">{% include "forms/object.html#groups" with groups=form.more %}</c-more>{% endif %}

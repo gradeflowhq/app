@@ -1,0 +1,42 @@
+{# Opening a question or questions marked together swaps the other columns, the list (morphed, so it keeps its place) and the live stream, which then listens for what the page shows. #}
+{% partialdef list inline %}
+<nav id="question-list" class="workspace-questions" aria-label="Questions"
+     hx-get="{% url 'question_list' membership.assessment.pk %}?shown={{ questions.shown }}" hx-target="this" hx-swap="outerMorph"
+     hx-trigger="{% listen 'questions' membership.assessment.pk %}, {% listen 'marks' membership.assessment.pk %}, {% listen 'jobs' membership.assessment.pk %}, {% listen 'drafts' membership.assessment.pk request.user.pk %}">
+  <div class="column-head column-sticky">
+    <h1 class="text-base font-semibold">Questions</h1>
+    <span class="tabular-nums ml-auto whitespace-nowrap text-sm text-muted">{{ questions.marked }} of {{ questions.items|length }} marked</span>
+  </div>
+  <div class="contents" hx-target:inherited="#question-work" hx-select:inherited="#question-work" hx-select-oob:inherited="#question-list:outerMorph, #live-stream" hx-swap:inherited="outerHTML">
+  <ul class="grid grid-cols-[minmax(0,1fr)] gap-0.5 p-2">
+    {% for item in questions.items %}{% with q=item.question %}
+    <li>
+      <a href="{% url 'question' membership.assessment.pk q.pk %}" class="list-link"{% if item.current %} aria-current="page"{% endif %}>
+        <span class="min-w-0 flex-1">
+          <span class="flex items-center gap-2">
+            <span class="truncate font-medium">{{ q.key }}</span>
+            {% if item.drafting %}<span class="badge badge-primary badge-soft badge-sm" title="Your unsaved changes">Draft</span>{% endif %}
+            {% if item.progress is not None %}<span class="loading loading-spinner loading-xs text-primary" aria-label="Marking"></span>{% endif %}
+          </span>
+          <span class="block truncate text-sm {% if item.status.warning %}text-warning{% else %}text-muted{% endif %}">{{ item.status.label }}</span>
+        </span>
+        {% if item.proportion is not None %}<span class="tabular-nums shrink-0 text-sm text-muted" title="Average mark">{{ item.proportion|percent }}</span>{% endif %}
+        {% if item.progress %}<progress class="progress progress-primary absolute inset-x-3 bottom-1 h-0.5 w-auto" value="{{ item.progress|floatformat:2 }}" max="1" aria-hidden="true"></progress>{% endif %}
+      </a>
+    </li>
+    {% endwith %}{% endfor %}
+  </ul>
+  <details class="group/groups mt-auto border-t border-base-300 p-2" open>
+    <summary class="flex cursor-pointer list-none items-center gap-2 rounded-field px-3 py-2 text-sm font-medium text-muted hover:bg-base-200">
+      {% icon "chevron-right" "size-4 transition-transform group-open/groups:rotate-90" %}Question groups{% if questions.question_groups %}<span class="badge badge-sm ml-auto">{{ questions.question_groups|length }}</span>{% endif %}
+    </summary>
+    <ul class="grid gap-0.5 pt-1">
+      {% for question_group in questions.question_groups %}
+      <li><a href="{{ question_group.url }}" class="list-link"{% if question_group.current %} aria-current="page"{% endif %}><span class="min-w-0"><span class="flex items-center gap-2"><span class="truncate font-medium">{% if question_group.marks %}{{ question_group.marks|join:", " }}{% else %}New{% endif %}</span>{% if question_group.drafting %}<span class="badge badge-primary badge-soft badge-sm" title="Your unsaved changes">Draft</span>{% endif %}</span>{% if question_group.method %}<span class="block truncate text-sm text-muted">{{ question_group.method }}</span>{% elif not question_group.drafting %}<span class="block truncate text-sm text-warning">Needs fixing</span>{% endif %}</span></a></li>
+      {% endfor %}
+      {% if membership.can_edit %}<li><a href="{% url 'question_group_new' membership.assessment.pk %}" class="list-link text-sm text-primary"{% if questions.adding %} aria-current="page"{% endif %}>{% icon "plus" "size-4" %}New question group</a></li>{% endif %}
+    </ul>
+  </details>
+  </div>
+</nav>
+{% endpartialdef %}

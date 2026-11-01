@@ -1,0 +1,7 @@
+{% extends "account/base_entrance.html" %}
+{% block head_title %}Sign out{% endblock %}
+{% block content %}
+  <h1>Sign out of GradeFlow?</h1>
+  <form method="post" action="{% url 'account_logout' %}">{% csrf_token %}{{ redirect_field }}<button class="btn btn-primary">Sign out</button></form>
+  <a class="btn btn-ghost" href="{% url 'courses' %}">Stay signed in</a>
+{% endblock %}

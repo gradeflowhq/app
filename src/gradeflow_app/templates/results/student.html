@@ -1,0 +1,52 @@
+<c-sheet.head>
+  <c-slot name="title"><c-sid value="{{ student.key }}" /></c-slot>
+  <p class="tabular-nums ml-auto shrink-0 font-semibold">{{ total|marks }} <span class="font-normal text-muted">/ {{ max_marks|marks }}</span></p>
+</c-sheet.head>
+<div class="p-6" id="student-detail">
+  <ol class="surface divide-y divide-base-300" aria-label="Questions">
+    {% for question, answer, award, via in rows %}
+    {% with low=award.marks max_marks=question.core.max_marks adjustment=award.adjustment %}
+    <li class="grid gap-3 px-4 py-3"{% if membership.can_edit %} x-data="adjustment" data-feedback="{% if not adjustment or adjustment.feedback is None %}marking{% elif adjustment.feedback %}own{% else %}none{% endif %}"{% endif %}>
+      <div class="flex items-start gap-4">
+        <div class="min-w-0 flex-1">
+          <p class="text-sm"><span class="font-semibold">{{ question.key }}</span>{% if via %} <span class="text-muted">· {{ via }}</span>{% endif %}</p>
+          <p class="whitespace-pre-wrap break-words{% if question.core|code_answers %} font-mono text-sm{% endif %}">{% if answer %}{{ answer }}{% else %}<span class="italic text-muted">Blank</span>{% endif %}</p>
+          {% include "results/answer_feedback.html" with feedback=award.feedback %}
+        </div>
+        <div class="flex shrink-0 flex-col items-end gap-1">
+          <c-marks :low="low" :high="low" :max_marks="max_marks" />
+          {% if award.stale %}<span class="badge badge-warning badge-soft badge-sm">Previous result</span>{% endif %}
+          {% if adjustment %}<span class="badge badge-info badge-soft badge-sm">Adjusted</span>{% endif %}
+          {% if membership.can_edit %}<button type="button" class="btn btn-ghost btn-sm -mr-2.5 text-muted hover:text-base-content" x-show="!open" x-on:click="show" aria-label="Adjust {{ question.key }}">{% icon "pencil-square" "size-4" %}Adjust</button>{% endif %}
+        </div>
+      </div>
+      {% if membership.can_edit %}
+      <form class="grid gap-4 rounded-box border border-base-300 bg-base-200/50 p-4" x-show="open" x-cloak hx-post="{% url 'adjust' membership.assessment.pk question.pk %}" hx-target="#sheet-body">
+        {% csrf_token %}<input type="hidden" name="student" value="{{ student.pk }}"><input type="hidden" name="then" value="student">
+        {% if adjustment and award.result %}<p class="text-sm text-muted">The marking gives {{ award.marking_marks|marks }}.</p>{% endif %}
+        <div class="grid gap-1.5">
+          <label class="font-medium" for="marks-{{ question.pk }}">Marks</label>
+          <label class="input w-36"><input id="marks-{{ question.pk }}" type="number" name="marks" min="0" max="{{ max_marks }}" step="any" value="{{ adjustment.marks|default_if_none:'' }}"{% if adjustment.marks is None and low is not None %} placeholder="{{ low|marks }}"{% endif %}><span class="text-muted">/ {{ max_marks|marks }}</span></label>
+        </div>
+        <div class="grid gap-1.5">
+          <span class="font-medium" id="feedback-{{ question.pk }}">Feedback</span>
+          <div class="segmented" role="radiogroup" aria-labelledby="feedback-{{ question.pk }}">
+            <label class="segment whitespace-nowrap"><input type="radio" class="sr-only" value="marking" x-model="feedback">From marking</label>
+            <label class="segment whitespace-nowrap"><input type="radio" class="sr-only" value="own" x-model="feedback">Write own</label>
+            <label class="segment whitespace-nowrap"><input type="radio" class="sr-only" value="none" x-model="feedback">None</label>
+          </div>
+          <textarea name="feedback" rows="2" class="textarea w-full" x-show="writing" :disabled="!writing"{% if not adjustment.feedback %} disabled{% endif %} aria-labelledby="feedback-{{ question.pk }}">{{ adjustment.feedback|default_if_none:'' }}</textarea>
+          <input type="hidden" name="clear_feedback" value="on" :disabled="!clearing"{% if not adjustment or adjustment.feedback != '' %} disabled{% endif %}>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          {% if adjustment %}<button class="btn btn-ghost -ml-3 mr-auto text-error" name="action" value="clear" data-confirm="Clear the adjustment?" data-confirm-detail="The student gets the marking's marks and feedback for {{ question.key }} again." data-confirm-button="Clear">Clear adjustment</button>{% endif %}
+          <button type="button" class="btn ml-auto" x-on:click="cancel">Cancel</button>
+          <button class="btn btn-primary" name="action" value="apply">Save</button>
+        </div>
+      </form>
+      {% endif %}
+    </li>
+    {% endwith %}
+    {% endfor %}
+  </ol>
+</div>

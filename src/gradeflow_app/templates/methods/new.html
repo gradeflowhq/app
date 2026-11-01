@@ -1,0 +1,6 @@
+{# The New method dialog's form, swapped whole when it has errors. #}
+<form hx-post="{{ action }}" hx-target="this" hx-swap="outerHTML" hx-status:422="swap:outerHTML">
+  {% csrf_token %}
+  <div class="grid gap-5 px-6 pt-2"><c-form-errors :errors="form.non_field_errors" />{{ form }}</div>
+  <c-dialog.footer submit="Create" />
+</form>

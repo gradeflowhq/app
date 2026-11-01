@@ -1,0 +1,12 @@
+<div id="question-document-card"><c-card title="Question document">
+  <c-slot name="actions"><span class="text-sm text-muted">Optional</span><button type="button" class="btn btn-ghost btn-square btn-sm -mr-2 text-muted" data-dialog="document-guide" aria-label="How to import a question document">{% icon "question-mark-circle" %}</button></c-slot>
+  <form x-data="fileDrop" class="grid gap-4" hx-post="{% url 'question_document' assessment.pk %}" hx-encoding="multipart/form-data" hx-target="#question-document-card" hx-swap="outerHTML" hx-status:422="swap:outerHTML">
+    {% csrf_token %}
+    {% include "imports/drop.html" with title="Drop the question document here" kinds="DOC from ExamSoft" accept=".doc,.rtf" %}
+    <div class="flex flex-wrap items-center justify-end gap-3" x-show="fileName" x-cloak>
+      <span class="mr-auto truncate text-sm text-muted" x-text="fileName"></span>
+      <button x-ref="submit" class="btn btn-primary" data-confirm="Replace question settings?" data-confirm-detail="Each question in the document gets its type, options, marks and text from it. Changes you made to those questions are lost." data-confirm-button="Replace">Import question document</button>
+    </div>
+  </form>
+  {% if error %}<c-alert class="mt-4">{{ error }}</c-alert>{% endif %}
+</c-card></div>

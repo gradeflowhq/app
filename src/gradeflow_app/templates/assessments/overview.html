@@ -1,0 +1,119 @@
+{% extends "layouts/assessment.html" %}
+{% block content %}
+{% with assessment=membership.assessment %}
+<c-page title="Overview">
+  {% if not progress.imported %}
+    <c-empty class="surface" icon="arrow-up-tray" title="Import your exam to start">A CSV or Excel export, such as ExamSoft’s “Exam Taker Results”.
+      {% if membership.can_edit %}<c-slot name="action"><a class="btn btn-primary" href="{% url 'import' assessment.pk %}">{% icon "arrow-up-tray" %}Import results</a></c-slot>{% endif %}
+    </c-empty>
+  {% else %}
+    <section class="surface flex flex-wrap items-center gap-x-8 gap-y-4 px-5 py-4" aria-label="Progress">
+      <ol class="grid flex-1 basis-full gap-4 sm:flex sm:basis-auto sm:flex-wrap sm:gap-x-10">
+        <li class="flex items-center gap-3">
+          {% include "assessments/step.html" with done=True %}
+          <div><p class="font-medium">Exam export</p><p class="text-sm text-muted">Imported {{ progress.imported.uploaded_at|ago }}</p></div>
+        </li>
+        <li class="flex items-center gap-3">
+          {% include "assessments/step.html" with done=progress.marking_done number=2 next=True %}
+          <div><p class="font-medium">Marking</p><p class="tabular-nums text-sm text-muted">{{ progress.marked }} of {{ progress.questions }} question{{ progress.questions|pluralize }}</p></div>
+        </li>
+        <li class="flex items-center gap-3">
+          {% include "assessments/step.html" with done=progress.sent number=3 next=progress.marking_done %}
+          <div><p class="font-medium">Canvas</p><p class="text-sm text-muted">{% if progress.sent %}Sent {{ progress.sent.sent_at|ago }}{% else %}Not sent{% endif %}</p></div>
+        </li>
+      </ol>
+      {% if membership.can_edit %}
+        {% if not progress.marking_done %}<a href="{% url 'questions' assessment.pk %}" class="btn btn-primary max-sm:w-full">Continue marking</a>
+        {% elif not progress.sent %}<a href="{% url 'publish' assessment.pk %}" class="btn btn-primary max-sm:w-full">{% icon "paper-airplane" "size-4" %}Send to Canvas</a>{% endif %}
+      {% endif %}
+    </section>
+
+    {% if results %}
+    {% with max_marks=results.max_marks %}
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      <div class="contents" x-data="histogram">
+      <c-card title="Distribution" class="lg:col-span-2">
+        <c-slot name="actions">
+          <div class="segmented" role="radiogroup" aria-label="Bar width">
+            {% for value, label, same in distribution.widths %}<label class="segment"><input type="radio" name="bars" class="sr-only" value="{{ value }}" x-model="bars"{% if same %} disabled{% endif %}>{{ label }}</label>{% endfor %}
+          </div>
+        </c-slot>
+        <div class="h-60">
+          {{ distribution.chart|json_script }}
+          <canvas aria-label="Students by total marks" role="img"></canvas>
+        </div>
+      </c-card>
+      </div>
+      <c-card title="Stats" class="flex flex-col" body_class="flex flex-1 flex-col justify-between gap-6 p-5">
+        {% if not progress.marked %}<c-slot name="actions"><span class="text-sm text-muted">From the exam export</span></c-slot>{% endif %}
+        {% with stats=spread.stats at=spread.at %}
+          <div class="flex items-end justify-between gap-4">
+            <div><p class="text-sm text-muted">Mean</p><p class="tabular-nums text-3xl font-semibold tracking-tight">{{ stats.mean|marks:2 }}<span class="ml-1.5 text-base font-normal text-muted" title="Standard deviation">± {{ stats.stdev|marks:2 }} SD</span></p></div>
+            <div class="text-right"><p class="text-sm text-muted">Students</p><p class="tabular-nums text-3xl font-semibold tracking-tight">{{ stats.students }}</p></div>
+          </div>
+          <div>
+            <div class="relative h-10" role="img" aria-label="Total marks from {{ stats.minimum|marks }} to {{ stats.maximum|marks }}, half between {{ stats.q1|marks }} and {{ stats.q3|marks }}, median {{ stats.median|marks }}, maximum marks {{ max_marks|marks }}">
+              <span class="absolute inset-x-0 top-1/2 h-px bg-base-300"></span>
+              <span class="absolute top-1/2 h-0.5 -translate-y-1/2 bg-base-content/40" style="left: {{ at.minimum }}%; width: {{ spread.whisker }}%"></span>
+              <span class="absolute top-1/2 h-4 w-0.5 -translate-y-1/2 bg-base-content/40" style="left: {{ at.minimum }}%"></span>
+              <span class="absolute top-1/2 h-4 w-0.5 -translate-x-full -translate-y-1/2 bg-base-content/40" style="left: {{ at.maximum }}%"></span>
+              <span class="absolute top-1/2 h-7 -translate-y-1/2 rounded-md border border-(--color-chart) bg-(--color-chart)/25" style="left: {{ at.q1 }}%; width: {{ spread.box }}%"></span>
+              <span class="absolute top-1/2 h-7 w-0.5 -translate-x-1/2 -translate-y-1/2 bg-base-content/70" style="left: {{ at.median }}%"></span>
+            </div>
+            <div class="tabular-nums mt-1 flex justify-between text-sm text-muted"><span>0</span><span>{{ max_marks|marks }}</span></div>
+          </div>
+          <dl class="flex justify-between gap-2 border-t border-base-300 pt-4 text-sm">
+            {% for label, value in spread.five %}
+            <div><dt class="text-muted">{{ label }}</dt><dd class="tabular-nums font-semibold">{{ value }}</dd></div>
+            {% endfor %}
+          </dl>
+        {% endwith %}
+      </c-card>
+    </div>
+    {% endwith %}
+
+    <div class="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
+      <c-card title="Questions" class="overflow-x-auto lg:col-span-2" body_class="">
+        <table class="table">
+          <thead><tr><th>Question</th><th>Average</th><th class="text-right max-sm:hidden">Full marks</th><th class="text-right max-sm:hidden">No marks</th><th class="text-right max-sm:hidden">Blank</th>{% if adjusted %}<th class="text-right max-sm:hidden">Adjusted</th>{% endif %}</tr></thead>
+          <tbody>
+            {% for summary, status in questions %}
+            <tr data-href>
+              <td>
+                <a class="font-medium" href="{% url 'question' assessment.pk summary.question.pk %}">{{ summary.question.key }}</a>
+                <span class="block text-sm {% if status.warning %}text-warning{% else %}text-muted{% endif %}">{{ status.label }}</span>
+              </td>
+              <td>
+                {% if summary.average is None %}<span class="text-subtle">—</span>
+                {% else %}<div class="flex items-center gap-3">
+                  <progress class="progress h-1.5 w-16 text-(--color-chart) max-xl:hidden" value="{{ summary.average_proportion|floatformat:2 }}" max="1"></progress>
+                  <span class="tabular-nums whitespace-nowrap">{{ summary.average|marks }} <span class="text-muted">/ {{ summary.question.core.max_marks|marks }}</span></span>
+                </div>{% endif %}
+              </td>
+              <td class="tabular-nums text-right max-sm:hidden">{% if summary.average is None %}<span class="text-subtle">—</span>{% else %}{{ summary.full }}{% endif %}</td>
+              <td class="tabular-nums text-right max-sm:hidden">{% if summary.average is None %}<span class="text-subtle">—</span>{% else %}{{ summary.zero }}{% endif %}</td>
+              <td class="tabular-nums text-right max-sm:hidden">{{ summary.blank }}</td>
+              {% if adjusted %}<td class="tabular-nums text-right max-sm:hidden">{% if summary.adjusted %}{{ summary.adjusted }}{% else %}<span class="text-subtle">—</span>{% endif %}</td>{% endif %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </c-card>
+      <c-card title="Activity" class="lg:sticky lg:top-20" body_class="p-2">
+        {% if more_activity %}<c-slot name="actions"><button type="button" class="btn btn-ghost btn-sm -mr-2" hx-get="{% url 'activity' assessment.pk %}" hx-target="#sheet-body" data-dialog="sheet">All activity</button></c-slot>{% endif %}
+        {% if activity %}
+        <ol class="grid">
+          {% for event in activity %}
+          <li>{% include "assessments/event.html" with when=event.at|ago %}</li>
+          {% endfor %}
+        </ol>
+        {% else %}
+        <p class="p-3 text-sm text-muted">Nothing yet.</p>
+        {% endif %}
+      </c-card>
+    </div>
+    {% endif %}
+  {% endif %}
+</c-page>
+{% endwith %}
+{% endblock %}

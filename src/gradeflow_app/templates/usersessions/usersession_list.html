@@ -1,0 +1,37 @@
+{% extends "usersessions/base_manage.html" %}
+{% block head_title %}Signed-in devices{% endblock %}
+{% block content %}
+<h1>Signed-in devices</h1>
+{% partialdef device %}
+<li class="item-row">
+  <div class="min-w-0 flex-1">
+    <p class="flex items-center gap-2 font-medium"><span class="min-w-0 truncate" title="{{ session.user_agent }}">{{ session.user_agent|browser }}</span>{% if session.is_current %}<span class="badge badge-ghost badge-sm">This device</span>{% endif %}</p>
+    <p class="text-sm text-muted">{{ session.ip }} · {% if session.is_current %}Active now{% else %}Last seen {{ session.last_seen_at|ago }}{% endif %}</p>
+  </div>
+  {% if not session.is_current %}
+  <form id="sign-out-{{ session.pk }}" method="post" action="{% url 'sign_out_device' session.pk %}" hidden>{% csrf_token %}</form>
+  <c-menu id="device-menu-{{ session.pk }}" label="Actions for {{ session.user_agent|browser }}">
+    <li><button form="sign-out-{{ session.pk }}" class="text-error" data-confirm="Sign out {{ session.user_agent|browser }}?" data-confirm-detail="It needs to sign in again." data-confirm-button="Sign out">Sign out</button></li>
+  </c-menu>
+  {% endif %}
+</li>
+{% endpartialdef %}
+{% with devices=sessions|current_first %}
+<c-card body_class="">
+    <ul class="divide-y divide-base-300" aria-label="Devices">{% for session in devices|slice:":5" %}{% partial device %}{% endfor %}</ul>
+    {% if session_count > 5 %}
+    <details class="group border-t border-base-300">
+      <summary class="flex cursor-pointer list-none items-center gap-1.5 px-5 py-3 text-sm font-medium text-muted hover:text-base-content group-open:hidden">{% icon "chevron-down" "size-4" %}Show {{ session_count|add:"-5" }} more</summary>
+      <ul class="divide-y divide-base-300">{% for session in devices|slice:"5:" %}{% partial device %}{% endfor %}</ul>
+    </details>
+    {% endif %}
+</c-card>
+{% endwith %}
+{% if session_count > 1 %}
+<c-card body_class="rows">
+  <c-row label="Sign out other devices" detail="Every device but this one needs to sign in again.">
+    <form method="post" action="{% url 'usersessions_list' %}">{% csrf_token %}<button class="btn btn-error btn-outline" data-confirm="Sign out other devices?" data-confirm-detail="They need to sign in again." data-confirm-button="Sign out">Sign out other devices</button></form>
+  </c-row>
+</c-card>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,7 @@
+{% extends layout %}
+{% block page_title %}{{ details.label|default:"Method" }} · {% endblock %}
+{% block page %}
+{% include "methods/work.html" %}
+<c-dialog id="copy" body_id="copy-body" />
+<c-workspace-dialogs />
+{% endblock %}

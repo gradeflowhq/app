@@ -1,0 +1,15 @@
+<div class="grid gap-2" x-data="orderedChoices" data-item="{{ widget.item }}">
+  <ol class="grid gap-2">
+    {% for chosen in widget.rows %}
+    <li class="flex items-center gap-2" data-row>
+      <span class="min-w-16 shrink-0 whitespace-nowrap text-sm text-muted" data-number>{{ widget.item }} {{ forloop.counter }}</span>
+      <select name="{{ widget.name }}" class="select select-sm w-40" aria-label="{{ widget.item }} {{ forloop.counter }}"{% if widget.attrs.disabled %} disabled{% endif %}>
+        {% if not chosen %}<option value="" disabled selected>Choose {{ widget.item|lower }}</option>{% endif %}
+        {% for value, label in widget.options %}<option value="{{ value }}"{% if value == chosen %} selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+      {% if not widget.attrs.disabled %}<button type="button" class="btn btn-ghost btn-square btn-sm text-error" x-on:click="remove" aria-label="Remove">{% icon "trash" "size-4" %}</button>{% endif %}
+    </li>
+    {% endfor %}
+  </ol>
+  {% if not widget.attrs.disabled %}<div><button type="button" class="btn" x-on:click="add">{% icon "plus" "size-4" %}Add</button></div>{% endif %}
+</div>

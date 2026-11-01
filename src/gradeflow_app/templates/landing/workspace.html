@@ -1,0 +1,43 @@
+<c-landing.window course="{{ workspace.course }}" assessment="{{ workspace.assessment }}" class="relative mx-auto mt-14 max-w-6xl sm:mt-18" inert role="img" aria-label="The marking workspace: one question's answers, grouped and marked.">
+  <div class="grid h-150 overflow-hidden md:grid-cols-[minmax(0,1fr)_20rem] lg:grid-cols-[15rem_minmax(0,1fr)_21rem]">
+    <div class="max-lg:hidden">
+      <div class="column-head"><h2 class="text-base font-semibold">Questions</h2><span class="text-sm text-muted">{{ workspace.marked }} of {{ workspace.questions|length }} marked</span></div>
+      <ul class="grid gap-1 p-2">
+        {% for question, method in workspace.listed %}
+        <li><span class="list-link"{% if question.number == workspace.number %} aria-current="page"{% endif %}>
+          <span class="min-w-0 flex-1"><span class="block font-medium">{{ question.number }}</span><span class="flex items-center gap-1.5 text-sm text-muted">{% if question.grouped %}{% icon "link" "size-3.5" mini=True %}{% endif %}{% if not method %}<span class="status status-warning" aria-hidden="true"></span>{% endif %}{{ method|default:"Not marked" }}</span></span>
+          {% if question.average %}<span class="tabular-nums text-sm text-muted">{{ question.average }}%</span>{% endif %}
+        </span></li>
+        {% endfor %}
+      </ul>
+    </div>
+    <div class="min-w-0 border-base-300 lg:border-l">
+      <header class="border-b border-base-300">
+        <div class="column-head border-b-0"><h2 class="text-base font-semibold">{{ workspace.number }}</h2><span class="truncate text-sm text-muted">{{ workspace.method }} · <span class="tabular-nums">{{ workspace.max_marks|marks }}</span> marks</span></div>
+        <p class="-mt-2 px-4 pb-3 text-sm text-muted">{{ workspace.question }}</p>
+        <div class="flex items-center gap-2 px-4 pb-3"><span class="text-sm text-muted">Answer groups</span><span class="select select-sm w-40">Same feedback</span></div>
+      </header>
+      <ul class="@container divide-y divide-base-300">
+        {% for group, marks, checks in workspace.rows %}
+        <li class="landing-answer">
+          <div class="min-w-0 flex-1">
+            <pre class="landing-code">{{ group.code }}</pre>
+            <p class="mt-1.5 text-sm text-muted">and {{ group.others }} other answers</p>
+            <p class="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-sm">{% for check, correct in checks %}<span class="flex items-center gap-1 {% if correct %}text-success{% else %}text-error{% endif %}">{% if correct %}{% icon "check" "size-3.5" %}{% else %}{% icon "x-mark" "size-3.5" %}{% endif %}{{ check.name }}</span>{% endfor %}</p>
+          </div>
+          <div><c-marks :low="marks.low" :high="marks.high" :max_marks="workspace.max_marks" /><span class="tabular-nums text-sm text-muted">{{ group.students }} student{{ group.students|pluralize }}</span></div>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    <div class="border-l border-base-300 max-md:hidden">
+      <div class="column-head"><h2 class="text-base font-semibold">Marking</h2></div>
+      <div class="grid gap-5 p-5">
+        <h3 class="text-lg font-semibold">{{ workspace.method }}</h3>
+        <p>{% with asked=workspace.aggregation %}<span class="font-medium">{{ asked.0 }}:</span> {{ asked.1 }}{% endwith %}</p>
+        <section class="grid gap-2"><h3 class="font-medium">Checks</h3><ul class="grid gap-2">{% for label, text in workspace.cards %}<c-landing.check :label="label" :text="text" />{% endfor %}</ul></section>
+      </div>
+    </div>
+  </div>
+  <div class="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-linear-to-b from-transparent to-base-100"></div>
+</c-landing.window>

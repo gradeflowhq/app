@@ -1,0 +1,20 @@
+<c-guide.dialog id="results-guide" title="Exam export" intro="A CSV or Excel file with a row per student: their ID, answers and any marks.">
+  <c-guide.section title="From ExamSoft">
+    <ol class="grid gap-4">
+      <c-guide.step number="1"><p>Open the assessment, then <c-guide.path :steps="['Reporting/Scoring', 'List of Exam Takers’ Scores']" /></p></c-guide.step>
+      <c-guide.step number="2">
+        <p>Tick these, then click <b>View Report</b></p>
+        <ul class="flex flex-wrap gap-1.5">
+          <c-guide.ticked>Responses Selected</c-guide.ticked>
+          <c-guide.ticked>Answer Key in First Row</c-guide.ticked>
+          <c-guide.ticked>FITB Ans &amp; Key</c-guide.ticked>
+          <c-guide.ticked>Score (# points)</c-guide.ticked>
+        </ul>
+      </c-guide.step>
+      <c-guide.step number="3"><p>Click the CSV icon above the results and drop the file here</p></c-guide.step>
+    </ol>
+  </c-guide.section>
+  <c-slot name="notes">
+    <c-guide.note icon="arrow-path">A new export replaces answers and marks. Question settings stay.</c-guide.note>
+  </c-slot>
+</c-guide.dialog>

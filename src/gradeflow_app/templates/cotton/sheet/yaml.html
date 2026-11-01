@@ -1,0 +1,6 @@
+<c-vars text label editable=True />
+{# A drawer's body that is YAML in a code editor, after anything given. #}
+<div class="flex flex-1 flex-col gap-4 p-6">
+  {{ slot }}
+  <textarea name="definition" class="hidden" x-data="codeEditor" data-language="yaml" data-fill aria-label="{{ label }}"{% if not editable %} readonly{% endif %}>{{ text }}</textarea>
+</div>

@@ -1,0 +1,604 @@
+@import "tailwindcss" source(none);
+@source "../templates";
+@source "../*/templates/**/*.html";
+@source "../static/gradeflow";
+@source "../**/*.py";
+@plugin "daisyui" {
+  themes: false;
+}
+
+@plugin "daisyui/theme" {
+  name: "light";
+  default: true;
+  color-scheme: light;
+  --color-base-100: oklch(100% 0 0);
+  --color-base-200: oklch(98.2% 0.002 247);
+  --color-base-300: oklch(91.5% 0.005 255);
+  --color-base-content: oklch(23% 0.012 260);
+  --color-primary: oklch(50% 0.17 258);
+  --color-primary-content: oklch(100% 0 0);
+  --color-logo: oklch(58.6% 0.159 251);
+  --color-chart: oklch(72% 0.1 252);
+  --backdrop: oklch(20% 0.01 260 / 0.35);
+  --color-secondary: oklch(94.5% 0.025 258);
+  --color-secondary-content: oklch(38% 0.13 258);
+  --color-accent: oklch(50% 0.17 258);
+  --color-accent-content: oklch(100% 0 0);
+  --color-neutral: oklch(27% 0.012 260);
+  --color-neutral-content: oklch(98% 0 0);
+  --color-info: oklch(54% 0.16 245);
+  --color-info-content: oklch(100% 0 0);
+  --color-success: oklch(52% 0.13 155);
+  --color-success-content: oklch(100% 0 0);
+  --color-warning: oklch(55.4% 0.135 66.4);
+  --color-warning-content: oklch(100% 0 0);
+  --color-error: oklch(55% 0.2 27);
+  --color-error-content: oklch(100% 0 0);
+  --radius-selector: 0.375rem;
+  --radius-field: 0.5rem;
+  --radius-box: 0.75rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 0;
+  --noise: 0;
+}
+
+@plugin "daisyui/theme" {
+  name: "dark";
+  prefersdark: true;
+  color-scheme: dark;
+  --color-base-100: oklch(21.5% 0.01 260);
+  --color-base-200: oklch(18% 0.009 260);
+  --color-base-300: oklch(31% 0.012 260);
+  --color-base-content: oklch(94% 0.006 260);
+  --color-primary: oklch(70% 0.14 255);
+  --color-primary-content: oklch(18% 0.03 258);
+  --color-logo: oklch(71.8% 0.142 246);
+  --color-chart: oklch(58% 0.1 252);
+  --backdrop: oklch(5% 0 0 / 0.65);
+  --color-secondary: oklch(30% 0.05 258);
+  --color-secondary-content: oklch(88% 0.06 258);
+  --color-accent: oklch(70% 0.14 255);
+  --color-accent-content: oklch(18% 0.03 258);
+  --color-neutral: oklch(90% 0.006 260);
+  --color-neutral-content: oklch(21.5% 0.01 260);
+  --color-info: oklch(72% 0.13 245);
+  --color-info-content: oklch(18% 0.03 245);
+  --color-success: oklch(72% 0.15 155);
+  --color-success-content: oklch(18% 0.04 155);
+  --color-warning: oklch(80% 0.14 75);
+  --color-warning-content: oklch(22% 0.05 75);
+  --color-error: oklch(70% 0.17 25);
+  --color-error-content: oklch(18% 0.05 25);
+  --radius-selector: 0.375rem;
+  --radius-field: 0.5rem;
+  --radius-box: 0.75rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 0;
+  --noise: 0;
+}
+
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("../vendor/inter-4.1/InterVariable.woff2") format("woff2");
+}
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+}
+
+@theme inline {
+  --color-muted: color-mix(in oklab, var(--color-base-content) 64%, transparent);
+  --color-subtle: color-mix(in oklab, var(--color-base-content) 42%, transparent);
+}
+
+@layer base {
+  html {
+    font-feature-settings: "ss01";
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    @apply bg-base-200 text-base text-base-content;
+  }
+  :focus-visible {
+    outline-color: var(--color-primary);
+  }
+  h1 {
+    @apply text-xl font-semibold tracking-tight;
+  }
+  h2 {
+    @apply text-base font-semibold;
+  }
+  [x-cloak] {
+    display: none !important;
+  }
+  /* A grid without columns of its own has one that fits its container, so long text wraps or truncates instead of
+     widening the page. */
+  .grid:not([class*="grid-cols-"]) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Every page's content: the full width beside the sidebar, inside the same gutters. */
+@utility page {
+  @apply grid w-full content-start gap-6 px-4 py-6 sm:px-8;
+}
+
+/* A settings page's cards: narrower than lists, so a form's fields fill its card at a readable width. */
+@utility settings {
+  @apply grid max-w-3xl gap-6;
+}
+
+/* One-action settings in a card, divided. */
+@utility rows {
+  @apply divide-y divide-base-300 px-5;
+}
+
+@utility surface {
+  @apply rounded-box border border-base-300 bg-base-100;
+}
+
+/* The question workspace, as marking and a method's page show it: columns that each scroll, under the top bar. Each
+   column is `relative`, so absolutely positioned content, screen-reader text included, scrolls inside it instead of
+   lengthening the page. */
+@utility workspace {
+  @apply md:h-[calc(100vh-3.5rem)];
+}
+@utility workspace-columns {
+  @apply grid md:grid-cols-[minmax(0,1fr)_20rem] lg:grid-cols-[14rem_minmax(0,1fr)_22rem] xl:grid-cols-[15rem_minmax(0,1fr)_24rem] 2xl:grid-cols-[16rem_minmax(0,1fr)_27rem];
+}
+/* The questions column, over the page below lg while the questions toggle is on, beside the narrowed sidebar if
+   there is one. */
+@utility workspace-questions {
+  @apply relative flex min-h-0 flex-col overflow-y-auto border-r border-base-300 bg-base-100 max-lg:fixed max-lg:bottom-0 max-lg:left-[var(--sidebar,0px)] max-lg:top-14 max-lg:z-30 max-lg:w-72 max-lg:shadow-xl max-lg:not-group-has-[#questions-shown:checked]/workspace:hidden;
+}
+@utility workspace-answers {
+  @apply relative min-w-0 overflow-y-auto bg-base-200;
+}
+@utility workspace-marking {
+  @apply relative overflow-y-auto border-l border-base-300 bg-base-100;
+}
+
+/* The header row every workspace column starts with, so their borders line up. Tailwind orders column-sticky
+   before it, so it is positioned only when not sticky. */
+@utility column-head {
+  @apply flex h-14 shrink-0 items-center gap-3 border-b border-base-300 px-4;
+  &:not(.column-sticky) {
+    @apply relative;
+  }
+}
+
+/* A column's head that stays in view as the column scrolls. */
+@utility column-sticky {
+  @apply sticky top-0 z-10 border-b border-base-300 bg-base-100;
+  /* A head inside one leaves its bottom line to it, so the line sits where the neighbouring columns' lines do. */
+  & > .column-head {
+    height: calc(var(--spacing) * 14 - 1px);
+    border-bottom-width: 0;
+  }
+}
+
+@utility list-link {
+  @apply relative flex items-center gap-3 rounded-field px-3 py-2 hover:bg-base-200;
+  &[aria-current="page"] {
+    @apply bg-base-300/60;
+  }
+}
+
+/* A row of an account list, such as an email address, passkey or device, with its actions at the end. */
+@utility item-row {
+  @apply flex min-h-16 items-center gap-3 px-5 py-3;
+}
+
+/* A labelled row of a settings summary: the label, then what's set, then an action. */
+@utility setting-row {
+  @apply flex flex-wrap items-center gap-x-4 gap-y-2 py-3.5;
+}
+@utility setting-label {
+  @apply w-full text-sm text-muted sm:w-28 sm:shrink-0;
+}
+
+/* Text edited where it stands: the text and the field that replaces it share one box, outset so the words line up
+   with their neighbours, and the field shows focus as a soft ring rather than an outline over those neighbours. */
+@utility in-place {
+  @apply -mx-2 -my-1 rounded-field border border-transparent px-[7px] py-[3px] leading-normal;
+  &:is(textarea, input) {
+    @apply border-base-300 bg-base-100 shadow-none focus:border-primary focus:outline-none focus:ring-3 focus:ring-primary/15;
+  }
+}
+
+/* A segmented control: a `segment` label around each radio input, or a `segment` tab or pressed button. */
+@utility segmented {
+  @apply inline-flex w-fit gap-0.5 rounded-field border border-base-300 bg-base-200 p-0.5;
+}
+@utility segment {
+  @apply flex cursor-pointer items-center rounded-[calc(var(--radius-field)-0.125rem)] px-3 py-1.5 text-sm font-medium text-muted transition-colors hover:text-base-content has-checked:bg-base-100 has-checked:text-base-content has-checked:shadow-xs aria-selected:bg-base-100 aria-selected:text-base-content aria-selected:shadow-xs aria-pressed:bg-base-100 aria-pressed:text-base-content aria-pressed:shadow-xs has-focus-visible:outline-2 has-focus-visible:outline-primary focus-visible:outline-2 focus-visible:outline-primary has-disabled:cursor-not-allowed has-disabled:opacity-40;
+}
+
+/* A notice across a method's page, under its header: a warning unless given other colours. */
+@utility banner {
+  @apply flex items-center gap-3 border-b border-warning/30 bg-warning/10 px-5 py-2.5 text-sm;
+}
+
+@utility preview-bar {
+  @apply flex min-h-12 items-center gap-2 border-t border-base-300 bg-secondary/60 px-4 py-2;
+}
+
+/* Links: `text-link` in a sentence, `quiet-link` for a secondary one beside other content. */
+@utility text-link {
+  @apply font-medium text-primary underline-offset-2 hover:underline;
+}
+@utility quiet-link {
+  @apply text-muted underline-offset-2 hover:text-base-content hover:underline;
+}
+
+/* A breadcrumb after the logo: a separator, then a link that truncates. */
+@utility crumb {
+  @apply flex items-center gap-2 before:text-subtle before:content-['/'];
+  & > a {
+    @apply truncate text-muted hover:text-base-content;
+  }
+  & > a[aria-current="page"] {
+    @apply font-medium text-base-content;
+  }
+}
+
+/* A sidebar link, a step darker than muted text; ARIA marks the current one. */
+@utility nav-item {
+  @apply flex items-center gap-2.5 whitespace-nowrap rounded-md px-2.5 py-1.5 text-[15px] font-medium text-base-content/80 transition-colors hover:bg-base-300/40 hover:text-base-content;
+  &[aria-current="page"] {
+    @apply bg-base-300/70 text-base-content;
+  }
+}
+
+/* An initial on a tinted square, sized where it's used. */
+@utility tile {
+  @apply grid shrink-0 place-items-center rounded-md bg-primary/10 font-semibold uppercase text-primary;
+}
+
+/* Plain buttons are white with a border, so they read as buttons on the grey page and on cards alike. In the
+   utilities layer, as daisyUI's own button rules are. */
+@layer utilities {
+  .btn:not(.btn-primary, .btn-error, .btn-ghost, .btn-outline) {
+    --btn-bg: var(--color-base-100);
+    --btn-border: var(--color-base-300);
+    &:hover {
+      --btn-bg: var(--color-base-200);
+    }
+  }
+  /* Focus is shown in the primary colour, except on a field with an error. */
+  :is(.input, .select, .textarea):not(.input-error, .select-error, .textarea-error):is(:focus, :focus-within) {
+    --input-color: var(--color-primary);
+  }
+  /* Small controls stay at the 14 px text minimum; only their height shrinks. */
+  :is(.btn-sm, .select-sm, .input-sm) {
+    --fontsize: 0.875rem;
+    font-size: 0.875rem;
+  }
+  /* Table headings label the data rather than compete with it. */
+  .table :where(thead th) {
+    @apply text-sm font-medium text-muted;
+  }
+  /* A row that opens a page or a drawer shows it can be clicked (fields.js follows its link). */
+  .table tr:is([data-href], [data-dialog]) {
+    @apply cursor-pointer transition-colors hover:bg-base-200;
+  }
+  /* Overlays sit on a dimmed page with a border, so they stand apart in the dark theme too. */
+  .modal-box {
+    @apply border border-base-300;
+  }
+  .modal:is([open], .modal-open, :target) {
+    background-color: var(--backdrop);
+  }
+  /* daisyUI pulls a select back over the field's padding, which covers an icon in front of it. */
+  .select > :not(select) ~ select {
+    margin-inline-start: 0;
+    padding-inline-start: 0;
+  }
+}
+
+@layer components {
+  .prose-core {
+    @apply text-[15px] leading-relaxed;
+    & code {
+      @apply rounded bg-base-content/8 px-1 py-0.5 font-mono text-[0.9em];
+    }
+    & p + p {
+      @apply mt-2;
+    }
+    & ul {
+      @apply ml-5 list-disc;
+    }
+    & ol {
+      @apply ml-5 list-decimal;
+    }
+    & a {
+      @apply text-link underline;
+    }
+    & pre {
+      @apply overflow-x-auto rounded-box bg-base-content/8 p-3;
+      & code {
+        @apply bg-transparent p-0;
+      }
+    }
+  }
+  /* Two lines of rendered Markdown until the details holding it open. Safari clamps only inline content, so its
+     paragraphs run on as lines meanwhile, and are spaced as lines when open too. */
+  .clamp-closed p + p {
+    margin-top: 0;
+  }
+  .clamp-closed:not(details[open] *) {
+    @apply line-clamp-2;
+    & > * {
+      display: inline;
+    }
+    & > * + *::before {
+      content: "\A";
+      white-space: pre;
+    }
+  }
+}
+
+/* A student ID this browser can't open yet, as a lock and masked digits; clicking it asks for the passphrase (ids.js).
+   Its text, "Encrypted", is for assistive technology only. */
+[data-sid-state="locked"] {
+  @apply inline-flex cursor-pointer items-center gap-1.5 text-subtle hover:text-muted;
+  &::before {
+    @apply size-3.5 shrink-0 bg-current;
+    content: "";
+    mask: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 1a3.5 3.5 0 0 0-3.5 3.5V7A1.5 1.5 0 0 0 3 8.5v5A1.5 1.5 0 0 0 4.5 15h7a1.5 1.5 0 0 0 1.5-1.5v-5A1.5 1.5 0 0 0 11.5 7V4.5A3.5 3.5 0 0 0 8 1Zm2 6V4.5a2 2 0 1 0-4 0V7h4Z"/></svg>') center / contain no-repeat;
+  }
+  &::after {
+    content: "••••••••" / "";
+  }
+}
+
+/* Marks the draft no longer gives, while it waits to be previewed. */
+#answers:has(#preview-bar[data-stale]) [data-marks] {
+  @apply opacity-40;
+}
+
+/* Answer groups in one list, split around each open group so it stands apart as its own card. */
+@utility answer-groups {
+  & > li {
+    @apply overflow-hidden border-x border-base-300 bg-base-100;
+  }
+  & > li:first-child,
+  & > li:has(> details[open]),
+  & > li:has(> details[open]) + li {
+    @apply rounded-t-box border-t;
+  }
+  & > li:last-child,
+  & > li:has(> details[open]),
+  & > li:has(+ li > details[open]) {
+    @apply rounded-b-box border-b;
+  }
+  & > li:has(> details[open]) {
+    @apply my-3 first:mt-0 last:mb-0;
+  }
+}
+
+/* The loading bar htmx.js shows while a page takes long enough to notice. */
+#progress {
+  @apply pointer-events-none fixed inset-x-0 top-0 z-[60] h-0.5 origin-left scale-x-0 bg-primary opacity-0;
+  &[data-state="loading"] {
+    @apply opacity-100;
+    animation: progress 8s cubic-bezier(0.1, 0.6, 0.2, 1) forwards;
+  }
+  &[data-state="done"] {
+    @apply scale-x-100 opacity-0 transition-opacity duration-300;
+  }
+}
+@keyframes progress {
+  to {
+    transform: scaleX(0.9);
+  }
+}
+
+/* Tom Select, in the theme's look. */
+.ts-wrapper.input {
+  @apply h-auto min-h-[var(--size)] flex-wrap gap-1 py-1.5 whitespace-normal;
+}
+.ts-wrapper .ts-control {
+  @apply flex flex-wrap items-center gap-1 border-0 bg-transparent p-0 shadow-none;
+  & input {
+    @apply min-w-24 flex-1 bg-transparent text-base-content outline-none;
+  }
+}
+/* Chips as long as a sentence, such as key points, wrap rather than run out of the field. */
+/* Tom Select's stylesheet isn't layered, so its colours win without `!`. */
+.ts-wrapper.multi .ts-control > .item {
+  @apply inline-flex max-w-full items-center gap-1 rounded-selector bg-base-200! px-2 py-0.5 text-sm break-words text-base-content! ring-1 ring-base-300;
+}
+.ts-wrapper .item .remove {
+  @apply shrink-0 border-base-300! text-muted! hover:text-error!;
+}
+.ts-dropdown {
+  @apply z-50 mt-1 rounded-field border border-base-300 bg-base-100 p-1 shadow-lg;
+  & .option {
+    @apply flex cursor-pointer items-center justify-between gap-3 rounded-selector px-2 py-1.5 text-sm;
+    &.active {
+      @apply bg-base-200;
+    }
+  }
+  & .create {
+    @apply text-muted;
+  }
+}
+
+/* simple-datatables, in the theme's look: search in a bar above the table, a chevron on the sorted column only, and
+   pages only when there's more than one. */
+.datatable-top {
+  @apply border-b border-base-300 px-4 py-3;
+  &:not(:has(input)) {
+    @apply hidden;
+  }
+}
+.datatable-search-label {
+  @apply input w-72 max-w-full;
+  /* Without the input class, the primary focus colour of every other field passes it by. */
+  &:focus-within {
+    --input-color: var(--color-primary);
+  }
+  &::before {
+    @apply size-4 shrink-0 bg-current text-muted;
+    content: "";
+    mask: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M9 3.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11ZM2 9a7 7 0 1 1 12.452 4.391l3.328 3.329a.75.75 0 1 1-1.06 1.06l-3.329-3.328A7 7 0 0 1 2 9Z"/></svg>') center / contain no-repeat;
+  }
+}
+.datatable-container {
+  @apply overflow-x-auto;
+}
+.datatable-bottom {
+  @apply flex flex-wrap items-center justify-between gap-3 border-t border-base-300 px-4 py-3 text-sm text-muted;
+  &:not(:has(.datatable-pagination-list)) {
+    @apply hidden;
+  }
+}
+.datatable-sorter {
+  @apply inline-flex items-center gap-1 font-medium;
+  .text-right > & {
+    @apply flex-row-reverse;
+  }
+  &::after {
+    @apply size-4 shrink-0 bg-current opacity-0 transition-opacity;
+    content: "";
+    mask: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10.53 3.47a.75.75 0 0 0-1.06 0L6.22 6.72a.75.75 0 0 0 1.06 1.06L10 5.06l2.72 2.72a.75.75 0 1 0 1.06-1.06l-3.25-3.25Zm-4.31 9.81 3.25 3.25a.75.75 0 0 0 1.06 0l3.25-3.25a.75.75 0 1 0-1.06-1.06L10 14.94l-2.72-2.72a.75.75 0 0 0-1.06 1.06Z"/></svg>') center / contain no-repeat;
+  }
+  &:is(:hover, :focus-visible)::after {
+    @apply opacity-50;
+  }
+}
+:is(.datatable-ascending, .datatable-descending) .datatable-sorter {
+  @apply text-base-content;
+  &::after {
+    @apply opacity-100;
+  }
+}
+.datatable-ascending .datatable-sorter::after {
+  mask-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M9.47 6.47a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 1 1-1.06 1.06L10 8.06l-3.72 3.72a.75.75 0 0 1-1.06-1.06l4.25-4.25Z"/></svg>');
+}
+.datatable-descending .datatable-sorter::after {
+  mask-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z"/></svg>');
+}
+.datatable-pagination-list {
+  @apply join;
+}
+.datatable-pagination-list-item-link {
+  @apply join-item btn btn-sm;
+}
+.datatable-active .datatable-pagination-list-item-link {
+  @apply btn-active;
+}
+.datatable-hidden {
+  @apply hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* The landing page: a glow behind its hero, the app's windows its examples sit in, and their code. */
+@utility landing-glow {
+  background: radial-gradient(56% 64% at 50% 0%, color-mix(in oklab, var(--color-primary) 16%, transparent), transparent 72%);
+}
+@utility landing-window {
+  @apply overflow-hidden rounded-2xl border border-base-300 bg-base-100;
+  box-shadow:
+    0 1px 2px oklch(25% 0.02 260 / 0.05),
+    0 16px 40px -12px oklch(25% 0.02 260 / 0.14),
+    0 48px 96px -40px oklch(25% 0.04 260 / 0.22);
+}
+@utility landing-code {
+  @apply overflow-x-auto whitespace-pre rounded-box bg-base-200 px-3.5 py-3 font-mono text-[13px]/relaxed;
+}
+/* An answer, then its marks beside it; in a list too narrow for both, the marks go under an answer that is code. */
+@utility landing-answer {
+  @apply flex items-start gap-4 px-4 py-3;
+  & > :last-child {
+    @apply flex shrink-0 flex-col items-end gap-0.5 text-right;
+  }
+  @container (width < 32rem) {
+    &:has(pre) {
+      @apply flex-col gap-2;
+    }
+    &:has(pre) > :last-child {
+      @apply flex-row flex-wrap items-baseline gap-x-3 text-left;
+    }
+  }
+}
+/* On a phone, a segmented control fills its row in equal parts, and the examples' tabs fill two columns. */
+@utility landing-choices {
+  @variant max-sm {
+    & > [role="radiogroup"] {
+      @apply grid w-full auto-cols-fr grid-flow-col;
+    }
+    & label {
+      @apply justify-center;
+    }
+  }
+}
+@utility landing-tabs {
+  @variant max-sm {
+    @apply w-full;
+    & > [role="radiogroup"] {
+      @apply grid w-full grid-cols-2;
+    }
+    & label {
+      @apply justify-center;
+    }
+  }
+}
+
+/* Read-only views of a form, like a published method's settings: disabled fields show their values as plain text
+   rather than greyed-out controls, and stay disabled for assistive technology. */
+@utility read-only-fields {
+  & :is(.input, .select, .textarea):disabled,
+  & .ts-wrapper.disabled {
+    @apply h-auto min-h-0 cursor-default resize-none border-transparent bg-transparent px-0 py-0 text-base-content shadow-none;
+    background-image: none;
+    field-sizing: content;
+  }
+  & :is(.input, .textarea):disabled::placeholder {
+    color: transparent;
+  }
+  /* Tom Select's own stylesheet isn't layered, so it wins without `!`. */
+  & .ts-wrapper.disabled .ts-control {
+    @apply bg-transparent! opacity-100!;
+  }
+  & .ts-wrapper.disabled .ts-control > .item {
+    @apply bg-base-200! text-base-content!;
+  }
+  & .ts-wrapper.disabled :is(.remove, input) {
+    @apply hidden!;
+  }
+  & :is(.toggle, .checkbox, .radio):disabled,
+  & .segment:has(:disabled) {
+    @apply cursor-default opacity-100;
+  }
+  /* Of a choice, only what was chosen shows, as text like a field's. */
+  & label:has(> :is(.checkbox, .radio):disabled:not(:checked)),
+  & .segment:has(:disabled:not(:checked)),
+  & :is(.checkbox, .radio):disabled {
+    @apply hidden;
+  }
+  & .segmented:has(:disabled) {
+    @apply border-transparent bg-transparent p-0;
+  }
+  & label:has(> :is(.checkbox, .radio):disabled),
+  & .segment:has(:disabled) {
+    @apply p-0 text-sm font-normal text-base-content shadow-none has-checked:bg-transparent;
+  }
+}

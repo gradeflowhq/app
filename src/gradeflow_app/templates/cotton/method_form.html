@@ -1,0 +1,6 @@
+<c-vars action class="" />
+{# A form in the method page's drawer: it swaps the method's workspace, and shows its errors in the drawer, or a refused edit from an older tab in the page's notice. #}
+<form class="flex flex-1 flex-col{% if class %} {{ class }}{% endif %}" hx-post="{{ action }}" hx-target="#method-work" hx-swap="outerMorph" hx-include="#method-state" hx-sync="#method-work:queue all" hx-status:422="swap:innerHTML target:#sheet-body" hx-status:409="swap:innerHTML target:#method-notice" data-close-on-success>
+  {% csrf_token %}
+  {{ slot }}
+</form>

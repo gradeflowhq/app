@@ -1,0 +1,20 @@
+{% extends "mfa/base_entrance.html" %}
+{% load allauth %}
+{% block head_title %}Sign in{% endblock %}
+{% block content %}
+  <c-intro title="Confirm it's you">Enter a code from your authenticator app, or a recovery code.</c-intro>
+  {% url 'mfa_authenticate' as action_url %}
+  {% element form form=form method="post" action=action_url %}
+    {% slot body %}{% csrf_token %}{% include "mfa/snippets/code_field.html" with field=form.code %}{% endslot %}
+    {% slot actions %}{% element button type="submit" tags="primary,mfa,login" %}Sign in{% endelement %}{% endslot %}
+  {% endelement %}
+  <div class="divider my-0 text-sm text-muted">or</div>
+  {% element button form="webauthn_form" id="mfa_webauthn_authenticate" type="button" tags="outline" %}{% icon "finger-print" "size-5" %}Use a passkey{% endelement %}
+  {% element form id="webauthn_form" form=webauthn_form method="post" action=action_url no_visible_fields=True %}
+    {% slot body %}{% csrf_token %}{% element fields form=webauthn_form %}{% endelement %}{% endslot %}
+  {% endelement %}
+  {{ js_data|json_script:"js_data" }}
+  {% include "mfa/webauthn/snippets/scripts.html" %}
+  <script data-allauth-onload="allauth.webauthn.forms.authenticateForm" type="application/json">{"ids": {"authenticate": "mfa_webauthn_authenticate", "credential": "{{ webauthn_form.credential.auto_id }}", "data": "js_data"}}</script>
+{% endblock %}
+{% block links %}{% include "account/snippets/cancel.html" %}{% endblock %}

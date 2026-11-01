@@ -1,0 +1,2 @@
+<c-vars steps />
+{% for step in steps %}{% if not forloop.first %}<span class="text-subtle"> › </span>{% endif %}<span class="font-medium">{{ step }}</span>{% endfor %}

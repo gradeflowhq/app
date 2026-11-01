@@ -1,0 +1,9 @@
+<c-vars id title intro notes />
+{# A guide in a dialog: a line on what it's for, its sections, then `notes` (c-guide.note) under a rule. #}
+<c-dialog id="{{ id }}" title="{{ title }}">
+  <div class="grid gap-5 px-6 pb-6 text-sm">
+    <p class="text-muted">{{ intro }}</p>
+    {{ slot }}
+    <ul class="grid gap-2 border-t border-base-300 pt-4 text-muted">{{ notes }}</ul>
+  </div>
+</c-dialog>

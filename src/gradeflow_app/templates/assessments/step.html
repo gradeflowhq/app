@@ -1,0 +1,3 @@
+{# A checklist step's marker: a tick once it's done, else its number, in the primary colour when it's next. #}
+{% if done %}<span class="grid size-8 shrink-0 place-items-center rounded-full bg-success text-success-content">{% icon "check" "size-4" %}<span class="sr-only">Done</span></span>
+{% else %}<span class="grid size-8 shrink-0 place-items-center rounded-full border-2 text-sm font-semibold {% if next %}border-primary text-primary{% else %}border-base-300 text-muted{% endif %}">{{ number }}</span>{% endif %}

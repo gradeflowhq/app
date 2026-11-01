@@ -1,0 +1,7 @@
+{% extends "layouts/assessment.html" %}
+{% block page_title %}Questions · {% endblock %}
+{% block content %}
+<c-page title="Questions">
+  <c-empty class="surface" icon="queue-list" title="No questions yet">Import the exam export to see its questions.{% if membership.can_edit %}<c-slot name="action"><a class="btn btn-primary" href="{% url 'import' membership.assessment.pk %}">{% icon "arrow-up-tray" %}Import results</a></c-slot>{% endif %}</c-empty>
+</c-page>
+{% endblock %}

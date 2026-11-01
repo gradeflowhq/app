@@ -1,0 +1,15 @@
+{% load allauth %}
+<div class="grid gap-1.5">
+  {% if attrs.type == "checkbox" or attrs.type == "radio" %}
+    <label class="flex cursor-pointer items-center gap-3"><input type="{{ attrs.type }}" class="{% if attrs.type == 'checkbox' %}checkbox{% else %}radio{% endif %} checkbox-sm checkbox-primary"{% if attrs.disabled %} disabled{% endif %}{% if attrs.checked %} checked{% endif %}{% if attrs.name %} name="{{ attrs.name }}"{% endif %}{% if attrs.id %} id="{{ attrs.id }}"{% endif %}{% if attrs.value is not None %} value="{{ attrs.value }}"{% endif %}><span>{% slot label %}{% endslot %}</span></label>
+  {% else %}
+    <label class="font-medium" for="{{ attrs.id }}">{% slot label %}{% endslot %}</label>
+    {% if attrs.type == "textarea" %}
+      <textarea class="textarea w-full{% if attrs.errors %} textarea-error{% endif %}"{% if attrs.rows %} rows="{{ attrs.rows }}"{% endif %}{% if attrs.readonly %} readonly{% endif %}{% if attrs.name %} name="{{ attrs.name }}"{% endif %}{% if attrs.id %} id="{{ attrs.id }}"{% endif %}{% if attrs.placeholder %} placeholder="{{ attrs.placeholder }}"{% endif %}>{% slot value %}{% endslot %}</textarea>
+    {% else %}
+      <input class="input w-full{% if attrs.errors %} input-error{% endif %}"{% if attrs.disabled %} disabled{% endif %}{% if attrs.readonly %} readonly{% endif %}{% if attrs.name %} name="{{ attrs.name }}"{% endif %}{% if attrs.id %} id="{{ attrs.id }}"{% endif %}{% if attrs.placeholder %} placeholder="{{ attrs.placeholder }}"{% endif %}{% if attrs.autocomplete %} autocomplete="{{ attrs.autocomplete }}"{% endif %}{% if attrs.value is not None %} value="{{ attrs.value }}"{% endif %} type="{{ attrs.type }}">
+    {% endif %}
+  {% endif %}
+  {% if slots.help_text %}<p class="text-sm text-muted [&_a]:text-link">{% slot help_text %}{% endslot %}</p>{% endif %}
+  <c-field-errors :errors="attrs.errors" />
+</div>

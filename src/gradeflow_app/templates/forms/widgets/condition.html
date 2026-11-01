@@ -1,0 +1,23 @@
+{% if widget.text or not widget.checks %}
+<input type="text" class="input w-full font-mono text-sm" name="{{ widget.name }}-text" value="{{ widget.value|default_if_none:'' }}"{% if widget.attrs.disabled %} disabled{% endif %}{% if widget.attrs.id %} id="{{ widget.attrs.id }}"{% endif %}>
+{% else %}
+<div class="grid gap-2"{% if widget.attrs.id %} id="{{ widget.attrs.id }}"{% endif %}>
+  {% if widget.rows|length > 2 %}
+  <select class="select select-sm w-fit" name="{{ widget.name }}-join" aria-label="How the conditions combine"{% if widget.attrs.disabled %} disabled{% endif %}>
+    {% for value, label in widget.joins.items %}<option value="{{ value }}"{% if value == widget.join %} selected{% endif %}>{{ label }}</option>{% endfor %}
+  </select>
+  {% endif %}
+  {# One grid for every row, so each column is as wide as its widest select. #}
+  <div class="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+  {% for row in widget.rows %}
+    <select class="select select-sm w-full" name="{{ widget.name }}-check-{{ forloop.counter0 }}" aria-label="Check"{% if widget.attrs.disabled %} disabled{% endif %}>
+      <option value="">{% if forloop.first %}Always{% else %}Another check…{% endif %}</option>
+      {% for value, label in widget.checks %}<option value="{{ value }}"{% if value == row.check %} selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+    <select class="select select-sm w-full" name="{{ widget.name }}-test-{{ forloop.counter0 }}" aria-label="Test"{% if widget.attrs.disabled or not row.check %} disabled{% endif %}>
+      {% for value, label in widget.tests.items %}<option value="{{ value }}"{% if value == row.test %} selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+  {% endfor %}
+  </div>
+</div>
+{% endif %}

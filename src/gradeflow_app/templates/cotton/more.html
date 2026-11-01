@@ -1,0 +1,5 @@
+<c-vars label="More options" open=False class="" />
+<details class="group/more{% if class %} {{ class }}{% endif %}"{% if open %} open{% endif %} {{ attrs }}>
+  <summary class="inline-flex cursor-pointer list-none items-center gap-1.5 text-sm font-medium text-muted hover:text-base-content">{% icon "chevron-right" "size-4 transition-transform group-open/more:rotate-90" %}{{ label }}</summary>
+  <div class="mt-4 grid gap-5">{{ slot }}</div>
+</details>

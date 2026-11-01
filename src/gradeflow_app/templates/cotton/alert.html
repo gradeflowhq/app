@@ -1,0 +1,3 @@
+<c-vars warning=False class="" />
+{# An error, or with `warning` problems that didn't stop the action. Other attributes, such as `x-show`, go on the alert. #}
+<div role="alert" class="alert {% if warning %}alert-warning{% else %}alert-error{% endif %} alert-soft {{ class }}" {{ attrs }}>{% icon "exclamation-circle" %}<div>{{ slot }}</div></div>

@@ -1,0 +1,13 @@
+{% extends "mfa/base_manage.html" %}
+{% block head_title %}Recovery codes{% endblock %}
+{% block content %}
+<h1>Recovery codes</h1>
+<c-card body_class="rows">
+  <c-row label="New codes" detail="{% if unused_code_count %}Your {{ unused_code_count }} unused code{{ unused_code_count|pluralize }} stop working.{% else %}Each signs you in once if you lose your device.{% endif %}">
+    <form method="post" action="{% url 'mfa_generate_recovery_codes' %}" class="grid justify-items-end gap-3">
+      {% csrf_token %}<c-form-errors :errors="form.non_field_errors" />
+      <button class="btn {% if unused_code_count %}btn-error btn-outline{% else %}btn-primary{% endif %}">Create new codes</button>
+    </form>
+  </c-row>
+</c-card>
+{% endblock %}

@@ -1,0 +1,115 @@
+[project]
+name = "gradeflow-app"
+version = "0.1.0"
+description = "GradeFlow's web app: import exam results, mark them, and send the marks to Canvas."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.14"
+dependencies = [
+    "dj-database-url>=3.1",
+    "django>=6.1",
+    "django-allauth[mfa]>=65.20.1",
+    "django-anymail>=15.2",
+    "django-cotton>=2.8",
+    "django-htmx>=1.29",
+    "django-simple-history>=3.13",
+    "django-tailwind-cli>=4.8",
+    "django-tasks-db>=0.13",
+    "gradeflow-core[llm]",
+    "heroicons>=2.14",
+    "httpx>=0.28",
+    "markdown-it-py>=4.2",
+    "mdit-py-plugins>=0.6",
+    "psycopg[binary]>=3.3.6",
+    "pydantic>=2.14",
+    "ua-parser[regex]>=1.0.2",
+    "uvicorn[standard]>=0.54",
+    "whitenoise>=6.12",
+]
+
+[project.urls]
+Repository = "https://github.com/gradeflowhq/app"
+Issues = "https://github.com/gradeflowhq/app/issues"
+
+[dependency-groups]
+dev = [
+    "django-stubs>=6.1",
+    "mypy>=2.4",
+    "pytest>=9.1",
+    "pytest-cov>=7.1",
+    "pytest-django>=4.14",
+    "ruff>=0.17",
+]
+qa = ["playwright>=1.64"]
+sandbox = ["gradeflow-core[ml,llm]", "httpx>=0.28"]
+
+[tool.uv.sources]
+gradeflow-core = { git = "https://github.com/gradeflowhq/core", branch = "main" }
+
+[build-system]
+requires = ["uv_build>=0.12,<0.13"]
+build-backend = "uv_build"
+
+[tool.ruff]
+line-length = 120
+extend-exclude = ["*/migrations/*"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "C4", "SIM", "RUF", "PT", "C90", "FURB", "PERF", "PIE", "RET", "DJ", "TID"]
+allowed-confusables = ["›"]  # paths such as Checks #2 › Not
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]  # the core is used only through gradeflow_core and gradeflow_core.editing
+"gradeflow_core.__main__".msg = "Import from gradeflow_core."
+"gradeflow_core.adapters".msg = "Import from gradeflow_core."
+"gradeflow_core.common".msg = "Import from gradeflow_core."
+"gradeflow_core.marking".msg = "Import from gradeflow_core."
+"gradeflow_core.methods".msg = "Import from gradeflow_core."
+"gradeflow_core.ml".msg = "Import from gradeflow_core."
+"gradeflow_core.questions".msg = "Import from gradeflow_core."
+"gradeflow_core.editing.by_example".msg = "Import from gradeflow_core.editing."
+"gradeflow_core.editing.conditions".msg = "Import from gradeflow_core.editing."
+"gradeflow_core.editing.drafts".msg = "Import from gradeflow_core.editing."
+"gradeflow_core.editing.input_schemas".msg = "Import from gradeflow_core.editing."
+"gradeflow_core.editing.method_checks".msg = "Import from gradeflow_core.editing."
+"gradeflow_core.editing.method_drafts".msg = "Import from gradeflow_core.editing."
+
+[tool.ruff.lint.per-file-ignores]
+"**/models.py" = ["RUF012"]
+"**/forms.py" = ["RUF012"]
+
+[tool.mypy]
+strict = true
+files = ["src", "tests", "sandbox"]
+mypy_path = ["src", "."]
+explicit_package_bases = true
+plugins = ["mypy_django_plugin.main"]
+
+[[tool.mypy.overrides]]
+module = ["allauth.*", "simple_history.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["gradeflow_core.*"]
+follow_imports = "silent"
+
+[[tool.mypy.overrides]]
+module = ["gradeflow_app.accounts.allauth_forms"]
+disallow_subclassing_any = false  # allauth has no types
+
+[tool.django-stubs]
+django_settings_module = "gradeflow_app.settings"
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "gradeflow_app.settings"
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "--reuse-db"
+
+[tool.coverage.run]
+source = ["src/gradeflow_app"]
+omit = ["*/migrations/*"]
+
+[tool.coverage.report]
+fail_under = 93
+show_missing = true

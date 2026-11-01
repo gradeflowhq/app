@@ -1,0 +1,2 @@
+{# Opens the Choose models dialog, loading the endpoint's models with this device's token. #}
+<button type="button" class="btn" data-dialog="model-chooser" hx-post="{% url 'model_service_chooser' %}" hx-target="#model-chooser-body" hx-swap="innerHTML">{% if state.decision_model or running %}Change{% else %}Choose models{% endif %}</button>

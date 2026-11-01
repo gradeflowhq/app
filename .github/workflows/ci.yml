@@ -1,0 +1,92 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: gradeflow
+          POSTGRES_PASSWORD: gradeflow
+          POSTGRES_DB: gradeflow
+        ports: ["5434:5432"]
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      GRADEFLOW_DEBUG: "true"
+      GRADEFLOW_SECRET_KEY: ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: uv sync
+      - run: uv run ruff format --check
+      - run: uv run ruff check
+      - run: uv run mypy
+      - run: uv run manage.py makemigrations --check --dry-run
+      - run: uv run manage.py check --deploy --fail-level ERROR
+        env:
+          GRADEFLOW_DEBUG: "false"
+          GRADEFLOW_EMAIL_BACKEND: django.core.mail.backends.smtp.EmailBackend
+          GRADEFLOW_SECRET_KEY: ci-deploy-check-0123456789-abcdefghijklmnopqrstuvwxyz
+      - run: uv run pytest --cov
+      - run: node --test tests/js/*.test.mjs
+
+  # Publishes the web app and the sandbox.
+  images:
+    needs: test
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    env:
+      TAGS: |
+        type=ref,event=branch
+        type=semver,pattern={{version}}
+        type=semver,pattern={{major}}.{{minor}}
+        type=sha,format=long
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: sandbox
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/sandbox
+          tags: ${{ env.TAGS }}
+      - id: sandbox_image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: sandbox/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.sandbox.outputs.tags }}
+          labels: ${{ steps.sandbox.outputs.labels }}
+      - id: app
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/app
+          tags: ${{ env.TAGS }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.app.outputs.tags }}
+          labels: ${{ steps.app.outputs.labels }}
+          build-args: SANDBOX_IMAGE=ghcr.io/${{ github.repository_owner }}/sandbox@${{ steps.sandbox_image.outputs.digest }}

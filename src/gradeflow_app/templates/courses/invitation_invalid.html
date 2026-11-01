@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}{% if other %}This invitation is for {{ other }}{% else %}This invitation has expired or was revoked{% endif %} · GradeFlow{% endblock %}
+{% block content %}
+{% if other %}
+  <c-empty class="surface mx-auto mt-16 max-w-lg" icon="envelope" title="This invitation is for {{ other }}">
+    Sign in with that address to accept it.
+    <c-slot name="action">
+      <form method="post" action="{% url 'account_logout' %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.path }}"><button class="btn">Sign out</button></form>
+    </c-slot>
+  </c-empty>
+{% else %}
+  <c-empty class="surface mx-auto mt-16 max-w-lg" icon="clock" title="This invitation has expired or was revoked">
+    Ask the person who invited you to send a new one.
+    <c-slot name="action">{% if user.is_authenticated %}<a href="{% url 'courses' %}" class="btn">Go to courses</a>{% else %}<a href="{% url 'account_login' %}" class="btn">Sign in</a>{% endif %}</c-slot>
+  </c-empty>
+{% endif %}
+{% endblock %}

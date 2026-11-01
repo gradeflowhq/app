@@ -1,0 +1,19 @@
+{% extends "layouts/sidebar.html" %}
+{% block title %}{% block page_title %}{% endblock %}{{ member.course.name }} · GradeFlow{% endblock %}
+{% block topbar %}<c-topbar :course="member.course" />{% endblock %}
+{% block nav_label %}Course{% endblock %}
+{% block nav_header %}
+  <c-sidebar-header back="{% url 'courses' %}" back_label="All courses" title="{{ member.course.name }}" state="{{ member.course.description }}" />
+{% endblock %}
+{% block nav %}
+  {% with course=member.course %}
+  <c-sidebar-link href="{% url 'course' course.pk %}" icon="document-text" label="Assessments" sections="course" />
+  <c-sidebar-link href="{% url 'members' course.pk %}" icon="users" label="Members" sections="members" />
+  <c-sidebar-link href="{% url 'course_methods' course.pk %}" icon="puzzle-piece" label="Methods" sections="course_methods method_page published" />
+  {% if member.can_edit %}
+  <c-sidebar-group title="Setup" />
+  <c-sidebar-link href="{% url 'canvas' course.pk %}" icon="link" label="Canvas" sections="canvas" />
+  {% if member.is_owner %}<c-sidebar-link href="{% url 'course_settings' course.pk %}" icon="cog-6-tooth" label="Settings" sections="course_settings" />{% endif %}
+  {% endif %}
+  {% endwith %}
+{% endblock %}

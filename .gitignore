@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.pyc
+/staticfiles/
+/src/gradeflow_app/static/css/
+.django_tailwind_cli/
+.coverage
+
+# Local settings with secrets, sourced by the dev servers
+dev.env
+# Deployment settings with secrets, read by compose
+.env
+prod.env
+uv.lock

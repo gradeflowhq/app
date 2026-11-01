@@ -1,0 +1,3 @@
+{# A saved marking the core no longer accepts, as one saved under an older core or before its question changed can be: what's wrong, in the core's words. #}
+<c-vars problems />
+<div role="alert" class="alert alert-warning alert-soft items-start">{% icon "exclamation-triangle" "size-5 shrink-0" %}<div class="grid gap-1"><p class="font-medium">Marks nothing until fixed</p>{% for problem in problems %}<p class="text-sm">{{ problem }}</p>{% endfor %}</div></div>

@@ -1,0 +1,6 @@
+<c-vars id title />
+{# A dialog's title row, for a dialog whose body brings its own (c-dialog without a title); other attributes go on the title. #}
+<header class="flex items-center justify-between gap-4 px-6 pb-2 pt-5">
+  <h2 id="{{ id }}-title" {{ attrs }}>{{ title }}</h2>
+  <button type="button" class="btn btn-ghost btn-square btn-sm" data-close aria-label="Close">{% icon "x-mark" %}</button>
+</header>

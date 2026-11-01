@@ -1,0 +1,5 @@
+<c-vars id label="More" title="" icon="ellipsis-horizontal" button_class="btn btn-ghost btn-square btn-sm" width="w-56" trigger="" header="" />
+<c-popover id="{{ id }}" label="{{ label }}" title="{{ title }}" button_class="{{ button_class }}" panel_class="{{ width }}">
+  <c-slot name="trigger">{% if trigger %}{{ trigger }}{% else %}{% icon icon "size-5" %}{% endif %}</c-slot>
+  {{ header }}<ul class="menu w-full p-1">{{ slot }}</ul>
+</c-popover>

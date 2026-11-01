@@ -1,0 +1,3 @@
+<c-vars submit="" />
+{# With `submit`, Cancel and a primary button labelled `submit`, which takes any other attributes given. #}
+<footer class="flex justify-end gap-2 px-6 pb-5 pt-4">{{ slot }}{% if submit %}<button type="button" class="btn ml-auto" data-close>Cancel</button><button class="btn btn-primary" {{ attrs }}>{{ submit }}</button>{% endif %}</footer>

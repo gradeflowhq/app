@@ -1,0 +1,7 @@
+{# A file dropped here, or chosen with Browse. Its component has `dragging`, `dragOver`, `dragLeave`, `drop` and `chosen`. #}
+<label class="flex cursor-pointer flex-col items-center gap-2 rounded-box border-2 border-dashed border-base-300 px-6 py-10 text-center transition-colors hover:border-primary/60 hover:bg-base-200/50" :class="dragging ? 'border-primary bg-base-200' : ''" x-on:dragover.prevent="dragOver" x-on:dragleave="dragLeave" x-on:drop.prevent="drop">
+  <span class="grid size-10 place-items-center rounded-full bg-secondary text-secondary-content">{% icon "arrow-up-tray" %}</span>
+  <span class="font-semibold">{{ title }}</span>
+  <span class="text-sm text-muted">{{ kinds }} · <span class="text-link">Browse</span></span>
+  <input x-ref="file" type="file" name="file" class="sr-only" accept="{{ accept }}" aria-label="{{ title }}" x-on:change="chosen">
+</label>

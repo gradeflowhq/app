@@ -1,0 +1,6 @@
+{% extends "account/email/base_message.txt" %}
+{% block content %}{% if code %}Your code to confirm your email for GradeFlow is:
+
+{{ code }}{% else %}Confirm your email for GradeFlow: {{ activate_url }}{% endif %}
+
+If you didn't sign up for GradeFlow, ignore this email.{% endblock content %}

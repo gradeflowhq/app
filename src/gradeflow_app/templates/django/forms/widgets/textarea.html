@@ -1,0 +1,1 @@
+<textarea name="{{ widget.name }}" class="textarea w-full{% if widget.attrs.class %} {{ widget.attrs.class }}{% endif %}"{% include "django/forms/widgets/attrs.html" %}>{% if widget.value %}{{ widget.value }}{% endif %}</textarea>

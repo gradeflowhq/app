@@ -1,0 +1,4 @@
+<c-vars id label title="" button_class="btn btn-ghost btn-square btn-sm" panel_class="" />
+{# Opens when its button is clicked, never as focus passes by; a popover, so nothing it is in clips it. #}
+<button type="button" popovertarget="{{ id }}" style="anchor-name: --{{ id }}" class="{{ button_class }}" aria-label="{{ label }}" title="{{ title|default:label }}">{{ trigger }}</button>
+<div id="{{ id }}" popover style="position-anchor: --{{ id }}" class="dropdown dropdown-end mt-1 rounded-box border border-base-300 bg-base-100 shadow-lg {{ panel_class }}">{{ slot }}</div>

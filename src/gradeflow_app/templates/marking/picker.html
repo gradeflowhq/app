@@ -1,0 +1,51 @@
+{# Marking methods to choose from: a searchable list beside the selected method's guide, and a form using it as `use` says. #}
+<div class="grid h-[min(44rem,78vh)] min-h-0 grid-cols-1 md:grid-cols-[18rem_minmax(0,1fr)]" x-data="methodPicker" data-selected="{{ guide.ref }}" data-current="{{ use.current|default:'' }}" data-tab="{{ tab }}">
+  <aside class="flex min-h-0 min-w-0 flex-col border-base-300 max-md:border-b md:border-r" aria-label="Ways to mark">
+    <div class="grid gap-2.5 p-3">
+      <c-search class="input-sm w-full" label="Search" x-ref="search" x-on:input="search" />
+      <div class="segmented w-full! flex-nowrap" role="tablist" aria-label="Methods shown" x-on:keydown.left.prevent="next" x-on:keydown.right.prevent="next">
+        {% for key, label, count in tabs %}<button type="button" role="tab" class="segment flex-1 justify-center gap-1.5 px-2" aria-controls="picker-list" data-tab="{{ key }}" aria-selected="{% if key == tab %}true{% else %}false{% endif %}" :aria-selected="shows('{{ key }}')" x-on:click="show">{{ label }}{% if key != "builtin" %}<span class="tabular-nums text-subtle">{{ count }}</span>{% endif %}</button>{% endfor %}
+      </div>
+    </div>
+    <nav id="picker-list" class="min-h-0 flex-1 overflow-y-auto px-2 pb-3 pt-1 max-md:max-h-56" x-ref="list" x-on:click="choose">
+      {# "by" says who made a method where its section doesn't: not the course's own, nor the person's. #}
+      {% with me=user|stringformat:"s" %}{% for section in sections %}{% if section.entries %}
+      <div data-section data-tab="{{ section.tab }}"{% if section.tab != tab %} hidden{% endif %}>
+        {% if section.tab == "public" %}<p class="px-2.5 pb-1.5 pt-4 text-sm font-medium text-muted" x-show="query" x-cloak>{{ section.label }}</p>{% elif section.label %}<p class="px-2.5 pb-1.5 pt-4 text-sm font-medium text-muted">{{ section.label }}</p>{% endif %}
+        <ul class="grid gap-0.5">
+          {% for method, owner in section.entries %}
+          <li data-search="{{ method.label|lower }} {{ method.summary|lower }} {{ owner|lower }}">
+            <button type="button" data-method="{{ method.ref }}" data-label="{{ method.label }}" hx-get="{% url 'method_guide' method.ref %}{{ query }}" hx-target="#picker-guide" hx-swap="innerHTML" aria-current="{% if method.ref == guide.ref %}true{% else %}false{% endif %}"
+               class="grid w-full gap-0.5 rounded-field px-2.5 py-2 text-left hover:bg-base-200 aria-[current=true]:bg-base-300/60">
+              <span class="flex flex-wrap items-center gap-2 font-medium">{{ method.label }}{% if method.ref == use.current %}<span class="badge badge-ghost badge-sm font-normal">Current</span>{% endif %}</span>
+              <span class="text-sm text-muted">{{ method.summary }}</span>
+              {% if owner and owner != section.label and owner != me %}<span class="text-sm text-subtle">by {{ owner }}</span>{% endif %}
+            </button>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}{% endfor %}{% endwith %}
+      {% for key, label, count in tabs %}{% if not count and key != "builtin" %}<div class="grid justify-items-center gap-1 px-4 py-10 text-center" x-show="shows('{{ key }}')"{% if key != tab %} x-cloak{% endif %}><p class="font-medium">None for this question</p><p class="text-sm text-muted">{% if key == "yours" %}Save a marking as a method to use it again.{% else %}Methods others make public show here.{% endif %}</p></div>{% endif %}{% endfor %}
+      <p class="px-2 py-6 text-sm text-muted" data-empty hidden>Nothing matches.</p>
+    </nav>
+  </aside>
+  <section class="flex min-h-0 min-w-0 flex-col" aria-labelledby="method-heading">
+    <div id="picker-guide" class="min-h-0 flex-1 overflow-y-auto p-6">{% include "marking/method_body.html" %}</div>
+    <form class="flex flex-wrap items-center justify-end gap-2 border-t border-base-300 px-4 py-3 sm:px-6" {% if use.target %}hx-post="{{ use.action }}" hx-target="{{ use.target }}" hx-swap="{{ use.swap }}" data-close-on-success{% else %}method="post" action="{{ use.action }}"{% endif %}{% if use.include %} hx-include="{{ use.include }}"{% endif %}>
+      {% csrf_token %}
+      {% for name, value in use.fields.items %}<input type="hidden" name="{{ name }}" value="{{ value }}">{% endfor %}
+      <input type="hidden" name="{{ use.field }}" value="{{ guide.ref }}" :value="selected">
+      {% if use.questions %}
+      <label class="mr-auto flex w-full items-center gap-2 text-sm sm:w-auto">Question
+        <select name="question" aria-label="Question" class="select select-sm w-auto" hx-get="{{ use.reload }}" hx-include="this" hx-target="#picker-body" hx-swap="innerHTML">
+          {% for key in use.questions %}<option value="{{ key }}"{% if key == use.question %} selected{% endif %}>{{ key }}</option>{% endfor %}
+          {% if use.several %}<option value=""{% if not use.question %} selected{% endif %}>Several questions</option>{% endif %}
+        </select>
+      </label>
+      {% endif %}
+      <button type="button" class="btn btn-ghost" data-close>Cancel</button>
+      <button class="btn btn-primary" :disabled="unchanged"><span x-show="!unchanged"{% if guide.ref == use.current %} x-cloak{% endif %}>Use <span x-text="selectedLabel">{{ guide.label }}</span></span><span x-show="unchanged"{% if guide.ref != use.current %} x-cloak{% endif %}>Current method</span></button>
+    </form>
+  </section>
+</div>

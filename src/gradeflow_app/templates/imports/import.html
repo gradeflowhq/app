@@ -1,0 +1,114 @@
+{% extends "layouts/assessment.html" %}
+{% block page_title %}Import · {% endblock %}
+{% block content %}
+{% with assessment=membership.assessment %}
+<c-page title="Import">
+  <div class="contents" x-data="importer" data-assessment-id="{{ assessment.pk }}" data-original="{% url 'import_original' assessment.pk %}" data-sample="{{ assessment.students.first.key|default:'' }}">
+    <form x-ref="upload" action="{% url 'upload' assessment.pk %}" method="post" enctype="multipart/form-data" hidden>{% csrf_token %}</form>
+    {{ questions|json_script:"import-questions" }}
+    {% if choices %}{{ choices|json_script:"results-file-choices" }}{% endif %}
+    <c-card title="Exam export">
+      <c-slot name="actions"><button type="button" class="btn btn-ghost btn-square btn-sm -mr-2 text-muted" data-dialog="results-guide" aria-label="How to import an exam export">{% icon "question-mark-circle" %}</button></c-slot>
+      <div x-show="step === 'choose'" class="grid gap-5">
+        {% if current %}
+        <div class="flex flex-wrap items-center gap-4">
+          <span class="grid size-10 place-items-center rounded-field bg-base-200 text-muted">{% icon "document-text" %}</span>
+          <div class="min-w-0 flex-1 basis-48">
+            <p class="truncate font-medium">{{ current.name }}</p>
+            <p class="text-sm text-muted">{{ current.student_count }} student{{ current.student_count|pluralize }} · imported {{ current.uploaded_at|ago }}{% if current.uploaded_by %} by {{ current.uploaded_by }}{% endif %}</p>
+          </div>
+          {% if choices %}<button class="btn" x-on:click="change" :disabled="opening"><span class="loading loading-spinner loading-sm" x-show="opening" x-cloak></span>Check columns</button>{% endif %}
+          <button class="btn" x-on:click="replacing = true" x-show="!replacing">Replace</button>
+        </div>
+        {% endif %}
+        <div{% if current %} x-show="replacing" x-cloak{% endif %}>{% include "imports/drop.html" with title=current|yesno:"Drop the new exam export here,Drop the exam export here" kinds="CSV or Excel" accept=".csv,.txt,.xls,.xlsx,.xlsm,.xlsb" %}<p class="mt-4 flex items-center justify-center gap-2 text-sm text-muted">{% icon "lock-closed" "size-4" %}The file is encrypted on this computer. GradeFlow can read only its answers and marks.</p></div>
+      </div>
+
+      <div x-show="step !== 'choose'" x-cloak class="grid gap-6">
+        <div class="flex flex-wrap items-center gap-4">
+          <span class="grid size-10 place-items-center rounded-field bg-secondary text-secondary-content">{% icon "document-check" %}</span>
+          <div class="min-w-0 flex-1 basis-48">
+            <p class="truncate font-semibold" x-text="fileName"></p>
+            <p class="text-muted"><span x-text="summary"></span> · <span x-text="marksSummary"></span></p>
+            <p class="text-sm text-warning" x-show="dropped" x-text="dropped" x-cloak></p>
+          </div>
+          <template x-if="sheets.length > 1">
+            <div class="flex items-center gap-2 text-sm"><label for="import-sheet" class="text-muted">Sheet</label>
+              <select id="import-sheet" class="select select-sm w-44" x-on:change="pickSheet"><template x-for="name in sheets" :key="name"><option :value="name" x-text="name" :selected="name === sheet"></option></template></select>
+            </div>
+          </template>
+          <button class="btn btn-ghost" x-on:click="restart" x-show="step === 'review'">Choose another file</button>
+        </div>
+
+        <c-more label="Check rows and columns" x-bind:open="leftOut">
+          <div class="grid gap-3">
+            <div class="flex flex-wrap items-center gap-2">
+              <label for="import-header-row">Column names are in row</label>
+              <input id="import-header-row" type="number" class="input input-sm w-20 tabular-nums" min="1" :max="rows.length" :value="headerRow + 1" x-on:change="setHeaderRow">
+              <span class="min-w-0 flex-1 truncate text-sm text-muted" x-text="headerPreview"></span>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <label for="import-first-row">Students are in rows</label>
+              <input id="import-first-row" type="number" class="input input-sm w-20 tabular-nums" min="1" :max="rows.length" :value="firstRow + 1" x-on:change="setFirstRow">
+              <label for="import-last-row">to</label>
+              <input id="import-last-row" type="number" class="input input-sm w-20 tabular-nums" min="1" :max="rows.length" :value="lastRow + 1" x-on:change="setLastRow">
+              <span class="line-clamp-2 min-w-0 flex-1 break-words text-sm text-muted" x-text="rowsPreview"></span>
+            </div>
+          </div>
+          <div class="overflow-x-auto rounded-box border border-base-300">
+            <table class="table table-sm">
+              <thead><tr><th>Column</th><th>First values</th><th class="w-44">Use as</th><th class="w-44">Marks for</th></tr></thead>
+              <tbody>
+                <template x-for="column in columns" :key="column.index">
+                  <tr>
+                    <td class="font-medium" x-text="column.name"></td>
+                    <td class="max-w-72 truncate text-muted" x-text="column.sample"></td>
+                    <td>
+                      <select class="select select-sm w-full" :data-index="column.index" x-on:change="setRole" :aria-label="'Use of ' + column.name">
+                        <template x-for="role in roles" :key="role[0]"><option :value="role[0]" x-text="role[1]" :selected="role[0] === column.role"></option></template>
+                      </select>
+                    </td>
+                    <td>
+                      <select class="select select-sm w-full" x-show="column.role === 'marks'" :data-index="column.index" x-on:change="setMarksFor" :aria-label="'Question ' + column.name + ' gives marks for'">
+                        <template x-for="name in answerColumns" :key="name"><option :value="name" x-text="name" :selected="name === column.marksFor"></option></template>
+                      </select>
+                    </td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </c-more>
+
+        <div class="grid gap-4 rounded-box bg-base-200 p-5" x-show="needsPassphrase && !fileProblem">
+          <div>
+            <p class="font-semibold" x-text="firstImport ? 'Set a student ID passphrase' : 'Enter the student ID passphrase'"></p>
+            <p class="mt-1 text-sm text-muted" x-show="firstImport">Co-markers need it to see student IDs. It can't be recovered.</p>
+            <p class="mt-1 text-sm text-muted" x-show="!firstImport">Use the passphrase the first export was imported with.</p>
+          </div>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <label class="grid gap-1.5"><span class="font-medium">Passphrase</span><input type="password" class="input w-full" x-model="passphrase" autocomplete="new-password"></label>
+            <label class="grid gap-1.5" x-show="firstImport"><span class="font-medium">Type it again</span><input type="password" class="input w-full" x-model="confirmation" autocomplete="new-password"></label>
+          </div>
+          <label class="flex cursor-pointer items-center gap-3"><input type="checkbox" class="checkbox checkbox-sm checkbox-primary" x-model="rememberIt"><span>Remember on this device</span></label>
+        </div>
+
+        <div class="flex flex-wrap items-center justify-end gap-3">
+          <p class="mr-auto flex items-center gap-1.5 text-sm text-error" x-show="fileProblem" x-cloak>{% icon "exclamation-circle" "size-4" %}<span x-text="fileProblem"></span></p>
+          <template x-if="step === 'uploading'"><span class="flex items-center gap-3 text-sm text-muted"><span class="loading loading-spinner loading-sm"></span>Encrypting student IDs… <span class="tabular-nums" x-text="progress + '%'"></span></span></template>
+          <button class="btn btn-primary" x-on:click="submit" :disabled="step === 'uploading' || !!fileProblem"{% if current %} data-confirm="Replace the exam export?" :data-confirm-detail="replaceDetail" data-confirm-button="Replace"{% endif %}>{% icon "arrow-up-tray" "size-4" %}{% if current %}Replace export{% else %}Import results{% endif %}</button>
+        </div>
+      </div>
+    </c-card>
+
+    <c-alert x-show="error" x-cloak><span x-text="error"></span></c-alert>
+  </div>
+
+  {% include "imports/results_guide.html" %}
+  {% if current %}
+  {% include "imports/question_document.html" %}
+  {% include "imports/document_guide.html" %}
+  {% endif %}
+</c-page>
+{% endwith %}
+{% endblock %}
