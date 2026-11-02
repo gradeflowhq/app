@@ -100,14 +100,21 @@ def editing(request: Request, membership: Membership, subject: Subject) -> Works
 
 
 def column(
-    request: Request, membership: Membership, subject: Subject, workspace: Workspace | None, *, oob: bool = False
+    request: Request,
+    membership: Membership,
+    subject: Subject,
+    workspace: Workspace | None,
+    *,
+    accepted: Mapping[Marking, Check] | None = None,
+    oob: bool = False,
 ) -> str:
     """The answers column beside a marking: students' answers to its question, or the combinations of answers it
-    marks; with the marks of the user's latest preview of their draft in `workspace`."""
+    marks; with the marks of the user's latest preview of their draft in `workspace`. `accepted`, the assessment's
+    markings the core accepts, saves working them out again."""
     if subject.question is None:
-        context = combinations_context(request, membership, subject, workspace)
+        context = combinations_context(request, membership, subject, workspace, accepted)
         return render_to_string("marking/combinations.html#answers", context | {"oob": oob}, request)
-    context = answers_context(request, membership, subject.question, workspace)
+    context = answers_context(request, membership, subject.question, workspace, accepted)
     return render_to_string("results/answers.html#answers", context | {"oob": oob}, request)
 
 
@@ -118,7 +125,11 @@ def preview_bar(request: Request, workspace: Workspace) -> str:
 
 
 def answers_context(
-    request: Request, membership: Membership, question: Question, workspace: Workspace | None = None
+    request: Request,
+    membership: Membership,
+    question: Question,
+    workspace: Workspace | None = None,
+    accepted: Mapping[Marking, Check] | None = None,
 ) -> dict[str, Any]:
     """The answers column of a question; `workspace` is the user's draft of its marking, looked up if not given."""
     view = view_of(request, question)
@@ -157,7 +168,7 @@ def answers_context(
     filter_name = view["filter"] if view.get("filter") in filters else "all"
     filtered = [group for group in groups if _matches(group, filter_name)]
     _group_actions(question, workspace, filtered)
-    accepted = checks(membership.assessment)
+    accepted = checks(membership.assessment) if accepted is None else accepted
     return {
         "membership": membership,
         "question": question,
@@ -191,7 +202,11 @@ def group_by_meaning(request: Request, membership: Membership, question: Questio
 
 
 def combinations_context(
-    request: Request, membership: Membership, subject: Subject, workspace: Workspace | None
+    request: Request,
+    membership: Membership,
+    subject: Subject,
+    workspace: Workspace | None,
+    accepted: Mapping[Marking, Check] | None = None,
 ) -> dict[str, Any]:
     """Students by their answers to the questions marked together, as the user's draft in `workspace` marks them if
     they're editing it, else as the saved marking does."""
@@ -202,7 +217,7 @@ def combinations_context(
         url = reverse("question_group_draft_answers", args=[assessment.pk, workspace.draft.pk])
     else:
         raise Http404  # new marking of questions together exists only as its draft
-    accepted = checks(assessment)
+    accepted = checks(assessment) if accepted is None else accepted
     if workspace is None and subject.marking is not None:
         saved = accepted.get(subject.marking)
         keys = sorted(questions_marked(subject.marking, saved))

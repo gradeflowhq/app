@@ -3,15 +3,17 @@
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from typing import Literal
+from uuid import UUID
 
 from django.urls import reverse
 from gradeflow_core import Check, GradeFlowError, Methods, QuestionSet
+from gradeflow_core.editing import MarkingDraft
 
 from gradeflow_app.assessments.models import Assessment, Membership
 from gradeflow_app.editor.editing import located
 from gradeflow_app.editor.guide import Choices, choices
 from gradeflow_app.imports.models import file_mark_keys, has_file_marks
-from gradeflow_app.libraries.collection import Offers, in_use, offers
+from gradeflow_app.libraries.collection import Offers, in_use, offers, usable
 from gradeflow_app.libraries.models import Method
 from gradeflow_app.marking.checks import checks, draft_of, methods_for, questions_involved, questions_marked
 from gradeflow_app.marking.models import Draft, Marking
@@ -173,9 +175,9 @@ def question_list(membership: Membership, shown: str, accepted: Mapping[Marking,
     averages = average_proportions(assessment)
     progress = {key: job.progress for job in active_jobs(assessment) for key in job.questions}
     from_file = file_mark_keys(assessment)
-    drafts = list(Draft.objects.filter(assessment=assessment, user=membership.member.user))
+    drafts = list(Draft.objects.filter(assessment=assessment, user=membership.member.user).select_related("question"))
     drafting = {draft.question_id for draft in drafts} | {draft.marking_id for draft in drafts}
-    drafted = {draft.question_id or draft.marking_id: drafted_method(Workspace(draft)) for draft in drafts}
+    drafted = _drafted_methods(membership, drafts)
     items = []
     for question in assessment.questions.all():
         mine = saved.get(question.key)
@@ -214,7 +216,7 @@ def question_list(membership: Membership, shown: str, accepted: Mapping[Marking,
                 QuestionGroup(
                     url,
                     sorted(check.questions_marked()) if check else [],
-                    drafted_method(new),
+                    drafted_method(new.checks),
                     True,
                     str(draft.pk) == shown,
                 )
@@ -222,9 +224,23 @@ def question_list(membership: Membership, shown: str, accepted: Mapping[Marking,
     return QuestionList(shown, items, question_groups)
 
 
-def drafted_method(workspace: Workspace) -> str:
+def _drafted_methods(membership: Membership, drafts: list[Draft]) -> dict[UUID | None, str]:
+    """The method of each of the user's `drafts`, by what it marks."""
+    if not drafts:
+        return {}
+    questions = membership.assessment.question_set()
+    methods = usable(membership.member.user, membership.course)
+    return {
+        draft.question_id or draft.marking_id: drafted_method(
+            draft_of(draft.definition, questions, draft.question.key if draft.question else None, methods)
+        )
+        for draft in drafts
+    }
+
+
+def drafted_method(checks: MarkingDraft) -> str:
     """The method of a draft, as far as it has one."""
-    return workspace.checks.label("") if workspace.checks.is_check("") else ""
+    return checks.label("") if checks.is_check("") else ""
 
 
 @dataclass(frozen=True)

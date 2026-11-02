@@ -5,6 +5,8 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from django.contrib import messages
 from django.contrib.messages.storage.base import Message
 from django.http import HttpRequest, HttpResponse
+from django.http.response import HttpResponseBase
+from django.middleware.gzip import GZipMiddleware
 from django.utils import timezone
 
 from gradeflow_app.requests import HtmxRequest
@@ -13,6 +15,16 @@ NAVIGATING = ("HX-Location", "HX-Redirect", "HX-Refresh")
 """Headers that have htmx load another page, which shows the messages itself."""
 LIVE_REFRESH = "X-Live-Refresh"
 """Marks a request a page sends by itself as something changed (htmx.js): the page may be on its way to another."""
+
+
+class CompressionMiddleware(GZipMiddleware):
+    """Compresses responses, except live streams: their events are a few bytes each, and a proxy may hold a
+    compressed stream back."""
+
+    def process_response(self, request: HttpRequest, response: HttpResponseBase) -> HttpResponseBase:
+        if response.get("Content-Type", "").startswith("text/event-stream"):
+            return response
+        return super().process_response(request, response)
 
 
 class HtmxMessagesMiddleware:

@@ -11,7 +11,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.safestring import mark_safe
 from django.views.decorators.http import require_POST
-from django_htmx.http import HttpResponseLocation
+from django_htmx.http import HttpResponseLocation, push_url
 from gradeflow_core import Check, GradeFlowError
 from gradeflow_core.editing import DECISIONS, Decision, MarkingDraft, answer_decisions, dump_yaml, mark_by_example
 from gradeflow_core.editing import MethodDraft as CoreDraft
@@ -30,7 +30,7 @@ from gradeflow_app.libraries.forms import SaveMethodForm
 from gradeflow_app.live.topics import publish, topic
 from gradeflow_app.marking import presenters, previews
 from gradeflow_app.marking.answers.column import column, editing, preview_bar
-from gradeflow_app.marking.checks import check_for, check_of, checks, marked_keys, methods_for, questions_marked
+from gradeflow_app.marking.checks import check_for, check_of, checks, methods_for, questions_marked
 from gradeflow_app.marking.models import Draft, Marking, Subject
 from gradeflow_app.marking.presenters import drafted_method, saved_summary
 from gradeflow_app.marking.remarks import delete_marking, schedule_marking
@@ -51,25 +51,31 @@ def _drafts_changed(request: Request, assessment: Assessment) -> None:
 
 @member()
 def questions(request: Request, membership: Membership) -> HttpResponse:
+    """The first question; a click in the app gets its page at once, saving a round trip."""
     assessment = membership.assessment
-    questions = list(assessment.questions.all())
-    if not questions:
+    first = assessment.questions.first()
+    if first is None:
         return render(request, "marking/no_questions.html", {"membership": membership})
-    marked = marked_keys(checks(assessment))
-    first = next((question for question in questions if question.key not in marked), questions[0])
-    return redirect("question", assessment.pk, first.pk)
+    if not request.htmx:
+        return redirect("question", assessment.pk, first.pk)
+    page = _question(request, membership, first, checks(assessment))
+    return push_url(page, reverse("question", args=[assessment.pk, first.pk]))
 
 
 @member()
 def question(request: Request, membership: Membership, question_id: UUID) -> HttpResponse:
-    question = membership.question(question_id)
+    return _question(request, membership, membership.question(question_id), checks(membership.assessment))
+
+
+def _question(
+    request: Request, membership: Membership, question: Question, accepted: Mapping[Marking, Check]
+) -> HttpResponse:
     subject = Subject.of(membership.assessment, question)
     workspace = editing(request, membership, subject)
-    accepted = checks(membership.assessment)
     context = _marking(request, membership, question, subject, workspace, accepted) | {
         "question": question,
         "questions": presenters.question_list(membership, str(question.pk), accepted),
-        "answers": column(request, membership, subject, workspace),
+        "answers": column(request, membership, subject, workspace, accepted=accepted),
     }
     return render(request, "marking/workspace.html", context)
 
@@ -196,7 +202,7 @@ def draft_view(request: Request, membership: Membership, draft: UUID) -> HttpRes
     typing = not request.POST.get("op")
     asked = workspace.asks(path) if workspace.checks.is_check(path) else None
     decisions = answer_decisions(workspace.checks.data, methods=workspace.methods)
-    method = drafted_method(workspace)
+    method = drafted_method(workspace.checks)
     shown = _editor(request, workspace, _apply(request, workspace, path))
     _list_method(request, workspace, method)
     context: dict[str, Any] = {"membership": membership, "editor": shown}
@@ -220,7 +226,7 @@ def draft_view(request: Request, membership: Membership, draft: UUID) -> HttpRes
 
 def _list_method(request: Request, workspace: Workspace, before: str) -> None:
     """Refresh the user's question list where it names the draft's method, once that changed from `before`."""
-    if drafted_method(workspace) != before:
+    if drafted_method(workspace.checks) != before:
         _drafts_changed(request, workspace.subject.assessment)
 
 
@@ -364,7 +370,7 @@ def mark_example(request: Request, membership: Membership, question_id: UUID) ->
     except GradeFlowError as error:
         messages.error(request, str(error))
     else:
-        method = drafted_method(workspace)
+        method = drafted_method(workspace.checks)
         workspace.checks.replace(marked)
         workspace.save()
         _list_method(request, workspace, method)
@@ -455,7 +461,7 @@ def question_group(request: Request, membership: Membership, marking_id: UUID) -
         "question_group_marks": saved.marks,
         "question_group_keys": saved.keys,
         "summary": saved.summary,
-        "answers": column(request, membership, subject, workspace),
+        "answers": column(request, membership, subject, workspace, accepted=accepted),
     }
     if workspace is not None:
         context["editor"] = _editor(request, workspace, request.GET.get("path", ""))

@@ -145,6 +145,17 @@ def test_times_show_in_the_browsers_time_zone(client: Client, assessment: Assess
     assert client.get(reverse("activity", args=[assessment.pk]), headers=HTMX).status_code == 200
 
 
+def test_pages_are_compressed_but_live_streams_are_not(client: Client, assessment: Assessment) -> None:
+    url = reverse("questions", args=[assessment.pk])
+    stream = re.search(r'hx-sse:connect="([^"]+)"', client.get(url, follow=True).content.decode())
+    assert stream is not None
+    gzip = {"Accept-Encoding": "gzip"}
+    assert client.get(url, follow=True, headers=gzip).headers["Content-Encoding"] == "gzip"
+    live = client.get(stream[1], headers=gzip)
+    assert "Content-Encoding" not in live.headers
+    live.close()
+
+
 def test_messages_from_in_page_actions_show_at_once(client: Client, assessment: Assessment) -> None:
     question = assessment.questions.get(key="Q2")
     student = assessment.students.values_list("pk", flat=True).first()

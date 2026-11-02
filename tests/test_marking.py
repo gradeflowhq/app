@@ -100,6 +100,21 @@ def test_stale_or_unknown_editor_actions_change_nothing(client: Client, assessme
     assert client.get(url, {"path": "with.setup"}).status_code == 200
 
 
+def test_questions_opens_the_first_question(client: Client, assessment: Assessment) -> None:
+    """Marked or not. A page load goes to its address; a click in the app gets it at once, with its address."""
+    Marking.objects.create(
+        assessment=assessment,
+        question=assessment.questions.get(key="Q1"),
+        definition=dump_yaml({"question": "Q1", "uses": "gradeflow/full-marks@1"}),
+    )
+    url = reverse("questions", args=[assessment.pk])
+    first = reverse("question", args=[assessment.pk, assessment.questions.get(key="Q1").pk])
+    assert client.get(url).headers["Location"] == first
+    clicked = client.get(url, headers=HTMX)
+    assert clicked.headers["HX-Push-Url"] == first
+    assert clicked.context["question"].key == "Q1"
+
+
 def test_unknown_methods_are_not_found(client: Client, assessment: Assessment) -> None:
     question = assessment.questions.get(key="Q1")
     start = reverse("marking_start", args=[assessment.pk, question.pk])

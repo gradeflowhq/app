@@ -14,7 +14,7 @@ from gradeflow_app.accounts.models import User
 from gradeflow_app.assessments.models import Assessment
 from gradeflow_app.libraries.models import Library
 from gradeflow_app.marking.models import Marking
-from tests.conftest import create_assessment, light, marked
+from tests.conftest import create_assessment, light, marked, start_marking
 
 pytestmark = pytest.mark.django_db
 
@@ -93,3 +93,15 @@ def test_question_list(client: Client, django_assert_num_queries: DjangoAssertNu
         client.get(same)
         with django_assert_num_queries(expected):
             assert client.get(same).status_code == 200
+
+
+def test_question_list_of_drafts(
+    client: Client, assessment: Assessment, django_assert_num_queries: DjangoAssertNumQueries
+) -> None:
+    start_marking(client, assessment, "Q1", "gradeflow/custom-code@1")
+
+    def add() -> None:
+        for key in ["Q2", "Q3"]:
+            start_marking(client, assessment, key, "gradeflow/custom-code@1")
+
+    assert_flat(client, reverse("question_list", args=[assessment.pk]), add, django_assert_num_queries)
