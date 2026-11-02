@@ -1,6 +1,6 @@
 [project]
 name = "gradeflow-app"
-version = "0.1.0"
+version = "0.1.1"
 description = "GradeFlow's web app: import exam results, mark them, and send the marks to Canvas."
 readme = "README.md"
 license = "MIT"
