@@ -62,19 +62,22 @@ def _summary(marking: Marking, check: Check | None, assessment: Assessment) -> S
 
 @dataclass(frozen=True)
 class Status:
-    """How a question is marked, in a word or two; `warning` while it needs marking or fixing."""
+    """How a question is marked, in a word or two: by a method, by its imported marks, or not until it's marked or
+    fixed."""
 
     label: str
-    warning: bool
+    tone: Literal["method", "imported", "warning"]
 
 
 def status(method: str | None, *, broken: bool, from_file: bool) -> Status:
     """The status of a question marked with `method`, or else broken, or with only its imported marks."""
     if method:
-        return Status(method, warning=False)
+        return Status(method, "method")
     if broken:
-        return Status("Needs fixing", warning=True)
-    return Status("Imported marks", warning=False) if from_file else Status("Not marked", warning=True)
+        return Status("Needs fixing", "warning")
+    if from_file:
+        return Status("Imported marks", "imported")
+    return Status("Not marked", "warning")
 
 
 @dataclass(frozen=True)
@@ -127,7 +130,7 @@ class Listed:
     @property
     def status(self) -> Status:
         if self.grouped and not self.drafting:
-            return Status("Question group", warning=self.broken)
+            return Status("Question group", "warning" if self.broken else "method")
         return status(self.method, broken=self.broken, from_file=self.from_file)
 
 

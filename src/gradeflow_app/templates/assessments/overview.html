@@ -81,7 +81,7 @@
             <tr data-href>
               <td>
                 <a class="font-medium" href="{% url 'question' assessment.pk summary.question.pk %}">{{ summary.question.key }}</a>
-                <span class="block text-sm {% if status.warning %}text-warning{% else %}text-muted{% endif %}">{{ status.label }}</span>
+                <c-question-status :status="status" />
               </td>
               <td>
                 {% if summary.average is None %}<span class="text-subtle">—</span>

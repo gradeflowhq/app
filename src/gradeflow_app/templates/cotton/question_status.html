@@ -1,0 +1,3 @@
+<c-vars status />
+{# How a question is marked, coloured by where its marks come from. #}
+<span class="block truncate text-sm {% if status.tone == 'method' %}text-primary{% elif status.tone == 'warning' %}text-warning{% else %}text-muted{% endif %}">{{ status.label }}</span>

@@ -18,7 +18,7 @@
             {% if item.drafting %}<span class="badge badge-primary badge-soft badge-sm" title="Your unsaved changes">Draft</span>{% endif %}
             {% if item.progress is not None %}<span class="loading loading-spinner loading-xs text-primary" aria-label="Marking"></span>{% endif %}
           </span>
-          <span class="block truncate text-sm {% if item.status.warning %}text-warning{% else %}text-muted{% endif %}">{{ item.status.label }}</span>
+          <c-question-status :status="item.status" />
         </span>
         {% if item.proportion is not None %}<span class="tabular-nums shrink-0 text-sm text-muted" title="Average mark">{{ item.proportion|percent }}</span>{% endif %}
         {% if item.progress %}<progress class="progress progress-primary absolute inset-x-3 bottom-1 h-0.5 w-auto" value="{{ item.progress|floatformat:2 }}" max="1" aria-hidden="true"></progress>{% endif %}
