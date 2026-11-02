@@ -308,6 +308,13 @@
   .modal:is([open], .modal-open, :target) {
     background-color: var(--backdrop);
   }
+  /* Safari and Firefox drop a closing menu out of the top layer before it fades, so the top bar's blur moves it up.
+     They close it at once. */
+  @supports not (overlay: auto) {
+    .dropdown[popover] {
+      transition: none;
+    }
+  }
   /* daisyUI pulls a select back over the field's padding, which covers an icon in front of it. */
   .select > :not(select) ~ select {
     margin-inline-start: 0;
