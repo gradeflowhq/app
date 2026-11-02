@@ -283,9 +283,11 @@ def test_marking_says_what_it_waits_on(client: Client, user: User, assessment: A
     assert job is not None
     call_back(job, {"event": "started"})
     assert call_back(job, {"event": "progress", "done": 12, "total": 30, "step": "Deciding criteria"}) == 204
-    assert notices(checks(assessment), ["Q3"]) == [
-        "Marking… Deciding criteria: 12 of 30. The marks shown are from before."
-    ]
+    assert notices(checks(assessment), ["Q3"]) == []
+    question = assessment.questions.get(key="Q3")
+    column = client.get(reverse("answers", args=[assessment.pk, question.pk])).content.decode()
+    assert "Deciding criteria: 12 of 30" in column
+    assert "from before" not in column
 
 
 def test_the_answers_column_asks_to_connect_when_marking_asks_a_model(

@@ -360,7 +360,7 @@
   }
 }
 
-/* Marks the draft no longer gives, while it waits to be previewed. */
+/* Marks the draft no longer gives, while it waits to be previewed, or the saved marking's, while it marks again. */
 #answers:has(#preview-bar[data-stale]) [data-marks] {
   @apply opacity-40;
 }

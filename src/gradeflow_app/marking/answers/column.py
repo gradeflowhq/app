@@ -13,7 +13,7 @@ from gradeflow_core import Check, QuestionResult, QuestionSet
 from gradeflow_core.editing import DECISIONS, answer_decisions, can_mark_by_example
 from gradeflow_core.editing import Marking as CoreMarking
 
-from gradeflow_app.assessments.models import Membership
+from gradeflow_app.assessments.models import Assessment, Membership
 from gradeflow_app.core_build import CORE_BUILD
 from gradeflow_app.jobs.models import Job
 from gradeflow_app.libraries.collection import in_use
@@ -24,6 +24,7 @@ from gradeflow_app.marking.answers.combinations import Combination, combinations
 from gradeflow_app.marking.answers.status import marked_by_models, notices
 from gradeflow_app.marking.checks import checks, questions_involved, questions_marked, runnable, tree_of
 from gradeflow_app.marking.models import Marking, Subject
+from gradeflow_app.marking.remarks import active_jobs
 from gradeflow_app.marking.workspace import Workspace
 from gradeflow_app.model_service.endpoints import asks_models
 from gradeflow_app.questions.models import Question
@@ -171,6 +172,7 @@ def answers_context(
         "filters": filters,
         "preview_job": job,
         "preview_summary": _preview_summary(groups) if preview is not None else None,
+        "marking_job": _marking_job(membership.assessment, [question.key]),
         "waiting": waiting,
         "grouping_due": grouping_due,
         "grouping_failed": grouping_failed,
@@ -224,6 +226,7 @@ def combinations_context(
         "filter": "changed" if changed else "all",
         "preview_job": job,
         "preview_summary": _across_summary(rows) if results is not None else None,
+        "marking_job": _marking_job(assessment, keys),
         "across": True,
         **drafting(workspace),
     }
@@ -242,6 +245,12 @@ def drafting(workspace: Workspace | None) -> dict[str, Any]:
         return {"draft": None}
     due = previews.stale(workspace)
     return {"draft": workspace.draft, "preview_due": due, "preview_ready": due and workspace.valid}
+
+
+def _marking_job(assessment: Assessment, keys: Iterable[str]) -> Job | None:
+    """The run marking any of `keys` with the saved markings, while one runs."""
+    shown = set(keys)
+    return next((job for job in active_jobs(assessment) if shown & set(job.questions)), None)
 
 
 def _questions(check: CoreMarking | None, questions: QuestionSet) -> tuple[list[str], list[str]]:

@@ -342,11 +342,16 @@ def test_results_arrive_in_batches_which_show_progress(
         submission.model_dump(mode="json") for submission in marked_by_sandbox(Payload.model_validate(job.input))
     ]
     half = len(submissions) // 2
+    assert call_back(job, {"event": "started"}) == 204
     assert call_back(job, {"event": "marked", "submissions": submissions[:half]}) == 204
     job.refresh_from_db()
     assert job.progress == half / len(submissions)
     listed = client.get(reverse("question_list", args=[assessment.pk]), {"shown": ""}).content.decode()
     assert f'value="{job.progress:.2f}" max="1"' in listed
+    question = assessment.questions.get(key="Q1")
+    column = client.get(reverse("answers", args=[assessment.pk, question.pk])).content.decode()
+    assert "Marking…" in column
+    assert f'value="{job.progress:.2f}" max="1"' in column
     assert call_back(job, {"event": "marked", "submissions": submissions[half:]}) == 204
     assert job.batches.count() == 2
     assert call_back(job, {"event": "finished"}) == 204

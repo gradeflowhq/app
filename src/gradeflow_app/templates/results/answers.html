@@ -60,7 +60,7 @@
 {% endpartialdef %}
 
 {% partialdef preview_bar %}
-<div id="preview-bar" aria-live="polite"{% if oob %} hx-swap-oob="outerMorph"{% endif %}{% if preview_due %} data-stale{% endif %}>
+<div id="preview-bar" aria-live="polite"{% if oob %} hx-swap-oob="outerMorph"{% endif %}{% if preview_due or marking_job and not draft %} data-stale{% endif %}>
   {% if draft %}
     {% url 'draft_preview' draft.assessment_id draft.pk as preview_url %}
     {% if preview_due %}
@@ -74,11 +74,7 @@
         <button class="btn btn-sm" hx-post="{{ preview_url }}" hx-target="#answers" hx-swap="outerMorph">Try again</button>
       </div>
     {% elif preview_job and not preview_summary %}
-      <div class="preview-bar relative" role="status">
-        <span class="loading loading-spinner loading-sm text-primary"></span>
-        {% if preview_job.status == "queued" %}Waiting to start…{% else %}Previewing…{% endif %}
-        {% if preview_job.progress %}<span class="tabular-nums text-sm text-muted">{% widthratio preview_job.progress 1 100 %}%</span><progress class="progress progress-primary absolute inset-x-0 bottom-0 h-0.5 rounded-none" value="{{ preview_job.progress|floatformat:2 }}" max="1" aria-hidden="true"></progress>{% endif %}
-      </div>
+      {% with job=preview_job running="Previewing…" %}{% partial job_bar %}{% endwith %}
     {% elif preview_summary %}
       <div class="preview-bar" role="status">
         {% icon "eye" "size-4 text-primary" %}<span class="font-medium">Preview</span>
@@ -96,6 +92,17 @@
       </div>
       {% endif %}
     {% endif %}
+  {% elif marking_job %}
+    {% with job=marking_job running="Marking…" %}{% partial job_bar %}{% endwith %}
   {% endif %}
+</div>
+{% endpartialdef %}
+
+{% partialdef job_bar %}
+<div class="preview-bar relative" role="status">
+  <span class="loading loading-spinner loading-sm text-primary"></span>
+  {% if job.status == "queued" %}Waiting to start…{% else %}{{ running }}{% endif %}
+  {% if job.step %}<span class="min-w-0 truncate text-sm text-muted">{{ job.step }}</span>{% endif %}
+  {% if job.progress %}<span class="tabular-nums text-sm text-muted">{% widthratio job.progress 1 100 %}%</span><progress class="progress progress-primary absolute inset-x-0 bottom-0 h-0.5 rounded-none" value="{{ job.progress|floatformat:2 }}" max="1" aria-hidden="true"></progress>{% endif %}
 </div>
 {% endpartialdef %}

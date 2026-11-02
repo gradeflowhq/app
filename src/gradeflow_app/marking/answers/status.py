@@ -10,8 +10,8 @@ from gradeflow_app.model_service.endpoints import asks_models
 
 
 def notices(accepted: Mapping[Marking, Check], keys: Iterable[str]) -> list[str]:
-    """Why the marks of these questions are from before: their marking, one of the `accepted` ones, failed, or is
-    marking them now. One that can't mark says why in its own column."""
+    """Why the marks of these questions are from before: their marking, one of the `accepted` ones, failed or wasn't
+    run. One that can't mark says why in its own column; one marking them now shows its progress."""
     selected = set(keys)
     messages = []
     for saved, check in accepted.items():
@@ -25,9 +25,6 @@ def notices(accepted: Mapping[Marking, Check], keys: Iterable[str]) -> list[str]
             )
         elif latest is not None and latest.status == Job.Status.FAILED:
             messages.append(f"Marking failed: {latest.error} The marks shown are from before.")
-        elif latest is not None and latest.active:
-            doing = f" {latest.step}." if latest.step else ""
-            messages.append(f"Marking…{doing} The marks shown are from before.")
     return messages
 
 
