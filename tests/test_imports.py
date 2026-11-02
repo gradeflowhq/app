@@ -145,12 +145,13 @@ def test_an_import_returns_the_questions_whose_answers_changed(assessment: Asses
     assert changed_by(changed.rsplit("\n", 2)[0] + "\n") == {"Q1", "Q2", "Q3"}, "a student fewer changes every question"
 
 
-def test_an_import_goes_to_the_questions_with_what_it_did(client: Client) -> None:
+def test_an_import_stays_on_the_import_page_with_what_it_did(client: Client) -> None:
     assessment = create_assessment(client)
     response = upload(client, assessment)
-    assert response.headers["HX-Redirect"] == reverse("questions", args=[assessment.pk])
+    assert response.headers["HX-Redirect"] == reverse("import", args=[assessment.pk])
     page = client.get(response.headers["HX-Redirect"], follow=True).content
     assert b"Imported 10 students and 3 questions." in page
+    assert reverse("question_document", args=[assessment.pk]).encode() in page
 
 
 def test_a_replace_says_which_students_it_added_and_removed(client: Client, assessment: Assessment) -> None:

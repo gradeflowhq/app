@@ -90,7 +90,7 @@ def upload(request: Request, membership: Membership) -> HttpResponse:
         if summary.removed:
             details.append(f"removed question{pluralize(summary.removed)} {', '.join(summary.removed)}")
         messages.success(request, "Results replaced: " + "; ".join(details) + ".")
-    return HttpResponseClientRedirect(reverse("questions", args=[assessment.pk]))
+    return HttpResponseClientRedirect(reverse("import", args=[assessment.pk]))
 
 
 def _refused(reason: str) -> HttpResponse:
