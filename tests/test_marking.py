@@ -19,7 +19,7 @@ from gradeflow_app.jobs.models import Job
 from gradeflow_app.libraries.collection import in_use
 from gradeflow_app.live.topics import topic
 from gradeflow_app.marking import checks, views
-from gradeflow_app.marking.answers import answer_groups
+from gradeflow_app.marking.answers import answer_groups, column
 from gradeflow_app.marking.checks import tree_of
 from gradeflow_app.marking.models import Draft, Marking
 from gradeflow_app.marking.workspace import Workspace
@@ -524,6 +524,23 @@ def test_too_many_answers_to_compare_are_grouped_when_equal(
         assert "Too many answers to compare. Showing equal answers only." in page, grouping
     assert not Job.objects.filter(kind=Job.Kind.GROUPING).exists(), "nothing to compare"
     assert "Too many answers" not in client.get(url, {"group": "answers"}, headers=HTMX).content.decode()
+
+
+def test_more_answer_groups_show_on_request_until_the_list_changes(
+    client: Client, assessment: Assessment, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(column, "SHOWN", 4)
+    url = reverse("answers", args=[assessment.pk, assessment.questions.get(key="Q1").pk])
+
+    def shown(**query: str) -> tuple[int, bool]:
+        page = client.get(url, query, headers=HTMX).content.decode()
+        return page.count('<details class="group/answer'), "Show more" in page
+
+    assert shown() == (4, True)
+    assert shown(shown="8") == (8, True)
+    assert shown() == (8, True)
+    assert shown(shown="12") == (10, False)
+    assert shown(filter="all") == (4, True)
 
 
 def test_a_values_check_suggests_that_values_answers(assessment: Assessment) -> None:

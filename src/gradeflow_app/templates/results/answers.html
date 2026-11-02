@@ -52,6 +52,7 @@
       <ul class="answer-groups divide-y divide-base-300" aria-label="Answers">
         {% for answer_group in answer_groups %}{% include "results/answer_group.html" %}{% endfor %}
       </ul>
+      {% if hidden %}<button class="btn btn-ghost btn-sm justify-self-center" hx-get="{% url 'answers' question.assessment_id question.pk %}?shown={{ show_more }}" hx-target="#answers" hx-swap="outerMorph">Show more<span class="tabular-nums font-normal text-muted">{{ hidden }}</span></button>{% endif %}
     {% else %}
       <c-empty class="surface" icon="inbox" title="{% if filter == 'all' %}No answers{% else %}No answers match{% endif %}" />
     {% endif %}

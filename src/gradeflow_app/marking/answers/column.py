@@ -47,7 +47,9 @@ FILTERS = {
 }
 BADGES = {"full": "badge-success", "part": "badge-warning", "not_allowed": "badge-error"}
 """How a decision marking by example gives answers is badged; one not here is plain."""
-_VIEW = ("group", "threshold", "filter")
+_VIEW = ("group", "threshold", "filter", "shown")
+SHOWN = 100
+"""How many answer groups the column shows at first, and how many more each "Show more" adds."""
 
 
 @dataclass(frozen=True)
@@ -73,6 +75,8 @@ def view_of(request: Request, question: Question) -> dict[str, str]:
         submitted.pop("threshold", None)
         remembered = {name: value for name, value in remembered.items() if name != "threshold"}
     chosen = remembered | submitted
+    if "shown" not in submitted and any(chosen.get(name) != remembered.get(name) for name in ("group", "filter")):
+        chosen.pop("shown", None)
     if chosen != request.session.get(key):
         request.session[key] = chosen
     return chosen
@@ -80,6 +84,13 @@ def view_of(request: Request, question: Question) -> dict[str, str]:
 
 def grouping_of(view: dict[str, str]) -> str:
     return view["group"] if view.get("group") in GROUPINGS else "answers"
+
+
+def shown_of(view: dict[str, str]) -> int:
+    try:
+        return max(int(view.get("shown", SHOWN)), SHOWN)
+    except ValueError:
+        return SHOWN
 
 
 def options(view: dict[str, str]) -> answer_groups.Options:
@@ -167,14 +178,17 @@ def answers_context(
     filters = FILTERS | ({"changed": "Changed"} if preview else {})
     filter_name = view["filter"] if view.get("filter") in filters else "all"
     filtered = [group for group in groups if _matches(group, filter_name)]
-    _group_actions(question, workspace, filtered)
+    shown = shown_of(view)
+    _group_actions(question, workspace, filtered[:shown])
     accepted = checks(membership.assessment) if accepted is None else accepted
     return {
         "membership": membership,
         "question": question,
         "evaluation_notices": notices(accepted, [question.key]),
         "asks_models": _asks_models(accepted, [question.key], workspace),
-        "answer_groups": filtered,
+        "answer_groups": filtered[:shown],
+        "show_more": shown + SHOWN,
+        "hidden": max(len(filtered) - shown, 0),
         "students": len(entries),
         "options": chosen,
         "grouping": grouping_of(view),
