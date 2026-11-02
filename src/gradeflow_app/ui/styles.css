@@ -404,12 +404,16 @@
   }
 }
 /* What an opening page replaces (htmx.js), once it has kept someone waiting. A `contents` box has no opacity. */
-:is([aria-busy="true"]:not(.contents, .btn), .contents[aria-busy="true"] > *) {
+:is([aria-busy="true"]:not(.contents, .btn, .choice), .contents[aria-busy="true"] > *) {
   @apply opacity-50 transition-opacity delay-100 duration-200;
 }
-/* A pressed button whose request takes a moment (htmx.js) shows a spinner in place of its label, at the same size. */
+/* A pressed button whose request takes a moment (htmx.js) shows a spinner in place of its label, at the same size; a
+   method choice, in place of its About button. */
 .btn[data-spinner] {
-  @apply relative text-transparent transition-none;
+  @apply relative;
+}
+:is(.btn[data-spinner], .choice[data-spinner] + .btn) {
+  @apply text-transparent transition-none;
   &::after {
     @apply loading loading-spinner loading-sm absolute top-1/2 left-1/2 -translate-1/2;
     content: "";

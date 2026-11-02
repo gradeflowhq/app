@@ -101,15 +101,15 @@ document.addEventListener("htmx:finally:request", (event) => {
   page.current.setAttribute("aria-current", "page");
 });
 
-// A button someone presses, or confirms, is busy until its request ends, and ignores presses meanwhile: htmx would
-// queue them. Pressing Enter in a form clicks its button too. A wait long enough to notice shows a spinner
-// (styles.css), which then stays long enough to see rather than flash.
+// A button or method choice someone presses, or confirms, is busy until its request ends, and ignores presses
+// meanwhile, as do the other choices in its form: htmx would queue them. Pressing Enter in a form clicks its button
+// too. A wait long enough to notice shows a spinner (styles.css), which then stays long enough to see rather than flash.
 const SPINNER_DELAY_MS = 300;
 const SPINNER_SHOWN_MS = 200;
 const spinners = new WeakMap(); // a pressed button's request → the button, its spinner's timer, and when it showed
 const pressed = ({ sourceEvent, sourceElement }) => {
   const button = sourceEvent?.submitter ?? sourceElement;
-  return ["click", "submit"].includes(sourceEvent?.type) && button.matches("button.btn") ? button : null;
+  return ["click", "submit"].includes(sourceEvent?.type) && button.matches("button:is(.btn, .choice)") ? button : null;
 };
 document.addEventListener("htmx:before:request", (event) => {
   const { ctx } = event.detail;
@@ -138,7 +138,7 @@ document.addEventListener("htmx:finally:request", (event) => {
 addEventListener(
   "click",
   (event) => {
-    if (!event.target.closest?.('.btn[aria-busy="true"]')) return;
+    if (!event.target.closest?.('.btn[aria-busy="true"], form:has(.choice[aria-busy="true"]) .choice')) return;
     event.preventDefault();
     event.stopImmediatePropagation();
   },
