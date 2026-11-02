@@ -3,13 +3,16 @@
 {% for label, badge in answer_group.decisions %}<span class="badge {{ badge }} badge-soft badge-sm">{{ label }}</span>{% endfor %}
 {% endif %}
 {% endpartialdef %}
+{% partialdef others %}
+{% if variants|length > 1 %}{% with others=variants|length|add:"-1" %}<p class="text-sm text-muted">and {{ others }} {% if grouping == "spelling" %}other spelling{{ others|pluralize }}{% else %}other{{ others|pluralize }}{% endif %}</p>{% endwith %}{% endif %}
+{% endpartialdef %}
 {% with low=answer_group.marks.0 high=answer_group.marks.1 max_marks=question.core.max_marks feedback=answer_group.preview.feedback|default:answer_group.feedback code=question.core|code_language %}
 <li>
 <details class="group/answer{% if answer_group.preview.changed %} bg-primary/5{% endif %}">
   <summary class="flex cursor-pointer list-none items-start gap-4 px-4 py-3 hover:bg-base-200/60">
     <div class="min-w-0 flex-1">
       {% include "results/answer_text.html" with answer=answer_group.answer blank=answer_group.blank %}
-      {% if answer_group.answers|length > 1 %}{% with others=answer_group.answers|length|add:"-1" %}<p class="text-sm text-muted">and {{ others }} {% if grouping == "spelling" %}other spelling{{ others|pluralize }}{% else %}other{{ others|pluralize }}{% endif %}</p>{% endwith %}{% endif %}
+      {% if code %}{% with variants=answer_group.shown %}{% partial others %}{% endwith %}{% else %}{% with variants=answer_group.answers %}{% partial others %}{% endwith %}{% endif %}
       {% include "results/answer_feedback.html" %}
     </div>
     <div class="flex shrink-0 flex-col items-end gap-0.5 text-right">
@@ -43,14 +46,26 @@
     </form>
     {% endif %}
     {% if code %}
-      {% if answer_group.answers|length > 1 or answer_group.answers.0.0 != answer_group.answer %}
-      <details class="group/exported">
-        <summary class="inline-flex cursor-pointer list-none items-center gap-1.5 text-sm font-medium text-muted hover:text-base-content">{% icon "chevron-right" "size-4 transition-transform group-open/exported:rotate-90" %}As exported{% if answer_group.answers|length > 1 %} <span class="tabular-nums font-normal">{{ answer_group.answers|length }}</span>{% endif %}</summary>
-        <ul class="mt-2 grid gap-2">
-          {% for answer, count in answer_group.answers %}
-          <li class="rounded-box bg-base-200 px-3 py-2"><pre class="whitespace-pre-wrap break-words font-mono text-sm">{% if answer %}{{ answer }}{% else %}<span class="italic text-muted">Blank</span>{% endif %}</pre>{% if answer_group.answers|length > 1 %}<p class="tabular-nums mt-1 text-sm text-muted">{{ count }} student{{ count|pluralize }}</p>{% endif %}</li>
+      {% if answer_group.shown|length > 1 %}
+      <div>
+        <p class="text-sm font-medium">Answers</p>
+        <ul class="mt-1.5 grid gap-2">
+          {% for answer, count in answer_group.shown|slice:":3" %}
+          <li class="rounded-box bg-base-200 px-3 py-2">{% include "results/answer_text.html" with expanded=True %}<p class="tabular-nums mt-1 text-sm text-muted">{{ count }} student{{ count|pluralize }}</p></li>
           {% endfor %}
         </ul>
+        {% if answer_group.shown|length > 3 %}<p class="tabular-nums mt-1.5 text-sm text-muted">and {{ answer_group.shown|length|add:"-3" }} more</p>{% endif %}
+      </div>
+      {% endif %}
+      {% if answer_group.originals %}
+      <details class="group/exported">
+        <summary class="inline-flex cursor-pointer list-none items-center gap-1.5 text-sm font-medium text-muted hover:text-base-content">{% icon "chevron-right" "size-4 transition-transform group-open/exported:rotate-90" %}Original{% if answer_group.originals|length > 1 %} <span class="tabular-nums font-normal">{{ answer_group.originals|length }}</span>{% endif %}</summary>
+        <ul class="mt-2 grid gap-2">
+          {% for answer, count in answer_group.originals|slice:":3" %}
+          <li class="rounded-box bg-base-200 px-3 py-2"><pre class="whitespace-pre-wrap break-words font-mono text-sm">{{ answer }}</pre><p class="tabular-nums mt-1 text-sm text-muted">{{ count }} student{{ count|pluralize }}</p></li>
+          {% endfor %}
+        </ul>
+        {% if answer_group.originals|length > 3 %}<p class="tabular-nums mt-1.5 text-sm text-muted">and {{ answer_group.originals|length|add:"-3" }} more</p>{% endif %}
       </details>
       {% endif %}
     {% elif answer_group.answers|length > 1 %}

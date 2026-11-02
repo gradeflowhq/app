@@ -84,8 +84,20 @@ class AnswerGroup:
         return Counter(entry.answer for entry in self.entries).most_common()
 
     @property
+    def shown(self) -> list[tuple[str, int]]:
+        """Its answers as the question reads them, such as code with its indentation rebuilt."""
+        return Counter(entry.canonical for entry in self.entries).most_common()
+
+    @property
+    def originals(self) -> list[tuple[str, int]]:
+        """Its answers the question reads visibly differently from how they were exported."""
+        return Counter(
+            entry.answer for entry in self.entries if _visible(entry.answer) != _visible(entry.canonical)
+        ).most_common()
+
+    @property
     def answer(self) -> str:
-        return Counter(entry.canonical for entry in self.entries).most_common(1)[0][0]
+        return self.shown[0][0]
 
     @property
     def count(self) -> int:
@@ -129,6 +141,11 @@ class AnswerGroup:
     @property
     def students(self) -> list[str]:
         return [entry.student for entry in self.entries]
+
+
+def _visible(text: str) -> str:
+    """``text`` without whitespace no one sees: at the ends of lines, and blank lines around it."""
+    return "\n".join(line.rstrip() for line in text.splitlines()).strip("\n")
 
 
 def entries(question: Question) -> list[Entry]:
