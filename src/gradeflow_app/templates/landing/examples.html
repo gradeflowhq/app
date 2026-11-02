@@ -21,7 +21,7 @@
         {% with code=shown.example.question_set|code_language:shown.example.marked %}{% for variant in shown.variants %}
         <ul class="@container divide-y divide-base-300" aria-label="Answers" x-show="variant === '{{ shown.key }}:{{ variant.value }}'"{% if variant.value != shown.start %} x-cloak{% endif %}>
           {% for row in variant.rows %}
-          <li class="landing-answer{% if row.changed %} bg-primary/5{% endif %}">
+          <li class="landing-answer{% if row.changed %} changed{% endif %}">
             <div class="min-w-0 flex-1">
               {% if row.answers|length > 1 %}<dl class="grid grid-cols-[auto_minmax(0,1fr)] items-baseline gap-x-3 gap-y-1">{% for question, answer in row.answers.items %}<dt class="text-sm font-semibold{% if not forloop.last %} text-muted{% endif %}">{{ question }}</dt><dd class="{% if forloop.last %}font-medium{% else %}text-muted{% endif %}">{{ answer }}</dd>{% endfor %}</dl>
               {% elif code %}<pre class="landing-code">{{ row.answer|highlight:code }}</pre>

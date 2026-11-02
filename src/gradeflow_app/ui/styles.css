@@ -233,6 +233,11 @@
   @apply flex items-center gap-3 border-b border-warning/30 bg-warning/10 px-5 py-2.5 text-sm;
 }
 
+/* A list row a change affects. */
+@utility changed {
+  @apply relative before:pointer-events-none before:absolute before:inset-y-0 before:left-0 before:w-0.75 before:bg-primary;
+}
+
 @utility preview-bar {
   @apply flex min-h-12 items-center gap-2 border-t border-base-300 bg-secondary/60 px-4 py-2;
 }

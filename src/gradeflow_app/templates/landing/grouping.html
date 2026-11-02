@@ -5,7 +5,7 @@
   {% for by, groups in answer_groups.items %}
   <ul class="@container divide-y divide-base-300 border-t border-base-300" aria-label="Answers" x-show="grouping === '{{ by }}'"{% if by != "meaning" %} x-cloak{% endif %}>
     {% for group in groups %}
-    <li class="landing-answer" x-data="answerGroup" data-answers="{{ group.texts_json }}"{% if group.before != group.accepted %} :class="done && 'bg-primary/5'"{% endif %}>
+    <li class="landing-answer" x-data="answerGroup" data-answers="{{ group.texts_json }}"{% if group.before != group.accepted %} :class="done && 'changed'"{% endif %}>
       <div class="min-w-0 flex-1">
         <p class="font-medium">{{ group.answers.0.text }}</p>
         {% if group.answers|length > 1 %}<ul class="mt-1.5 flex flex-wrap gap-1.5">{% for other in group.answers|slice:"1:" %}<li class="badge badge-ghost h-auto gap-1.5 py-1 text-left">{{ other.text }}<span class="tabular-nums text-muted">{{ other.students }}</span></li>{% endfor %}</ul>{% endif %}
