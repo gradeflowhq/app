@@ -26,11 +26,14 @@
         <h3 class="font-semibold">Choose a method</h3>
         {% if panel.file_marks %}<p class="mt-0.5 text-sm text-muted">Until then, students keep their imported marks.</p>{% endif %}
       </div>
-      {% if panel.has_history %}<button class="btn btn-ghost btn-sm" hx-get="{% url 'marking_history' question.assessment_id question.pk %}" hx-target="#sheet-body" data-dialog="sheet">{% icon "clock" "size-4" %}History</button>{% endif %}
+      {% url 'question_methods' question.assessment_id question.pk as about %}
+      <div class="-my-1 flex shrink-0 gap-1">
+        <button type="button" class="btn btn-ghost btn-sm" hx-get="{{ about }}" hx-target="#picker-body" data-dialog="picker">{% icon "magnifying-glass" "size-4" %}Browse</button>
+        {% if panel.has_history %}<button class="btn btn-ghost btn-sm" hx-get="{% url 'marking_history' question.assessment_id question.pk %}" hx-target="#sheet-body" data-dialog="sheet">{% icon "clock" "size-4" %}History</button>{% endif %}
+      </div>
     </div>
     <form class="grid gap-4" hx-post="{% url 'marking_start' question.assessment_id question.pk %}" hx-target="#marking-panel" hx-swap="outerHTML">
       {% csrf_token %}
-      {% url 'question_methods' question.assessment_id question.pk as about %}
       <ul class="grid gap-2">{% for method in panel.choices.methods %}<c-method-choice :method="method" about="{{ about }}" />{% endfor %}</ul>
       {% if panel.choices.saved %}
       <section class="grid gap-2" aria-labelledby="saved-methods">
