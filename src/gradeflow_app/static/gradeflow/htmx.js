@@ -63,24 +63,87 @@ htmx.registerExtension("morph-event", {
     !(element.hasAttribute("x-show") && (attrName === "style" || attrName === "x-cloak")),
 });
 
-// A loading bar for pages someone opens that are slow enough to notice, not for live refreshes. It sits outside
-// body, which boosted swaps replace.
-const PROGRESS_DELAY_MS = 150;
+// A page someone opens answers the click before it arrives, as an app's would: a loading bar starts, the link
+// becomes current in its nav, and what the page replaces is busy, which styles.css dims if it takes a moment. Live
+// refreshes don't count. The bar sits outside body, which boosted swaps replace.
 document.documentElement.insertAdjacentHTML("beforeend", '<div id="progress" aria-hidden="true"></div>');
 const progress = document.getElementById("progress");
-let progressing;
 const opened = ({ sourceEvent, request }) => sourceEvent?.isTrusted && request.headers["HX-Request-Type"] === "full";
+const replaced = ({ target }) => (target === document.body ? document.getElementById("main") : target);
+// Kept from the start, since a swap can change the request's elements.
+const opening = new WeakMap(); // a page's request → what it replaces, and the link it made current
+let latest; // the latest page's request, whose link goes back to not current if the page never arrives
 document.addEventListener("htmx:before:request", (event) => {
-  if (event.defaultPrevented || !opened(event.detail.ctx)) return;
+  const { ctx } = event.detail;
+  if (event.defaultPrevented || !opened(ctx)) return;
   delete progress.dataset.state;
-  clearTimeout(progressing);
-  progressing = setTimeout(() => (progress.dataset.state = "loading"), PROGRESS_DELAY_MS);
+  progress.offsetWidth; // restart from empty, even mid-fade
+  progress.dataset.state = "loading";
+  const link = ctx.sourceElement;
+  const current = link.closest("nav")?.querySelector('[aria-current="page"]');
+  if (current && current !== link) {
+    current.removeAttribute("aria-current");
+    link.setAttribute("aria-current", "page");
+  }
+  const region = replaced(ctx);
+  region?.setAttribute("aria-busy", "true");
+  opening.set(ctx, { region, link, current });
+  latest = ctx;
 });
 document.addEventListener("htmx:finally:request", (event) => {
-  if (!opened(event.detail.ctx)) return;
-  clearTimeout(progressing);
+  const { ctx } = event.detail;
+  const page = opening.get(ctx);
+  if (!page) return;
   if (progress.dataset.state === "loading") progress.dataset.state = "done";
+  page.region?.removeAttribute("aria-busy");
+  if (ctx !== latest || ctx.response || !page.current?.isConnected) return;
+  page.link.removeAttribute("aria-current");
+  page.current.setAttribute("aria-current", "page");
 });
+
+// A button someone presses, or confirms, is busy until its request ends, and ignores presses meanwhile: htmx would
+// queue them. Pressing Enter in a form clicks its button too. A wait long enough to notice shows a spinner
+// (styles.css), which then stays long enough to see rather than flash.
+const SPINNER_DELAY_MS = 300;
+const SPINNER_SHOWN_MS = 200;
+const spinners = new WeakMap(); // a pressed button's request → the button, its spinner's timer, and when it showed
+const pressed = ({ sourceEvent, sourceElement }) => {
+  const button = sourceEvent?.submitter ?? sourceElement;
+  return ["click", "submit"].includes(sourceEvent?.type) && button.matches("button.btn") ? button : null;
+};
+document.addEventListener("htmx:before:request", (event) => {
+  const { ctx } = event.detail;
+  const button = event.defaultPrevented ? null : pressed(ctx);
+  if (!button) return;
+  button.setAttribute("aria-busy", "true");
+  const spinner = { button };
+  spinner.timer = setTimeout(() => {
+    button.dataset.spinner = "";
+    spinner.shown = performance.now();
+  }, SPINNER_DELAY_MS);
+  spinners.set(ctx, spinner);
+});
+document.addEventListener("htmx:finally:request", (event) => {
+  const spinner = spinners.get(event.detail.ctx);
+  if (!spinner) return;
+  clearTimeout(spinner.timer);
+  const stop = () => {
+    spinner.button.removeAttribute("aria-busy");
+    delete spinner.button.dataset.spinner;
+  };
+  const left = spinner.shown + SPINNER_SHOWN_MS - performance.now(); // NaN if it never showed
+  if (left > 0) setTimeout(stop, left);
+  else stop();
+});
+addEventListener(
+  "click",
+  (event) => {
+    if (!event.target.closest?.('.btn[aria-busy="true"]')) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  },
+  true,
+);
 
 // Search forms leave empty fields out of the URL.
 document.body.addEventListener("htmx:config:request", (event) => {

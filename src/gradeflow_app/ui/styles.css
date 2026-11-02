@@ -385,20 +385,35 @@
   }
 }
 
-/* The loading bar htmx.js shows while a page takes long enough to notice. */
+/* The loading bar htmx.js shows while a page opens: a quarter of the way in a moment, then slowing towards 90%, and
+   on arrival the rest of the way before it fades. Transitions, unlike animations, carry on from where they stop.
+   Tailwind's scale-x-* set `scale`, which would multiply with this `transform`. */
 #progress {
-  @apply pointer-events-none fixed inset-x-0 top-0 z-[60] h-0.5 origin-left scale-x-0 bg-primary opacity-0;
+  @apply pointer-events-none fixed inset-x-0 top-0 z-[60] h-0.5 origin-left bg-primary opacity-0;
+  transform: scaleX(0);
   &[data-state="loading"] {
     @apply opacity-100;
-    animation: progress 8s cubic-bezier(0.1, 0.6, 0.2, 1) forwards;
+    transform: scaleX(0.9);
+    transition: transform 10s cubic-bezier(0.05, 0.7, 0.1, 1);
   }
   &[data-state="done"] {
-    @apply scale-x-100 opacity-0 transition-opacity duration-300;
+    transform: scaleX(1);
+    transition:
+      transform 200ms ease-out,
+      opacity 300ms ease 200ms;
   }
 }
-@keyframes progress {
-  to {
-    transform: scaleX(0.9);
+/* What an opening page replaces (htmx.js), once it has kept someone waiting. A `contents` box has no opacity. */
+:is([aria-busy="true"]:not(.contents, .btn), .contents[aria-busy="true"] > *) {
+  @apply opacity-50 transition-opacity delay-100 duration-200;
+}
+/* A pressed button whose request takes a moment (htmx.js) shows a spinner in place of its label, at the same size. */
+.btn[data-spinner] {
+  @apply relative text-transparent transition-none;
+  &::after {
+    @apply loading loading-spinner loading-sm absolute top-1/2 left-1/2 -translate-1/2;
+    content: "";
+    background-color: var(--btn-fg);
   }
 }
 
