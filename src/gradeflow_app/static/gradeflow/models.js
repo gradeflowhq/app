@@ -48,6 +48,7 @@ export const modelService = () => ({
   provider: "",
   token: "",
   connected: false,
+  connecting: false,
   // The settings card forgets a service the server refused, or no longer offers.
   init() {
     if (this.$root.id === "model-service") {
@@ -61,16 +62,16 @@ export const modelService = () => ({
   get disconnected() {
     return !this.connected;
   },
-  // Connecting the same service again, with a new token, keeps its models.
-  connect() {
+  // Connecting the same service again, with a new token, keeps its models. The form stays until the server has
+  // tried the token.
+  async connect() {
     const provider = this.$refs.provider.value;
     const found = connection();
     const token = this.token.trim();
     keep(found?.provider === provider ? { ...found, token } : { provider, token });
-    this.provider = provider;
-    this.connected = true;
-    this.token = "";
-    this.send(this.$root.dataset.connect);
+    this.connecting = true;
+    await this.send(this.$root.dataset.connect);
+    this.connecting = false;
   },
   disconnect() {
     forget();

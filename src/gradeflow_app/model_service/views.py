@@ -39,10 +39,15 @@ def models(request: Request) -> HttpResponse:
 
 @require_POST
 def connect(request: Request) -> HttpResponse:
-    """The card for the AI service this device just connected, or why it couldn't."""
+    """The card for the AI service this device just connected, or why it couldn't. Listing the service's models
+    proves the token works."""
     state = _state(request)
-    if state is None or endpoint(request, state) is None:
+    if state is None or (found := endpoint(request, state)) is None:
         return _card(request, None, refusal="Choose an AI service and enter its token.")
+    try:
+        list_models(found)
+    except GradeFlowError as error:
+        return _card(request, None, refusal=str(error), provider=state.provider)
     return _card(request, state)
 
 
@@ -209,10 +214,11 @@ def _context(request: Request, state: State | None) -> dict[str, Any]:
     }
 
 
-def _card(request: Request, state: State | None, refusal: str = "") -> HttpResponse:
+def _card(request: Request, state: State | None, refusal: str = "", provider: str = "") -> HttpResponse:
     context = _context(request, state) | {
         "loaded": True,
         "refusal": refusal,
+        "provider": provider,
         "providers": settings.GRADEFLOW_MODEL_PROVIDERS,
     }
     return _kept(render(request, "model_service/card.html#card", context), state)

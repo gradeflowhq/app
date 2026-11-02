@@ -9,7 +9,7 @@
     <div class="grid gap-5 p-5">
       <div class="grid gap-1.5">
         <label class="font-medium" for="model-provider">Service</label>
-        <select id="model-provider" class="select w-full" x-ref="provider">{% for name in providers %}<option>{{ name }}</option>{% endfor %}</select>
+        <select id="model-provider" class="select w-full" x-ref="provider">{% for name in providers %}<option{% if name == provider %} selected{% endif %}>{{ name }}</option>{% endfor %}</select>
       </div>
       <div class="grid gap-1.5">
         <label class="font-medium" for="model-token">Token</label>
@@ -17,7 +17,7 @@
       </div>
       {% if refusal %}<c-alert>{{ refusal }}</c-alert>{% endif %}
     </div>
-    <footer class="flex flex-wrap items-center gap-3 border-t border-base-300 px-5 py-4"><span class="flex items-center gap-1.5 text-sm text-muted">{% icon "lock-closed" "size-4" %}Kept on this device only</span><button type="button" class="btn btn-primary ml-auto" x-on:click="connect">Connect</button></footer>
+    <footer class="flex flex-wrap items-center gap-3 border-t border-base-300 px-5 py-4"><span class="flex items-center gap-1.5 text-sm text-muted">{% icon "lock-closed" "size-4" %}Kept on this device only</span><button type="button" class="btn btn-primary ml-auto" x-on:click="connect" :disabled="connecting"><span class="loading loading-spinner loading-xs" x-show="connecting" x-cloak></span>Connect</button></footer>
     {% else %}
     <p class="p-5 text-muted">This server offers no AI service.</p>
     {% endif %}

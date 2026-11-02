@@ -97,7 +97,8 @@ def test_a_server_without_ai_services_says_so(client: Client, settings: Settings
     assert "This server offers no AI service." in client.get(reverse("integrations")).content.decode()
 
 
-def test_connecting_offers_both_ways_to_choose(client: Client, idle: None) -> None:
+def test_connecting_offers_both_ways_to_choose(client: Client, idle: None, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(views, "list_models", lambda endpoint: ["decider"])
     response = post(client, "model_service_connect")
     assert not Job.objects.exists()
     page = response.content.decode()
@@ -144,6 +145,18 @@ def test_choosing_myself_says_why_the_service_lists_no_models(
     monkeypatch.setattr(views, "list_models", none)
     offered = post(client, "model_service_chooser").content.decode()
     assert "No models were found at this address" in offered
+
+
+def test_connecting_refuses_a_token_the_service_refuses(client: Client, monkeypatch: pytest.MonkeyPatch) -> None:
+    def refused(endpoint: object) -> list[str]:
+        raise GradeFlowError("The AI service refused the token.")
+
+    monkeypatch.setattr(views, "list_models", refused)
+    response = post(client, "model_service_connect")
+    assert b"The AI service refused the token." in response.content
+    assert f"<option selected>{PROVIDER}</option>".encode() in response.content
+    assert b'data-refused="true"' in response.content
+    assert STATE_HEADER not in response
 
 
 def test_only_the_servers_ai_services_connect(client: Client, user: User, idle: None) -> None:
