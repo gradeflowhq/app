@@ -16,8 +16,14 @@
   <c-empty class="surface" icon="link" title="Not linked to Canvas">{% if not membership.can_edit %}An editor can link this course to Canvas.{% endif %}{% if membership.can_edit %}<c-slot name="action"><a class="btn btn-primary" href="{% url 'canvas' course.pk %}">Set up Canvas</a></c-slot>{% endif %}</c-empty>
   {% else %}
   <div class="contents"{% if membership.can_edit %} x-data="canvasPublisher" data-config="{{ config }}"{% endif %}>
+  {% if membership.can_edit %}
+  <c-card title="Canvas" x-show="!connected" x-cloak>
+    <c-canvas-connect why="This device needs your Canvas access token to send marks." shows_error />
+  </c-card>
+  {% endif %}
+  <div class="contents"{% if membership.can_edit %} x-show="connected" x-cloak{% endif %}>
   <c-card title="Canvas" body_class="px-5 py-1">
-    {% if membership.can_edit %}<c-slot name="actions"><a class="flex items-center gap-2 text-sm text-muted hover:text-base-content" href="{% url 'canvas' course.pk %}" x-show="connected" x-cloak><span class="status status-success"></span><span x-text="canvasHost"></span></a></c-slot>{% endif %}
+    {% if membership.can_edit %}<c-slot name="actions"><a class="flex items-center gap-2 text-sm text-muted hover:text-base-content" href="{% url 'canvas' course.pk %}"><span class="status status-success"></span><span x-text="canvasHost"></span></a></c-slot>{% endif %}
     <div class="divide-y divide-base-300">
     <div class="setting-row">
       <span class="setting-label">Course</span>
@@ -25,8 +31,7 @@
       {% if membership.can_edit %}<a class="btn btn-ghost btn-sm -mr-3" href="{% url 'canvas' course.pk %}">Change</a>{% endif %}
     </div>
     {% if membership.can_edit %}
-    <c-canvas-connect why="This device needs your Canvas access token to send marks." class="py-4" x-show="!connected" x-cloak />
-    <div class="setting-row" x-show="connected" x-cloak>
+    <div class="setting-row">
       <span class="setting-label">Assignment</span>
       <div class="flex min-w-0 flex-1 items-center gap-3">
         <template x-if="assignmentCard">
@@ -38,7 +43,7 @@
       <button type="button" class="btn btn-sm" :class="assignmentCard && 'btn-ghost -mr-3'" x-on:click="pickAssignment" x-text="assignmentCard ? 'Change' : 'Choose'"></button>
       {% include "publish/picker_dialog.html" with key="assignment" Key="Assignment" label="Assignment" search="Search assignments" empty="No assignments match." create="New assignment" %}
     </div>
-    <div class="grid gap-4 py-4 sm:grid-cols-2 sm:pl-32" x-show="connected && creating" x-cloak>
+    <div class="grid gap-4 py-4 sm:grid-cols-2 sm:pl-32" x-show="creating" x-cloak>
       <div class="grid content-start gap-1.5"><label class="font-medium" for="canvas-new-name">Name</label><input id="canvas-new-name" class="input w-full" x-model="newName"></div>
       {% include "publish/picker.html" with key="group" Key="Group" label="Assignment group" choose="Choose an assignment group" search="Search assignment groups" empty="No assignment groups match." create="New assignment group" panel="publish/new_group.html" %}
     </div>
@@ -63,11 +68,12 @@
     {% endif %}
     <c-slot name="footer">{% partialdef comment_preview inline %}<button type="button" id="comment-preview" class="btn btn-ghost -ml-4" hx-get="{% url 'publish_comment' membership.assessment.pk %}" hx-target="#comment-body" data-dialog="comment"{% if oob %} hx-swap-oob="true"{% endif %}{% if not sending.include_feedback %} hidden{% endif %}>{% icon "eye" "size-4" %}Preview comment</button>{% endpartialdef %}{% if membership.can_edit %}
       <span class="flex items-center gap-2 text-sm text-muted" x-show="working && !reviewing" x-cloak><span class="loading loading-spinner loading-sm"></span><span x-text="busy"></span></span>
-      <button type="button" class="btn btn-primary ml-auto" x-show="connected" x-cloak x-on:click="review" :disabled="!canReview">{% icon "paper-airplane" "size-4" %}Send to Canvas</button>
+      <button type="button" class="btn btn-primary ml-auto" x-on:click="review" :disabled="!canReview">{% icon "paper-airplane" "size-4" %}Send to Canvas</button>
     {% else %}
       <p class="ml-auto text-sm text-muted">Editors send the marks.</p>
     {% endif %}</c-slot>
   </c-card>
+  </div>
   <c-dialog id="comment" title="Comment in Canvas"><div id="comment-body"></div></c-dialog>
   {% if membership.can_edit %}
   <c-dialog id="send-review" title="Send to Canvas" x-on:close="closeReview" x-on:cancel="holdWhileSending">
