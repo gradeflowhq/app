@@ -242,6 +242,18 @@
   @apply flex min-h-12 items-center gap-2 border-t border-base-300 bg-secondary/60 px-4 py-2;
 }
 
+/* Long content cut to about ten lines and faded at the cut, until shown in full (clamped.js). */
+@utility clamped {
+  @apply max-h-64 overflow-hidden;
+  &[data-long] {
+    mask-image: linear-gradient(to bottom, black calc(100% - 2.5rem), transparent);
+  }
+  &[data-open] {
+    @apply max-h-none;
+    mask-image: none;
+  }
+}
+
 /* Links: `text-link` in a sentence, `quiet-link` for a secondary one beside other content. */
 @utility text-link {
   @apply font-medium text-primary underline-offset-2 hover:underline;
@@ -338,7 +350,7 @@
     @apply text-muted italic;
   }
   .prose-core {
-    @apply text-[15px] leading-relaxed;
+    @apply text-[15px] leading-relaxed break-words;
     & code {
       @apply rounded bg-base-content/8 px-1 py-0.5 font-mono text-[0.9em];
     }

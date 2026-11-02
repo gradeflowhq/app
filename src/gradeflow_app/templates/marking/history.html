@@ -11,7 +11,7 @@
         </div>
         {% if membership.can_edit and not entry.current %}<button class="btn btn-sm -my-1 shrink-0" hx-post="{% url 'marking_restore' membership.assessment.pk question.pk entry.version.history_id %}">Restore</button>{% endif %}
       </div>
-      {% if entry.summary.description %}<div class="prose-core mt-2 text-sm text-muted">{{ entry.summary.description|markdown }}</div>{% endif %}
+      {% if entry.summary.description %}<c-clamped class="prose-core mt-2 text-sm text-muted">{{ entry.summary.description|markdown }}</c-clamped>{% endif %}
     </li>
     {% empty %}
     <li class="text-muted">No saved versions yet.</li>

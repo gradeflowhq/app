@@ -3,6 +3,7 @@
 import Alpine from "../vendor/alpinejs-csp-3.17.4/module.esm.min.js";
 import { canvasConnection, canvasCourse, canvasPublisher } from "./canvas.js";
 import { histogram } from "./charts.js";
+import { clamped } from "./clamped.js";
 import { codeEditor } from "./code.js";
 import "./downloads.js";
 import { fileDrop } from "./drop.js";
@@ -50,6 +51,7 @@ const components = {
   canvasPublisher,
   canvasSend,
   choiceList,
+  clamped,
   codeEditor,
   fileDrop,
   histogram,

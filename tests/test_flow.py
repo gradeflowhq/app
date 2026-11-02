@@ -451,7 +451,7 @@ def test_an_empty_combination_inside_another_needs_setting_up(client: Client, as
     draft.definition = dump_yaml({"question": "Q1", "uses": "gradeflow/combination@1", "with": {"checks": [inner]}})
     draft.save()
     page = client.get(reverse("question", args=[assessment.pk, draft.question_id])).content.decode()
-    assert "<strong>All must be correct</strong>" not in page
+    assert "All of these:" not in page
     assert "Needs setting up" in page
 
 

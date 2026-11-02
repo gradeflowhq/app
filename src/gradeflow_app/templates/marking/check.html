@@ -71,7 +71,7 @@
           <div class="min-w-0 flex-1">
             <button type="button" class="block text-left font-medium after:absolute after:inset-0 after:rounded-box" hx-post="{{ draft_url }}" hx-vals="{% vals op="open" target=child.path %}">{{ child.label }}</button>
             {% if child.notes %}<p class="text-sm text-muted">{{ child.notes|join:" · " }}</p>{% endif %}
-            {% if child.incomplete and not child.problem %}<p class="text-sm text-warning">Needs setting up</p>{% elif child.description %}<div class="prose-core text-sm text-muted">{{ child.description|markdown }}</div>{% endif %}
+            {% if child.incomplete and not child.problem %}<p class="text-sm text-warning">Needs setting up</p>{% elif child.description %}<c-clamped class="prose-core text-sm text-muted">{{ child.description|markdown }}</c-clamped>{% endif %}
             {% if child.problem %}<p class="text-sm text-error">{{ child.problem }}</p>{% endif %}
           </div>
           {% if editor.editable and not slot.fixed %}

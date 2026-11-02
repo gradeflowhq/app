@@ -4,7 +4,7 @@
 <div>
   {% if question_group %}<p class="text-sm text-muted">Question group {{ question_group }}</p>{% endif %}
   {% if summary.method %}<h3 class="{% if question_group %}mt-0.5 {% endif %}font-semibold">{{ summary.method }}{% if archived %} <span class="badge badge-ghost badge-sm align-middle font-normal">Archived</span>{% endif %}</h3>{% endif %}
-  {% if summary.description %}<div class="prose-core mt-1">{{ summary.description|markdown }}</div>{% endif %}
+  {% if summary.description %}<c-clamped class="prose-core mt-1">{{ summary.description|markdown }}</c-clamped>{% endif %}
 </div>
 {% endif %}
 {% if summary.broken %}<c-broken :problems="summary.problems" />{% endif %}
