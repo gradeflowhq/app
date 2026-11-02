@@ -19,6 +19,9 @@
   --color-primary-content: oklch(100% 0 0);
   --color-logo: oklch(58.6% 0.159 251);
   --color-chart: oklch(72% 0.1 252);
+  --color-code-keyword: oklch(48% 0.19 302);
+  --color-code-name: oklch(47% 0.15 262);
+  --color-code-literal: oklch(47% 0.1 218);
   --backdrop: oklch(20% 0.01 260 / 0.35);
   --color-secondary: oklch(94.5% 0.025 258);
   --color-secondary-content: oklch(38% 0.13 258);
@@ -56,6 +59,9 @@
   --color-primary-content: oklch(18% 0.03 258);
   --color-logo: oklch(71.8% 0.142 246);
   --color-chart: oklch(58% 0.1 252);
+  --color-code-keyword: oklch(77% 0.13 305);
+  --color-code-name: oklch(78% 0.11 258);
+  --color-code-literal: oklch(80% 0.09 205);
   --backdrop: oklch(5% 0 0 / 0.65);
   --color-secondary: oklch(30% 0.05 258);
   --color-secondary-content: oklch(88% 0.06 258);
@@ -305,6 +311,20 @@
 }
 
 @layer components {
+  /* Pygments' token classes from the highlight filter. Not red, green or amber, which mean marks. */
+  .code-k, .code-kc, .code-kd, .code-kn, .code-kp, .code-kr, .code-kt, .code-ow {
+    color: var(--color-code-keyword);
+  }
+  .code-nf, .code-fm, .code-nc, .code-nd, .code-ne, .code-nb, .code-bp {
+    color: var(--color-code-name);
+  }
+  .code-s, .code-sa, .code-sb, .code-sc, .code-dl, .code-sd, .code-s2, .code-se, .code-sh, .code-si, .code-sx,
+  .code-sr, .code-s1, .code-ss, .code-m, .code-mb, .code-mf, .code-mh, .code-mi, .code-il, .code-mo {
+    color: var(--color-code-literal);
+  }
+  .code-c, .code-ch, .code-cm, .code-cp, .code-cpf, .code-c1, .code-cs {
+    @apply text-muted italic;
+  }
   .prose-core {
     @apply text-[15px] leading-relaxed;
     & code {
@@ -367,8 +387,12 @@
 
 /* Answer groups in one list, split around each open group so it stands apart as its own card. */
 @utility answer-groups {
+  /* The browser skips styling and laying out groups out of view until they near it, which a hundred code answers
+     need. A group's size is a guess until it is first shown. */
   & > li {
     @apply overflow-hidden border-x border-base-300 bg-base-100;
+    content-visibility: auto;
+    contain-intrinsic-size: auto 9rem;
   }
   & > li:first-child,
   & > li:has(> details[open]),

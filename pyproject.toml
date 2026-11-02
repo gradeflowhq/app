@@ -23,6 +23,7 @@ dependencies = [
     "mdit-py-plugins>=0.6",
     "psycopg[binary]>=3.3.6",
     "pydantic>=2.14",
+    "pygments>=2.21",
     "ua-parser[regex]>=1.0.2",
     "uvicorn[standard]>=0.54",
     "whitenoise>=6.12",
@@ -40,6 +41,7 @@ dev = [
     "pytest-cov>=7.1",
     "pytest-django>=4.14",
     "ruff>=0.17",
+    "types-pygments>=2.21.0.20260819",
 ]
 qa = ["playwright>=1.64"]
 sandbox = ["gradeflow-core[ml,llm]", "httpx>=0.28"]

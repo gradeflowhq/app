@@ -841,10 +841,11 @@ def test_code_answers_show_their_likeliest_layout_and_as_exported(client: Client
     flat = "def first_positive(xs):\nfor x in xs:\nif x > 0:\nreturn x\nreturn None"
     assessment.students.update(answers={"Q1": flat})
     page = client.get(reverse("answers", args=[assessment.pk, question.pk])).content.decode()
-    assert escape("def first_positive(xs):\n    for x in xs:\n        if x > 0:") in page
-    assert "font-mono" in page
-    assert "As exported" in page
-    assert escape(flat) in page
+    assert '<span class="code-k">def</span>' in page
+    text = html.unescape(re.sub(r"<span[^>]*>|</span>", "", page))
+    assert "def first_positive(xs):\n    for x in xs:\n        if x > 0:" in text
+    assert "As exported" in text
+    assert flat in text
 
 
 def test_a_problem_with_a_checks_settings_as_a_whole_names_only_the_check() -> None:

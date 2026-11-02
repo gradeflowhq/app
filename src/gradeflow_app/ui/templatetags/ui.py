@@ -3,12 +3,13 @@ import re
 from collections.abc import Iterable, Mapping, Sequence
 from datetime import datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
+from functools import cache
 
 from allauth.usersessions.models import UserSession
 from django import template
 from django.contrib.humanize.templatetags.humanize import naturalday
 from django.utils import timezone
-from django.utils.html import format_html, json_script
+from django.utils.html import conditional_escape, format_html, json_script
 from django.utils.safestring import SafeString, mark_safe
 from django.utils.text import capfirst
 from django.utils.timesince import timesince
@@ -20,6 +21,11 @@ from markdown_it.renderer import RendererHTML
 from markdown_it.token import Token
 from markdown_it.utils import EnvType, OptionsDict
 from mdit_py_plugins.dollarmath import dollarmath_plugin
+from pygments import highlight as pygments_highlight
+from pygments.formatters import HtmlFormatter
+from pygments.lexer import Lexer
+from pygments.lexers import get_lexer_by_name
+from pygments.util import ClassNotFound
 from ua_parser import parse
 
 from gradeflow_app.live import topics
@@ -43,6 +49,8 @@ _math_markdown = MarkdownIt("commonmark", {"html": False, "linkify": False, "bre
 for _renderer in (_markdown, _math_markdown):
     _renderer.add_render_rule("link_open", _new_tab)
 _WORD_BREAKS = re.compile(r"[\s@.]+")
+# Pygments' short token classes, such as code-k for keywords, which styles.css colours.
+_HIGHLIGHTED = HtmlFormatter(nowrap=True, classprefix="code-")
 
 
 @register.simple_tag
@@ -119,13 +127,33 @@ def percent(value: float | None, whole: float = 1) -> str:
 
 
 @register.filter
-def code_answers(question: Question | Mapping[str, Question] | None, key: str | None = None) -> bool:
-    """Whether the question's answers are code, which only lines up in a fixed-width font. Of several questions, those
-    of question ``key``."""
+def code_language(question: Question | Mapping[str, Question] | None, key: str | None = None) -> str | None:
+    """What the question's answers are written in when they are code, which only lines up in a fixed-width font:
+    "text" for code in no named language. Of several questions, those of question ``key``."""
     if isinstance(question, Mapping):
         assert key is not None
         question = question.get(key)
-    return question is not None and question.answer_schema().get(HINT_KEY, {}).get("kind") == "code"
+    if question is None:
+        return None
+    hinted = question.answer_schema().get(HINT_KEY, {})
+    return hinted.get("language", "text") if hinted.get("kind") == "code" else None
+
+
+@cache
+def _lexer(language: str) -> Lexer | None:
+    try:
+        return get_lexer_by_name(language, stripnl=False, ensurenl=False)
+    except ClassNotFound:
+        return None
+
+
+@register.filter
+def highlight(text: str, language: str | None) -> SafeString:
+    """``text`` coloured as code in ``language``; plain when there is none or Pygments doesn't know it."""
+    lexer = language and _lexer(language)
+    if not lexer:
+        return conditional_escape(text)
+    return mark_safe(pygments_highlight(text, lexer, _HIGHLIGHTED))
 
 
 @register.filter

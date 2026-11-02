@@ -213,7 +213,7 @@
 {% endwith %}
 
 {# A test answer as written; one of several values, value by value. #}
-{% partialdef answer_shown %}{% if row.values %}<p class="flex flex-wrap gap-1.5">{% for label, value in row.values %}<span class="badge badge-ghost font-medium" title="{{ label }}">{{ value|default:"—" }}</span>{% endfor %}</p>{% else %}{% include "results/answer_text.html" with answer=row.answer expanded=True code=selected|code_answers %}{% endif %}{% endpartialdef %}
+{% partialdef answer_shown %}{% if row.values %}<p class="flex flex-wrap gap-1.5">{% for label, value in row.values %}<span class="badge badge-ghost font-medium" title="{{ label }}">{{ value|default:"—" }}</span>{% endfor %}</p>{% else %}{% include "results/answer_text.html" with answer=row.answer expanded=True code=selected|code_language %}{% endif %}{% endpartialdef %}
 
 {# A test answer to write in place, inside a `testAnswer`: `op` "add" for a new submission's, "save" for `row`'s. The field takes the text's place exactly (`in-place`), so the text doesn't move; its buttons (answer_buttons) take the row's actions' place. #}
 {% partialdef answer_editor %}
@@ -223,7 +223,7 @@
   {% with form=row.form|default:new_answer %}{% if form %}
   <div class="grid gap-2{% if form.fields|length > 1 %} sm:grid-cols-2{% endif %}" role="group" aria-label="{% if op == "save" %}Answer of submission {{ row.number }}{% else %}New answer{% endif %}">{% for field in form %}{{ field }}{% endfor %}</div>
   {% else %}
-  <textarea name="answer" x-on:keydown.enter="submit" rows="1" class="textarea in-place block field-sizing-content min-h-0 w-[calc(100%+1rem)] resize-none font-medium{% if selected|code_answers %} font-mono text-sm{% else %} text-base{% endif %}" aria-label="{% if op == "save" %}Answer of submission {{ row.number }}{% else %}New answer{% endif %}"{% if op == "add" %} placeholder="Write an answer"{% endif %}>{{ answer }}</textarea>
+  <textarea name="answer" x-on:keydown.enter="submit" rows="1" class="textarea in-place block field-sizing-content min-h-0 w-[calc(100%+1rem)] resize-none font-medium{% if selected|code_language %} font-mono text-sm{% else %} text-base{% endif %}" aria-label="{% if op == "save" %}Answer of submission {{ row.number }}{% else %}New answer{% endif %}"{% if op == "add" %} placeholder="Write an answer"{% endif %}>{{ answer }}</textarea>
   {% endif %}{% endwith %}
 </form>
 {% endpartialdef %}

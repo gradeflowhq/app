@@ -1,3 +1,4 @@
+import html
 import json
 import re
 from datetime import timedelta
@@ -16,8 +17,9 @@ from gradeflow_app.ui.templatetags.ui import (
     ago,
     brief,
     browser,
-    code_answers,
+    code_language,
     day,
+    highlight,
     initials,
     marks,
     math_markdown,
@@ -201,7 +203,18 @@ def test_messages_survive_a_reload(client: Client, assessment: Assessment) -> No
 
 def test_code_answers_are_told_apart_by_their_question() -> None:
     code, text = new_question("code"), new_question("text")
-    assert code_answers(code)
-    assert not code_answers(text)
-    assert not code_answers(None)
-    assert code_answers({"Q1": code, "Q2": text}, "Q1")
+    assert code_language(code) == "python"
+    assert code_language(text) is None
+    assert code_language(None) is None
+    assert code_language({"Q1": code, "Q2": text}, "Q1") == "python"
+
+
+def test_code_is_coloured_by_its_language_and_other_text_only_escaped() -> None:
+    code = "\ndef f(x):\n    return len(x) < 1  # small\n"
+    coloured = highlight(code, "python")
+    assert '<span class="code-k">def</span>' in coloured
+    assert '<span class="code-nb">len</span>' in coloured
+    assert '<span class="code-c1"># small</span>' in coloured
+    assert html.unescape(re.sub(r"<[^>]+>", "", coloured)) == code
+    assert highlight("<b>", None) == "&lt;b&gt;"
+    assert highlight("<b>", "no-such-language") == "&lt;b&gt;"

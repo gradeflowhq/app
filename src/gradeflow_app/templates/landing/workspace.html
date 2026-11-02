@@ -17,18 +17,18 @@
         <p class="-mt-2 px-4 pb-3 text-sm text-muted">{{ workspace.question }}</p>
         <div class="flex items-center gap-2 px-4 pb-3"><span class="text-sm text-muted">Answer groups</span><span class="select select-sm w-40">Same feedback</span></div>
       </header>
-      <ul class="@container divide-y divide-base-300">
+      {% with code=workspace.question_set|code_language:workspace.number %}<ul class="@container divide-y divide-base-300">
         {% for group, marks, checks in workspace.rows %}
         <li class="landing-answer">
           <div class="min-w-0 flex-1">
-            <pre class="landing-code">{{ group.code }}</pre>
+            <pre class="landing-code">{{ group.code|highlight:code }}</pre>
             <p class="mt-1.5 text-sm text-muted">and {{ group.others }} other answers</p>
             <p class="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-sm">{% for check, correct in checks %}<span class="flex items-center gap-1 {% if correct %}text-success{% else %}text-error{% endif %}">{% if correct %}{% icon "check" "size-3.5" %}{% else %}{% icon "x-mark" "size-3.5" %}{% endif %}{{ check.name }}</span>{% endfor %}</p>
           </div>
           <div><c-marks :low="marks.low" :high="marks.high" :max_marks="workspace.max_marks" /><span class="tabular-nums text-sm text-muted">{{ group.students }} student{{ group.students|pluralize }}</span></div>
         </li>
         {% endfor %}
-      </ul>
+      </ul>{% endwith %}
     </div>
     <div class="border-l border-base-300 max-md:hidden">
       <div class="column-head"><h2 class="text-base font-semibold">Marking</h2></div>

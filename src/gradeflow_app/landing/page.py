@@ -28,10 +28,6 @@ class Row:
         return list(self.answers.values())[-1]
 
     @property
-    def code(self) -> bool:
-        return "\n" in self.answer
-
-    @property
     def changed(self) -> bool:
         return self.marks != self.before
 

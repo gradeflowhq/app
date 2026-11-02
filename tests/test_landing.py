@@ -20,6 +20,7 @@ def test_visitors_see_what_gradeflow_does() -> None:
     for section in SECTIONS:
         assert f'id="{section}"' in page
     assert escape(content().workspace.question) in page
+    assert '<span class="code-k">def</span>' in page
 
 
 def test_people_signed_in_go_to_their_courses(client: Client) -> None:
