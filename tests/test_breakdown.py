@@ -3,7 +3,7 @@ import re
 
 from django.test import Client, TestCase
 from django.urls import reverse
-from gradeflow_core import CheckResult, Detail, Question, QuestionResult
+from gradeflow_core import CheckResult, Detail, QuestionResult
 from gradeflow_core.editing import dump_yaml
 
 from gradeflow_app.accounts.models import User
@@ -14,6 +14,7 @@ from gradeflow_app.marking.remarks import schedule_marking
 from gradeflow_app.results.breakdown import Table, breakdown_blocks
 from gradeflow_app.results.marks import Award
 from gradeflow_app.results.models import Result
+from tests.conftest import make_code_question
 
 LIGHT_IN_AT_MOST_THREE_WORDS = {
     "question": "Q1",
@@ -52,9 +53,7 @@ def test_a_marking_of_several_checks_shows_how_each_marked_an_answer(
 
 
 def test_the_breakdown_shows_the_fixed_code(client: Client, assessment: Assessment, user: User) -> None:
-    question = assessment.questions.get(key="Q1")
-    question.core_question = Question.load({"type": "code"})
-    question.save()
+    question = make_code_question(assessment, "Q1")
     assessment.students.update(answers={"Q1": "def f():\nreturn 1"})
     tests = [{"expression": "f()", "expected": "1"}, {"expression": "f() + 1", "expected": "2"}]
     check = {

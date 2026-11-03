@@ -1,5 +1,6 @@
 """Answer groups: students' answers to a question, grouped so a marker reviews each distinct answer once."""
 
+import functools
 from collections import Counter
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
@@ -189,12 +190,10 @@ def _without_invisible_whitespace(text: str) -> str:
 def student_answers(question: Question) -> list[StudentAnswer]:
     students = list(question.assessment.students.annotate(answer=answer_expression(question.key)))
     student_awards = awards([question], students)
-    normalized: dict[str, str] = {}
+    normalize = functools.cache(question.core_question.normalize)
     rows = []
     for student in students:
         answer: str = student.answer
-        if answer not in normalized:
-            normalized[answer] = question.core_question.normalize(answer)
         award = student_awards[student.pk, question.pk]
         rows.append(
             StudentAnswer(
@@ -205,7 +204,7 @@ def student_answers(question: Question) -> list[StudentAnswer]:
                 student_pk=str(student.pk),
                 encrypted_student_id=student.encrypted_id,
                 answer=answer,
-                normalized=normalized[answer],
+                normalized=normalize(answer),
             )
         )
     return rows

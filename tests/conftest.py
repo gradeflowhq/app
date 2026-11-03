@@ -4,18 +4,23 @@ import hmac
 import json
 import os
 import runpy
+import threading
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass, field
 from functools import partial
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import TYPE_CHECKING, Any
 from unittest.mock import patch
 from uuid import UUID
 
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.db import close_old_connections
 from django.test import Client, TestCase
 from django.urls import reverse
 from gradeflow_core import MarkedSubmission, QuestionSet
+from gradeflow_core import Question as CoreQuestion
 from gradeflow_core.editing import dump_yaml
 from pytest_django import Settings
 
@@ -33,6 +38,7 @@ from gradeflow_app.libraries.designer.workspace import MethodWorkspace
 from gradeflow_app.libraries.method_tests import new_tests
 from gradeflow_app.libraries.models import Library, Method, MethodDraftRecord, MethodVersion, VersionTests
 from gradeflow_app.marking.models import Marking, MarkingDraftRecord
+from gradeflow_app.questions.models import Question
 
 if TYPE_CHECKING:
     from django.test.client import _MonkeyPatchedWSGIResponse as Response
@@ -120,6 +126,12 @@ def user(db: None) -> User:
     return User.objects.create_user("ana@example.edu", "a-long-password", name="Ana Tan")
 
 
+@pytest.fixture
+def bo(db: None) -> User:
+    """Another person, in no course yet."""
+    return User.objects.create_user("bo@example.edu", "another-password", name="Bo Lim")
+
+
 def signed_in_client(user: User) -> Client:
     client = Client()
     client.force_login(user)
@@ -174,10 +186,32 @@ def start_marking(client: Client, assessment: Assessment, key: str, method: str)
     return reverse("draft", args=[assessment.pk, draft.pk]), draft
 
 
+def save_draft(client: Client, draft: MarkingDraftRecord) -> Response:
+    """Save `draft`, then run what waits on the commit, such as marking."""
+    with TestCase.captureOnCommitCallbacks(execute=True):
+        return client.post(
+            reverse("draft_save", args=[draft.assessment_id, draft.pk]), {"path": "", "operation": "save"}
+        )
+
+
+def preview_draft(client: Client, draft: MarkingDraftRecord) -> Response:
+    """Preview `draft`, then run what waits on the commit, such as the preview's job."""
+    with TestCase.captureOnCommitCallbacks(execute=True):
+        return client.post(reverse("draft_preview", args=[draft.assessment_id, draft.pk]))
+
+
 def code_draft(client: Client, assessment: Assessment) -> tuple[str, dict[str, str]]:
     """The URL of a draft marking Q1 with code, and its fields as the editor posts them."""
     url, _ = start_marking(client, assessment, "Q1", "gradeflow/custom-code@1")
     return url, {"path": "", "fields_posted": "1", "code": "correct = False\n"}
+
+
+def make_code_question(assessment: Assessment, key: str) -> Question:
+    """Question `key` as code, which Code Tests marks."""
+    question = assessment.questions.get(key=key)
+    question.core_question = CoreQuestion.load({"type": "code", "max_marks": question.core_question.max_marks})
+    question.save()
+    return question
 
 
 def member_client(assessment: Assessment, role: Role, email: str = "bo@example.edu") -> Client:
@@ -187,11 +221,19 @@ def member_client(assessment: Assessment, role: Role, email: str = "bo@example.e
     return signed_in_client(user)
 
 
+def full_marks_marking(assessment: Assessment, key: str) -> Marking:
+    """Question `key`'s marking, saved as Full Marks without marking anyone yet."""
+    return Marking.objects.create(
+        assessment=assessment,
+        question=assessment.questions.get(key=key),
+        definition=dump_yaml({"question": key, "uses": "gradeflow/full-marks@1"}),
+    )
+
+
 def save_full_marks_markings(assessment: Assessment) -> Assessment:
     """The assessment with every question's marking saved as Full Marks, without marking anyone yet."""
-    for question in assessment.questions.all():
-        definition = dump_yaml({"question": question.key, "uses": "gradeflow/full-marks@1"})
-        Marking.objects.create(assessment=assessment, question=question, definition=definition)
+    for key in assessment.questions.values_list("key", flat=True):
+        full_marks_marking(assessment, key)
     return assessment
 
 
@@ -204,14 +246,39 @@ def assessment_with_full_marks(client: Client, course: Course, name: str, questi
     return save_full_marks_markings(assessment)
 
 
+def between(text: str, start: str, end: str) -> str:
+    """The part of `text` after the first `start`, up to the next `end`."""
+    return text.split(start, 1)[1].split(end, 1)[0]
+
+
+def run_together[T](*actions: Callable[[], T]) -> list[T]:
+    """What each action returns, the actions started at the same moment, each on a connection of its own."""
+    start_together = threading.Barrier(len(actions))
+
+    def run(action: Callable[[], T]) -> T:
+        close_old_connections()
+        try:
+            start_together.wait(timeout=10)
+            return action()
+        finally:
+            close_old_connections()
+
+    with ThreadPoolExecutor(max_workers=len(actions)) as pool:
+        return list(pool.map(run, actions))
+
+
+def signature(secret: str, body: bytes) -> str:
+    """What the sandbox signs `body` with, by the job's `secret`."""
+    return hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
+
+
 def post_callback(job: Job, event: dict[str, Any], secret: str | None = None) -> int:
     body = json.dumps(event).encode()
-    signature = hmac.new((secret or job.secret).encode(), body, hashlib.sha256).hexdigest()
     response = Client().post(
         reverse("job_callback", args=[job.pk]),
         body,
         content_type="application/json",
-        headers={"X-GradeFlow-Signature": signature},
+        headers={"X-GradeFlow-Signature": signature(secret or job.secret, body)},
     )
     return response.status_code
 
@@ -226,13 +293,19 @@ class IdleExecutor:
         pass
 
 
+@pytest.fixture
+def idle_executor(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(queue, "executor", IdleExecutor)
+
+
+@dataclass
 class FakeNomad:
     """Nomad, receiving jobs without running them until a test ends them or takes it down."""
 
-    submitted: ClassVar[list[UUID]] = []
-    cancelled: ClassVar[list[UUID]] = []
-    ended: ClassVar[set[UUID]] = set()
-    is_down: ClassVar[bool] = False
+    submitted: list[UUID] = field(default_factory=list)
+    cancelled: list[UUID] = field(default_factory=list)
+    ended: set[UUID] = field(default_factory=set)
+    is_down: bool = False
 
     def submit(self, job: Job) -> None:
         if self.is_down:
@@ -246,6 +319,14 @@ class FakeNomad:
         if self.is_down:
             raise ExecutorUnavailable
         return {pk: pk in self.ended for pk in self.submitted}
+
+
+@pytest.fixture
+def nomad(monkeypatch: pytest.MonkeyPatch) -> FakeNomad:
+    """A `FakeNomad` that runs this test's jobs."""
+    nomad = FakeNomad()
+    monkeypatch.setattr(queue, "executor", lambda: nomad)
+    return nomad
 
 
 class NotifyingExecutor:

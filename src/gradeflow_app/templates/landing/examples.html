@@ -12,7 +12,7 @@
         {% elif example.key == "custom_code" %}
         <fieldset class="grid gap-1.5"><legend class="mb-1.5 font-mono text-sm">unit_penalty</legend><div class="landing-choices">{{ settings.custom_code }}</div></fieldset>
         {% elif example.key == "code_tests" %}
-        <fieldset class="grid gap-2"><legend class="mb-1.5 font-medium">Tests</legend>{% for test in settings.code_tests %}<label class="card-box flex cursor-pointer items-center gap-3 p-3"><input type="checkbox" class="checkbox checkbox-sm checkbox-primary" name="{{ test.data.name }}" value="{{ test.data.value }}"{% if test.data.selected %} checked{% endif %}><span class="font-mono text-sm">{{ test.choice_label }}</span></label>{% endfor %}</fieldset>
+        <fieldset class="grid gap-2"><legend class="mb-1.5 font-medium">Tests</legend>{% for test in settings.code_tests %}<label class="card-box flex cursor-pointer items-center gap-3 p-3">{{ test.tag }}<span class="font-mono text-sm">{{ test.choice_label }}</span></label>{% endfor %}</fieldset>
         {% endif %}
         {% if example.key != "code_tests" %}{% for variant in example.variants %}<div x-show="variant === '{{ example.key }}:{{ variant.value }}'"{% if variant.value != example.initial_value %} x-cloak{% endif %}><c-summary :text="variant.description" /></div>{% endfor %}{% endif %}
       </div>

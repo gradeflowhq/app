@@ -8,7 +8,6 @@ from django.test import Client, TestCase
 from django.urls import reverse
 from django.utils.html import escape
 from gradeflow_core import AnswersCsv, GradeFlowError, QuestionSet, read_answer_key, read_question_document
-from gradeflow_core.editing import dump_yaml
 from pytest_django import DjangoAssertNumQueries
 
 from gradeflow_app.accounts.models import User
@@ -19,7 +18,15 @@ from gradeflow_app.imports.services import apply_question_document, import_resul
 from gradeflow_app.marking.models import Marking
 from gradeflow_app.results.marks import assessment_results
 from gradeflow_app.results.models import Adjustment
-from tests.conftest import EXPORT_CSV, EXPORT_ROWS, HTMX_HEADERS, create_assessment, encrypted_id, upload
+from tests.conftest import (
+    EXPORT_CSV,
+    EXPORT_ROWS,
+    HTMX_HEADERS,
+    create_assessment,
+    encrypted_id,
+    full_marks_marking,
+    upload,
+)
 
 pytestmark = pytest.mark.django_db
 
@@ -50,8 +57,8 @@ def test_keeps_the_encrypted_original_and_the_import_settings(client: Client) ->
     assert bytes(file.original) == ENCRYPTED_FILE
     page = client.get(reverse("import", args=[assessment.pk]))
     assert b"Check columns" in page.content
-    import_settings = json.loads(page.content.split(b'id="import-settings" type="application/json">')[1].split(b"<")[0])
-    assert import_settings == {
+    assert b'<script id="import-settings" type="application/json">' in page.content
+    assert page.context["import_settings"] == {
         "name": "results.csv",
         "sheet": "Results",
         "header_row": 2,
@@ -92,10 +99,9 @@ def test_older_imports_ask_for_the_file_again(client: Client, assessment: Assess
 
 
 def test_a_replace_knows_the_questions_a_new_file_would_drop(client: Client, assessment: Assessment) -> None:
-    page = client.get(reverse("import", args=[assessment.pk])).content
-    questions = json.loads(page.split(b'id="import-questions" type="application/json">')[1].split(b"<")[0])
-    assert questions == ["Q1", "Q2", "Q3"]
-    assert b"Marking is kept." not in page, "said once the file shows which questions stay"
+    page = client.get(reverse("import", args=[assessment.pk]))
+    assert page.context["questions"] == ["Q1", "Q2", "Q3"]
+    assert b"Marking is kept." not in page.content, "said once the file shows which questions stay"
 
 
 def test_changing_columns_replaces_the_results_and_keeps_adjustments(client: Client, user: User) -> None:
@@ -162,21 +168,20 @@ def test_a_replace_says_which_students_it_added_and_removed(client: Client, asse
     assert "Results replaced: 10 students (1 new, 1 removed); 1 with changed answers." in page
 
 
+EXPORT_WITHOUT_Q3 = "".join(line.rsplit(",", 1)[0] + "\n" for line in EXPORT_CSV.splitlines())
+
+
 def test_a_replace_counts_changed_answers_only_in_questions_both_files_have(
     client: Client, assessment: Assessment
 ) -> None:
-    without_q3 = "".join(line.rsplit(",", 1)[0] + "\n" for line in EXPORT_CSV.splitlines())
-    response = upload(client, assessment, without_q3, answer_columns=json.dumps(["Q1", "Q2"]))
+    response = upload(client, assessment, EXPORT_WITHOUT_Q3, answer_columns=json.dumps(["Q1", "Q2"]))
     page = client.get(response.headers["HX-Redirect"], follow=True).content.decode()
     assert "Results replaced: 10 students; removed question Q3." in page
 
 
 def test_activity_names_the_question_of_a_marking_removed_with_it(client: Client, assessment: Assessment) -> None:
-    question = assessment.questions.get(key="Q3")
-    definition = dump_yaml({"question": "Q3", "uses": "gradeflow/full-marks@1"})
-    Marking.objects.create(assessment=assessment, question=question, definition=definition)
-    without_q3 = "".join(line.rsplit(",", 1)[0] + "\n" for line in EXPORT_CSV.splitlines())
-    upload(client, assessment, without_q3, answer_columns=json.dumps(["Q1", "Q2"]))
+    full_marks_marking(assessment, "Q3")
+    upload(client, assessment, EXPORT_WITHOUT_Q3, answer_columns=json.dumps(["Q1", "Q2"]))
     page = client.get(reverse("activity", args=[assessment.pk]), headers=HTMX_HEADERS).content.decode()
     assert "removed marking for Q3" in page
     assert "question group" not in page

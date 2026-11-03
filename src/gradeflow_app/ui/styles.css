@@ -317,9 +317,22 @@
   .table :where(thead th) {
     @apply text-sm font-medium text-muted;
   }
-  /* A row that opens a page or a drawer shows it can be clicked (fields.js follows its link). */
+  /* A row that opens a page or a drawer shows it can be clicked. */
   .table tr:is([data-href], [data-dialog]) {
     @apply cursor-pointer transition-colors hover:bg-base-200;
+  }
+  /* A row with `data-href` is its first link, stretched over the row; other controls in it stay above. */
+  .table tr[data-href] {
+    position: relative;
+    & td:first-child a::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+    }
+    & :is(button, input, label, select, td:not(:first-child) a) {
+      position: relative;
+      z-index: 1;
+    }
   }
   /* Overlays sit on a dimmed page with a border, so they stand apart in the dark theme too. */
   .modal-box {

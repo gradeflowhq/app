@@ -1,4 +1,3 @@
-import json
 from types import SimpleNamespace
 
 import pytest
@@ -7,18 +6,18 @@ from gradeflow_app import core_version
 
 
 @pytest.mark.parametrize(
-    ("metadata", "expected"),
+    ("origin", "expected"),
     [
         (None, "0.5.0"),
-        ({"dir_info": {"editable": True}}, "0.5.0"),
-        ({"vcs_info": {"commit_id": "abc123"}}, "abc123"),
+        (SimpleNamespace(url="file:///core", dir_info=SimpleNamespace(editable=True)), "0.5.0"),
+        (SimpleNamespace(url="https://example.com/core.git", vcs_info=SimpleNamespace(commit_id="abc123")), "abc123"),
     ],
 )
 def test_installed_release_identity(
-    monkeypatch: pytest.MonkeyPatch, metadata: dict[str, object] | None, expected: str
+    monkeypatch: pytest.MonkeyPatch, origin: SimpleNamespace | None, expected: str
 ) -> None:
     monkeypatch.delenv("GRADEFLOW_CORE_VERSION", raising=False)
-    package = SimpleNamespace(version="0.5.0", read_text=lambda _: json.dumps(metadata) if metadata else None)
+    package = SimpleNamespace(version="0.5.0", origin=origin)
     monkeypatch.setattr(core_version, "distribution", lambda _: package)
     assert core_version.core_version() == expected
 

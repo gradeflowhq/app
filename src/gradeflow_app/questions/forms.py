@@ -1,7 +1,7 @@
 """A question's settings, as the core's schema of its type describes them."""
 
 from collections.abc import Iterable
-from typing import Any
+from typing import Any, cast
 
 from gradeflow_core import InvalidError, Question
 from gradeflow_core.editing import QUESTION_TYPES, QuestionType, converted_question, new_question
@@ -27,7 +27,7 @@ class QuestionForm(ObjectForm):
 
 def question_type_named(value: str, default: QuestionType) -> QuestionType:
     """The question type `value` names, or `default` if it names none."""
-    return next((kind for kind in QUESTION_TYPES if kind == value), default)
+    return cast(QuestionType, value) if value in QUESTION_TYPES else default
 
 
 def retyped(current: Question, question_type: QuestionType, answers: Iterable[str]) -> Question:

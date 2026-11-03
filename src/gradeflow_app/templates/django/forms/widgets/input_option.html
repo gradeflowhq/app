@@ -1,1 +1,1 @@
-<label class="flex cursor-pointer items-center gap-2"{% if widget.attrs.id %} for="{{ widget.attrs.id }}"{% endif %}>{% include "django/forms/widgets/input.html" %}<span>{{ widget.label }}</span></label>
+{% if widget.wrap_label %}<label class="flex cursor-pointer items-center gap-2"{% if widget.attrs.id %} for="{{ widget.attrs.id }}"{% endif %}>{% endif %}{% include "django/forms/widgets/input.html" %}{% if widget.wrap_label %}<span>{{ widget.label }}</span></label>{% endif %}

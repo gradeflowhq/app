@@ -12,6 +12,7 @@ from uuid import UUID
 from django.conf import settings
 from django.db import connection, transaction
 from django.db.models import Model
+from django.db.models.functions import Now
 from django.utils import timezone
 
 from gradeflow_app.accounts.models import User
@@ -116,12 +117,12 @@ def _dispatch_for_user(user_id: UUID | None) -> None:
     waiting = list(
         Job.objects.select_for_update(skip_locked=True)
         .filter(created_by_id=user_id, status=Job.Status.QUEUED, dispatched_at=None)
-        .order_by("created_at")[:capacity]
+        .order_by("created_at")
+        .values_list("pk", flat=True)[:capacity]
     )
-    for job in waiting:
-        job.dispatched_at = timezone.now()
-        job.save(update_fields=["dispatched_at"])
-        transaction.on_commit(partial(_submit, job.pk))
+    Job.objects.filter(pk__in=waiting).update(dispatched_at=Now())
+    for job_id in waiting:
+        transaction.on_commit(partial(_submit, job_id))
 
 
 def _submit(job_id: UUID) -> None:

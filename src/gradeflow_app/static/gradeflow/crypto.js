@@ -21,9 +21,6 @@ export const ENCRYPTED_IDS = new RegExp(`enc:v2:${BASE64}:${BASE64}:${BASE64}`, 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
-const toBase64 = (bytes) => btoa(String.fromCharCode(...bytes));
-const fromBase64 = (base64) => Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
-
 /** Caches a promise per key, forgetting it if it rejects so a retry can succeed. */
 const memoize = (fn) => {
   const cache = new Map();
@@ -41,7 +38,7 @@ const memoize = (fn) => {
 const deriveKeys = async (saltBase64, passphrase) => {
   const passphraseKey = await crypto.subtle.importKey('raw', encoder.encode(passphrase), 'PBKDF2', false, ['deriveBits']);
   const derivedBits = new Uint8Array(await crypto.subtle.deriveBits(
-    { name: 'PBKDF2', hash: 'SHA-256', salt: fromBase64(saltBase64), iterations: ITERATIONS },
+    { name: 'PBKDF2', hash: 'SHA-256', salt: Uint8Array.fromBase64(saltBase64), iterations: ITERATIONS },
     passphraseKey,
     512,
   ));
@@ -64,7 +61,7 @@ const keys = (saltBase64, passphrase) => cachedKeys(`${saltBase64}:${passphrase}
 
 const assessmentSalt = async (assessmentId) => {
   const digest = await crypto.subtle.digest('SHA-256', encoder.encode(`gradeflow:${assessmentId}`));
-  return toBase64(new Uint8Array(digest, 0, 16));
+  return new Uint8Array(digest, 0, 16).toBase64();
 };
 
 /** @returns {Promise<string>} */
@@ -74,7 +71,7 @@ export const encryptId = async (id, passphrase, assessmentId) => {
   const { idKey, macKey } = await keys(saltBase64, passphrase);
   const iv = new Uint8Array(await crypto.subtle.sign('HMAC', macKey, plaintext), 0, 12);
   const ciphertext = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, idKey, plaintext));
-  return `enc:v2:${saltBase64}:${toBase64(iv)}:${toBase64(ciphertext)}`;
+  return `enc:v2:${saltBase64}:${iv.toBase64()}:${ciphertext.toBase64()}`;
 };
 
 const decrypt = async (encryptedId, passphrase) => {
@@ -82,7 +79,7 @@ const decrypt = async (encryptedId, passphrase) => {
   if (!match) throw new Error('Invalid encrypted ID');
   const [, saltBase64, ivBase64, ciphertextBase64] = match;
   const { idKey } = await keys(saltBase64, passphrase);
-  return decoder.decode(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: fromBase64(ivBase64) }, idKey, fromBase64(ciphertextBase64)));
+  return decoder.decode(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: Uint8Array.fromBase64(ivBase64) }, idKey, Uint8Array.fromBase64(ciphertextBase64)));
 };
 
 const cachedDecrypt = memoize(decrypt);
@@ -111,7 +108,7 @@ export const encryptFile = async (bytes, passphrase, assessmentId) => {
   const saltBase64 = await assessmentSalt(assessmentId);
   const header = new Uint8Array(FILE_HEADER_LENGTH);
   header.set(FILE_MAGIC);
-  header.set(fromBase64(saltBase64), 4);
+  header.set(Uint8Array.fromBase64(saltBase64), 4);
   header.set(crypto.getRandomValues(new Uint8Array(12)), 20);
   const { fileKey } = await keys(saltBase64, passphrase);
   const ciphertext = await crypto.subtle.encrypt(
@@ -131,7 +128,7 @@ export const decryptFile = async (bytes, passphrase) => {
     throw new Error('Not an encrypted file');
   }
   const header = bytes.subarray(0, FILE_HEADER_LENGTH);
-  const { fileKey } = await keys(toBase64(header.subarray(4, 20)), passphrase);
+  const { fileKey } = await keys(header.subarray(4, 20).toBase64(), passphrase);
   return new Uint8Array(await crypto.subtle.decrypt(
     { name: 'AES-GCM', iv: header.subarray(20), additionalData: header }, fileKey, bytes.subarray(FILE_HEADER_LENGTH)));
 };

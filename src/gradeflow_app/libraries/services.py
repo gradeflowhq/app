@@ -6,7 +6,6 @@ import unicodedata
 from collections.abc import Callable, Iterator, Mapping
 from copy import deepcopy
 from itertools import count
-from operator import attrgetter
 from typing import Any
 
 from django.core.exceptions import ValidationError
@@ -28,6 +27,7 @@ from gradeflow_app.libraries.models import (
     MethodVersion,
     VersionUse,
 )
+from gradeflow_app.marking.models import Marking
 
 
 def name_from(text: str, limit: int) -> str:
@@ -216,8 +216,12 @@ def copy_method(version: MethodVersion, library: Library, user: User, label: str
 
 def dependents(method: Method, user: User) -> list[str]:
     """What uses a version of `method`: the markings in `user`'s courses, how many others, and other methods."""
-    versions = method.versions.prefetch_related("markings__assessment", "markings__question")
-    markings = sorted({marking for version in versions for marking in version.markings.all()}, key=attrgetter("pk"))
+    markings = list(
+        Marking.objects.filter(used_versions__method=method)
+        .distinct()
+        .order_by("pk")
+        .select_related("assessment", "question")
+    )
     course_ids = set(user.memberships.values_list("course", flat=True))
     my_markings = [marking for marking in markings if marking.assessment.course_id in course_ids]
     uses = [f"{marking.assessment.name} · {marking}" for marking in my_markings]

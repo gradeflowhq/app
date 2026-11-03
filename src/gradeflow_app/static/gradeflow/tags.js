@@ -3,8 +3,6 @@
 
 import { loadScript } from "./vendor.js";
 
-const escapeHtml = (text) => Object.assign(document.createElement("span"), { textContent: text }).innerHTML;
-
 export const tagInput = () => ({
   select: null,
   async init() {
@@ -36,9 +34,9 @@ export const tagInput = () => ({
       wrapperClass: "ts-wrapper input w-full",
       sortField: [{ field: "count", direction: "desc" }, { field: "$order" }],
       render: {
-        option: (data) =>
-          `<div><span>${escapeHtml(data.text)}</span>${data.count ? `<span class="tabular-nums text-xs text-muted">${data.count}</span>` : ""}</div>`,
-        option_create: (data) => `<div class="create">Add <strong>${escapeHtml(data.input)}</strong></div>`,
+        option: (data, escape) =>
+          `<div><span>${escape(data.text)}</span>${data.count ? `<span class="tabular-nums text-xs text-muted">${data.count}</span>` : ""}</div>`,
+        option_create: (data, escape) => `<div class="create">Add <strong>${escape(data.input)}</strong></div>`,
         no_results: () => null,
       },
       onItemAdd() {

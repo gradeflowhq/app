@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from typing import cast
+from unittest.mock import Mock
 
 import pytest
 from django.core.cache import cache
@@ -32,12 +32,7 @@ def grouped_answers(
 
 def fake_comparison(*indices: list[int]) -> AnswerComparison:
     """A comparison joining the distinct answers, in sorted order, at `indices`: whatever the core found alike."""
-
-    class FakeComparison:
-        def groups(self, threshold: float = 0.85) -> list[list[int]]:
-            return list(indices)
-
-    return cast(AnswerComparison, FakeComparison())
+    return Mock(spec=AnswerComparison, **{"groups.return_value": list(indices)})
 
 
 @pytest.fixture

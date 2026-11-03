@@ -1,5 +1,3 @@
-import hashlib
-import hmac
 import uuid
 from datetime import timedelta
 from types import SimpleNamespace
@@ -38,7 +36,9 @@ from tests.conftest import (
     code_draft,
     marked_by_sandbox,
     post_callback,
+    preview_draft,
     save_full_marks_markings,
+    signature,
     start_marking,
 )
 
@@ -88,11 +88,10 @@ def test_a_preview_another_build_of_the_core_ran_is_run_again(
 
 @pytest.mark.parametrize("view_name", ["draft_save", "draft_discard"])
 def test_saving_or_discarding_a_draft_stops_its_preview(
-    client: Client, assessment: Assessment, monkeypatch: pytest.MonkeyPatch, view_name: str
+    client: Client, assessment: Assessment, idle_executor: None, view_name: str
 ) -> None:
     url, fields = code_draft(client, assessment)
     client.post(url, fields)
-    monkeypatch.setattr(queue, "executor", IdleExecutor)
     draft = MarkingDraftRecord.objects.get()
     client.post(reverse("draft_preview", args=[assessment.pk, draft.pk]))
     preview = Job.objects.get(kind=Job.Kind.PREVIEW)
@@ -103,11 +102,15 @@ def test_saving_or_discarding_a_draft_stops_its_preview(
 
 
 def test_pages_follow_jobs_as_they_run(
-    client: Client, assessment: Assessment, fully_marked: Assessment, user: User, monkeypatch: pytest.MonkeyPatch
+    client: Client,
+    assessment: Assessment,
+    fully_marked: Assessment,
+    user: User,
+    monkeypatch: pytest.MonkeyPatch,
+    idle_executor: None,
 ) -> None:
     url, fields = code_draft(client, assessment)
     client.post(url, fields)
-    monkeypatch.setattr(queue, "executor", IdleExecutor)
     published_topics: list[str] = []
     monkeypatch.setattr(events, "notify_change", lambda *names: published_topics.extend(names))
     client.post(reverse("draft_preview", args=[assessment.pk, MarkingDraftRecord.objects.get().pk]))
@@ -155,15 +158,19 @@ def compared_event(
     }
 
 
-def test_grouping_caches_a_complete_comparison_only_after_success(
-    assessment: Assessment, user: User, settings: Settings
-) -> None:
+@pytest.fixture
+def locmem_cache(settings: Settings) -> None:
     settings.CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
+
+
+def test_grouping_caches_a_complete_comparison_only_after_success(
+    assessment: Assessment, user: User, locmem_cache: None
+) -> None:
     texts = ["dark", "light"]
     comparison = comparison_for(texts)
     job = start_grouping(assessment, assessment.questions.get(key="Q1"), texts, user)
-    signature = hmac.new(job.secret.encode(), b"input", hashlib.sha256).hexdigest()
-    input_response = Client().get(reverse("job_input", args=[job.pk]), headers={"X-GradeFlow-Signature": signature})
+    headers = {"X-GradeFlow-Signature": signature(job.secret, b"input")}
+    input_response = Client().get(reverse("job_input", args=[job.pk]), headers=headers)
     assert input_response.json() == {"texts": texts}
     assert job.core_version == CORE_VERSION
     comparison_json = comparison.model_dump_json()
@@ -185,9 +192,8 @@ def test_grouping_caches_a_complete_comparison_only_after_success(
 
 
 def test_a_comparison_is_cached_under_its_captured_build(
-    assessment: Assessment, user: User, settings: Settings, monkeypatch: pytest.MonkeyPatch
+    assessment: Assessment, user: User, locmem_cache: None, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    settings.CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
     monkeypatch.setattr(queue, "CORE_VERSION", "captured-grouping-build")
     texts = ["captured grouping answer"]
     comparison = comparison_for(texts)
@@ -201,9 +207,8 @@ def test_a_comparison_is_cached_under_its_captured_build(
 
 @pytest.mark.parametrize("outcome", ["failed", "absent", "missing", "invalid", "wrong_texts", "wrong_mode"])
 def test_unsuccessful_comparisons_never_enter_the_cache(
-    assessment: Assessment, user: User, settings: Settings, outcome: str
+    assessment: Assessment, user: User, locmem_cache: None, outcome: str
 ) -> None:
-    settings.CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
     texts = [f"uncached {outcome}"]
     comparison = comparison_for(texts)
     job = start_grouping(assessment, assessment.questions.get(key="Q1"), texts, user)
@@ -299,29 +304,34 @@ def test_callbacks_are_signed_and_fit_their_job(assessment: Assessment, fully_ma
     assert post_callback(remark_job, {"event": "compared", "index": 0, "total": 1, "text": "{}"}) == 400
 
 
-def test_nomad_runs_each_kind_of_job_in_the_image_it_recorded(settings: Settings) -> None:
-    settings.GRADEFLOW_APP_URL_FOR_JOBS = "http://172.17.0.2:8001"
-    nomad = Nomad(url="http://nomad", token="", datacenter="dc1", namespace="gradeflow")
-    for kind, task, priority in (
+@pytest.mark.parametrize(
+    ("kind", "task", "priority"),
+    [
         (Job.Kind.GROUPING, "compare", 70),
         (Job.Kind.REMARK, "mark", 50),
         (Job.Kind.PREVIEW, "mark", 70),
         (Job.Kind.DRAFT_TESTS, "test", 70),
         (Job.Kind.VERSION_TESTS, "test", 70),
-    ):
-        job = Job(pk=uuid.uuid7(), kind=kind, image="localhost:5055/sandbox@sha256:" + "a" * 64, time_limit=60)
-        spec: Any = nomad.nomad_spec(job)
-        sandbox_task = spec["TaskGroups"][0]["Tasks"][0]
-        assert sandbox_task["Config"]["image"] == job.image
-        assert [sandbox_task["Config"]["command"], *sandbox_task["Config"]["args"]] == [
-            "python",
-            "/app/sandbox.py",
-            task,
-            "60",
-        ]
-        assert sandbox_task["Env"]["GRADEFLOW_JOB_URL"] == f"http://172.17.0.2:8001/jobs/{job.pk}/"
-        assert spec["Priority"] == priority
-        assert spec["Namespace"] == "gradeflow"
+    ],
+)
+def test_nomad_runs_each_kind_of_job_in_the_image_it_recorded(
+    settings: Settings, kind: Job.Kind, task: str, priority: int
+) -> None:
+    settings.GRADEFLOW_APP_URL_FOR_JOBS = "http://172.17.0.2:8001"
+    nomad = Nomad(url="http://nomad", token="", datacenter="dc1", namespace="gradeflow")
+    job = Job(pk=uuid.uuid7(), kind=kind, image="localhost:5055/sandbox@sha256:" + "a" * 64, time_limit=60)
+    spec: Any = nomad.nomad_spec(job)
+    sandbox_task = spec["TaskGroups"][0]["Tasks"][0]
+    assert sandbox_task["Config"]["image"] == job.image
+    assert [sandbox_task["Config"]["command"], *sandbox_task["Config"]["args"]] == [
+        "python",
+        "/app/sandbox.py",
+        task,
+        "60",
+    ]
+    assert sandbox_task["Env"]["GRADEFLOW_JOB_URL"] == f"http://172.17.0.2:8001/jobs/{job.pk}/"
+    assert spec["Priority"] == priority
+    assert spec["Namespace"] == "gradeflow"
 
 
 def test_nomad_tells_which_of_the_jobs_it_received_have_ended() -> None:
@@ -348,9 +358,8 @@ def test_nomad_tells_which_of_the_jobs_it_received_have_ended() -> None:
 
 
 def test_results_arrive_in_batches_which_show_progress(
-    client: Client, assessment: Assessment, fully_marked: Assessment, user: User, monkeypatch: pytest.MonkeyPatch
+    client: Client, assessment: Assessment, fully_marked: Assessment, user: User, idle_executor: None
 ) -> None:
-    monkeypatch.setattr(queue, "executor", IdleExecutor)
     job = start_remark(assessment, "Q1", user)
     job.refresh_from_db()
     submissions = [
@@ -377,9 +386,8 @@ def test_results_arrive_in_batches_which_show_progress(
 
 
 def test_a_failed_job_forgets_the_results_it_sent(
-    assessment: Assessment, fully_marked: Assessment, user: User, monkeypatch: pytest.MonkeyPatch
+    assessment: Assessment, fully_marked: Assessment, user: User, idle_executor: None
 ) -> None:
-    monkeypatch.setattr(queue, "executor", IdleExecutor)
     job = start_remark(assessment, "Q1", user)
     job.refresh_from_db()
     submissions = [
@@ -391,9 +399,7 @@ def test_a_failed_job_forgets_the_results_it_sent(
     assert not job.batches.exists()
 
 
-def test_marking_questions_together_previews_on_request(
-    client: Client, assessment: Assessment, django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks
-) -> None:
+def test_marking_questions_together_previews_on_request(client: Client, assessment: Assessment) -> None:
     created = client.post(
         reverse("question_group_new", args=[assessment.pk]), {"method": "gradeflow/custom-code-for-a-group@1"}
     )
@@ -406,22 +412,18 @@ def test_marking_questions_together_previews_on_request(
     column = client.get(page).content
     assert b'id="preview-bar"' in column
     assert b"Q1, Q3" in column, "the answers column covers both questions"
-    with django_capture_on_commit_callbacks(execute=True):
-        client.post(reverse("draft_preview", args=[assessment.pk, draft.pk]))
+    preview_draft(client, draft)
     job = Job.objects.get(kind=Job.Kind.PREVIEW)
     assert (job.status, job.question_keys) == (Job.Status.COMPLETED, ["Q1", "Q3"])
     answers = client.get(reverse("question_group_draft_answers", args=[assessment.pk, draft.pk])).content
     assert b"results change" in answers
 
 
-def test_a_preview_counts_the_students_whose_marks_change(
-    client: Client, assessment: Assessment, django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks
-) -> None:
+def test_a_preview_counts_the_students_whose_marks_change(client: Client, assessment: Assessment) -> None:
     question = assessment.questions.get(key="Q2")
     url, draft = start_marking(client, assessment, "Q2", "gradeflow/accepted-answers@1")
     client.post(url, {"path": "", "fields_posted": "1", "answers": ["42"]})
-    with django_capture_on_commit_callbacks(execute=True):
-        client.post(reverse("draft_preview", args=[assessment.pk, draft.pk]))
+    preview_draft(client, draft)
     preview_results = Job.objects.get(kind=Job.Kind.PREVIEW).result or []
     students = {student.encrypted_id: student for student in assessment.students.all()}
     for index, submission in enumerate(preview_results):
@@ -440,14 +442,11 @@ def test_a_preview_counts_the_students_whose_marks_change(
     assert "1 changed" in preview_bar, preview_bar
 
 
-def test_editing_back_to_the_previewed_marking_shows_its_preview_again(
-    client: Client, assessment: Assessment, django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks
-) -> None:
+def test_editing_back_to_the_previewed_marking_shows_its_preview_again(client: Client, assessment: Assessment) -> None:
     url, draft = start_marking(client, assessment, "Q1", "gradeflow/key-points@1")
     previewed_fields = {"path": "", "fields_posted": "1", "points": ["light"], "combine": "all"}
     client.post(url, previewed_fields)
-    with django_capture_on_commit_callbacks(execute=True):
-        client.post(reverse("draft_preview", args=[assessment.pk, draft.pk]))
+    preview_draft(client, draft)
     assert "Marking changed" in client.post(url, previewed_fields | {"combine": "any"}).content.decode()
     page = client.post(url, previewed_fields).content.decode()
     preview_bar = page[page.index('id="preview-bar"') :][:1500]
@@ -455,14 +454,11 @@ def test_editing_back_to_the_previewed_marking_shows_its_preview_again(
     assert " full · " in preview_bar, preview_bar
 
 
-def test_a_preview_says_when_answers_could_not_be_marked(
-    client: Client, assessment: Assessment, django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks
-) -> None:
+def test_a_preview_says_when_answers_could_not_be_marked(client: Client, assessment: Assessment) -> None:
     url, fields = code_draft(client, assessment)
     client.post(url, fields | {"code": "raise ValueError('no such thing as results')"})
     draft = MarkingDraftRecord.objects.get()
-    with django_capture_on_commit_callbacks(execute=True):
-        client.post(reverse("draft_preview", args=[assessment.pk, draft.pk]))
+    preview_draft(client, draft)
     question = assessment.questions.get(key="Q1")
     preview_results = [
         MarkedSubmission.model_validate(item) for item in Job.objects.get(kind=Job.Kind.PREVIEW).result or []
@@ -510,9 +506,8 @@ def backdate_as_running(*jobs: Job | None, days: float = 1) -> None:
 
 
 def test_lost_jobs_are_not_running(
-    assessment: Assessment, fully_marked: Assessment, user: User, monkeypatch: pytest.MonkeyPatch
+    assessment: Assessment, fully_marked: Assessment, user: User, monkeypatch: pytest.MonkeyPatch, idle_executor: None
 ) -> None:
-    monkeypatch.setattr(queue, "executor", IdleExecutor)
     lost, running = start_remark(assessment, "Q1", user), start_remark(assessment, "Q2", user)
     backdate_as_running(lost)
     published: list[tuple[str, ...]] = []
@@ -526,9 +521,8 @@ def test_lost_jobs_are_not_running(
 
 
 def test_starting_work_fails_lost_jobs_together(
-    assessment: Assessment, fully_marked: Assessment, user: User, monkeypatch: pytest.MonkeyPatch
+    assessment: Assessment, fully_marked: Assessment, user: User, monkeypatch: pytest.MonkeyPatch, idle_executor: None
 ) -> None:
-    monkeypatch.setattr(queue, "executor", IdleExecutor)
     lost = [
         start_remark(assessment, "Q1", user),
         start_grouping(assessment, assessment.questions.get(key="Q1"), ["a"], user),
@@ -544,9 +538,8 @@ def test_starting_work_fails_lost_jobs_together(
 
 
 def test_a_lost_job_counts_against_no_limit_and_holds_up_no_grouping(
-    assessment: Assessment, fully_marked: Assessment, user: User, settings: Settings, monkeypatch: pytest.MonkeyPatch
+    assessment: Assessment, fully_marked: Assessment, user: User, settings: Settings, idle_executor: None
 ) -> None:
-    monkeypatch.setattr(queue, "executor", IdleExecutor)
     settings.GRADEFLOW_RUNNING_JOBS_PER_USER = 1
     question = assessment.questions.get(key="Q1")
     lost = start_grouping(assessment, question, ["a"], user)
@@ -560,9 +553,8 @@ def test_a_lost_job_counts_against_no_limit_and_holds_up_no_grouping(
 
 
 def test_a_job_dispatched_but_never_started_times_out_after_the_limit(
-    assessment: Assessment, fully_marked: Assessment, user: User, monkeypatch: pytest.MonkeyPatch
+    assessment: Assessment, fully_marked: Assessment, user: User, idle_executor: None
 ) -> None:
-    monkeypatch.setattr(queue, "executor", IdleExecutor)
     stuck_job, recent = start_remark(assessment, "Q1", user), start_remark(assessment, "Q2", user)
     Job.objects.filter(pk=stuck_job.pk).update(dispatched_at=timezone.now() - timedelta(days=1))
     assert list(Job.objects.timed_out()) == [stuck_job]
@@ -573,9 +565,8 @@ def test_a_job_dispatched_but_never_started_times_out_after_the_limit(
 
 
 def test_unreadable_marked_results_fail_the_job(
-    assessment: Assessment, fully_marked: Assessment, user: User, monkeypatch: pytest.MonkeyPatch
+    assessment: Assessment, fully_marked: Assessment, user: User, idle_executor: None
 ) -> None:
-    monkeypatch.setattr(queue, "executor", IdleExecutor)
     job = start_remark(assessment, "Q1", user)
     assert post_callback(job, {"event": "marked", "submissions": [{"student_id": "S1"}]}) == 204
     job.refresh_from_db()
@@ -585,9 +576,8 @@ def test_unreadable_marked_results_fail_the_job(
 
 
 def test_remark_provenance_is_retained_after_a_day(
-    assessment: Assessment, fully_marked: Assessment, user: User, monkeypatch: pytest.MonkeyPatch
+    assessment: Assessment, fully_marked: Assessment, user: User, idle_executor: None
 ) -> None:
-    monkeypatch.setattr(queue, "executor", IdleExecutor)
     old, recent = start_remark(assessment, "Q1", user), start_remark(assessment, "Q2", user)
     Job.objects.filter(pk=old.pk).update(status=Job.Status.COMPLETED, finished_at=timezone.now() - timedelta(days=2))
     Job.objects.filter(pk=recent.pk).update(status=Job.Status.COMPLETED, finished_at=timezone.now())
@@ -596,11 +586,13 @@ def test_remark_provenance_is_retained_after_a_day(
     assert Job.objects.filter(pk=recent.pk).exists()
 
 
-def test_a_preview_across_questions_counts_students_plainly() -> None:
+@pytest.mark.parametrize(
+    ("changed", "expected"), [(1, "1 student's results change"), (2, "2 students' results change")]
+)
+def test_a_preview_across_questions_counts_students_plainly(changed: int, expected: str) -> None:
     draft = SimpleNamespace(assessment_id=uuid.uuid7(), pk=uuid.uuid7())
-    for changed, expected in ((1, "1 student's results change"), (2, "2 students' results change")):
-        summary = PreviewSummary(changed_count=changed, unmarked_count=0, problem="")
-        preview_bar = render_to_string(
-            "results/answers.html#preview_bar", {"draft": draft, "preview_summary": summary, "is_question_group": True}
-        )
-        assert expected in preview_bar.replace("&#x27;", "'")
+    summary = PreviewSummary(changed_count=changed, unmarked_count=0, problem="")
+    preview_bar = render_to_string(
+        "results/answers.html#preview_bar", {"draft": draft, "preview_summary": summary, "is_question_group": True}
+    )
+    assert expected in preview_bar.replace("&#x27;", "'")

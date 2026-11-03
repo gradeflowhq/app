@@ -7,10 +7,10 @@ from dataclasses import dataclass, field, replace
 from typing import Any, cast
 
 from django import forms
-from django.forms.utils import ErrorList
 from gradeflow_core import Problem
 
 from gradeflow_app.ui.forms import BoundField, posted_indexes
+from gradeflow_app.ui.schemaforms.fields import field_for
 from gradeflow_app.ui.schemaforms.layout import NESTED_SEPARATOR, FieldHints, Layout, Tag, TaggedMap, layout
 from gradeflow_app.ui.schemaforms.schema import Schema
 from gradeflow_app.ui.schemaforms.widgets import CodeInput, DecimalInput, Segmented
@@ -56,13 +56,6 @@ class HintedField(BoundField):
     def is_shown(self) -> bool:
         """Whether there is anything to show: a disabled field without a value has nothing."""
         return not self.field.disabled or self.value() not in (None, "", [], {})
-
-    @property
-    def errors(self) -> ErrorList:
-        """Django's errors with the field's value, and the core's problems with it."""
-        errors: ErrorList = super().errors
-        problems = self.form.problems.get(self.name)
-        return self.form.error_class([*errors, *problems], renderer=self.form.renderer) if problems else errors
 
     @property
     def visible_when(self) -> str:
@@ -155,6 +148,8 @@ class ObjectForm(forms.Form):
         # with what was typed in it.
         kwargs.setdefault("auto_id", f"id_{path.replace('.', '-')}_%s" if path else "id_%s")
         super().__init__(initial=initial, **kwargs)
+        if not self.is_bound:
+            self.cleaned_data: dict[str, Any] = {}  # so `add_error` can show the core's problems
         self.fields = dict(self.layout.fields)
         for form_field in self.fields.values():
             if isinstance(form_field.widget, CodeInput):
@@ -183,8 +178,6 @@ class ObjectForm(forms.Form):
             for name, tagged in self.layout.tagged.items()
         ]
         self.checks_setting_errors: dict[str, list[str]] = {name: [] for name in self.layout.checks_settings}
-        self.problems: dict[str | None, list[str]] = {}
-        """The core's problems with what this object holds, by field; None for the object itself."""
 
     def disable(self) -> None:
         """Show the values without letting them change."""
@@ -237,19 +230,10 @@ class ObjectForm(forms.Form):
         elif entry := next((entry for entry in map_entries if entry.key == str(index)), None):
             entry.errors.append(message)
         elif field := self._field_at(location):
-            self.problems.setdefault(field, []).append(message)
+            self.add_error(field, message)
         else:
             named = next((str(part) for part in reversed(location) if isinstance(part, str)), "")
-            self.problems.setdefault(None, []).append(f"{named}: {message}" if named else message)
-
-    def non_field_errors(self) -> ErrorList:
-        errors = super().non_field_errors()
-        problems = self.problems.get(None)
-        return (
-            self.error_class([*errors, *problems], error_class="nonfield", renderer=self.renderer)
-            if problems
-            else errors
-        )
+            self.add_error(None, f"{named}: {message}" if named else message)
 
     @property
     def basic_rows(self) -> list[RowForms]:
@@ -340,14 +324,10 @@ def allow_unset(form: ObjectForm, name: str) -> None:
     """Let the field `name` be left without a value, starting without the one its schema defaults to."""
     field = form.fields.get(name)
     if isinstance(field, forms.BooleanField):
-        field = form.fields[name] = forms.TypedChoiceField(
+        field = form.fields[name] = forms.NullBooleanField(
             label=field.label,
             help_text=field.help_text,
-            required=False,
-            choices=[("", "No default"), (True, "Yes"), (False, "No")],
-            coerce=lambda value: value == "True",
-            empty_value=None,
-            widget=Segmented,
+            widget=Segmented(choices=[("", "No default"), (True, "Yes"), (False, "No")]),
         )
     elif isinstance(field, forms.TypedChoiceField):
         field.choices = [
@@ -439,15 +419,5 @@ def _read_tagged(data: Mapping[str, Any], name: str, tagged: TaggedMap, current:
 
 
 def _typed_value(posted_value: Any, schema: Schema) -> Any:
-    match schema.get("type"):
-        case "boolean":
-            return str(posted_value).lower() in ("true", "on", "1", "yes")
-        case "integer" | "number" if posted_value in (None, ""):
-            return None  # not filled in yet, rather than wrong
-        case "integer" | "number" as kind:
-            try:
-                return int(posted_value) if kind == "integer" else float(posted_value)
-            except ValueError:
-                return posted_value
-        case _:
-            return str(posted_value)
+    form_field = field_for(schema, "", "", {})
+    return form_field.to_python(posted_value) if form_field is not None else posted_value

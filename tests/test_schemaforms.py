@@ -3,6 +3,7 @@ import re
 from typing import Any
 
 import pytest
+from django.core.exceptions import NON_FIELD_ERRORS
 from django.urls import reverse
 from django.utils.html import format_html
 from gradeflow_core.editing import HINT_KEY
@@ -116,11 +117,11 @@ def test_core_errors_land_on_the_field_holding_their_value() -> None:
     form = ObjectForm(schema, {})
     for field in [("evaluate",), ("setup", "time_limit"), ("answers", 0), (), ("elsewhere",)]:
         form.add_problem(field, "Wrong.")
-    assert form.problems == {
+    assert form.errors == {
         "evaluate": ["Wrong."],
         "setup__time_limit": ["Wrong."],
         "answers": ["Wrong."],
-        None: ["Wrong.", "elsewhere: Wrong."],
+        NON_FIELD_ERRORS: ["Wrong.", "elsewhere: Wrong."],
     }
 
 

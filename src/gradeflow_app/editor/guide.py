@@ -1,10 +1,11 @@
 """The guide to marking methods, written by the core: what each is for, how it works and worked examples."""
 
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from typing import Any, NamedTuple, Protocol
 
 from django.http import Http404
+from django.utils.text import get_text_list
 from gradeflow_core import Method, Methods
 from gradeflow_core.editing import Example, MarkingDraft, QuestionType
 
@@ -111,15 +112,10 @@ def works_with(method: MarksQuestions) -> list[str]:
     return _labels(method.question_types) + (["Question groups"] if method.marks_question_group else [])
 
 
-def joined(items: Sequence[str]) -> str:
-    """Items in a sentence: "a", "a and b", "a, b and c"."""
-    return " and ".join(filter(None, [", ".join(items[:-1]), *items[-1:]]))
-
-
 def used_for(method: Method[Any]) -> str:
     """What the method marks, as a sentence: "For text and number questions and question groups"."""
     type_labels = [label.lower() for label in _labels(method.question_types)]
-    questions = "all" if len(type_labels) == len(QUESTION_TYPE_LABELS) else joined(type_labels)
+    questions = "all" if len(type_labels) == len(QUESTION_TYPE_LABELS) else get_text_list(type_labels, "and")
     marks = ([f"{questions} questions"] if type_labels else []) + (
         ["question groups"] if method.marks_question_group else []
     )

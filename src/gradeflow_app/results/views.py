@@ -1,4 +1,3 @@
-import codecs
 from uuid import UUID
 
 from django.http import HttpResponse
@@ -71,7 +70,7 @@ def download(request: Request, membership: AssessmentAccess) -> HttpResponse:
             name = f"{membership.assessment.name} results.csv".replace("/", "-")
             disposition = content_disposition_header(as_attachment=True, filename=name)
             # With a byte order mark, Excel reads the file as UTF-8.
-            data = codecs.BOM_UTF8 + _csv(membership, csv_format).encode()
+            data = _csv(membership, csv_format).encode("utf-8-sig")
             return HttpResponse(
                 data, content_type="text/csv; charset=utf-8", headers={"Content-Disposition": disposition}
             )

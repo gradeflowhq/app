@@ -1,6 +1,5 @@
 from collections import Counter
 from dataclasses import dataclass
-from urllib.parse import urlencode
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_not_required
@@ -264,8 +263,8 @@ def invitation(request: HttpRequest, token: str) -> HttpResponse:
         return render(request, "courses/invitation_invalid.html", status=404)
     if not request.user.is_authenticated:
         has_account = User.objects.filter(email__iexact=invitation.email).exists()
-        target = reverse("account_login" if has_account else "account_signup")
-        return redirect(f"{target}?{urlencode({'email': invitation.email, 'next': request.path})}")
+        query = {"email": invitation.email, "next": request.path}
+        return redirect(reverse("account_login" if has_account else "account_signup", query=query))
     if request.user.email.lower() != invitation.email:
         return render(request, "courses/invitation_invalid.html", {"invited_email": invitation.email}, status=403)
     accept_invitations(request.user, invitation.email)

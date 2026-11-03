@@ -1,6 +1,7 @@
 """The settings page's model service. The device sends all it knows of the service with each request, as
 `model_state`, and keeps what the response's `X-Model-ModelServiceState` says it now knows."""
 
+from collections import defaultdict
 from dataclasses import dataclass
 from typing import Any
 
@@ -205,9 +206,9 @@ def trial_rows(state: ModelServiceState | None) -> list[TrialRow]:
     if state is None:
         return []
     models_in_use = {"fast": state.fast_model, "careful": state.careful_model}
-    by_model: dict[str, dict[str, ModelTrial]] = {}
+    by_model: defaultdict[str, dict[str, ModelTrial]] = defaultdict(dict)
     for trial in state.trials:
-        by_model.setdefault(trial.model, {})[trial.role] = trial
+        by_model[trial.model][trial.role] = trial
     rows = [
         (model, [(roles.get(role), role in roles and model == models_in_use[role]) for role, _ in ROLES])
         for model, roles in by_model.items()

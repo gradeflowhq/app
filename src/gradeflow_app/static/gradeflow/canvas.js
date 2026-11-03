@@ -46,10 +46,8 @@ const canvasComponent = () => ({
 
   async connect() {
     this.error = "";
-    let baseUrl;
-    try {
-      baseUrl = new URL(this.baseUrl.trim()).origin;
-    } catch {
+    const baseUrl = URL.parse(this.baseUrl.trim())?.origin;
+    if (!baseUrl) {
       this.error = "Enter your Canvas address, such as https://canvas.example.edu.";
       return;
     }

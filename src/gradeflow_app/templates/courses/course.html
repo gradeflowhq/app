@@ -9,7 +9,7 @@
       <thead><tr><th>Assessment</th><th class="text-right max-sm:hidden">Students</th><th>Progress</th><th class="max-sm:hidden">Last change</th></tr></thead>
       <tbody>
         {% for assessment, progress in assessment_progress %}
-        <tr data-href="{% url 'overview' assessment.pk %}">
+        <tr data-href>
           <td><a class="font-medium hover:underline" href="{% url 'overview' assessment.pk %}">{{ assessment.name }}</a>{% if assessment.description %}<p class="max-w-md truncate text-sm text-muted">{{ assessment.description }}</p>{% endif %}</td>
           <td class="tabular-nums text-right max-sm:hidden">{{ assessment.student_count|default:"—" }}</td>
           <td>{% include "assessments/progress.html" %}</td>

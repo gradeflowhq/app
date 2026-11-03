@@ -3,6 +3,7 @@
 from collections.abc import Mapping
 from typing import Any
 
+from django.forms.utils import pretty_name
 from gradeflow_core.editing import HINT_KEY
 
 type Schema = dict[str, Any]
@@ -13,7 +14,7 @@ SUGGESTIONS_KEY = "x-suggestions"
 
 def title_of(schema: Schema, name: object) -> str:
     """A field's title, or else its name, like `max_marks`, as words."""
-    return schema.get("title") or str(name).replace("_", " ").strip().capitalize()
+    return schema.get("title") or pretty_name(str(name))
 
 
 def resolve(schema: Schema, defs: Mapping[str, Schema]) -> Schema:

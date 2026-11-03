@@ -19,7 +19,6 @@ from gradeflow_core.editing import dump_yaml, load_yaml
 from gradeflow_app.accounts.models import User
 from gradeflow_app.assessments.models import Assessment
 from gradeflow_app.courses.models import Course, Member, Role
-from gradeflow_app.jobs import queue
 from gradeflow_app.libraries import services as library_services
 from gradeflow_app.libraries.collection import usable
 from gradeflow_app.libraries.models import Library, Method, MethodVersion
@@ -33,8 +32,7 @@ pytestmark = pytest.mark.django_db(transaction=True)
 
 
 @pytest.fixture
-def course(user: User, monkeypatch: pytest.MonkeyPatch) -> Course:
-    monkeypatch.setattr(queue, "executor", FakeNomad)
+def course(user: User, nomad: FakeNomad) -> Course:
     return create_course(user, "Version races")
 
 
@@ -99,6 +97,19 @@ def _race(first: Callable[[], Any], second: Callable[[], Any]) -> tuple[Any, Any
         return first_future.result(timeout=10), second_future.result(timeout=10)
 
 
+def _saver(draft: MarkingDraftRecord, user: User, version: MethodVersion) -> Callable[[], tuple[int, int]]:
+    """Saving `draft` as `user`, edited to use `version`: the status of the edit and of the save."""
+    client = signed_in_client(user)
+    yaml_url = reverse("draft_yaml", args=[draft.assessment_id, draft.pk])
+    save_url = reverse("draft_save", args=[draft.assessment_id, draft.pk])
+
+    def save() -> tuple[int, int]:
+        edited = client.post(yaml_url, {"definition": dump_yaml({"question": "Q1", "uses": version.ref})})
+        return edited.status_code, client.post(save_url, {}).status_code
+
+    return save
+
+
 def _publisher(method: Method, user: User, definition: str) -> Callable[[], MethodVersion]:
     return lambda: publish_version(Method.objects.get(pk=method.pk), user, definition)
 
@@ -131,15 +142,7 @@ def test_saving_a_marking_and_deleting_its_method_serialize(
     course: Course, version: MethodVersion, user: User, deletion_first: bool
 ) -> None:
     draft = _create_draft(course, user)
-    client = signed_in_client(user)
-    definition = dump_yaml({"question": "Q1", "uses": version.ref})
-    yaml_url = reverse("draft_yaml", args=[draft.assessment_id, draft.pk])
-    save_url = reverse("draft_save", args=[draft.assessment_id, draft.pk])
-
-    def save() -> tuple[int, int]:
-        edited = client.post(yaml_url, {"definition": definition})
-        saved = client.post(save_url, {})
-        return edited.status_code, saved.status_code
+    save = _saver(draft, user, version)
 
     def delete() -> None:
         library_services.delete(Method.objects.get(pk=version.method_id), user)
@@ -166,15 +169,7 @@ def test_renaming_a_course_and_saving_a_marking_that_uses_its_method_serialize(
     course: Course, version: MethodVersion, user: User, rename_first: bool
 ) -> None:
     draft = _create_draft(course, user)
-    client = signed_in_client(user)
-    definition = dump_yaml({"question": "Q1", "uses": version.ref})
-    yaml_url = reverse("draft_yaml", args=[draft.assessment_id, draft.pk])
-    save_url = reverse("draft_save", args=[draft.assessment_id, draft.pk])
-
-    def save() -> tuple[int, int]:
-        edited = client.post(yaml_url, {"definition": definition})
-        saved = client.post(save_url, {})
-        return edited.status_code, saved.status_code
+    save = _saver(draft, user, version)
 
     def rename() -> None:
         library_services.rename_namespace(Library.objects.get(course=course), "Renamed races")
@@ -319,12 +314,11 @@ def test_an_invalid_question_group_keeps_its_questions_when_another_draft_is_sav
     assert owning_marking.questions_marked == ["Q1"]
 
 
-def test_concurrent_publications_of_one_version_publish_once(course: Course, version: MethodVersion) -> None:
+def test_concurrent_publications_of_one_version_publish_once(course: Course, version: MethodVersion, bo: User) -> None:
     owner = course.members.get(role=Role.OWNER).user
-    other = User.objects.create_user("bo@example.edu", "another-password")
-    Member.objects.create(course=course, user=other, role=Role.EDITOR)
+    Member.objects.create(course=course, user=bo, role=Role.EDITOR)
     first = _publisher(version.method, owner, method_definition(answer="first"))
-    second = _publisher(version.method, other, method_definition(answer="second"))
+    second = _publisher(version.method, bo, method_definition(answer="second"))
     published_version, refused = _race(first, second)
     assert isinstance(published_version, MethodVersion)
     assert isinstance(refused, ValidationError)

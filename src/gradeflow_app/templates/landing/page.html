@@ -34,7 +34,7 @@
   </div>
   <div class="mx-auto max-w-6xl">
     {% include "landing/examples.html" %}
-    <p class="mt-6 text-balance text-center text-sm text-muted">Also {% for name in other_methods %}{{ name }}{% if forloop.revcounter == 2 %} and {% elif not forloop.last %}, {% endif %}{% endfor %}.</p>
+    <p class="mt-6 text-balance text-center text-sm text-muted">Also {{ other_methods }}.</p>
   </div>
 </section>
 

@@ -3,7 +3,7 @@
 from collections.abc import Callable
 
 import pytest
-from django.db import connection, reset_queries
+from django.db import connection
 from django.test import Client
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
@@ -22,7 +22,6 @@ pytestmark = pytest.mark.django_db
 def query_count(client: Client, url: str) -> int:
     """How many queries opening `url` takes, once anything it caches is cached."""
     client.get(url)
-    reset_queries()
     with CaptureQueriesContext(connection) as captured:
         assert client.get(url).status_code == 200
     return len(captured)
@@ -38,8 +37,9 @@ def assert_query_count_stays(
         assert client.get(url).status_code == 200
 
 
-def test_course_cards_query_count_does_not_grow(
-    client: Client, django_assert_num_queries: DjangoAssertNumQueries
+@pytest.mark.parametrize("page", ["courses", "course"])
+def test_assessment_lists_query_count_does_not_grow(
+    client: Client, page: str, django_assert_num_queries: DjangoAssertNumQueries
 ) -> None:
     course = create_assessment(client, "Quiz 1").course
     assessment_with_full_marks(client, course, "Quiz 2", ["Q1", "Q2"])
@@ -48,20 +48,8 @@ def test_course_cards_query_count_does_not_grow(
         for name in ["Quiz 3", "Quiz 4"]:
             assessment_with_full_marks(client, course, name, ["Q1", "Q2"])
 
-    assert_query_count_stays(client, reverse("courses"), add_two_more, django_assert_num_queries)
-
-
-def test_course_page_query_count_does_not_grow(
-    client: Client, django_assert_num_queries: DjangoAssertNumQueries
-) -> None:
-    course = create_assessment(client, "Quiz 1").course
-    assessment_with_full_marks(client, course, "Quiz 2", ["Q1", "Q2"])
-
-    def add_two_more() -> None:
-        for name in ["Quiz 3", "Quiz 4"]:
-            assessment_with_full_marks(client, course, name, ["Q1", "Q2"])
-
-    assert_query_count_stays(client, reverse("course", args=[course.pk]), add_two_more, django_assert_num_queries)
+    url = reverse(page, args=[course.pk] if page == "course" else [])
+    assert_query_count_stays(client, url, add_two_more, django_assert_num_queries)
 
 
 def test_library_page_query_count_does_not_grow(

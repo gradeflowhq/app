@@ -1,6 +1,5 @@
 import json
 from dataclasses import dataclass
-from html import escape
 
 from django.conf import settings
 from django.contrib import messages
@@ -8,6 +7,7 @@ from django.core.paginator import Paginator
 from django.http import Http404, HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
+from django.utils.html import format_html_join
 from django.views.decorators.http import require_GET, require_POST
 
 from gradeflow_app.assessments.access import assessment_member
@@ -114,9 +114,9 @@ def _canvas_rows(membership: AssessmentAccess) -> list[dict[str, object]]:
 
 def _comment(results: Results, row: StudentMarks) -> str:
     """The row's marking report as an HTML gradebook comment: each question's marks in bold, then its feedback."""
-    return "\n".join(
-        f"<strong>{escape(line.heading)}</strong>" + (f"\n{escape(line.feedback)}" if line.feedback else "")
-        for line in results.marked_submission(row).report()
+    lines = results.marked_submission(row).report()
+    return format_html_join(
+        "\n", "<strong>{}</strong>{}", ((line.heading, f"\n{line.feedback}" if line.feedback else "") for line in lines)
     )
 
 

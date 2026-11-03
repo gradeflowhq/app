@@ -13,6 +13,7 @@ from gradeflow_app.marking.checks import assessment_checks
 from gradeflow_app.marking.models import Marking
 from gradeflow_app.marking.remarks import remark, schedule_marking
 from gradeflow_app.results.models import Result
+from tests.conftest import full_marks_marking
 
 pytestmark = pytest.mark.django_db(transaction=True)
 
@@ -73,11 +74,7 @@ def test_a_marking_that_stops_validating_schedules_nothing_and_says_so(
 
 
 def test_a_failed_run_says_the_marks_are_from_before(assessment: Assessment, user: User) -> None:
-    marking = Marking.objects.create(
-        assessment=assessment,
-        question=assessment.questions.get(key="Q1"),
-        definition=dump_yaml({"question": "Q1", "uses": "gradeflow/full-marks@1"}),
-    )
+    marking = full_marks_marking(assessment, "Q1")
     schedule_marking(marking, user)
     marking.refresh_from_db()
     job = marking.jobs.get(revision=marking.revision)

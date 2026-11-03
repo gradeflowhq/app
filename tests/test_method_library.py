@@ -7,10 +7,9 @@ import pytest
 from allauth.account.models import EmailAddress
 from django.core.exceptions import ValidationError
 from django.db.models import RestrictedError
-from django.test import Client
+from django.test import Client, TestCase
 from django.urls import reverse
 from gradeflow_core.editing import dump_yaml
-from pytest_django import DjangoCaptureOnCommitCallbacks
 
 from gradeflow_app.accounts.models import User
 from gradeflow_app.assessments.models import Assessment
@@ -33,6 +32,7 @@ from tests.conftest import (
     method_definition,
     publish_light_method,
     publish_version,
+    save_draft,
     signed_in_client,
     start_marking,
 )
@@ -40,16 +40,22 @@ from tests.conftest import (
 pytestmark = pytest.mark.django_db
 
 
-def save_marking(assessment: Assessment, uses: str, capture_on_commit: DjangoCaptureOnCommitCallbacks) -> Marking:
+def save_marking(assessment: Assessment, uses: str) -> Marking:
     marking = Marking.objects.create(
         assessment=assessment,
         question=assessment.questions.get(key="Q1"),
         definition=dump_yaml({"question": "Q1", "uses": uses}),
     )
-    with capture_on_commit(execute=True):
+    with TestCase.captureOnCommitCallbacks(execute=True):
         schedule_marking(marking)
     marking.refresh_from_db()
     return marking
+
+
+def publish_parent(library: Library, user: User, uses: MethodVersion) -> MethodVersion:
+    """The first version of a method named "parent" that uses `uses`."""
+    method = Method.objects.create(library=library, name="parent")
+    return publish_version(method, user, method_definition("Parent", uses=uses.ref))
 
 
 def usable_refs(user: User, course: Course | None) -> set[str]:
@@ -63,11 +69,6 @@ def used_refs(marking_or_version: Marking | MethodVersion) -> set[str]:
 @pytest.fixture
 def library(assessment: Assessment) -> Library:
     return assessment.course.library
-
-
-@pytest.fixture
-def bo(db: None) -> User:
-    return User.objects.create_user("bo@example.edu", "another-password", name="Bo Lim")
 
 
 def test_every_published_version_is_a_method_and_only_the_latest_is_offered(
@@ -186,18 +187,15 @@ def test_a_marking_links_the_versions_it_needs_and_keeps_them_until_updated(
     assessment: Assessment,
     library: Library,
     user: User,
-    django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks,
 ) -> None:
     version = publish_light_method(library, user)
-    parent = publish_version(
-        Method.objects.create(library=library, name="parent"), user, method_definition("Parent", uses=version.ref)
-    )
+    parent = publish_parent(library, user, version)
     assert used_refs(parent) == {"bio1010/light@1"}
     assert VersionUse.objects.get(version=parent).used_version == version
-    marking = save_marking(assessment, "bio1010/parent@1", django_capture_on_commit_callbacks)
+    marking = save_marking(assessment, "bio1010/parent@1")
     assert used_refs(marking) == {"bio1010/parent@1", "bio1010/light@1"}, "with what it uses in turn"
     marking.delete()
-    marking = save_marking(assessment, "bio1010/light@1", django_capture_on_commit_callbacks)
+    marking = save_marking(assessment, "bio1010/light@1")
     newer = publish_version(version.method, user, method_definition(answer="chlorophyll"))
     marking.refresh_from_db()
     assert used_refs(marking) == {"bio1010/light@1"}
@@ -206,8 +204,7 @@ def test_a_marking_links_the_versions_it_needs_and_keeps_them_until_updated(
         client.post(url, {"path": "", "operation": "use_latest", "target": ""}, headers=HTMX_HEADERS).status_code == 200
     )
     assert definition_data(MarkingDraftRecord.objects.get(pk=draft.pk).definition)["uses"] == "bio1010/light@2"
-    with django_capture_on_commit_callbacks(execute=True):
-        client.post(reverse("draft_save", args=[assessment.pk, draft.pk]), {"path": ""})
+    save_draft(client, draft)
     marking.refresh_from_db()
     assert used_refs(marking) == {"bio1010/light@2"}
     remarked = marking.jobs.latest("created_at")
@@ -218,16 +215,13 @@ def test_a_version_in_use_cant_be_deleted(
     assessment: Assessment,
     library: Library,
     user: User,
-    django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks,
 ) -> None:
     version = publish_light_method(library, user)
-    parent = publish_version(
-        Method.objects.create(library=library, name="parent"), user, method_definition("Parent", uses=version.ref)
-    )
+    parent = publish_parent(library, user, version)
     with pytest.raises(RestrictedError):
         version.delete()
     parent.method.delete()
-    save_marking(assessment, version.ref, django_capture_on_commit_callbacks)
+    save_marking(assessment, version.ref)
     with pytest.raises(RestrictedError):
         version.method.delete()
 
@@ -235,9 +229,7 @@ def test_a_version_in_use_cant_be_deleted(
 def test_a_marking_loads_only_the_versions_it_needs(library: Library, user: User) -> None:
     version = publish_light_method(library, user)
     publish_version(version.method, user, method_definition(answer="chlorophyll"))
-    publish_version(
-        Method.objects.create(library=library, name="parent"), user, method_definition("Parent", uses=version.ref)
-    )
+    publish_parent(library, user, version)
     publish_light_method(library, user, name="unrelated", label="Unrelated")
     assert [name for name, _ in files_needed_by(["bio1010/parent@1"])] == ["bio1010/light", "bio1010/parent"]
     assert files_needed_by(["gradeflow/key-points@1"]) == ()
@@ -247,14 +239,13 @@ def test_a_course_marks_with_the_core_and_the_versions_its_markings_use(
     assessment: Assessment,
     library: Library,
     user: User,
-    django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks,
 ) -> None:
     version = publish_light_method(library, user)
     publish_light_method(library, user, name="unused", label="Unused")
     refs_in_use = {method.ref for method in course_methods(assessment.course)}
     assert "gradeflow/key-points@1" in refs_in_use
     assert not {"bio1010/light@1", "bio1010/unused@1"} & refs_in_use
-    save_marking(assessment, version.ref, django_capture_on_commit_callbacks)
+    save_marking(assessment, version.ref)
     refs_in_use = {method.ref for method in course_methods(assessment.course)}
     assert "bio1010/light@1" in refs_in_use
     assert "bio1010/unused@1" not in refs_in_use
@@ -265,7 +256,6 @@ def test_a_person_uses_their_own_their_courses_public_and_used_methods(
     library: Library,
     user: User,
     bo: User,
-    django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks,
 ) -> None:
     course = assessment.course
     publish_light_method(library, user, name="course", label="Course")
@@ -278,7 +268,7 @@ def test_a_person_uses_their_own_their_courses_public_and_used_methods(
     assert usable_refs(user, None) >= {"ana-example-edu/mine@1", "bio1010/course@1", "bo-example-edu/public@1"}
     assert "bo-example-edu/private@1" not in usable_refs(user, course)
     assert "bio1010/course@1" not in usable_refs(bo, None)
-    save_marking(assessment, private.ref, django_capture_on_commit_callbacks)
+    save_marking(assessment, private.ref)
     assert "bo-example-edu/private@1" in usable_refs(user, course), "a version the course uses"
     assert "bo-example-edu/private@1" not in usable_refs(user, None)
 
@@ -288,7 +278,6 @@ def test_the_picker_offers_saved_methods_by_where_they_come_from(
     library: Library,
     user: User,
     bo: User,
-    django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks,
 ) -> None:
     course = assessment.course
     publish_light_method(library, user, name="course", label="Course")
@@ -301,7 +290,7 @@ def test_the_picker_offers_saved_methods_by_where_they_come_from(
     shared = publish_light_method(bo_library, bo, name="shared", label="Shared")
     Method.objects.filter(pk=shared.method_id).update(public=True)
     publish_light_method(bo_library, bo, name="hidden", label="Hidden")
-    save_marking(assessment, used.ref, django_capture_on_commit_callbacks)
+    save_marking(assessment, used.ref)
     offered = offers(user, course)
     assert offered.sections == (
         ("Used in this course", ("bo-example-edu/used",)),
@@ -319,13 +308,12 @@ def test_archived_methods_are_offered_nowhere(
     assessment: Assessment,
     library: Library,
     user: User,
-    django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks,
 ) -> None:
     course = assessment.course
     version = publish_light_method(library, user)
     publish_version(version.method, user, method_definition(answer="newer"))
     mine = publish_light_method(user.library, user, name="mine", label="Mine")
-    save_marking(assessment, version.ref, django_capture_on_commit_callbacks)
+    save_marking(assessment, version.ref)
     Method.objects.filter(pk__in=[version.method_id, mine.method_id]).update(archived=True, public=True)
     offered = offers(user, course)
     assert offered.sections == ()
@@ -340,7 +328,6 @@ def test_who_opens_and_changes_a_method(
     library: Library,
     user: User,
     bo: User,
-    django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks,
 ) -> None:
     mine = publish_light_method(user.library, user).method
     course = publish_light_method(library, user, name="course", label="Course").method
@@ -360,7 +347,7 @@ def test_who_opens_and_changes_a_method(
     assert not can_edit(bo, course.library)
     Member.objects.filter(user=bo).update(role=Role.EDITOR)
     assert can_edit(bo, course.library)
-    save_marking(assessment, theirs.versions.get().ref, django_capture_on_commit_callbacks)
+    save_marking(assessment, theirs.versions.get().ref)
     assert "theirs" in visible_method_names(user), "a version the course uses"
     assert not can_edit(user, theirs.library)
 
@@ -389,7 +376,6 @@ def test_an_archived_method_isnt_offered_but_its_markings_still_mark(
     assessment: Assessment,
     library: Library,
     user: User,
-    django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks,
 ) -> None:
     version = publish_light_method(library, user)
     response = client.post(reverse("method_archive", args=[version.method_id]))
@@ -399,7 +385,7 @@ def test_an_archived_method_isnt_offered_but_its_markings_still_mark(
     question = assessment.questions.get(key="Q1")
     picker = client.get(reverse("question_methods", args=[assessment.pk, question.pk])).content.decode()
     assert "Says light." not in picker
-    marking = save_marking(assessment, version.ref, django_capture_on_commit_callbacks)
+    marking = save_marking(assessment, version.ref)
     job = marking.jobs.get()
     assert job.status == Job.Status.COMPLETED
     assert Result.objects.filter(question=question).count() == assessment.students.count()
@@ -415,13 +401,10 @@ def test_a_method_in_use_isnt_deleted(
     library: Library,
     user: User,
     bo: User,
-    django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks,
 ) -> None:
     version = publish_light_method(library, user)
-    parent = publish_version(
-        Method.objects.create(library=library, name="parent"), user, method_definition("Parent", uses=version.ref)
-    )
-    save_marking(assessment, version.ref, django_capture_on_commit_callbacks)
+    parent = publish_parent(library, user, version)
+    save_marking(assessment, version.ref)
     other_course_quiz = Assessment.objects.create(course=create_course(bo), name="Quiz")
     Marking.objects.create(assessment=other_course_quiz, definition=dump_yaml({"uses": version.ref}))
     with pytest.raises(ValidationError) as refused:
@@ -444,13 +427,10 @@ def test_deleting_a_course_deletes_its_unused_methods_and_keeps_the_rest_private
     library: Library,
     user: User,
     bo: User,
-    django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks,
 ) -> None:
     used = publish_light_method(library, user, name="used", label="Used")
     base = publish_light_method(library, user, name="base", label="Base")
-    parent = publish_version(
-        Method.objects.create(library=library, name="parent"), user, method_definition("Parent", uses=base.ref)
-    )
+    parent = publish_parent(library, user, base)
     unused = publish_light_method(library, user, name="unused", label="Unused")
     Method.objects.filter(library=library).update(public=True)
     other_course_quiz = Assessment.objects.create(course=create_course(bo), name="Quiz")
@@ -520,9 +500,8 @@ def test_save_as_a_method_goes_to_the_markings_course(
     client: Client,
     assessment: Assessment,
     user: User,
-    django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks,
 ) -> None:
-    save_marking(assessment, "gradeflow/full-marks@1", django_capture_on_commit_callbacks)
+    save_marking(assessment, "gradeflow/full-marks@1")
     question = assessment.questions.get(key="Q1")
     url = reverse("method_save", args=[assessment.pk, question.pk])
     form = client.get(url).content.decode()
@@ -560,16 +539,11 @@ def test_publishing_under_a_new_name_keeps_a_used_methods_reference(
     assessment: Assessment,
     library: Library,
     user: User,
-    django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks,
 ) -> None:
     used_by_marking = publish_light_method(library, user)
-    save_marking(assessment, used_by_marking.ref, django_capture_on_commit_callbacks)
+    save_marking(assessment, used_by_marking.ref)
     used_by_method = publish_light_method(library, user, name="base", label="Base")
-    publish_version(
-        Method.objects.create(library=library, name="parent"),
-        user,
-        method_definition("Parent", uses=used_by_method.ref),
-    )
+    publish_parent(library, user, used_by_method)
     for version in (used_by_marking, used_by_method):
         renamed = publish_version(version.method, user, method_definition("Renamed " + version.method.name))
         assert renamed.ref == f"bio1010/{version.method.name}@2"
@@ -581,7 +555,6 @@ def test_renaming_a_course_makes_its_namespace_again_while_its_methods_are_unuse
     assessment: Assessment,
     library: Library,
     user: User,
-    django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks,
 ) -> None:
     url = reverse("course_settings", args=[assessment.course_id])
     version = publish_light_method(library, user)
@@ -589,7 +562,7 @@ def test_renaming_a_course_makes_its_namespace_again_while_its_methods_are_unuse
     library.refresh_from_db()
     assert library.namespace == "introductory-biology"
     assert MethodVersion.objects.get(pk=version.pk).ref == "introductory-biology/light@1"
-    save_marking(assessment, "introductory-biology/light@1", django_capture_on_commit_callbacks)
+    save_marking(assessment, "introductory-biology/light@1")
     client.post(url, {"name": "Biology", "description": ""})
     library.refresh_from_db()
     assert (assessment.course.__class__.objects.get(pk=assessment.course_id).name, library.namespace) == (
@@ -602,7 +575,6 @@ def test_changing_an_email_address_makes_the_namespace_again_while_its_methods_a
     client: Client,
     assessment: Assessment,
     user: User,
-    django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks,
 ) -> None:
     EmailAddress.objects.create(user=user, email=user.email, primary=True, verified=True)
     for address in ("ana.lim@example.edu", "ana.tan@example.edu"):
@@ -615,7 +587,7 @@ def test_changing_an_email_address_makes_the_namespace_again_while_its_methods_a
 
     version = publish_light_method(user.library, user)
     assert namespace_after_making_primary("ana.lim@example.edu") == "ana-lim-example-edu"
-    save_marking(assessment, MethodVersion.objects.get(pk=version.pk).ref, django_capture_on_commit_callbacks)
+    save_marking(assessment, MethodVersion.objects.get(pk=version.pk).ref)
     assert namespace_after_making_primary("ana.tan@example.edu") == "ana-lim-example-edu"
 
 
@@ -623,8 +595,6 @@ def test_a_method_another_method_uses_says_which_where_it_cant_be_deleted(
     client: Client, library: Library, user: User
 ) -> None:
     version = publish_light_method(library, user)
-    publish_version(
-        Method.objects.create(library=library, name="parent"), user, method_definition("Parent", uses=version.ref)
-    )
+    publish_parent(library, user, version)
     page = client.get(reverse("method_latest", args=[version.method_id]), follow=True).content.decode()
     assert 'title="Used by Parent, so archive it instead"' in page

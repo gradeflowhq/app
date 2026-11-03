@@ -270,11 +270,10 @@ class SavedGroup:
 
 def saved_group(assessment: Assessment, marking: Marking, check: Check | None) -> SavedGroup:
     """The question group `marking`, as `check`, the core's reading of it, while it can mark."""
-    involved = questions_involved(marking, check)
     return SavedGroup(
         marking,
         sorted(questions_marked(marking, check)),
-        [key for key in assessment.questions.values_list("key", flat=True) if key in involved],
+        list(assessment.questions.filter(key__in=questions_involved(marking, check)).values_list("key", flat=True)),
         _summary(marking, check, assessment),
     )
 

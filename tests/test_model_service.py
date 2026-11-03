@@ -1,3 +1,4 @@
+from dataclasses import asdict
 from datetime import timedelta
 from typing import cast
 
@@ -6,13 +7,12 @@ from django.http import HttpResponse
 from django.test import Client, RequestFactory
 from django.urls import reverse
 from django.utils import timezone
-from gradeflow_core import GradeFlowError
+from gradeflow_core import GradeFlowError, Progress
 from gradeflow_core.editing import ModelTrial, dump_yaml
 from pytest_django import Settings
 
 from gradeflow_app.accounts.models import User
 from gradeflow_app.assessments.models import Assessment
-from gradeflow_app.jobs import queue
 from gradeflow_app.jobs.models import Job
 from gradeflow_app.marking.answers.out_of_date import out_of_date_notices
 from gradeflow_app.marking.checks import assessment_checks
@@ -21,7 +21,7 @@ from gradeflow_app.marking.remarks import schedule_marking
 from gradeflow_app.model_service import views
 from gradeflow_app.model_service.endpoints import STATE_HEADER, ModelServiceState, endpoint
 from gradeflow_app.requests import Request
-from tests.conftest import IdleExecutor, post_callback
+from tests.conftest import full_marks_marking, post_callback
 
 PROVIDER_URL = "https://models.example.com/v1"
 PROVIDER = "Example AI"
@@ -49,11 +49,6 @@ CRITERIA = {"criteria": [{"criterion": "Says ice floats", "marks": 1}]}
 @pytest.fixture(autouse=True)
 def _offer_provider(settings: Settings) -> None:
     settings.GRADEFLOW_MODEL_PROVIDERS = {PROVIDER: PROVIDER_URL}
-
-
-@pytest.fixture
-def idle_executor(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(queue, "executor", IdleExecutor)
 
 
 def request_with_model_service(user: User) -> Request:
@@ -259,10 +254,7 @@ def test_marking_that_asks_a_model_carries_the_endpoint_with_its_chosen_models(
 def test_marking_that_asks_no_model_leaves_the_token_out(
     client: Client, user: User, assessment: Assessment, idle_executor: None
 ) -> None:
-    question = assessment.questions.get(key="Q3")
-    definition = {"question": "Q3", "uses": "gradeflow/full-marks@1"}
-    marking = Marking.objects.create(assessment=assessment, question=question, definition=dump_yaml(definition))
-    job = schedule_marking(marking, user, endpoint(request_with_model_service(user)))
+    job = schedule_marking(full_marks_marking(assessment, "Q3"), user, endpoint(request_with_model_service(user)))
     assert job is not None
     assert job.input is not None
     assert job.input["model_endpoint"] is None
@@ -291,7 +283,8 @@ def test_marking_says_what_it_waits_on(client: Client, user: User, assessment: A
     job = schedule_marking(criteria_marking(assessment), user, endpoint(request_with_model_service(user)))
     assert job is not None
     post_callback(job, {"event": "started"})
-    assert post_callback(job, {"event": "progress", "completed": 12, "total": 30, "step": "Deciding criteria"}) == 204
+    progress = Progress(completed=12, total=30, step="Deciding criteria")
+    assert post_callback(job, {"event": "progress", **asdict(progress)}) == 204
     assert out_of_date_notices(assessment_checks(assessment), ["Q3"]) == []
     question = assessment.questions.get(key="Q3")
     column = client.get(reverse("answers", args=[assessment.pk, question.pk])).content.decode()

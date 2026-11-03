@@ -1,14 +1,12 @@
 """Each marking's jobs: revisions, complete results, the per-user job limit, and callbacks that can't change another
 job's marks."""
 
-import threading
-from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
 from typing import Any
 
 import pytest
 from django.conf import settings
-from django.db import close_old_connections, transaction
+from django.db import transaction
 from django.test import Client
 from django.utils import timezone
 from gradeflow_core.editing import dump_yaml
@@ -23,23 +21,9 @@ from gradeflow_app.jobs.payloads import MarkingRun
 from gradeflow_app.marking.models import Marking
 from gradeflow_app.marking.remarks import delete_marking, remark, schedule_marking
 from gradeflow_app.results.models import Adjustment, Result
-from tests.conftest import EXPORT_CSV, FakeNomad, marked_by_sandbox, upload
+from tests.conftest import EXPORT_CSV, FakeNomad, full_marks_marking, marked_by_sandbox, run_together, upload
 
-pytestmark = pytest.mark.django_db(transaction=True)
-
-
-@pytest.fixture(autouse=True)
-def _use_fake_nomad(monkeypatch: pytest.MonkeyPatch) -> None:
-    FakeNomad.submitted, FakeNomad.cancelled, FakeNomad.ended, FakeNomad.is_down = [], [], set(), False
-    monkeypatch.setattr(queue, "executor", FakeNomad)
-
-
-def question_marking(assessment: Assessment, key: str) -> Marking:
-    return Marking.objects.create(
-        assessment=assessment,
-        question=assessment.questions.get(key=key),
-        definition=dump_yaml({"question": key, "uses": "gradeflow/full-marks@1"}),
-    )
+pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.usefixtures("nomad")]
 
 
 def question_group_marking(assessment: Assessment, keys: list[str]) -> Marking:
@@ -76,7 +60,7 @@ def finish(job: Job) -> None:
 
 
 def test_replacing_one_markings_job_keeps_other_jobs_and_marks(assessment: Assessment, user: User) -> None:
-    q1_marking, q2_marking = question_marking(assessment, "Q1"), question_marking(assessment, "Q2")
+    q1_marking, q2_marking = full_marks_marking(assessment, "Q1"), full_marks_marking(assessment, "Q2")
     remark(assessment, ["Q1", "Q2"], user)
     first, other = q1_marking.jobs.get(), q2_marking.jobs.get()
     late_submissions = marked_submissions(first)
@@ -155,7 +139,7 @@ def test_a_question_leaving_a_group_loses_its_old_marks_before_another_marking_t
         marking.save()
         schedule_marking(marking, user)
     assert not Result.objects.filter(question__key="Q3").exists()
-    q3_marking = question_marking(assessment, "Q3")
+    q3_marking = full_marks_marking(assessment, "Q3")
     q3_job = schedule_marking(q3_marking, user)
     assert q3_job is not None
     finish(q3_job)
@@ -166,16 +150,16 @@ def test_a_question_leaving_a_group_loses_its_old_marks_before_another_marking_t
 
 
 def test_queue_wait_does_not_timeout_and_every_marking_eventually_runs(
-    assessment: Assessment, user: User, settings: Settings
+    assessment: Assessment, user: User, nomad: FakeNomad, settings: Settings
 ) -> None:
     settings.GRADEFLOW_RUNNING_JOBS_PER_USER = 1
-    markings = [question_marking(assessment, key) for key in ["Q1", "Q2", "Q3"]]
+    markings = [full_marks_marking(assessment, key) for key in ["Q1", "Q2", "Q3"]]
     remark(assessment, ["Q1", "Q2", "Q3"], user)
-    assert len(FakeNomad.submitted) == 1
+    assert len(nomad.submitted) == 1
     undispatched_jobs = Job.objects.filter(dispatched_at=None)
     undispatched_jobs.update(created_at=timezone.now() - timedelta(days=2))
     assert not Job.objects.timed_out().exists()
-    first = Job.objects.get(pk=FakeNomad.submitted[0])
+    first = Job.objects.get(pk=nomad.submitted[0])
     queue.end(first, "Retry needed")
     for _ in range(2):
         active_job = Job.objects.get(status__in=Job.ACTIVE, dispatched_at__isnull=False)
@@ -187,21 +171,23 @@ def test_queue_wait_does_not_timeout_and_every_marking_eventually_runs(
     assert Result.objects.count() == assessment.students.count() * 3
 
 
-def test_worker_hands_over_again_what_the_sandbox_never_received(assessment: Assessment, user: User) -> None:
-    job = schedule_marking(question_marking(assessment, "Q1"), user)
+def test_worker_hands_over_again_what_the_sandbox_never_received(
+    assessment: Assessment, user: User, nomad: FakeNomad
+) -> None:
+    job = schedule_marking(full_marks_marking(assessment, "Q1"), user)
     assert job is not None
     queue.recover_queue()
-    assert FakeNomad.submitted == [job.pk], "a received job isn't handed over again"
-    FakeNomad.submitted.clear()
+    assert nomad.submitted == [job.pk], "a received job isn't handed over again"
+    nomad.submitted.clear()
     queue.recover_queue()
-    assert FakeNomad.submitted == [job.pk]
+    assert nomad.submitted == [job.pk]
 
 
 def test_a_job_started_while_the_sandbox_is_down_waits_for_the_worker_to_fail_it(
-    assessment: Assessment, user: User
+    assessment: Assessment, user: User, nomad: FakeNomad
 ) -> None:
-    FakeNomad.is_down = True
-    job = schedule_marking(question_marking(assessment, "Q1"), user)
+    nomad.is_down = True
+    job = schedule_marking(full_marks_marking(assessment, "Q1"), user)
     assert job is not None
     job.refresh_from_db()
     assert job.status == Job.Status.QUEUED, "the page that started it shows what its events change next"
@@ -210,11 +196,11 @@ def test_a_job_started_while_the_sandbox_is_down_waits_for_the_worker_to_fail_it
     assert (job.status, job.error) == (Job.Status.FAILED, "The marking service is unavailable.")
 
 
-def test_running_jobs_outlast_a_sandbox_outage(assessment: Assessment, user: User) -> None:
-    job = schedule_marking(question_marking(assessment, "Q1"), user)
+def test_running_jobs_outlast_a_sandbox_outage(assessment: Assessment, user: User, nomad: FakeNomad) -> None:
+    job = schedule_marking(full_marks_marking(assessment, "Q1"), user)
     assert job is not None
     events.apply_started(job)
-    FakeNomad.is_down = True
+    nomad.is_down = True
     queue.recover_queue()
     job.refresh_from_db()
     assert job.status == Job.Status.RUNNING
@@ -222,31 +208,31 @@ def test_running_jobs_outlast_a_sandbox_outage(assessment: Assessment, user: Use
 
 @pytest.mark.parametrize("was_started", [False, True])
 def test_a_job_the_sandbox_ended_without_calling_back_fails(
-    assessment: Assessment, user: User, was_started: bool
+    assessment: Assessment, user: User, nomad: FakeNomad, was_started: bool
 ) -> None:
-    job = schedule_marking(question_marking(assessment, "Q1"), user)
+    job = schedule_marking(full_marks_marking(assessment, "Q1"), user)
     assert job is not None
     if was_started:
         events.apply_started(job)
-    FakeNomad.ended.add(job.pk)
+    nomad.ended.add(job.pk)
     queue.recover_queue()
     job.refresh_from_db()
     assert (job.status, job.error) == (Job.Status.FAILED, "The marking service stopped before finishing.")
 
 
-def test_a_running_job_the_sandbox_no_longer_lists_fails(assessment: Assessment, user: User) -> None:
-    job = schedule_marking(question_marking(assessment, "Q1"), user)
+def test_a_running_job_the_sandbox_no_longer_lists_fails(assessment: Assessment, user: User, nomad: FakeNomad) -> None:
+    job = schedule_marking(full_marks_marking(assessment, "Q1"), user)
     assert job is not None
     events.apply_started(job)
-    FakeNomad.submitted.clear()
+    nomad.submitted.clear()
     queue.recover_queue()
     job.refresh_from_db()
     assert job.status == Job.Status.FAILED
-    assert not FakeNomad.submitted, "a started job isn't run twice"
+    assert not nomad.submitted, "a started job isn't run twice"
 
 
 def test_a_job_keeps_what_marked_after_its_input_is_cleared(assessment: Assessment, user: User) -> None:
-    marking = question_marking(assessment, "Q1")
+    marking = full_marks_marking(assessment, "Q1")
     job = schedule_marking(marking, user)
     assert job is not None
     finish(job)
@@ -260,25 +246,14 @@ def test_a_job_keeps_what_marked_after_its_input_is_cleared(assessment: Assessme
 
 
 def test_complete_and_edit_serialize_on_real_connections(assessment: Assessment, user: User) -> None:
-    marking = question_marking(assessment, "Q1")
+    marking = full_marks_marking(assessment, "Q1")
     job = schedule_marking(marking, user)
     assert job is not None
     events.add_marked_batch(job, marked_submissions(job))
-    start_together = threading.Barrier(2)
-
-    def run(index: int) -> None:
-        close_old_connections()
-        try:
-            start_together.wait(timeout=10)
-            if index:
-                schedule_marking(Marking.objects.get(pk=marking.pk), user)
-            else:
-                events.complete(Job.objects.get(pk=job.pk))
-        finally:
-            close_old_connections()
-
-    with ThreadPoolExecutor(max_workers=2) as pool:
-        list(pool.map(run, range(2)))
+    run_together(
+        lambda: events.complete(Job.objects.get(pk=job.pk)),
+        lambda: schedule_marking(Marking.objects.get(pk=marking.pk), user),
+    )
     marking.refresh_from_db()
     latest = marking.jobs.get(status__in=Job.ACTIVE)
     assert marking.revision == latest.revision == 2
@@ -289,7 +264,7 @@ def test_complete_and_edit_serialize_on_real_connections(assessment: Assessment,
 def test_reimport_only_supersedes_the_jobs_of_markings_reading_changed_answers(
     client: Client, assessment: Assessment, user: User
 ) -> None:
-    q1_marking, q2_marking = question_marking(assessment, "Q1"), question_marking(assessment, "Q2")
+    q1_marking, q2_marking = full_marks_marking(assessment, "Q1"), full_marks_marking(assessment, "Q2")
     remark(assessment, ["Q1", "Q2"], user)
     first, untouched = q1_marking.jobs.get(), q2_marking.jobs.get()
     upload(client, assessment)
@@ -303,7 +278,7 @@ def test_reimport_only_supersedes_the_jobs_of_markings_reading_changed_answers(
 
 
 def test_deleted_owner_and_duplicate_callbacks_cannot_change_marks(assessment: Assessment, user: User) -> None:
-    marking = question_marking(assessment, "Q1")
+    marking = full_marks_marking(assessment, "Q1")
     job = schedule_marking(marking, user)
     assert job is not None
     submissions = marked_submissions(job)
@@ -325,7 +300,7 @@ def test_deleted_owner_and_duplicate_callbacks_cannot_change_marks(assessment: A
 
 
 def test_incomplete_result_fails_without_replacing_existing_marks(assessment: Assessment, user: User) -> None:
-    marking = question_marking(assessment, "Q1")
+    marking = full_marks_marking(assessment, "Q1")
     first = schedule_marking(marking, user)
     assert first is not None
     finish(first)
@@ -339,7 +314,9 @@ def test_incomplete_result_fails_without_replacing_existing_marks(assessment: As
     assert set(Result.objects.values_list("revision", flat=True)) == {first.revision}
 
 
-def test_an_invalid_marking_replaces_its_run_without_touching_its_marks(assessment: Assessment, user: User) -> None:
+def test_an_invalid_marking_replaces_its_run_without_touching_its_marks(
+    assessment: Assessment, user: User, nomad: FakeNomad
+) -> None:
     marking = Marking.objects.create(
         assessment=assessment,
         definition=dump_yaml(
@@ -360,19 +337,19 @@ def test_an_invalid_marking_replaces_its_run_without_touching_its_marks(assessme
     assert marking.questions_marked == ["Q1"]
     running = schedule_marking(marking, user)
     assert running is not None
-    untouched = schedule_marking(question_marking(assessment, "Q3"), user)
+    untouched = schedule_marking(full_marks_marking(assessment, "Q3"), user)
     assert untouched is not None
     previous = list(Result.objects.values("student_id", "proportion", "revision"))
     marking.definition = "uses: course-unavailable@1"
     marking.save()
-    submitted = list(FakeNomad.submitted)
+    submitted = list(nomad.submitted)
     job_count = assessment.jobs.count()
     remark(assessment, ["Q2"], user)
     assert assessment.jobs.count() == job_count
     running.refresh_from_db()
     assert (running.status, running.error) == (Job.Status.FAILED, "Replaced by a newer run.")
     assert list(Result.objects.values("student_id", "proportion", "revision")) == previous
-    assert FakeNomad.submitted == submitted
+    assert nomad.submitted == submitted
     marking.refresh_from_db()
     assert running.revision is not None
     assert marking.revision == running.revision + 1
@@ -435,22 +412,9 @@ def test_dispatching_twice_at_once_still_dispatches_one_job_per_user(
     settings.GRADEFLOW_RUNNING_JOBS_PER_USER = 1
     with transaction.atomic():
         for key in ["Q1", "Q2", "Q3"]:
-            schedule_marking(question_marking(assessment, key))
+            schedule_marking(full_marks_marking(assessment, key))
     dispatched = Job.objects.get(dispatched_at__isnull=False)
     Job.objects.filter(pk=dispatched.pk).update(status=Job.Status.COMPLETED)
-    start_together = threading.Barrier(2)
-
-    def dispatch() -> None:
-        close_old_connections()
-        try:
-            start_together.wait(timeout=10)
-            queue.dispatch()
-        finally:
-            close_old_connections()
-
-    with ThreadPoolExecutor(max_workers=2) as pool:
-        futures = [pool.submit(dispatch) for _ in range(2)]
-        for future in futures:
-            future.result(timeout=10)
+    run_together(queue.dispatch, queue.dispatch)
     assert Job.objects.filter(status__in=Job.ACTIVE, dispatched_at__isnull=False).count() == 1
     assert Job.objects.filter(status=Job.Status.QUEUED, dispatched_at=None).count() == 1

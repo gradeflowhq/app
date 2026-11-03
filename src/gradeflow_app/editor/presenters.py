@@ -4,12 +4,13 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
+from django.utils.text import get_text_list
 from gradeflow_core import GradeFlowError, Methods, Problem
 from gradeflow_core import Method as CoreMethod
 from gradeflow_core.editing import ChecksSetting, MarkingDraft
 
 from gradeflow_app.editor.editing import CheckWorkspace, Conflict, EditorActions
-from gradeflow_app.editor.guide import choices, joined, question_group_check
+from gradeflow_app.editor.guide import choices, question_group_check
 from gradeflow_app.libraries.collection import BUILTIN_NAMES, OfferedMethods
 from gradeflow_app.ui.schemaforms.forms import ObjectForm
 
@@ -140,7 +141,8 @@ class Editor:
         keys = sorted({key for conflict in self.conflicts for key in conflict.questions})
         if not keys:
             return ""
-        return f"{joined(keys)} has another marking." if len(keys) == 1 else f"{joined(keys)} have other markings."
+        others = "has another marking" if len(keys) == 1 else "have other markings"
+        return f"{get_text_list(keys, 'and')} {others}."
 
     @property
     def holds_checks(self) -> bool:

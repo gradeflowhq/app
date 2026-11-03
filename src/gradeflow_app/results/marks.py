@@ -71,9 +71,6 @@ class Award:
         """How each check of the marking marked the answer; None for a marking of one check."""
         return marking_result.breakdown if (marking_result := self.marking_result) is not None else None
 
-    def with_preview(self, preview_result: QuestionResult) -> Award:
-        return Award(self.max_marks, self.result, self.adjustment, self.imported_marks, preview_result)
-
     def differs_from(self, other: Award) -> bool:
         """Whether `other`, such as this award with a preview's result, gives other marks or feedback."""
         return (self.marks, self.feedback) != (other.marks, other.feedback)

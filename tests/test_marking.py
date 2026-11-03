@@ -24,7 +24,17 @@ from gradeflow_app.marking.checks import definition_data
 from gradeflow_app.marking.models import Marking, MarkingDraftRecord
 from gradeflow_app.marking.workspace import MarkingWorkspace
 from gradeflow_app.ui.templatetags.ui import markdown
-from tests.conftest import HTMX_HEADERS, code_draft, encrypted_id, start_marking
+from tests.conftest import (
+    HTMX_HEADERS,
+    between,
+    code_draft,
+    encrypted_id,
+    full_marks_marking,
+    make_code_question,
+    preview_draft,
+    save_draft,
+    start_marking,
+)
 
 pytestmark = pytest.mark.django_db
 
@@ -104,11 +114,7 @@ def test_stale_or_unknown_editor_actions_change_nothing(client: Client, assessme
 
 def test_questions_opens_the_first_question(client: Client, assessment: Assessment) -> None:
     """Marked or not. A page load goes to its address; a click in the app gets it at once, with its address."""
-    Marking.objects.create(
-        assessment=assessment,
-        question=assessment.questions.get(key="Q1"),
-        definition=dump_yaml({"question": "Q1", "uses": "gradeflow/full-marks@1"}),
-    )
+    full_marks_marking(assessment, "Q1")
     url = reverse("questions", args=[assessment.pk])
     first = reverse("question", args=[assessment.pk, assessment.questions.get(key="Q1").pk])
     assert client.get(url).headers["Location"] == first
@@ -136,8 +142,7 @@ def test_a_removed_marking_can_be_restored_from_its_history(
     client.post(url, {"path": "", "fields_posted": "1", "points": ["light"], "combine": "all"})
     question = draft.question
     assert question is not None
-    with django_capture_on_commit_callbacks(execute=True):
-        client.post(reverse("draft_save", args=[assessment.pk, draft.pk]), {"path": "", "operation": "save"})
+    save_draft(client, draft)
     history = reverse("marking_history", args=[assessment.pk, question.pk])
     assert "Current" in client.get(history).content.decode()
     with django_capture_on_commit_callbacks(execute=True):
@@ -149,19 +154,15 @@ def test_a_removed_marking_can_be_restored_from_its_history(
     assert history in client.get(reverse("question", args=[assessment.pk, question.pk])).content.decode()
 
 
-def test_restoring_a_version_drops_the_preview_of_the_draft_it_replaces(
-    client: Client, assessment: Assessment, django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks
-) -> None:
+def test_restoring_a_version_drops_the_preview_of_the_draft_it_replaces(client: Client, assessment: Assessment) -> None:
     url, draft = start_marking(client, assessment, "Q2", "gradeflow/accepted-answers@1")
     client.post(url, {"path": "", "fields_posted": "1", "answers": ["42"]})
-    with django_capture_on_commit_callbacks(execute=True):
-        client.post(reverse("draft_save", args=[assessment.pk, draft.pk]), {"path": "", "operation": "save"})
+    save_draft(client, draft)
     question = assessment.questions.get(key="Q2")
     client.post(reverse("marking_start", args=[assessment.pk, question.pk]))
     draft = MarkingDraftRecord.objects.get()
     client.post(reverse("draft", args=[assessment.pk, draft.pk]), {"path": "", "fields_posted": "1", "answers": ["41"]})
-    with django_capture_on_commit_callbacks(execute=True):
-        client.post(reverse("draft_preview", args=[assessment.pk, draft.pk]))
+    preview_draft(client, draft)
     answers_url = reverse("answers", args=[assessment.pk, question.pk])
     changed_option = '<option value="changed"'
     assert changed_option in client.get(answers_url).content.decode()
@@ -170,19 +171,15 @@ def test_restoring_a_version_drops_the_preview_of_the_draft_it_replaces(
     assert changed_option not in client.get(answers_url).content.decode()
 
 
-def test_while_previewing_the_marks_filters_follow_the_previewed_marks(
-    client: Client, assessment: Assessment, django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks
-) -> None:
+def test_while_previewing_the_marks_filters_follow_the_previewed_marks(client: Client, assessment: Assessment) -> None:
     url, draft = start_marking(client, assessment, "Q2", "gradeflow/accepted-answers@1")
     client.post(url, {"path": "", "fields_posted": "1", "answers": ["42"]})
-    with django_capture_on_commit_callbacks(execute=True):
-        client.post(reverse("draft_save", args=[assessment.pk, draft.pk]), {"path": "", "operation": "save"})
+    save_draft(client, draft)
     question = assessment.questions.get(key="Q2")
     client.post(reverse("marking_start", args=[assessment.pk, question.pk]))
     draft = MarkingDraftRecord.objects.get()
     client.post(reverse("draft", args=[assessment.pk, draft.pk]), {"path": "", "fields_posted": "1", "answers": ["41"]})
-    with django_capture_on_commit_callbacks(execute=True):
-        client.post(reverse("draft_preview", args=[assessment.pk, draft.pk]))
+    preview_draft(client, draft)
     answers_url = reverse("answers", args=[assessment.pk, question.pk])
     full = client.get(answers_url, {"filter": "full", "group": "answer"}, headers=HTMX_HEADERS).content.decode()
     assert "1 student<" in full, "41, given full marks by the preview"
@@ -217,16 +214,14 @@ def test_a_new_question_group_asks_for_what_it_needs(client: Client, assessment:
     saving = client.post(reverse("draft_save", args=[assessment.pk, draft.pk]), {"path": "", "operation": "save"})
     saved = saving.content.decode()
     assert 'role="alert"' not in saved
-    assert "Add at least one check." in saved.split('id="checks-setting-1"', 1)[1].split("</section>", 1)[0], (
-        "on the empty list"
-    )
+    assert "Add at least one check." in between(saved, 'id="checks-setting-1"', "</section>"), "on the empty list"
 
 
 def test_a_problem_with_the_assessment_shows_on_the_field_at_fault(client: Client, assessment: Assessment) -> None:
     _, draft = start_marking(client, assessment, "Q3", "gradeflow/multiple-choice@1")
     save_definition(draft, {"question": "Q3", "uses": "gradeflow/multiple-choice@1", "with": {"correct": ["a", "e"]}})
     page = client.get(reverse("question", args=[assessment.pk, draft.question_id])).content.decode()
-    errors = page.split('id="id_correct_error"', 1)[1].split("</div>", 1)[0]
+    errors = between(page, 'id="id_correct_error"', "</div>")
     assert problem_message(draft, "correct") in errors
 
 
@@ -251,9 +246,9 @@ def test_parameters_are_named_and_checked_as_the_core_says(client: Client, asses
     assert 'pattern="^[A-Za-z_][A-Za-z0-9_]*$"' in page
     rows = [("1st", "integer", "2"), ("parameter_2", "integer", "0.5")]
     page = post_parameter_rows(url, client, fields | {"fields_posted": "1"}, rows)
-    first = page.split('id="parameters-0-error"', 1)[1].split("</div>", 1)[0]
+    first = between(page, 'id="parameters-0-error"', "</div>")
     assert problem_message(draft, "1st") in first
-    assert problem_message(draft, "parameter_2") in page.split('id="parameters-1-error"', 1)[1].split("</div>", 1)[0]
+    assert problem_message(draft, "parameter_2") in between(page, 'id="parameters-1-error"', "</div>")
     assert definition_tree(draft)["with"]["parameters"]["parameter_2"]["value"] == "0.5", (
         "kept as typed, for the core to check"
     )
@@ -392,13 +387,6 @@ def test_checks_are_moved_and_removed(client: Client, assessment: Assessment) ->
     assert 'name="path" value=""' in page, "removing the check shown goes back to what holds it"
 
 
-def make_code_question(assessment: Assessment, key: str) -> None:
-    """Question `key` as code, which Code Tests marks."""
-    question = assessment.questions.get(key=key)
-    question.core_question = Question.load({"type": "code", "max_marks": question.core_question.max_marks})
-    question.save()
-
-
 def test_rows_are_added_and_removed(client: Client, assessment: Assessment) -> None:
     make_code_question(assessment, "Q1")
     url, draft = start_marking(client, assessment, "Q1", "gradeflow/code-tests@1")
@@ -419,7 +407,7 @@ def test_problems_with_rows_show_on_the_row_at_fault(client: Client, assessment:
     url, draft = start_marking(client, assessment, "Q1", "gradeflow/code-tests@1")
     client.post(url, {"path": "", "operation": "add_row", "target": "tests"})
     saving = client.post(reverse("draft_save", args=[assessment.pk, draft.pk]), {"path": "", "operation": "save"})
-    errors = saving.content.decode().split('id="id_tests-0-expression_error"', 1)[1].split("</div>", 1)[0]
+    errors = between(saving.content.decode(), 'id="id_tests-0-expression_error"', "</div>")
     assert "text-error" in errors
 
 
@@ -435,7 +423,7 @@ def test_numbers_the_core_rejects_say_why_on_their_field(client: Client, assessm
     url, draft = start_marking(client, assessment, "Q1", "gradeflow/code-tests@1")
     for typed in ("0", "soon"):
         page = client.post(url, {"path": "", "fields_posted": "1", "setup__time_limit": typed}).content.decode()
-        errors = page.split('id="id_setup__time_limit_error"', 1)[1].split("</div>", 1)[0]
+        errors = between(page, 'id="id_setup__time_limit_error"', "</div>")
         assert "text-error" in errors, typed
         assert definition_tree(draft)["with"]["setup"]["time_limit"] == (0 if typed == "0" else typed), "kept as typed"
 
@@ -460,13 +448,10 @@ def test_a_question_groups_answers_show_by_combination(client: Client, assessmen
     assert reverse("question_group_draft_answers", args=[assessment.pk, new_draft.pk]) in new_draft_answers
 
 
-def test_restoring_a_version_opens_it_as_a_draft(
-    client: Client, assessment: Assessment, django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks
-) -> None:
+def test_restoring_a_version_opens_it_as_a_draft(client: Client, assessment: Assessment) -> None:
     url, draft = start_marking(client, assessment, "Q1", "gradeflow/accepted-answers@1")
     client.post(url, {"path": "", "fields_posted": "1", "answers": ["light"]})
-    with django_capture_on_commit_callbacks(execute=True):
-        client.post(reverse("draft_save", args=[assessment.pk, draft.pk]), {"path": "", "operation": "save"})
+    save_draft(client, draft)
     question = assessment.questions.get(key="Q1")
     version = Marking.history.get().history_id
     restored = client.post(reverse("marking_restore", args=[assessment.pk, question.pk, version]), headers=HTMX_HEADERS)
@@ -474,13 +459,10 @@ def test_restoring_a_version_opens_it_as_a_draft(
     assert definition_tree(MarkingDraftRecord.objects.get(question=question))["with"]["answers"] == ["light"]
 
 
-def test_a_draft_says_when_someone_saved_the_marking_since_it_started(
-    client: Client, assessment: Assessment, django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks
-) -> None:
+def test_a_draft_says_when_someone_saved_the_marking_since_it_started(client: Client, assessment: Assessment) -> None:
     url, draft = start_marking(client, assessment, "Q1", "gradeflow/accepted-answers@1")
     client.post(url, {"path": "", "fields_posted": "1", "answers": ["light"]})
-    with django_capture_on_commit_callbacks(execute=True):
-        client.post(reverse("draft_save", args=[assessment.pk, draft.pk]), {"path": "", "operation": "save"})
+    save_draft(client, draft)
     question = assessment.questions.get(key="Q1")
     page_url = reverse("question", args=[assessment.pk, question.pk])
     client.post(reverse("marking_start", args=[assessment.pk, question.pk]))
@@ -627,7 +609,7 @@ def test_a_question_groups_check_may_be_a_method_of_several_questions(client: Cl
 
 
 def test_a_question_has_one_marking_but_a_draft_marking_it_again_previews(
-    client: Client, assessment: Assessment, django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks
+    client: Client, assessment: Assessment
 ) -> None:
     Marking.objects.create(
         assessment=assessment,
@@ -647,14 +629,13 @@ def test_a_question_has_one_marking_but_a_draft_marking_it_again_previews(
     )
     assert MarkingDraftRecord.objects.filter(pk=draft.pk).exists()
     assert "Edited group" not in Marking.objects.get(pk=marking.pk).definition
-    with django_capture_on_commit_callbacks(execute=True):
-        client.post(reverse("draft_preview", args=[assessment.pk, draft.pk]))
+    preview_draft(client, draft)
     draft.refresh_from_db()
     assert draft.preview is not None, "a preview saves nothing, so it needn't wait for the other marking"
 
 
 def test_question_group_validation_refreshes_when_another_marking_releases_its_question(
-    client: Client, assessment: Assessment, django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks
+    client: Client, assessment: Assessment
 ) -> None:
     question = assessment.questions.get(key="Q2")
     Marking.objects.create(
@@ -679,8 +660,7 @@ def test_question_group_validation_refreshes_when_another_marking_releases_its_q
     assert 'id="marking-form"' not in after
     draft.refresh_from_db()
     assert draft.definition == original
-    with django_capture_on_commit_callbacks(execute=True):
-        client.post(reverse("draft_preview", args=[assessment.pk, draft.pk]))
+    preview_draft(client, draft)
     page = client.get(status_url).content.decode()
     assert "students&#x27; results change" in page or "students' results change" in page
     assert 'id="marking-form"' not in page
@@ -877,9 +857,7 @@ def test_choosing_group_questions_updates_the_answers_column(client: Client, ass
 
 
 def test_code_answers_show_as_typed_and_highlighted(client: Client, assessment: Assessment) -> None:
-    question = assessment.questions.get(key="Q1")
-    question.core_question = Question.load({"type": "code", "max_marks": question.core_question.max_marks})
-    question.save()
+    question = make_code_question(assessment, "Q1")
     unindented_code = "def first_positive(xs):\nfor x in xs:\nif x > 0:\nreturn x\nreturn None"
     assessment.students.update(answers={"Q1": unindented_code + "  \r\n"})
     page = client.get(reverse("answers", args=[assessment.pk, question.pk])).content.decode()
@@ -905,6 +883,6 @@ def test_text_answers_in_an_answer_group_are_listed_under_answers(client: Client
     second.save()
     page = client.get(reverse("answers", args=[assessment.pk, assessment.questions.get(key="Q1").pk])).content.decode()
     assert '>Answers<span class="badge badge-sm badge-soft tabular-nums">2</span>' in page
-    listed = page.split('aria-label="Answers">', 1)[1].split("</ul>", 1)[0]
+    listed = between(page, 'aria-label="Answers">', "</ul>")
     assert ">Paris</p>" in listed
     assert ">paris </p>" in listed

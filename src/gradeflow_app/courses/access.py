@@ -4,7 +4,8 @@ from typing import Any
 from uuid import UUID
 
 from django.core.exceptions import PermissionDenied
-from django.http import Http404, HttpResponse
+from django.http import HttpResponse
+from django.shortcuts import get_object_or_404
 
 from gradeflow_app.courses.models import Course, Member, Role
 from gradeflow_app.requests import Request, View
@@ -13,9 +14,7 @@ from gradeflow_app.requests import Request, View
 def member_of(request: Request, course_id: UUID, role: Role = Role.VIEWER) -> Member:
     """The user's membership of the course. Someone outside it gets "not found", so they can't tell it exists; a
     member whose role is below `role` gets "forbidden"."""
-    member = Member.objects.select_related("course").filter(course=course_id, user=request.user).first()
-    if member is None:
-        raise Http404
+    member = get_object_or_404(Member.objects.select_related("course"), course=course_id, user=request.user)
     if not Role(member.role).allows(role):
         raise PermissionDenied
     return member

@@ -20,9 +20,16 @@ def example_choices(key: str) -> list[tuple[str, str]]:
     return list(landing_content().examples[key].choices.items())
 
 
+def example_tabs() -> list[tuple[str, str]]:
+    return [(key, BUILTINS.by_ref[example.method].label) for key, example in landing_content().examples.items()]
+
+
 class ExampleSettingsForm(forms.Form):
     """Which example shows, and each example's setting, by the example's name."""
 
+    example = forms.ChoiceField(
+        widget=Segmented, initial=next(iter(landing_content().examples)), choices=example_tabs()
+    )
     combination = forms.ChoiceField(widget=Segmented, initial="0.5", choices=example_choices("combination"))
     conditional = forms.BooleanField(initial=True, widget=forms.CheckboxInput(attrs={"class": "toggle toggle-primary"}))
     custom_code = forms.ChoiceField(widget=Segmented, initial="0.5", choices=example_choices("custom_code"))
@@ -31,13 +38,6 @@ class ExampleSettingsForm(forms.Form):
         initial=list(landing_content().examples["code_tests"].choices),
         choices=example_choices("code_tests"),
     )
-
-    def __init__(self) -> None:
-        super().__init__()
-        landing_examples = landing_content().examples
-        tabs = [(key, BUILTINS.by_ref[example.method].label) for key, example in landing_examples.items()]
-        example = forms.ChoiceField(widget=Segmented, initial=tabs[0][0], choices=tabs)
-        self.fields = {"example": example, **self.fields}
 
     def initial_values(self) -> dict[str, str]:
         return {name: as_submitted(self[name].initial) for name in self.fields}

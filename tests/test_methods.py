@@ -24,19 +24,17 @@ from tests.conftest import (
     post_to_designer,
     publish_light_method,
     publish_version,
+    save_draft,
     start_marking,
 )
 
 pytestmark = pytest.mark.django_db
 
 
-def save_key_points_marking(
-    client: Client, assessment: Assessment, capture_on_commit: DjangoCaptureOnCommitCallbacks, points: list[str]
-) -> Marking:
+def save_key_points_marking(client: Client, assessment: Assessment, points: list[str]) -> Marking:
     url, draft = start_marking(client, assessment, "Q1", "gradeflow/key-points@1")
     client.post(url, {"path": "", "fields_posted": "1", "points": points, "combine": "any"})
-    with capture_on_commit(execute=True):
-        client.post(reverse("draft_save", args=[assessment.pk, draft.pk]), {"path": "", "operation": "save"})
+    save_draft(client, draft)
     return Marking.objects.get(question__key="Q1")
 
 
@@ -74,9 +72,9 @@ def edit_and_publish(client: Client, method: Method, definition: str) -> bool:
 
 
 def test_a_marking_saved_as_a_method_marks_like_it_with_what_others_fill_in(
-    client: Client, assessment: Assessment, django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks
+    client: Client, assessment: Assessment
 ) -> None:
-    save_key_points_marking(client, assessment, django_capture_on_commit_callbacks, ["light"])
+    save_key_points_marking(client, assessment, ["light"])
     question = assessment.questions.get(key="Q1")
     save_dialog = client.get(reverse("method_save", args=[assessment.pk, question.pk])).content.decode()
     assert "Save as a method" in save_dialog
@@ -94,29 +92,23 @@ def test_a_marking_saved_as_a_method_marks_like_it_with_what_others_fill_in(
     assert definition_data(MarkingDraftRecord.objects.get().definition)["with"] == {"points": ["chlorophyll"]}, (
         "filled in"
     )
-    with django_capture_on_commit_callbacks(execute=True):
-        client.post(reverse("draft_save", args=[assessment.pk, draft.pk]), {"path": "", "operation": "save"})
+    save_draft(client, draft)
     assert [str(used) for used in Marking.objects.get(question=question).used_versions.all()] == [version.ref]
     assert Result.objects.filter(question=question).count() == assessment.students.count()
 
 
-def test_a_method_needs_a_name_and_a_summary(
-    client: Client, assessment: Assessment, django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks
-) -> None:
-    save_key_points_marking(client, assessment, django_capture_on_commit_callbacks, ["light"])
+def test_a_method_needs_a_name_and_a_summary(client: Client, assessment: Assessment) -> None:
+    save_key_points_marking(client, assessment, ["light"])
     assert post_save_as_method(client, assessment, label="", summary="") == 422
     assert not Method.objects.exists()
 
 
-def test_a_method_in_use_says_what_uses_it_and_isnt_deleted(
-    client: Client, assessment: Assessment, django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks
-) -> None:
-    save_key_points_marking(client, assessment, django_capture_on_commit_callbacks, ["light"])
+def test_a_method_in_use_says_what_uses_it_and_isnt_deleted(client: Client, assessment: Assessment) -> None:
+    save_key_points_marking(client, assessment, ["light"])
     saved = publish_marking_as_method(client, assessment, "Key word")
     Marking.objects.all().delete()
     _, draft = start_marking(client, assessment, "Q1", "bio1010/key-word@1")
-    with django_capture_on_commit_callbacks(execute=True):
-        client.post(reverse("draft_save", args=[assessment.pk, draft.pk]), {"path": "", "operation": "save"})
+    save_draft(client, draft)
     methods_page = client.get(reverse("course_methods", args=[assessment.course_id])).content.decode()
     assert "Key word" in methods_page
     assert "1 marking</td>" in methods_page
@@ -125,10 +117,8 @@ def test_a_method_in_use_says_what_uses_it_and_isnt_deleted(
     assert Method.objects.filter(pk=saved.pk).exists()
 
 
-def test_viewers_cant_save_edit_or_delete_methods(
-    client: Client, assessment: Assessment, django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks
-) -> None:
-    save_key_points_marking(client, assessment, django_capture_on_commit_callbacks, ["light"])
+def test_viewers_cant_save_edit_or_delete_methods(client: Client, assessment: Assessment) -> None:
+    save_key_points_marking(client, assessment, ["light"])
     saved = publish_marking_as_method(client, assessment, "Key word")
     viewer = member_client(assessment, Role.VIEWER)
     assert post_save_as_method(viewer, assessment, label="Mine", summary="Mine.") == 403
@@ -145,12 +135,11 @@ def test_viewers_cant_save_edit_or_delete_methods(
 def test_publishing_an_edit_leaves_markings_on_the_version_they_use(
     client: Client, assessment: Assessment, django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks
 ) -> None:
-    save_key_points_marking(client, assessment, django_capture_on_commit_callbacks, ["light"])
+    save_key_points_marking(client, assessment, ["light"])
     method = publish_marking_as_method(client, assessment, "Key word")
     Marking.objects.all().delete()
     _, draft = start_marking(client, assessment, "Q1", "bio1010/key-word@1")
-    with django_capture_on_commit_callbacks(execute=True):
-        client.post(reverse("draft_save", args=[assessment.pk, draft.pk]), {"path": "", "operation": "save"})
+    save_draft(client, draft)
     question = assessment.questions.get(key="Q1")
     results = set(Result.objects.filter(question=question).values_list("student", "proportion"))
     first = method.versions.get().definition
@@ -168,10 +157,8 @@ def test_publishing_an_edit_leaves_markings_on_the_version_they_use(
     assert set(Result.objects.filter(question=question).values_list("student", "proportion")) == results
 
 
-def test_a_method_isnt_saved_under_a_name_its_library_has(
-    client: Client, assessment: Assessment, django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks
-) -> None:
-    save_key_points_marking(client, assessment, django_capture_on_commit_callbacks, ["light"])
+def test_a_method_isnt_saved_under_a_name_its_library_has(client: Client, assessment: Assessment) -> None:
+    save_key_points_marking(client, assessment, ["light"])
     publish_marking_as_method(client, assessment, "Key word")
     question = assessment.questions.get(key="Q1")
     again = client.post(
@@ -187,10 +174,8 @@ def test_a_method_isnt_saved_under_a_name_its_library_has(
     assert other.drafts.exists()
 
 
-def test_the_methods_page_says_what_each_method_marks(
-    client: Client, assessment: Assessment, django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks
-) -> None:
-    save_key_points_marking(client, assessment, django_capture_on_commit_callbacks, ["light"])
+def test_the_methods_page_says_what_each_method_marks(client: Client, assessment: Assessment) -> None:
+    save_key_points_marking(client, assessment, ["light"])
     publish_marking_as_method(client, assessment, "Key word")
     methods_page = client.get(reverse("course_methods", args=[assessment.course_id])).content.decode()
     text = QUESTION_TYPE_LABELS["text"]
@@ -200,28 +185,23 @@ def test_the_methods_page_says_what_each_method_marks(
     assert 'tabular-nums text-right">1</td>' in methods_page
 
 
-def test_the_marking_panel_lists_the_courses_methods_on_their_own(
-    client: Client, assessment: Assessment, django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks
-) -> None:
-    save_key_points_marking(client, assessment, django_capture_on_commit_callbacks, ["light"])
+def test_the_marking_panel_lists_the_courses_methods_on_their_own(client: Client, assessment: Assessment) -> None:
+    save_key_points_marking(client, assessment, ["light"])
     publish_marking_as_method(client, assessment, "Key word")
     question = assessment.questions.get(key="Q1")
     picker = client.get(reverse("question_methods", args=[assessment.pk, question.pk])).content.decode()
     assert picker.index("BIO1010</p>") < picker.index("Key word")
 
 
-def test_the_picker_has_built_in_yours_and_public_tabs(
-    client: Client, assessment: Assessment, django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks
-) -> None:
+def test_the_picker_has_built_in_yours_and_public_tabs(client: Client, assessment: Assessment, bo: User) -> None:
     question = assessment.questions.get(key="Q1")
     url = reverse("question_methods", args=[assessment.pk, question.pk])
     empty = client.get(url).content.decode()
     assert 'data-tab="yours"' in empty, "the tabs stay when nothing fits"
     assert re.search(r"Public</button>", empty), "an empty tab shows no count"
     assert "None for this question" in empty
-    save_key_points_marking(client, assessment, django_capture_on_commit_callbacks, ["light"])
+    save_key_points_marking(client, assessment, ["light"])
     version = publish_marking_as_method(client, assessment, "Key word").versions.get()
-    bo = User.objects.create_user("bo@example.edu", "another-password", name="Bo Lim")
     shared = publish_light_method(bo.library, bo, label="Bright")
     Method.objects.filter(pk=shared.method_id).update(public=True)
     picker = client.get(url).content.decode()
@@ -238,9 +218,9 @@ def test_the_picker_has_built_in_yours_and_public_tabs(
 
 
 def test_a_saved_marking_opens_as_an_unpublished_draft_only_its_author_sees(
-    client: Client, assessment: Assessment, django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks
+    client: Client, assessment: Assessment
 ) -> None:
-    save_key_points_marking(client, assessment, django_capture_on_commit_callbacks, ["light"])
+    save_key_points_marking(client, assessment, ["light"])
     question = assessment.questions.get(key="Q1")
     response = client.post(
         reverse("method_save", args=[assessment.pk, question.pk]),
@@ -288,9 +268,8 @@ def test_a_question_groups_marking_saves_as_a_method_for_its_questions(client: C
 
 
 def test_the_methods_pages_list_a_librarys_methods_and_what_a_course_uses_from_elsewhere(
-    client: Client, assessment: Assessment, user: User
+    client: Client, assessment: Assessment, user: User, bo: User
 ) -> None:
-    bo = User.objects.create_user("bo@example.edu", "another-password", name="Bo Lim")
     version = publish_light_method(bo.library, bo, label="Bright")
     question = assessment.questions.get(key="Q1")
     Marking.objects.create(
@@ -311,9 +290,8 @@ def test_the_methods_pages_list_a_librarys_methods_and_what_a_course_uses_from_e
     assert "Bright" not in yours
 
 
-def test_your_methods_are_a_page_of_their_own_not_the_accounts(client: Client, user: User) -> None:
+def test_your_methods_are_a_page_of_their_own_not_the_accounts(client: Client, user: User, bo: User) -> None:
     mine = publish_light_method(user.library, user, label="Mine")
-    bo = User.objects.create_user("bo@example.edu", "another-password", name="Bo Lim")
     theirs = publish_light_method(bo.library, bo, label="Bright")
     Method.objects.filter(pk=theirs.method_id).update(public=True)
     methods_page = client.get(reverse("your_methods")).content.decode()
@@ -324,9 +302,8 @@ def test_your_methods_are_a_page_of_their_own_not_the_accounts(client: Client, u
 
 
 def test_a_method_counts_the_markings_that_use_any_of_its_versions(
-    client: Client, assessment: Assessment, user: User
+    client: Client, assessment: Assessment, user: User, bo: User
 ) -> None:
-    bo = User.objects.create_user("bo@example.edu", "another-password", name="Bo Lim")
     first = publish_light_method(bo.library, bo, label="Bright")
     second = publish_version(first.method, bo, method_definition("Bright", answer="sun"))
     mine = publish_light_method(user.library, user, label="Mine")

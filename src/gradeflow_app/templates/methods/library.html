@@ -5,8 +5,8 @@
   {% if can_edit %}<c-slot name="actions"><button class="btn btn-primary" data-dialog="new-method">{% icon "plus" %}New method</button></c-slot>{% endif %}
   {% if archived_count %}
   <div class="segmented" role="tablist" aria-label="Methods shown">
-    <a class="segment" role="tab" href="?" aria-selected="{% if archived %}false{% else %}true{% endif %}">Active</a>
-    <a class="segment gap-1.5" role="tab" href="?archived=1" aria-selected="{% if archived %}true{% else %}false{% endif %}">Archived<span class="badge badge-sm badge-soft tabular-nums">{{ archived_count }}</span></a>
+    <a class="segment" role="tab" href="?" aria-selected="{{ archived|yesno:'false,true' }}">Active</a>
+    <a class="segment gap-1.5" role="tab" href="?archived=1" aria-selected="{{ archived|yesno:'true,false' }}">Archived<span class="badge badge-sm badge-soft tabular-nums">{{ archived_count }}</span></a>
   </div>
   {% endif %}
   {% if methods or drafts %}
@@ -15,7 +15,7 @@
       <thead><tr><th>Method</th><th class="max-sm:hidden">Question type</th><th class="max-sm:hidden">Used in</th><th class="max-md:hidden">Who can use it</th><th class="text-right">Version</th></tr></thead>
       <tbody>
         {% for row in drafts %}
-        <tr data-href="{% url 'method_page' row.draft.method_id %}">
+        <tr data-href>
           <td><span class="flex items-center gap-2"><a class="font-medium hover:underline" href="{% url 'method_page' row.draft.method_id %}">{{ row.label }}</a><span class="badge badge-primary badge-soft badge-sm">Draft</span></span>{% if row.summary %}<p class="max-w-48 truncate text-sm text-muted sm:max-w-md">{{ row.summary }}</p>{% endif %}</td>
           <td class="text-muted max-sm:hidden">{{ row.type_labels|join:", "|default:"—" }}</td>
           <td class="text-muted max-sm:hidden">Not used</td>
@@ -24,7 +24,7 @@
         </tr>
         {% endfor %}
         {% for row in methods %}
-        <tr data-href="{% url 'method_page' row.method.pk row.version.version %}">
+        <tr data-href>
           <td><a class="font-medium hover:underline" href="{% url 'method_page' row.method.pk row.version.version %}">{{ row.version.label }}</a><p class="max-w-48 truncate text-sm text-muted sm:max-w-md">{{ row.version.summary }}</p></td>
           <td class="text-muted max-sm:hidden">{{ row.type_labels|join:", " }}</td>
           <td class="text-muted max-sm:hidden">{% if row.marking_count %}{{ row.marking_count }} marking{{ row.marking_count|pluralize }}{% else %}Not used{% endif %}</td>
@@ -46,7 +46,7 @@
         <thead><tr><th>Method</th><th class="max-sm:hidden">Used in</th><th class="text-right">Version</th></tr></thead>
         <tbody>
           {% for row in other_library_methods %}
-          <tr data-href="{% url 'method_page' row.method.pk row.version.version %}">
+          <tr data-href>
             <td><a class="font-medium hover:underline" href="{% url 'method_page' row.method.pk row.version.version %}">{{ row.version.label }}</a><p class="text-sm text-muted">by {{ row.method.library.owner_name }}</p></td>
             <td class="text-muted max-sm:hidden">{{ row.marking_count }} marking{{ row.marking_count|pluralize }}</td>
             <td class="whitespace-nowrap text-right">{% if row.method.archived %}<span class="badge badge-ghost badge-sm">Archived</span> {% elif row.newer_version_number %}<span class="badge badge-info badge-soft badge-sm">{{ row.newer_version_number }} available</span> {% endif %}<span class="tabular-nums">{{ row.version.version }}</span></td>

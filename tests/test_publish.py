@@ -1,6 +1,5 @@
 import json
 import re
-from typing import Any
 
 import pytest
 from django.test import Client
@@ -12,7 +11,7 @@ from gradeflow_app.assessments.models import Assessment
 from gradeflow_app.courses.models import Role
 from gradeflow_app.publish.models import AssessmentCanvas, CourseCanvas, SentMarks
 from gradeflow_app.results.models import Adjustment
-from tests.conftest import HTMX_HEADERS, create_assessment, encrypted_id, member_client, upload
+from tests.conftest import HTMX_HEADERS, between, create_assessment, encrypted_id, member_client, upload
 
 pytestmark = pytest.mark.django_db
 
@@ -42,13 +41,6 @@ def canvas_assessment(client: Client, assessment: Assessment, settings: Settings
 @pytest.fixture
 def viewer(canvas_assessment: Assessment) -> Client:
     return member_client(canvas_assessment, Role.VIEWER)
-
-
-def rows_to_send(page: str) -> list[dict[str, Any]]:
-    rows: list[dict[str, Any]] = json.loads(
-        page.split('<script id="publish-rows-data" type="application/json">')[1].split("</script>")[0]
-    )
-    return rows
 
 
 def test_publishing_to_canvas_needs_a_proxy_and_a_canvas_course(client: Client, settings: Settings) -> None:
@@ -83,8 +75,9 @@ def test_this_device_connects_to_canvas_among_its_integrations(
 
 
 def test_editors_get_the_rows_to_send_and_the_sending_form(client: Client, canvas_assessment: Assessment) -> None:
-    page = client.get(reverse("publish", args=[canvas_assessment.pk])).content.decode()
-    rows = rows_to_send(page)
+    response = client.get(reverse("publish", args=[canvas_assessment.pk]))
+    page, rows = response.content.decode(), response.context["canvas_rows"]
+    assert '<script id="publish-rows-data" type="application/json">' in page
     assert len(rows) == 10
     assert {"studentId", "marks", "maxMarks", "comment"} == rows[0].keys()
     assert encrypted_id("S001") in {row["studentId"] for row in rows}
@@ -187,21 +180,21 @@ def test_each_comment_gives_the_marks_and_feedback_of_each_marked_question(
 ) -> None:
     student = canvas_assessment.students.get(encrypted_id=encrypted_id("S001"))
     Adjustment.objects.create(
-        student=student, question=canvas_assessment.questions.get(key="Q1"), feedback="Show working."
+        student=student, question=canvas_assessment.questions.get(key="Q1"), feedback="Show <working>."
     )
-    page = client.get(reverse("publish", args=[canvas_assessment.pk])).content.decode()
-    row = next(row for row in rows_to_send(page) if row["studentId"] == encrypted_id("S001"))
+    rows = client.get(reverse("publish", args=[canvas_assessment.pk])).context["canvas_rows"]
+    row = next(row for row in rows if row["studentId"] == encrypted_id("S001"))
     assert row["comment"] == EXPECTED_COMMENT
 
 
-EXPECTED_COMMENT = "<strong>Q1 [1/1]</strong>\nShow working."
+EXPECTED_COMMENT = "<strong>Q1 [1/1]</strong>\nShow &lt;working&gt;."
 
 
 def test_the_comment_preview_pages_through_the_students(client: Client, canvas_assessment: Assessment) -> None:
     Adjustment.objects.create(
         student=canvas_assessment.students.get(encrypted_id=encrypted_id("S001")),
         question=canvas_assessment.questions.get(key="Q1"),
-        feedback="Show working.",
+        feedback="Show <working>.",
     )
     url = reverse("publish_comment", args=[canvas_assessment.pk])
     first = client.get(url, headers=HTMX_HEADERS).content.decode()
@@ -229,7 +222,7 @@ def test_viewers_may_preview_comments(viewer: Client, canvas_assessment: Assessm
 def test_only_the_group_picker_names_a_new_group(client: Client, canvas_assessment: Assessment, page: str) -> None:
     pk = canvas_assessment.course_id if page == "canvas_settings" else canvas_assessment.pk
     rendered = client.get(reverse(page, args=[pk])).content.decode()
-    group_picker = rendered.split('<dialog id="group-picker"')[1].split("</dialog>")[0]
+    group_picker = between(rendered, '<dialog id="group-picker"', "</dialog>")
     assert 'id="new-group-name"' in group_picker
     assert rendered.count('id="new-group-name"') == 1
 

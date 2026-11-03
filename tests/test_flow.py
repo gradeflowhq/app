@@ -15,7 +15,6 @@ from django.utils import timezone
 from django.utils.html import escape, strip_tags
 from gradeflow_core import BUILTINS, InvalidError, Question
 from gradeflow_core.editing import QUESTION_TYPES, QuestionType, converted_question, dump_yaml, new_question
-from pytest_django import DjangoCaptureOnCommitCallbacks
 
 from gradeflow_app.accounts.models import User
 from gradeflow_app.assessments.models import Assessment
@@ -34,9 +33,11 @@ from tests.conftest import (
     EXPORT_ROWS,
     HTMX_HEADERS,
     assessment_with_full_marks,
+    between,
     code_draft,
     create_assessment,
     encrypted_id,
+    save_draft,
     signed_in_client,
     start_marking,
     upload,
@@ -58,16 +59,13 @@ def test_importing_results_infers_questions_and_keeps_imported_marks(client: Cli
     assert sorted(imported_marks) == [0] * 6 + [1] * 4
 
 
-def test_marking_a_question_with_key_points(
-    client: Client, assessment: Assessment, django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks
-) -> None:
+def test_marking_a_question_with_key_points(client: Client, assessment: Assessment) -> None:
     url, draft = start_marking(client, assessment, "Q1", "gradeflow/key-points@1")
     response = client.post(url, {"path": "", "fields_posted": "1", "points": ["light"], "combine": "proportional"})
     assert response.status_code == 200
     assert b'id="preview-bar"' in response.content, "a changed draft offers to preview it"
     assert b"Finish the marking to preview" not in response.content
-    with django_capture_on_commit_callbacks(execute=True):
-        response = client.post(reverse("draft_save", args=[assessment.pk, draft.pk]), {"path": "", "operation": "save"})
+    response = save_draft(client, draft)
     assert response.status_code == 200
     marking = Marking.objects.get(question=draft.question)
     check = check_of(marking.definition, course_methods(assessment.course))
@@ -302,9 +300,16 @@ def test_a_name_is_required_as_at_sign_up(client: Client, user: User) -> None:
     assert user.name
 
 
+def emailed_code(mailoutbox: list[EmailMessage]) -> str:
+    """The code in the last email sent."""
+    codes: list[str] = re.findall(r"\b[A-Z0-9]{4}-[A-Z0-9]{4}\b", str(mailoutbox[-1].body))
+    (code,) = codes
+    return code
+
+
 def test_verifying_an_added_address_returns_to_the_addresses(client: Client, mailoutbox: list[EmailMessage]) -> None:
     client.post(reverse("account_email"), {"action_add": "", "email": "second@example.edu"})
-    (code,) = re.findall(r"\b[A-Z0-9]{4}-[A-Z0-9]{4}\b", str(mailoutbox[-1].body))
+    code = emailed_code(mailoutbox)
     response = client.post(reverse("account_email_verification_sent"), {"code": code})
     assert response["Location"] == reverse("account_email")
 
@@ -403,7 +408,7 @@ def test_every_code_page_asks_for_its_code_alike(user: User) -> None:
 def test_resetting_a_password_ends_with_signing_in(user: User, mailoutbox: list[EmailMessage]) -> None:
     visitor = Client()
     visitor.post(reverse("account_reset_password"), {"email": user.email})
-    (code,) = re.findall(r"\b[A-Z0-9]{4}-[A-Z0-9]{4}\b", str(mailoutbox[-1].body))
+    code = emailed_code(mailoutbox)
     page = visitor.post(reverse("account_confirm_password_reset_code"), {"code": code}, follow=True).content.decode()
     assert "<title>Reset your password · GradeFlow</title>" in page
     assert "Change Password" not in page
@@ -557,7 +562,7 @@ def test_a_question_the_core_rejects_says_why(client: Client, assessment: Assess
             "reading__ignore_case": "on",
         },
     )
-    errors = response.content.decode().split('id="id_options_error"', 1)[1].split("</div>", 1)[0]
+    errors = between(response.content.decode(), 'id="id_options_error"', "</div>")
     assert rejection_message("choice", {"options": ["Yes", "yes"], "reading": {"ignore_case": True}}) in errors
     question.refresh_from_db()
     assert question.definition == before
@@ -567,7 +572,7 @@ def test_a_cleared_question_setting_says_what_the_core_needs(client: Client, ass
     question = assessment.questions.get(key="Q3")
     url = reverse("question_settings", args=[assessment.pk, question.pk])
     response = client.post(url, {"question_type": "values", "save": "1", "max_marks": "1"})
-    errors = response.content.decode().split('id="id_value_types_error"', 1)[1].split("</div>", 1)[0]
+    errors = between(response.content.decode(), 'id="id_value_types_error"', "</div>")
     assert rejection_message("values", {"value_types": []}) in errors
 
 

@@ -6,6 +6,7 @@ stops after SECONDS.
 """
 
 import ctypes
+import dataclasses
 import hashlib
 import hmac
 import json
@@ -58,9 +59,7 @@ class ProgressReporter:
         if progress.completed < progress.total and now - self.last < MAX_SECONDS_BETWEEN_CALLBACKS:
             return
         self.last = now
-        call_back(
-            {"event": "progress", "completed": progress.completed, "total": progress.total, "step": progress.step}
-        )
+        call_back({"event": "progress", **dataclasses.asdict(progress)})
 
 
 def mark(job: dict[str, Any]) -> None:
@@ -97,11 +96,10 @@ def compare(job: dict[str, Any]) -> None:
     comparison = compare_answers(job["texts"], similarity="meaning")
     comparison_json = json.dumps(comparison.model_dump(mode="json"), ensure_ascii=True)
     # ASCII pieces leave room for JSON escaping and the callback envelope.
-    part_size = MAX_BATCH_BYTES // 4
-    total = (len(comparison_json) + part_size - 1) // part_size
-    for index, start in enumerate(range(0, len(comparison_json), part_size)):
-        text = comparison_json[start : start + part_size]
-        call_back({"event": "compared", "index": index, "total": total, "text": text})
+    size = MAX_BATCH_BYTES // 4
+    parts = [comparison_json[start : start + size] for start in range(0, len(comparison_json), size)]
+    for index, text in enumerate(parts):
+        call_back({"event": "compared", "index": index, "total": len(parts), "text": text})
 
 
 def test(job: dict[str, Any]) -> None:

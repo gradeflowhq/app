@@ -20,7 +20,6 @@ const NON_ANSWER_HEADER = /^(?:(?:first|last|full|given|preferred|sur)?name|emai
 const MARKS_SUFFIX = '[\\s_-]*(?:pts|points?|marks?|score)$';
 
 const normalize = (header) => header.toLowerCase().replace(/[^a-z\d]/g, '');
-const escape = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const columnValues = (rows, index) => rows.map((row) => (row[index] ?? '').trim());
 
 const unique = (values) => {
@@ -79,7 +78,7 @@ export const detectColumns = (header, rows) => {
 
   const marks = {};
   for (const answer of candidates) {
-    const marksHeaderPattern = new RegExp(`^${escape(answer.trim())}${MARKS_SUFFIX}`, 'i');
+    const marksHeaderPattern = new RegExp(`^${RegExp.escape(answer.trim())}${MARKS_SUFFIX}`, 'i');
     const column = header.find((h) => h !== answer && marksHeaderPattern.test(h.trim()));
     if (column) marks[answer] = column;
   }

@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from functools import cache
 from typing import Any
 
+from django.utils.text import get_text_list
 from gradeflow_core import BUILTINS, MarkScheme, Method
 
 from gradeflow_app.landing.content import (
@@ -155,6 +156,6 @@ def landing_context() -> dict[str, Any]:
         "grouping": landing.grouping,
         "answer_groups": answer_groups(),
         "examples": examples(),
-        "other_methods": other_methods(),
+        "other_methods": get_text_list(other_methods(), "and"),
         "privacy_students": landing.privacy_students,
     }

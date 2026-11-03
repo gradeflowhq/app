@@ -326,7 +326,7 @@ def _preview_marks(group: AnswerGroup, preview_by_student: dict[str, QuestionRes
     results = [result for _, result in entry_results]
     if not results:
         return None
-    preview_awards = [(entry, entry.with_preview(result)) for entry, result in entry_results]
+    preview_awards = [(entry, replace(entry, preview_result=result)) for entry, result in entry_results]
     marks = sorted({award.marks for _, award in preview_awards if award.marks is not None})
     unmarked = [result for result in results if not result.is_marked]
     levels = Counter(award.level for _, award in preview_awards)

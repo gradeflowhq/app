@@ -29,7 +29,6 @@ from gradeflow_app.marking.checks import definition_data
 from gradeflow_app.questions.models import QUESTION_TYPE_LABELS
 from tests.conftest import (
     HTMX_HEADERS,
-    IdleExecutor,
     create_course,
     designer_record,
     designer_url,
@@ -204,8 +203,7 @@ def test_test_answers_show_how_each_check_marked_them(
     assert "Any length." in results
 
 
-def test_unreadable_test_results_fail_the_run(client: Client, method: Method, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(queue, "executor", IdleExecutor)
+def test_unreadable_test_results_fail_the_run(client: Client, method: Method, idle_executor: None) -> None:
     post_to_designer(client, method, "method_answers", operation="add", answer="light")
     post_to_designer(client, method, "method_run")
     job = Job.objects.get(kind=Job.Kind.DRAFT_TESTS)
@@ -780,9 +778,8 @@ def test_a_draft_that_changes_nothing_isnt_published(client: Client, method: Met
 
 
 def test_a_publish_that_fails_keeps_the_test_run_and_the_draft(
-    client: Client, method: Method, monkeypatch: pytest.MonkeyPatch
+    client: Client, method: Method, monkeypatch: pytest.MonkeyPatch, idle_executor: None
 ) -> None:
-    monkeypatch.setattr(queue, "executor", IdleExecutor)
     post_to_designer(client, method, "method_answers", operation="add", answer="light")
     post_to_designer(client, method, "method_run")
     post_to_designer(client, method, "method_answers", operation="add", answer="dark")
@@ -817,20 +814,24 @@ def test_discarding_a_draft_keeps_what_was_published(client: Client, method: Met
     assert not MethodDraftRecord.objects.exists()
 
 
-def test_discarding_an_unpublished_draft_discards_the_method(client: Client, course: Course, method: Method) -> None:
-    other = User.objects.create_user("bo@example.edu", "another-password")
-    Member.objects.create(course=course, user=other, role=Role.EDITOR)
-    MethodDraftRecord.objects.create(method=method, user=other, definition=draft(method).definition)
+def test_discarding_an_unpublished_draft_discards_the_method(
+    client: Client, course: Course, method: Method, bo: User
+) -> None:
+    Member.objects.create(course=course, user=bo, role=Role.EDITOR)
+    MethodDraftRecord.objects.create(method=method, user=bo, definition=draft(method).definition)
     client.post(designer_url(method, "method_discard"))
     assert Method.objects.filter(pk=method.pk).exists(), "another person's draft keeps it"
-    bo = signed_in_client(other)
-    response = bo.post(designer_url(method, "method_discard"))
+    response = signed_in_client(bo).post(designer_url(method, "method_discard"))
     assert response.headers["Location"] == reverse("course_methods", args=[course.pk])
     assert not Method.objects.exists()
 
 
 def test_a_version_is_tried_on_ones_own_answers_and_reset(
-    client: Client, course: Course, method: Method, django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks
+    client: Client,
+    course: Course,
+    method: Method,
+    django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks,
+    bo: User,
 ) -> None:
     post_to_designer(client, method, "method_answers", operation="add", answer="light")
     post_publish(client, method)
@@ -848,29 +849,26 @@ def test_a_version_is_tried_on_ones_own_answers_and_reset(
     assert version.tests["rows"] == [{"answers": {"Q1": "light"}, "is_example": False}]
     post_to_designer(client, method, "method_answers", 1, operation="reset")
     assert answer_rows(method, 1) == [("light", False)]
-    other = User.objects.create_user("bo@example.edu", "another-password")
-    Member.objects.create(course=course, user=other, role=Role.EDITOR)
-    bo = signed_in_client(other)
-    bo.get(designer_url(method, "method_page", 1))
-    assert VersionTests.objects.get(user=other).tests == version.tests, "each person tries it on their own"
+    Member.objects.create(course=course, user=bo, role=Role.EDITOR)
+    signed_in_client(bo).get(designer_url(method, "method_page", 1))
+    assert VersionTests.objects.get(user=bo).tests == version.tests, "each person tries it on their own"
 
 
-def test_viewers_try_versions_but_change_no_method(client: Client, course: Course, method: Method) -> None:
+def test_viewers_try_versions_but_change_no_method(client: Client, course: Course, method: Method, bo: User) -> None:
     post_publish(client, method)
-    other = User.objects.create_user("bo@example.edu", "another-password")
-    Member.objects.create(course=course, user=other, role=Role.VIEWER)
-    viewer = signed_in_client(other)
+    Member.objects.create(course=course, user=bo, role=Role.VIEWER)
+    viewer = signed_in_client(bo)
     page = viewer.get(designer_url(method, "method_page", 1))
     assert page.status_code == 200
     assert ">Edit</button>" not in page.content.decode()
     assert "Add answer" in page.content.decode()
-    revision = VersionTests.objects.get(user=other).revision
+    revision = VersionTests.objects.get(user=bo).revision
     response = viewer.post(
         designer_url(method, "method_answers", 1), {"revision": revision, "operation": "add", "answer": "x"}
     )
     assert response.status_code == 200
-    assert [row["answers"] for row in VersionTests.objects.get(user=other).tests["rows"]] == [{"Q1": "x"}]
-    revision = VersionTests.objects.get(user=other).revision
+    assert [row["answers"] for row in VersionTests.objects.get(user=bo).tests["rows"]] == [{"Q1": "x"}]
+    revision = VersionTests.objects.get(user=bo).revision
     values = viewer.post(designer_url(method, "method_values", 1), {"revision": revision, "operation": "reset"})
     assert values.status_code == 404, "a version's input values are those it was published with"
     assert viewer.post(reverse("method_edit", args=[method.pk])).status_code == 403
@@ -883,7 +881,7 @@ def test_viewers_try_versions_but_change_no_method(client: Client, course: Cours
     assert viewer.get(designer_url(method, "method_page")).headers["Location"] == reverse(
         "method_latest", args=[method.pk]
     )
-    assert MethodDraftRecord.objects.filter(user=other).count() == 0
+    assert MethodDraftRecord.objects.filter(user=bo).count() == 0
 
 
 def test_a_version_is_read_only_and_lists_the_others(client: Client, method: Method) -> None:
@@ -964,10 +962,7 @@ def test_a_version_has_no_draft_only_views(client: Client, method: Method) -> No
         assert client.post(designer_url(method, name)).status_code in (404, 405), name
 
 
-def test_a_run_of_answers_since_changed_is_out_of_date(
-    client: Client, method: Method, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setattr(queue, "executor", IdleExecutor)
+def test_a_run_of_answers_since_changed_is_out_of_date(client: Client, method: Method, idle_executor: None) -> None:
     post_to_designer(client, method, "method_answers", operation="add", answer="light")
     post_to_designer(client, method, "method_run")
     job = Job.objects.get(kind=Job.Kind.DRAFT_TESTS)
@@ -1010,12 +1005,11 @@ def test_a_new_method_isnt_called_what_another_is(client: Client, course: Course
     assert Method.objects.count() == 1
 
 
-def test_an_unpublished_method_is_only_its_authors(client: Client, course: Course, method: Method) -> None:
-    other = User.objects.create_user("bo@example.edu", "another-password")
-    Member.objects.create(course=course, user=other, role=Role.EDITOR)
+def test_an_unpublished_method_is_only_its_authors(client: Client, course: Course, method: Method, bo: User) -> None:
+    Member.objects.create(course=course, user=bo, role=Role.EDITOR)
     published_url = reverse("method_latest", args=[method.pk])
     assert client.get(published_url).headers["Location"] == designer_url(method, "method_page")
-    assert signed_in_client(other).get(published_url).status_code == 404
+    assert signed_in_client(bo).get(published_url).status_code == 404
 
 
 def test_the_picker_for_a_check_thats_gone_isnt_found(client: Client, method: Method) -> None:

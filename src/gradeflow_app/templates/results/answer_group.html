@@ -87,7 +87,7 @@
       </div>
       <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="clear_feedback" class="checkbox checkbox-sm">Clear feedback</label>
       <div class="flex gap-2">
-        <button class="btn" name="action" value="apply">Adjust {% if answer_group.student_count == 1 %}1 student{% else %}{{ answer_group.student_count }} students{% endif %}</button>
+        <button class="btn" name="action" value="apply">Adjust {{ answer_group.student_count }} student{{ answer_group.student_count|pluralize }}</button>
         {% if answer_group.adjusted_count %}<button class="btn btn-ghost text-error" name="action" value="clear" data-resets data-confirm="Clear {{ answer_group.adjusted_count }} adjustment{{ answer_group.adjusted_count|pluralize }}?" data-confirm-detail="{% if answer_group.adjusted_count == 1 %}This student gets{% else %}These students get{% endif %} the marking's marks and feedback again." data-confirm-button="Clear">Clear {{ answer_group.adjusted_count }} adjustment{{ answer_group.adjusted_count|pluralize }}</button>{% endif %}
       </div>
     </form>

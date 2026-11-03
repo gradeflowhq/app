@@ -6,7 +6,7 @@ from typing import Any, Self
 from django.db import transaction
 from django.db.models import F
 from django.utils import timezone
-from gradeflow_core import AnswerComparison, MarkedSubmission
+from gradeflow_core import AnswerComparison, MarkedSubmission, Progress
 from gradeflow_core.editing import ModelTrial, RowResult
 from pydantic import BaseModel, TypeAdapter, ValidationError, model_validator
 
@@ -120,18 +120,12 @@ def record_progress(job: Job, event: dict[str, Any]) -> None:
     if not job.is_active:
         return
     try:
-        progress = _Progress.model_validate(event)
+        progress = _PROGRESS_ADAPTER.validate_python(event)
     except ValidationError:
         return
     job.progress_text = f"{progress.step[:150]}: {progress.completed} of {progress.total}"
     job.save(update_fields=["progress_text"])
     notify_job_change(job)
-
-
-class _Progress(BaseModel):
-    completed: int
-    total: int
-    step: str
 
 
 class _Choice(BaseModel):
@@ -140,6 +134,7 @@ class _Choice(BaseModel):
     trials: list[ModelTrial]
 
 
+_PROGRESS_ADAPTER = TypeAdapter(Progress)
 _ROW_RESULTS_ADAPTER = TypeAdapter(list[RowResult])
 _MODEL_CHOICE_ADAPTER = TypeAdapter(_Choice)
 MODEL_TRIALS_ADAPTER = TypeAdapter(list[ModelTrial])

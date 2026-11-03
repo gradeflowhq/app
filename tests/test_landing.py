@@ -1,12 +1,14 @@
 import json
+from collections.abc import Iterator
 from typing import Any
 
 import pytest
 from django.test import Client
 from django.urls import reverse
 from django.utils.html import escape
-from gradeflow_core import MarkScheme, QuestionSet, Submission, mark
+from gradeflow_core import MarkedSubmission, MarkScheme, QuestionSet, Submission, mark
 
+from gradeflow_app.landing import content
 from gradeflow_app.landing.content import MARKS, MarkingJson, landing_content
 from gradeflow_app.landing.page import SECTIONS
 
@@ -27,28 +29,28 @@ def test_people_signed_in_go_to_their_courses(client: Client) -> None:
     assert client.get(reverse("landing")).headers["Location"] == reverse("courses")
 
 
+def marked(
+    question_set: QuestionSet, markings: list[MarkingJson], answers: list[dict[str, str]]
+) -> Iterator[MarkedSubmission]:
+    """Each student's `answers`, marked with `markings`."""
+    submissions = [Submission(student_id=str(index), answers=answer) for index, answer in enumerate(answers)]
+    return mark(question_set, MarkScheme.load(markings), submissions)
+
+
 def marks_and_feedback(
     question_set: QuestionSet, markings: list[MarkingJson], answers: list[dict[str, str]], question: str
 ) -> list[tuple[float | None, str]]:
     """Each answer's marks for `question`, and its feedback."""
-    scheme = MarkScheme.load(markings)
-    submissions = [
-        Submission(student_id=str(index), answers=student_answers) for index, student_answers in enumerate(answers)
-    ]
-    results = [submission.results.get(question) for submission in mark(question_set, scheme, submissions)]
+    results = [submission.results.get(question) for submission in marked(question_set, markings, answers)]
     return [(result.marks, result.feedback) if result else (None, "") for result in results]
 
 
 def correct(
     question_set: QuestionSet, marking: MarkingJson, answers: list[dict[str, str]], question: str
 ) -> list[bool]:
-    scheme = MarkScheme.load([marking])
-    submissions = [
-        Submission(student_id=str(index), answers=student_answers) for index, student_answers in enumerate(answers)
-    ]
     return [
         bool((result := submission.results.get(question)) and result.correct)
-        for submission in mark(question_set, scheme, submissions)
+        for submission in marked(question_set, [marking], answers)
     ]
 
 
@@ -93,22 +95,17 @@ def core_marks() -> dict[str, Any]:
     return {"workspace": workspace_marks(), "grouping": grouping_marks(), "examples": examples}
 
 
-def stored_marks() -> dict[str, Any]:
-    marks: dict[str, Any] = json.loads(MARKS.read_text())
-    return marks
-
-
 def test_the_workspace_shows_the_marks_the_core_gives() -> None:
-    assert as_json(workspace_marks()) == stored_marks()["workspace"]
+    assert as_json(workspace_marks()) == content.core_marks()["workspace"]
 
 
 def test_grouping_shows_the_marks_the_core_gives() -> None:
-    assert as_json(grouping_marks()) == stored_marks()["grouping"]
+    assert as_json(grouping_marks()) == content.core_marks()["grouping"]
 
 
 @pytest.mark.parametrize("key", landing_content().examples)
 def test_the_examples_show_the_marks_the_core_gives(key: str) -> None:
-    assert as_json(example_marks(key)) == stored_marks()["examples"][key]
+    assert as_json(example_marks(key)) == content.core_marks()["examples"][key]
 
 
 if __name__ == "__main__":

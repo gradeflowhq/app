@@ -347,7 +347,12 @@ def remove(request: Request, membership: AssessmentAccess, question_id: UUID) ->
 def history(request: Request, membership: AssessmentAccess, question_id: UUID) -> HttpResponse:
     question = membership.question(question_id)
     methods, questions = usable(request.user, membership.course), membership.assessment.question_set()
-    history = Marking.history.filter(question_id=question.pk).select_related("history_user").order_by("-history_date")
+    history = (
+        Marking.history.filter(question_id=question.pk)
+        .exclude(history_type="-")
+        .select_related("history_user")
+        .order_by("-history_date")
+    )
     current = Marking.objects.filter(question=question).exists()
     versions = [
         {
@@ -355,7 +360,7 @@ def history(request: Request, membership: AssessmentAccess, question_id: UUID) -
             "summary": saved_summary(version.definition, question.key, methods, questions),
             "current": current and index == 0,
         }
-        for index, version in enumerate(version for version in history if version.history_type != "-")
+        for index, version in enumerate(history)
     ]
     context = {"membership": membership, "question": question, "versions": versions}
     return render(request, "marking/history.html", context)

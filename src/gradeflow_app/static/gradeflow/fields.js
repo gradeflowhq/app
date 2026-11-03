@@ -1,10 +1,5 @@
-// Form fields and table rows that do more than the browser does.
+// Form fields that do more than the browser does.
 
-// A table row with `data-href` follows its first link when clicked anywhere.
-document.addEventListener("click", (event) => {
-  const row = event.target.closest("tr[data-href]");
-  if (row && !event.target.closest("a, button, input, label, select")) row.querySelector("a[href]")?.click();
-});
 // An insert button adds its value where the cursor was in the last feedback field used.
 let lastFeedbackField;
 document.addEventListener("focusin", (event) => {

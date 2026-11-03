@@ -1,4 +1,4 @@
-from django.urls import URLPattern, include, path
+from django.urls import URLPattern, URLResolver, include, path
 
 from gradeflow_app.accounts import views as accounts
 from gradeflow_app.assessments import views as assessments
@@ -78,21 +78,19 @@ assessment_urls = [
 ]
 
 
-def method_workspace_urls(prefix: str) -> list[URLPattern]:
-    """A method's workspace: a person's draft of it, or with a version `number`, a published version."""
-    return [
-        path(prefix, designer.page, name="method_page"),
-        path(f"{prefix}answers/", designer.answers, name="method_answers"),
-        path(f"{prefix}values/", designer.values, name="method_values"),
-        path(f"{prefix}run/", designer.run, name="method_run"),
-        path(f"{prefix}results/", designer.results, name="method_results"),
-        path(f"{prefix}check/", designer.check, name="method_check"),
-        path(f"{prefix}inputs/", designer.inputs, name="method_inputs"),
-        path(f"{prefix}question/", designer.question, name="method_question"),
-        path(f"{prefix}details/", designer.details, name="method_details"),
-        path(f"{prefix}yaml/", designer.yaml, name="method_yaml"),
-    ]
-
+method_workspace_urls: list[URLPattern] = [
+    path("", designer.page, name="method_page"),
+    path("answers/", designer.answers, name="method_answers"),
+    path("values/", designer.values, name="method_values"),
+    path("run/", designer.run, name="method_run"),
+    path("results/", designer.results, name="method_results"),
+    path("check/", designer.check, name="method_check"),
+    path("inputs/", designer.inputs, name="method_inputs"),
+    path("question/", designer.question, name="method_question"),
+    path("details/", designer.details, name="method_details"),
+    path("yaml/", designer.yaml, name="method_yaml"),
+]
+"""A method's workspace: a person's draft of it, or with a version `number`, a published version."""
 
 course_urls = [
     path("", courses.course, name="course"),
@@ -109,7 +107,7 @@ course_urls = [
     path("delete/", courses.delete_course, name="delete_course"),
 ]
 
-method_urls = [
+method_urls: list[URLPattern | URLResolver] = [
     path("", designer.latest_version, name="method_latest"),
     path("edit/", designer.start_editing, name="method_edit"),
     path("archive/", libraries.archive, name="method_archive"),
@@ -120,8 +118,8 @@ method_urls = [
     path("draft/field/", designer.fill_setting, name="method_field"),
     path("draft/publish/", designer.publish_draft, name="method_publish"),
     path("draft/discard/", designer.discard, name="method_discard"),
-    *method_workspace_urls("draft/"),
-    *method_workspace_urls("v<int:number>/"),
+    path("draft/", include(method_workspace_urls)),
+    path("v<int:number>/", include(method_workspace_urls)),
 ]
 
 urlpatterns = [

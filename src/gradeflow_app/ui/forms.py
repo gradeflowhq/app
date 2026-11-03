@@ -52,7 +52,7 @@ class MarkdownInput(forms.Textarea):
     def get_context(self, name: str, value: Any, attrs: dict[str, Any] | None) -> dict[str, Any]:
         context = super().get_context(name, value, attrs)
         if not context["widget"]["attrs"].get("disabled"):
-            context["widget"]["attrs"] |= {"x-ref": "text", "x-show": "writing", "x-on:keydown": "keydown"}
+            context["widget"]["attrs"] |= {"x-ref": "text", "x-show": "isWriting", "x-on:keydown": "keydown"}
         return context
 
 

@@ -2,7 +2,7 @@
 
 from collections import Counter
 from collections.abc import Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 from gradeflow_app.assessments.models import Assessment
 from gradeflow_app.marking.previews import PreviewResults
@@ -95,7 +95,7 @@ def combinations(
             cell.marks.add(award.marks)
             cell.feedback_counts[award.feedback] += 1
             if (result := preview_results.get(cell.key)) is not None:
-                preview_award = award.with_preview(result)
+                preview_award = replace(award, preview_result=result)
                 assert preview_award.marks is not None
                 cell.preview_marks.add(preview_award.marks)
                 cell.preview_feedback_counts[preview_award.feedback] += 1

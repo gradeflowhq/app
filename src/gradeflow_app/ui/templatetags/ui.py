@@ -2,13 +2,12 @@ import json
 import re
 from collections.abc import Iterable, Mapping, Sequence
 from datetime import datetime, timedelta
-from decimal import ROUND_HALF_UP, Decimal
 from functools import cache
 
 from allauth.usersessions.models import UserSession
 from django import template
 from django.contrib.humanize.templatetags.humanize import naturalday
-from django.template.defaultfilters import pluralize
+from django.template.defaultfilters import floatformat, pluralize
 from django.utils import timezone
 from django.utils.html import conditional_escape, format_html, json_script
 from django.utils.safestring import SafeString, mark_safe
@@ -68,19 +67,14 @@ def hx_vals(**values: object) -> str:
     return json.dumps({name: value for name, value in values.items() if value not in (None, "") and value is not False})
 
 
-def _rounded(value: float, places: int) -> str:
-    """`value` to `places` decimals, halves rounded up as people do: 0.475 is 0.48, not float rounding's 0.47."""
-    return str(Decimal(repr(value)).quantize(Decimal(1).scaleb(-places), ROUND_HALF_UP))
-
-
 @register.filter
 def marks(value: float | None, places: int | None = None) -> str:
     """Marks as people write them: 2, 1.5, 0.33; or with a fixed number of decimals, `marks:2`, to line them up."""
     if value is None:
         return "—"
     if places is not None:
-        return _rounded(value, places)
-    return _rounded(value, 2).rstrip("0").rstrip(".")
+        return floatformat(value, places)
+    return floatformat(value, 2).rstrip("0").rstrip(".")
 
 
 @register.filter
@@ -127,7 +121,7 @@ def short_value(value: object) -> str:
 def percent(value: float | None, total: float = 1) -> str:
     if value is None or not total:
         return "—"
-    return f"{_rounded(100 * value / total, 0)}%"
+    return f"{floatformat(100 * value / total, 0)}%"
 
 
 @register.filter
