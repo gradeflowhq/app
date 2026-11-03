@@ -6,7 +6,7 @@
 import { local } from "./storage.js";
 
 const MODELS_STORAGE_KEY = "gradeflow:models";
-const STATE_HEADER = "X-Model-State";
+const STATE_HEADER = "X-Model-ModelServiceState";
 
 function storedModelService() {
   const stored = local.json(MODELS_STORAGE_KEY);

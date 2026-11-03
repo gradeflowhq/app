@@ -314,7 +314,7 @@ def inputs(request: Request, access: MethodAccess, number: int | None = None) ->
         workspace.save()
         return {"tab": "inputs", "input": ""}
 
-    return _edit(request, access, None, change)
+    return _edit(request, access, number, change)
 
 
 @method_viewer()

@@ -1,5 +1,6 @@
 from dataclasses import asdict
 from datetime import timedelta
+from pathlib import Path
 from typing import cast
 
 import pytest
@@ -158,6 +159,11 @@ def test_connecting_refuses_a_token_the_service_refuses(client: Client, monkeypa
     assert f"<option selected>{PROVIDER}</option>".encode() in response.content
     assert b'data-refused="true"' in response.content
     assert STATE_HEADER not in response
+
+
+def test_the_browser_sends_its_model_service_in_the_header_the_server_reads() -> None:
+    script = Path(views.__file__).parents[1] / "static" / "gradeflow" / "models.js"
+    assert f'const STATE_HEADER = "{STATE_HEADER}";' in script.read_text()
 
 
 def test_only_the_servers_ai_services_connect(client: Client, user: User, idle_executor: None) -> None:

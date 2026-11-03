@@ -894,6 +894,10 @@ def test_a_version_is_read_only_and_lists_the_others(client: Client, method: Met
     ):
         assert f'<a href="{target}" hx-boost="false"' in page
     assert ">Open draft</button>" in page
+    definition = MethodDraftRecord.objects.get(method=method).definition
+    removed = post_with_revision(client, method, "method_inputs", 1, {"input": "points", "operation": "remove"})
+    assert removed.status_code == 404
+    assert MethodDraftRecord.objects.get(method=method).definition == definition
     assert MarkingControls(page).enabled == []
     assert 'class="flex flex-1 flex-col read-only-fields"' in page
     draft_page = client.get(designer_url(method, "method_page"), {"path": "with.checks.0"}).text

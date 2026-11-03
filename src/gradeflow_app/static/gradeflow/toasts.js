@@ -9,7 +9,7 @@ Alpine.store("toasts", {
   visible: [],
   count: 0,
   show(message, level = "error") {
-    const toast = { id: ++this.count, message, isSuccess: level !== "error", alertClass: level === "error" ? "alert-error" : "alert-neutral" };
+    const toast = { id: ++this.count, message, isSuccess: level === "success", alertClass: level === "error" ? "alert-error" : "alert-neutral" };
     this.visible = [toast];
     setTimeout(() => (this.visible = this.visible.filter((other) => other.id !== toast.id)), VISIBLE_MS);
   },
@@ -18,7 +18,7 @@ Alpine.store("toasts", {
   },
 });
 
-/** Shows `message` as a toast; `level` is "success" or the default, "error". */
+/** Shows `message` as a toast; `level` is a message level, by default "error". */
 export const showToast = (message, level) => Alpine.store("toasts").show(message, level);
 
 function showPageMessages() {
