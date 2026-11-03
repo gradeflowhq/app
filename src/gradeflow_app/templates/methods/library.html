@@ -6,7 +6,7 @@
   {% if archived_count %}
   <div class="segmented" role="tablist" aria-label="Methods shown">
     <a class="segment" role="tab" href="?" aria-selected="{% if archived %}false{% else %}true{% endif %}">Active</a>
-    <a class="segment gap-1.5" role="tab" href="?archived=1" aria-selected="{% if archived %}true{% else %}false{% endif %}">Archived<span class="tabular-nums text-muted">{{ archived_count }}</span></a>
+    <a class="segment gap-1.5" role="tab" href="?archived=1" aria-selected="{% if archived %}true{% else %}false{% endif %}">Archived<span class="badge badge-sm badge-soft tabular-nums">{{ archived_count }}</span></a>
   </div>
   {% endif %}
   {% if methods or drafts %}

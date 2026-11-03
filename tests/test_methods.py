@@ -192,8 +192,8 @@ def test_the_picker_has_built_in_yours_and_public_tabs(
     question = assessment.questions.get(key="Q1")
     url = reverse("question_methods", args=[assessment.pk, question.pk])
     empty = client.get(url).content.decode()
-    assert re.search(r"Yours<span[^>]*>0</span>", empty), "the tabs stay when nothing fits"
-    assert re.search(r"Public<span[^>]*>0</span>", empty)
+    assert 'data-tab="yours"' in empty, "the tabs stay when nothing fits"
+    assert re.search(r"Public</button>", empty), "an empty tab shows no count"
     assert "None for this question" in empty
     saved_marking(client, assessment, django_capture_on_commit_callbacks, ["light"])
     version = save_method(client, assessment, "Key word").versions.get()

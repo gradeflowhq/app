@@ -4,7 +4,7 @@
     <div class="grid gap-2.5 p-3">
       <c-search class="input-sm w-full" label="Search" x-ref="search" x-on:input="search" />
       <div class="segmented w-full! flex-nowrap" role="tablist" aria-label="Methods shown" x-on:keydown.left.prevent="next" x-on:keydown.right.prevent="next">
-        {% for key, label, count in tabs %}<button type="button" role="tab" class="segment flex-1 justify-center gap-1.5 px-2" aria-controls="picker-list" data-tab="{{ key }}" aria-selected="{% if key == tab %}true{% else %}false{% endif %}" :aria-selected="shows('{{ key }}')" x-on:click="show">{{ label }}{% if key != "builtin" %}<span class="tabular-nums text-subtle">{{ count }}</span>{% endif %}</button>{% endfor %}
+        {% for key, label, count in tabs %}<button type="button" role="tab" class="segment flex-1 justify-center gap-1.5 px-2" aria-controls="picker-list" data-tab="{{ key }}" aria-selected="{% if key == tab %}true{% else %}false{% endif %}" :aria-selected="shows('{{ key }}')" x-on:click="show">{{ label }}{% if key != "builtin" and count %}<span class="badge badge-sm badge-soft tabular-nums">{{ count }}</span>{% endif %}</button>{% endfor %}
       </div>
     </div>
     <nav id="picker-list" class="min-h-0 flex-1 overflow-y-auto px-2 pb-3 pt-1 max-md:max-h-56" x-ref="list" x-on:click="choose">

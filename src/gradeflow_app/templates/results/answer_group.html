@@ -6,17 +6,30 @@
 {% partialdef others %}
 {% if variants|length > 1 %}{% with others=variants|length|add:"-1" %}<p class="text-sm text-muted">and {{ others }} {% if grouping == "spelling" %}other spelling{{ others|pluralize }}{% else %}other{{ others|pluralize }}{% endif %}</p>{% endwith %}{% endif %}
 {% endpartialdef %}
-{% partialdef variants %}
-{% if total > 1 %}
-<details class="group/variants">
-  <summary class="inline-flex cursor-pointer list-none items-center gap-1.5 text-sm font-medium text-muted hover:text-base-content">{% icon "chevron-right" "size-4 transition-transform group-open/variants:rotate-90" %}Answers <span class="tabular-nums font-normal">{{ total }}</span></summary>
-  <ul class="mt-2 grid gap-2">
-    {% for answer, count in variants %}
-    <li>{% include "results/answer_text.html" with expanded=True %}<p class="tabular-nums mt-1 text-sm text-muted">{{ count }} student{{ count|pluralize }}</p></li>
-    {% endfor %}
-  </ul>
-  {% if more > 0 %}<p class="tabular-nums mt-1.5 text-sm text-muted">and {{ more }} more</p>{% endif %}
-</details>
+{% partialdef toggles %}
+<div class="flex flex-wrap items-center gap-2" data-toggles>
+  <div class="segmented" role="group" aria-label="Show">
+    {% if variants|length > 1 %}<label class="segment gap-1.5">Answers<span class="badge badge-sm badge-soft tabular-nums">{{ variants|length }}</span><input type="checkbox" class="sr-only" data-answers></label>{% endif %}
+    {% if answer_group.originals %}<label class="segment gap-1.5">Original<span class="badge badge-sm badge-soft tabular-nums">{{ answer_group.originals|length }}</span><input type="checkbox" class="sr-only" data-original></label>{% endif %}
+    <label class="segment gap-1.5">Students<span class="badge badge-sm badge-soft tabular-nums">{{ answer_group.count }}</span><input type="checkbox" class="sr-only" data-students></label>
+  </div>
+  {% if membership.can_edit and not draft and not answer_group.approximate %}<label class="btn btn-sm has-checked:btn-active ml-auto">{% icon "pencil-square" "size-4" %}Adjust marks<input type="checkbox" class="sr-only" data-adjust></label>{% endif %}
+</div>
+{% if variants|length > 1 %}
+<ul class="hidden gap-2 group-has-[[data-answers]:checked]/body:grid" aria-label="Answers">
+  {% for answer, count in variants %}{% if not code or forloop.counter <= 3 %}
+  <li>{% include "results/answer_text.html" with expanded=True %}<p class="tabular-nums mt-1 text-sm text-muted">{{ count }} student{{ count|pluralize }}</p></li>
+  {% endif %}{% endfor %}
+  {% if code and variants|length > 3 %}<li class="tabular-nums text-sm text-muted">and {{ variants|length|add:"-3" }} more</li>{% endif %}
+</ul>
+{% endif %}
+{% if answer_group.originals %}
+<ul class="hidden gap-2 group-has-[[data-original]:checked]/body:grid" aria-label="Original">
+  {% for answer, count in answer_group.originals|slice:":3" %}
+  <li><pre class="code-block">{{ answer }}</pre><p class="tabular-nums mt-1 text-sm text-muted">{{ count }} student{{ count|pluralize }}</p></li>
+  {% endfor %}
+  {% if answer_group.originals|length > 3 %}<li class="tabular-nums text-sm text-muted">and {{ answer_group.originals|length|add:"-3" }} more</li>{% endif %}
+</ul>
 {% endif %}
 {% endpartialdef %}
 {% with low=answer_group.marks.0 high=answer_group.marks.1 max_marks=question.core.max_marks feedback=answer_group.preview.feedback|default:answer_group.feedback code=question.core|code_language %}
@@ -59,26 +72,11 @@
       {% endif %}
     </form>
     {% endif %}
-    {% if code %}
-      {% with variants=answer_group.shown|slice:":3" total=answer_group.shown|length more=answer_group.shown|length|add:"-3" %}{% partial variants %}{% endwith %}
-      {% if answer_group.originals %}
-      <details class="group/exported">
-        <summary class="inline-flex cursor-pointer list-none items-center gap-1.5 text-sm font-medium text-muted hover:text-base-content">{% icon "chevron-right" "size-4 transition-transform group-open/exported:rotate-90" %}Original{% if answer_group.originals|length > 1 %} <span class="tabular-nums font-normal">{{ answer_group.originals|length }}</span>{% endif %}</summary>
-        <ul class="mt-2 grid gap-2">
-          {% for answer, count in answer_group.originals|slice:":3" %}
-          <li><pre class="code-block">{{ answer }}</pre><p class="tabular-nums mt-1 text-sm text-muted">{{ count }} student{{ count|pluralize }}</p></li>
-          {% endfor %}
-        </ul>
-        {% if answer_group.originals|length > 3 %}<p class="tabular-nums mt-1.5 text-sm text-muted">and {{ answer_group.originals|length|add:"-3" }} more</p>{% endif %}
-      </details>
-      {% endif %}
-    {% else %}
-      {% with variants=answer_group.answers total=answer_group.answers|length %}{% partial variants %}{% endwith %}
-    {% endif %}
-    <div class="flex flex-wrap gap-2">
-      {% if membership.can_edit and not draft and not answer_group.approximate %}<label class="btn btn-sm has-checked:btn-active">{% icon "pencil-square" "size-4" %}Adjust marks<input type="checkbox" class="sr-only" data-adjust></label>{% endif %}
-      <label class="btn btn-sm has-checked:btn-active">{% icon "users" "size-4" %}Students<span class="tabular-nums font-normal text-muted">{{ answer_group.count }}</span><input type="checkbox" class="sr-only" data-students></label>
-    </div>
+    {% if code %}{% with variants=answer_group.shown %}{% partial toggles %}{% endwith %}{% else %}{% with variants=answer_group.answers %}{% partial toggles %}{% endwith %}{% endif %}
+    <ul class="hidden flex-wrap gap-1.5 group-has-[[data-students]:checked]/body:flex" aria-label="Students">
+      {% for entry in answer_group.entries|slice:":40" %}<li><button class="badge badge-ghost h-auto cursor-pointer py-1 hover:badge-neutral" hx-get="{% url 'student' question.assessment_id entry.student %}" hx-target="#sheet-body" data-dialog="sheet"><c-sid value="{{ entry.key }}" />{% if entry.adjustment %} {% icon "pencil" "size-3" %}{% endif %}</button></li>{% endfor %}
+      {% if answer_group.count > 40 %}<li class="text-sm text-muted">and {{ answer_group.count|add:"-40" }} more</li>{% endif %}
+    </ul>
     {% if membership.can_edit and not draft and not answer_group.approximate %}
     <form class="hidden gap-3 group-has-[[data-adjust]:checked]/body:grid" hx-post="{% url 'adjust' question.assessment_id question.pk %}" hx-target="#answers" hx-swap="outerMorph">
       {% csrf_token %}
@@ -94,10 +92,6 @@
       </div>
     </form>
     {% endif %}
-    <ul class="hidden flex-wrap gap-1.5 group-has-[[data-students]:checked]/body:flex" aria-label="Students">
-      {% for entry in answer_group.entries|slice:":40" %}<li><button class="badge badge-ghost h-auto cursor-pointer py-1 hover:badge-neutral" hx-get="{% url 'student' question.assessment_id entry.student %}" hx-target="#sheet-body" data-dialog="sheet"><c-sid value="{{ entry.key }}" />{% if entry.adjustment %} {% icon "pencil" "size-3" %}{% endif %}</button></li>{% endfor %}
-      {% if answer_group.count > 40 %}<li class="text-sm text-muted">and {{ answer_group.count|add:"-40" }} more</li>{% endif %}
-    </ul>
   </div>
 </details>
 </li>

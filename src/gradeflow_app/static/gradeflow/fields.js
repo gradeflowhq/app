@@ -47,3 +47,8 @@ document.addEventListener("change", ({ target: { form } }) => {
     field.hidden = !Object.entries(JSON.parse(field.dataset.visibleWhen)).every((condition) => wants(form, condition));
   }
 });
+// Toggles in a `data-toggles` row open one panel at a time, as tabs do, and close again when pressed.
+document.addEventListener("change", ({ target }) => {
+  const row = target.checked && target.closest("[data-toggles]");
+  for (const other of row ? row.querySelectorAll("input[type=checkbox]") : []) other.checked = other === target;
+});

@@ -28,7 +28,7 @@
   </ul>
   <details class="group/groups mt-auto border-t border-base-300 p-2" open>
     <summary class="flex cursor-pointer list-none items-center gap-2 rounded-field px-3 py-2 text-sm font-medium text-muted hover:bg-base-200">
-      {% icon "chevron-right" "size-4 transition-transform group-open/groups:rotate-90" %}Question groups{% if questions.question_groups %}<span class="badge badge-sm ml-auto">{{ questions.question_groups|length }}</span>{% endif %}
+      {% icon "chevron-right" "size-4 transition-transform group-open/groups:rotate-90" %}Question groups{% if questions.question_groups %}<span class="badge badge-sm badge-soft tabular-nums ml-auto">{{ questions.question_groups|length }}</span>{% endif %}
     </summary>
     <ul class="grid gap-0.5 pt-1">
       {% for question_group in questions.question_groups %}
