@@ -1,1 +1,3 @@
-<p class="whitespace-pre-wrap break-words font-medium{% if not expanded %} line-clamp-4 group-open/answer:line-clamp-none{% endif %}{% if code %} font-mono text-sm{% endif %}">{% if blank or not answer %}<span class="italic text-muted">Blank</span>{% else %}{{ answer|highlight:code }}{% endif %}</p>
+{% if blank or not answer %}<p class="font-medium italic text-muted">Blank</p>
+{% elif code %}<pre class="code-block"><code{% if not expanded %} class="line-clamp-4 group-open/answer:line-clamp-none"{% endif %}>{{ answer|highlight:code }}</code></pre>
+{% else %}<p class="whitespace-pre-wrap break-words font-medium{% if not expanded %} line-clamp-4 group-open/answer:line-clamp-none{% endif %}">{{ answer }}</p>{% endif %}

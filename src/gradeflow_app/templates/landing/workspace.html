@@ -21,7 +21,7 @@
         {% for group, marks, checks in workspace.rows %}
         <li class="landing-answer">
           <div class="min-w-0 flex-1">
-            <pre class="landing-code">{{ group.code|highlight:code }}</pre>
+            <pre class="code-block">{{ group.code|highlight:code }}</pre>
             <p class="mt-1.5 text-sm text-muted">and {{ group.others }} other answers</p>
             <p class="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-sm">{% for check, correct in checks %}<span class="flex items-center gap-1 {% if correct %}text-success{% else %}text-error{% endif %}">{% if correct %}{% icon "check" "size-3.5" %}{% else %}{% icon "x-mark" "size-3.5" %}{% endif %}{{ check.name }}</span>{% endfor %}</p>
           </div>

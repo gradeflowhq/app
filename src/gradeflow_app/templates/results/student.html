@@ -10,7 +10,7 @@
       <div class="flex items-start gap-4">
         <div class="min-w-0 flex-1">
           <p class="text-sm"><span class="font-semibold">{{ question.key }}</span>{% if via %} <span class="text-muted">· {{ via }}</span>{% endif %}</p>
-          {% with code=question.core|code_language %}<p class="whitespace-pre-wrap break-words{% if code %} font-mono text-sm{% endif %}">{% if answer %}{{ answer|highlight:code }}{% else %}<span class="italic text-muted">Blank</span>{% endif %}</p>{% endwith %}
+          {% include "results/answer_text.html" with expanded=True code=question.core|code_language %}
           {% include "results/answer_feedback.html" with feedback=award.feedback %}
         </div>
         <div class="flex shrink-0 flex-col items-end gap-1">

@@ -51,7 +51,7 @@
         <p class="text-sm font-medium">Answers</p>
         <ul class="mt-1.5 grid gap-2">
           {% for answer, count in answer_group.shown|slice:":3" %}
-          <li class="rounded-box bg-base-200 px-3 py-2">{% include "results/answer_text.html" with expanded=True %}<p class="tabular-nums mt-1 text-sm text-muted">{{ count }} student{{ count|pluralize }}</p></li>
+          <li>{% include "results/answer_text.html" with expanded=True %}<p class="tabular-nums mt-1 text-sm text-muted">{{ count }} student{{ count|pluralize }}</p></li>
           {% endfor %}
         </ul>
         {% if answer_group.shown|length > 3 %}<p class="tabular-nums mt-1.5 text-sm text-muted">and {{ answer_group.shown|length|add:"-3" }} more</p>{% endif %}
@@ -62,7 +62,7 @@
         <summary class="inline-flex cursor-pointer list-none items-center gap-1.5 text-sm font-medium text-muted hover:text-base-content">{% icon "chevron-right" "size-4 transition-transform group-open/exported:rotate-90" %}Original{% if answer_group.originals|length > 1 %} <span class="tabular-nums font-normal">{{ answer_group.originals|length }}</span>{% endif %}</summary>
         <ul class="mt-2 grid gap-2">
           {% for answer, count in answer_group.originals|slice:":3" %}
-          <li class="rounded-box bg-base-200 px-3 py-2"><pre class="whitespace-pre-wrap break-words font-mono text-sm">{{ answer }}</pre><p class="tabular-nums mt-1 text-sm text-muted">{{ count }} student{{ count|pluralize }}</p></li>
+          <li><pre class="code-block">{{ answer }}</pre><p class="tabular-nums mt-1 text-sm text-muted">{{ count }} student{{ count|pluralize }}</p></li>
           {% endfor %}
         </ul>
         {% if answer_group.originals|length > 3 %}<p class="tabular-nums mt-1.5 text-sm text-muted">and {{ answer_group.originals|length|add:"-3" }} more</p>{% endif %}

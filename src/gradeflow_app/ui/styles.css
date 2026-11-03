@@ -220,6 +220,14 @@
   }
 }
 
+/* Code as written, such as a Code question's answer, or a field that edits it in place. */
+@utility code-block {
+  @apply block w-full overflow-x-auto whitespace-pre rounded-box border border-base-300 bg-base-200/50 px-3 py-2 font-mono text-[13px]/relaxed;
+  &:is(textarea) {
+    @apply resize-none focus:border-primary focus:outline-none focus:ring-3 focus:ring-primary/15;
+  }
+}
+
 /* A segmented control: a `segment` label around each radio input, or a `segment` tab or pressed button. */
 @utility segmented {
   @apply inline-flex w-fit gap-0.5 rounded-field border border-base-300 bg-base-200 p-0.5;
@@ -577,7 +585,7 @@
   }
 }
 
-/* The landing page: a glow behind its hero, the app's windows its examples sit in, and their code. */
+/* The landing page: a glow behind its hero and the app's windows its examples sit in. */
 @utility landing-glow {
   background: radial-gradient(56% 64% at 50% 0%, color-mix(in oklab, var(--color-primary) 16%, transparent), transparent 72%);
 }
@@ -587,9 +595,6 @@
     0 1px 2px oklch(25% 0.02 260 / 0.05),
     0 16px 40px -12px oklch(25% 0.02 260 / 0.14),
     0 48px 96px -40px oklch(25% 0.04 260 / 0.22);
-}
-@utility landing-code {
-  @apply overflow-x-auto whitespace-pre rounded-box bg-base-200 px-3.5 py-3 font-mono text-[13px]/relaxed;
 }
 /* An answer, then its marks beside it; in a list too narrow for both, the marks go under an answer that is code. */
 @utility landing-answer {

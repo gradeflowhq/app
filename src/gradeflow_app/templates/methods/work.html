@@ -134,7 +134,7 @@
               <div class="min-w-0 flex-1">
                 {% if can_change %}
                 <div x-show="!editing">
-                  <div class="in-place cursor-text hover:bg-base-200/70" tabindex="0" x-ref="back" x-on:click="edit" x-on:keydown.enter.prevent="edit">{% include "methods/work.html#answer_shown" %}</div>
+                  <div class="{% if selected|code_language %}rounded-box outline-none hover:*:border-base-content/25 focus-visible:*:border-primary focus-visible:*:ring-3 focus-visible:*:ring-primary/15{% else %}in-place hover:bg-base-200/70{% endif %} cursor-text" tabindex="0" x-ref="back" x-on:click="edit" x-on:keydown.enter.prevent="edit">{% include "methods/work.html#answer_shown" %}</div>
                   <div{% if run_stale %} class="opacity-50"{% endif %}>{% include "results/answer_feedback.html" with feedback=row.result.feedback %}</div>
                 </div>
                 {% include "methods/work.html#answer_editor" with op="save" answer=row.answer %}
@@ -223,7 +223,7 @@
   {% with form=row.form|default:new_answer %}{% if form %}
   <div class="grid gap-2{% if form.fields|length > 1 %} sm:grid-cols-2{% endif %}" role="group" aria-label="{% if op == "save" %}Answer of submission {{ row.number }}{% else %}New answer{% endif %}">{% for field in form %}{{ field }}{% endfor %}</div>
   {% else %}
-  <textarea name="answer" x-on:keydown.enter="submit" rows="1" class="textarea in-place block field-sizing-content min-h-0 w-[calc(100%+1rem)] resize-none font-medium{% if selected|code_language %} font-mono text-sm{% else %} text-base{% endif %}" aria-label="{% if op == "save" %}Answer of submission {{ row.number }}{% else %}New answer{% endif %}"{% if op == "add" %} placeholder="Write an answer"{% endif %}>{{ answer }}</textarea>
+  <textarea name="answer" x-on:keydown.enter="submit" rows="1" class="{% if selected|code_language %}code-block{% else %}textarea in-place block w-[calc(100%+1rem)] resize-none text-base font-medium{% endif %} field-sizing-content min-h-0" aria-label="{% if op == "save" %}Answer of submission {{ row.number }}{% else %}New answer{% endif %}"{% if op == "add" %} placeholder="Write an answer"{% endif %}>{{ answer }}</textarea>
   {% endif %}{% endwith %}
 </form>
 {% endpartialdef %}
