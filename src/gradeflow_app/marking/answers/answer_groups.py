@@ -1,11 +1,11 @@
 """Answer groups: students' answers to a question, grouped so a marker reviews each distinct answer once."""
 
 from collections import Counter
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from typing import Literal
 
-from gradeflow_core import AnswerComparison, compare_answers
+from gradeflow_core import AnswerComparison, CheckResult, compare_answers
 
 from gradeflow_app.imports.models import answer_to
 from gradeflow_app.questions.models import Question
@@ -52,6 +52,7 @@ class Preview:
     """Whether it couldn't mark any of them."""
     problem: str
     """Why the draft couldn't mark the first of them."""
+    breakdown: GroupBreakdown | None = None
     full: int = 0
     part: int = 0
     zero: int = 0
@@ -65,6 +66,30 @@ class Preview:
         """The levels of the marks it gives."""
         counts: dict[Level, int] = {"full": self.full, "part": self.part, "zero": self.zero}
         return {level for level, count in counts.items() if count}
+
+
+@dataclass(frozen=True)
+class GroupBreakdown:
+    """The breakdown most of an answer group's students have, and how many: a marking that reads other questions can
+    mark the same answer differently."""
+
+    check: CheckResult
+    students: int
+    group_size: int
+
+    @property
+    def note(self) -> str:
+        return f"For {self.students} of {self.group_size} students" if self.students < self.group_size else ""
+
+
+def commonest_breakdown(awards: Iterable[Award]) -> GroupBreakdown | None:
+    """The breakdown most of ``awards`` have; None if none has one."""
+    given = [award.breakdown for award in awards]
+    counts = Counter(check for check in given if check is not None)
+    if not counts:
+        return None
+    [(check, students)] = counts.most_common(1)
+    return GroupBreakdown(check, students, len(given))
 
 
 @dataclass
@@ -112,6 +137,13 @@ class AnswerGroup:
     def feedback(self) -> str:
         commonest = Counter(entry.feedback for entry in self.entries if entry.feedback).most_common(1)
         return commonest[0][0] if commonest else ""
+
+    @property
+    def breakdown(self) -> GroupBreakdown | None:
+        """Its students' commonest breakdown: the draft's while previewing."""
+        if self.preview is not None:
+            return self.preview.breakdown
+        return commonest_breakdown(entry for entry in self.entries if entry.result is not None)
 
     @property
     def levels(self) -> set[Level]:

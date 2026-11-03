@@ -318,6 +318,7 @@ def _preview_marks(group: AnswerGroup, preview: dict[str, QuestionResult]) -> an
         low=marks[0],
         high=marks[-1],
         feedback=projected[0][1].feedback,
+        breakdown=answer_groups.commonest_breakdown(award for _, award in projected),
         full=levels["full"],
         part=levels["part"],
         zero=levels["zero"],

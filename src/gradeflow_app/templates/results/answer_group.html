@@ -42,6 +42,7 @@
     </div>
   </summary>
   <div class="group/body grid gap-4 border-t border-base-300 px-4 py-4">
+    {% if answer_group.breakdown %}<c-breakdown :check="answer_group.breakdown.check" :language="code" :note="answer_group.breakdown.note" />{% endif %}
     {% if answer_group.approximate or answer_group.mixed_decisions %}
     <p class="text-sm text-muted">{% if answer_group.approximate %}Similar answers can have different meanings.{% else %}These answers have different decisions.{% endif %} <a class="text-link" hx-get="{% url 'answers' question.assessment_id question.pk %}?group=answers" hx-target="#answers" hx-swap="outerHTML" href="{% url 'question' question.assessment_id question.pk %}?group=answers">Mark separately</a></p>
     {% endif %}

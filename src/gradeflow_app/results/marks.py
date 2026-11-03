@@ -6,10 +6,11 @@ import statistics
 from collections import Counter
 from collections.abc import Sequence
 from dataclasses import dataclass
+from functools import cached_property
 from typing import Literal, NamedTuple
 from uuid import UUID
 
-from gradeflow_core import MarkedSubmission, QuestionResult
+from gradeflow_core import CheckResult, MarkedSubmission, QuestionResult
 
 from gradeflow_app.assessments.models import Assessment
 from gradeflow_app.imports.models import Student
@@ -41,7 +42,7 @@ class Award:
             return given.marks
         return self.file_marks
 
-    @property
+    @cached_property
     def given(self) -> QuestionResult | None:
         """What the marking gives, or the draft's preview while previewing."""
         if self.projected is not None:
@@ -64,6 +65,11 @@ class Award:
         if self.adjustment is not None and self.adjustment.feedback is not None:
             return self.adjustment.feedback
         return given.feedback if (given := self.given) is not None else ""
+
+    @property
+    def breakdown(self) -> CheckResult | None:
+        """How each check of the marking marked the answer; None for a marking of one check."""
+        return given.breakdown if (given := self.given) is not None else None
 
     def with_projected(self, projected: QuestionResult) -> Award:
         return Award(self.max_marks, self.result, self.adjustment, self.file_marks, projected)

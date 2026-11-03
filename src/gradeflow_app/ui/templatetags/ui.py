@@ -163,6 +163,12 @@ def markdown(text: str) -> SafeString:
 
 
 @register.filter
+def inline_markdown(text: str) -> SafeString:
+    """A line of markdown from the core, without a paragraph around it."""
+    return mark_safe(str(_markdown.renderInline(text)))
+
+
+@register.filter
 def math_markdown(text: str) -> SafeString:
     """Markdown people write, such as a question's description or a method's guide, with LaTeX formulas between $
     signs."""

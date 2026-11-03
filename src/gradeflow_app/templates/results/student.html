@@ -12,6 +12,7 @@
           <p class="text-sm"><span class="font-semibold">{{ question.key }}</span>{% if via %} <span class="text-muted">· {{ via }}</span>{% endif %}</p>
           {% include "results/answer_text.html" with expanded=True code=question.core|code_language %}
           {% include "results/answer_feedback.html" with feedback=award.feedback %}
+          {% if award.breakdown %}{% with code=question.core|code_language %}<c-more label="Breakdown" class="mt-2"><c-breakdown :check="award.breakdown" :language="code" /></c-more>{% endwith %}{% endif %}
         </div>
         <div class="flex shrink-0 flex-col items-end gap-1">
           <c-marks :low="low" :high="low" :max_marks="max_marks" />

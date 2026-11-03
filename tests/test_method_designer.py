@@ -187,6 +187,18 @@ def test_running_the_tests_shows_the_marks_until_the_answers_change(
     assert "Changed since the last run" in client.get(url(method, "method_results")).content.decode()
 
 
+def test_test_answers_show_how_each_check_marked_them(
+    client: Client, counted: Method, django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks
+) -> None:
+    edit(client, counted, "method_answers", op="add", answer="dark")
+    with django_capture_on_commit_callbacks(execute=True):
+        edit(client, counted, "method_run")
+    results = client.get(url(counted, "method_results")).content.decode()
+    assert "Breakdown" in results
+    assert "Includes <code>light</code>." in results
+    assert "Any length." in results
+
+
 def test_unreadable_test_results_fail_the_run(client: Client, method: Method, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(queue, "executor", Idle)
     edit(client, method, "method_answers", op="add", answer="light")

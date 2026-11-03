@@ -18,6 +18,8 @@ class Result(models.Model):
     marked = models.BooleanField(default=True)
     language_models = models.JSONField(default=list)
     """The language models that decided it, if any."""
+    breakdown = models.JSONField(null=True)
+    """How each check of the marking marked it, if the marking has several."""
     marking = models.ForeignKey("marking.Marking", null=True, on_delete=models.SET_NULL, related_name="results")
     revision = models.PositiveIntegerField()
 
@@ -36,6 +38,7 @@ class Result(models.Model):
             method=self.method,
             marked=self.marked,
             models=tuple(self.language_models),
+            breakdown=self.breakdown,
         )
 
 

@@ -155,6 +155,7 @@ def _store(job: Job, submissions: Sequence[MarkedSubmission]) -> None:
             method=result.method,
             marked=result.marked,
             language_models=list(result.models),
+            breakdown=result.breakdown and result.breakdown.model_dump(mode="json"),
             marking_id=job.marking_id,
             revision=job.revision,
         )
