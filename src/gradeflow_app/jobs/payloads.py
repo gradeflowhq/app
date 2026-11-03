@@ -11,11 +11,11 @@ def _with_token(endpoint: ModelEndpoint) -> dict[str, Any]:
     return {**endpoint.model_dump(mode="json"), "token": endpoint.token.get_secret_value()}
 
 
-Endpoint = Annotated[ModelEndpoint, PlainSerializer(_with_token)]
+EndpointWithToken = Annotated[ModelEndpoint, PlainSerializer(_with_token)]
 """A model endpoint with its token, which the sandbox needs; the job lets its input go when it ends."""
 
 
-class Payload(BaseModel):
+class MarkingRun(BaseModel):
     """Students' answers and the markings that mark them."""
 
     questions: QuestionSet
@@ -23,7 +23,7 @@ class Payload(BaseModel):
     methods: list[tuple[str, str]]
     """The published versions the markings use, each method's name and YAML."""
     submissions: list[Submission]
-    model_endpoint: Endpoint | None = None
+    model_endpoint: EndpointWithToken | None = None
 
 
 class TestRun(BaseModel):
@@ -35,22 +35,22 @@ class TestRun(BaseModel):
     question: str | None
     inputs: dict[str, Any]
     rows: list[ExampleRow]
-    model_endpoint: Endpoint | None = None
+    model_endpoint: EndpointWithToken | None = None
 
 
 class ModelChoiceRun(BaseModel):
     """A model endpoint whose models to choose."""
 
-    model_endpoint: Endpoint
+    model_endpoint: EndpointWithToken
 
 
-class ModelTry(BaseModel):
+class ModelTrialRequest(BaseModel):
     model: str
-    role: Literal["decision", "reasoning"]
+    role: Literal["fast", "careful"]
 
 
-class ModelTestRun(BaseModel):
+class ModelTrialRun(BaseModel):
     """Models of an endpoint to try, each in a role."""
 
-    model_endpoint: Endpoint
-    tries: list[ModelTry]
+    model_endpoint: EndpointWithToken
+    trials: list[ModelTrialRequest]

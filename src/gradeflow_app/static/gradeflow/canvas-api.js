@@ -6,7 +6,7 @@
 const PAGE_SIZE = 100;
 
 /** Canvas's array parameters are written `key[]=a&key[]=b`. */
-const query = (params) => new URLSearchParams(Object.entries(params).flatMap(([key, value]) =>
+const queryString = (params) => new URLSearchParams(Object.entries(params).flatMap(([key, value]) =>
   Array.isArray(value) ? value.map((v) => [`${key}[]`, v]) : [[key, value]])).toString();
 
 /** The path and query of the Link header's next page, which the proxy needs instead of Canvas's URL. */
@@ -17,7 +17,7 @@ const nextPath = (link) => {
   return pathname + search;
 };
 
-const failure = async (response) => {
+const requestError = async (response) => {
   const body = await response.json().catch(() => undefined);
   const message = body?.errors?.[0]?.message ?? body?.message ?? `Canvas request failed (${response.status})`;
   // Canvas answers in JSON; anything else came from the proxy, such as a Canvas address it won't forward to.
@@ -36,7 +36,7 @@ export const canvasClient = ({ baseUrl, token, proxyUrl }) => {
   /** `path` is the Canvas URL's path and query. */
   const request = async (path, init = {}) => {
     const response = await fetch(proxy + path, { ...init, headers: { ...headers, ...init.headers } });
-    if (!response.ok) throw await failure(response);
+    if (!response.ok) throw await requestError(response);
     return response;
   };
 
@@ -50,7 +50,7 @@ export const canvasClient = ({ baseUrl, token, proxyUrl }) => {
 
   const list = async (path, params = {}) => {
     const items = [];
-    const numbered = (page) => `${api}${path}?${query({ ...params, per_page: PAGE_SIZE, ...(page > 1 && { page }) })}`;
+    const numbered = (page) => `${api}${path}?${queryString({ ...params, per_page: PAGE_SIZE, ...(page > 1 && { page }) })}`;
     let page = 1;
     let next = numbered(page);
     while (next) {
@@ -117,15 +117,15 @@ export const matchStudents = (rows, canvasUsers) => {
 
 /**
  * The posted_grade for a row's `marks` out of `maxMarks`: marks scaled to the
- * assignment's points `possible`, or a percentage string, which Canvas applies to
+ * assignment's points possible (`pointsPossible`), or a percentage string, which Canvas applies to
  * any assignment's points. `rounding` rounds to the nearest multiple of itself.
  * @param {{marks: number | null, maxMarks: number}} row
- * @param {{mode: 'marks' | 'percent', rounding: number | null, possible: number}} options
+ * @param {{mode: 'marks' | 'percent', rounding: number | null, pointsPossible: number}} options
  * @returns {number | string | null} null when the row has no total
  */
-export const gradeFor = ({ marks, maxMarks }, { mode, rounding, possible }) => {
+export const gradeFor = ({ marks, maxMarks }, { mode, rounding, pointsPossible }) => {
   if (!Number.isFinite(marks) || !(maxMarks > 0)) return null;
-  const value = (marks / maxMarks) * (mode === 'percent' ? 100 : possible);
+  const value = (marks / maxMarks) * (mode === 'percent' ? 100 : pointsPossible);
   const rounded = rounding ? Math.round(value / rounding) * rounding : value;
   const grade = Number(rounded.toFixed(10));
   return mode === 'percent' ? `${grade}%` : grade;

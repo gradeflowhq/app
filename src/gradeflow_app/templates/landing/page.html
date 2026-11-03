@@ -3,7 +3,7 @@
 <c-topbar>
   <c-slot name="nav"><div class="ml-6 flex gap-6 text-sm text-muted max-md:hidden" hx-boost="false">{% for id, name in sections.items %}<a class="hover:text-base-content" href="#{{ id }}">{{ name }}</a>{% endfor %}</div></c-slot>
   <c-slot name="actions">
-    <a href="{{ github }}" class="btn btn-ghost btn-square btn-sm max-sm:hidden" target="_blank" rel="noopener" hx-boost="false" aria-label="GradeFlow on GitHub" title="GradeFlow on GitHub"><c-github /></a>
+    <a href="{{ github_url }}" class="btn btn-ghost btn-square btn-sm max-sm:hidden" target="_blank" rel="noopener" hx-boost="false" aria-label="GradeFlow on GitHub" title="GradeFlow on GitHub"><c-github /></a>
     <a href="{% url 'account_login' %}" class="btn btn-ghost btn-sm">Sign in</a>
     <a href="{% url 'account_signup' %}" class="btn btn-primary btn-sm">Create an account</a>
   </c-slot>
@@ -11,7 +11,7 @@
 <main id="main">
 <section class="landing-glow px-4 pb-12 pt-14 sm:px-6 sm:pt-22">
   <div class="mx-auto grid max-w-5xl justify-items-center gap-6 text-center">
-    <a class="inline-flex items-center gap-2 rounded-full border border-base-300 bg-base-100 px-3.5 py-1.5 text-sm font-medium text-muted hover:text-base-content" href="{{ github }}" target="_blank" rel="noopener" hx-boost="false"><c-github class="size-4 text-base-content" />Open source on GitHub{% icon "arrow-right" "size-3.5" mini=True %}</a>
+    <a class="inline-flex items-center gap-2 rounded-full border border-base-300 bg-base-100 px-3.5 py-1.5 text-sm font-medium text-muted hover:text-base-content" href="{{ github_url }}" target="_blank" rel="noopener" hx-boost="false"><c-github class="size-4 text-base-content" />Open source on GitHub{% icon "arrow-right" "size-3.5" mini=True %}</a>
     <h1 class="text-balance text-3xl font-semibold leading-none tracking-tight sm:text-5xl md:text-6xl lg:text-7xl">Mark a whole cohort the way you'd mark one script.</h1>
     <p class="max-w-xl text-pretty text-lg text-muted sm:text-xl">Import results from ExamSoft, CSV or Excel. Mark each question with checks you can combine and preview, then send the marks to Canvas.</p>
     <div class="mt-2 flex w-full max-w-sm flex-col gap-3 sm:w-auto sm:max-w-none sm:flex-row"><a class="btn btn-primary btn-lg" href="{% url 'account_signup' %}">Create an account</a><a class="btn btn-lg" href="#grouping" hx-boost="false">See how it works</a></div>
@@ -45,8 +45,8 @@
       <p class="text-muted">Students are matched by login, SIS ID or email.</p>
       <div class="flex-1 pt-7" x-data="canvasSend">
         <c-card title="Canvas" class="h-full" body_class="grid gap-5 p-5">
-          <div class="flex items-center gap-3 rounded-box bg-base-200/70 p-3"><span class="tile size-9" aria-hidden="true">I</span><div class="min-w-0 flex-1"><p class="text-sm text-muted">Canvas course</p><p class="font-medium">Introductory Biology, 2026</p></div></div>
-          <div class="grid gap-1.5"><span class="font-medium">Assignment</span><div class="flex items-center gap-3 rounded-box border border-base-300 p-3"><span class="tile size-9" aria-hidden="true">F</span><div class="min-w-0 flex-1"><p class="font-medium">Final Exam</p><p class="text-sm text-muted">60 points</p></div></div></div>
+          <div class="flex items-center gap-3 rounded-box bg-base-200/70 p-3"><span class="initial-badge size-9" aria-hidden="true">I</span><div class="min-w-0 flex-1"><p class="text-sm text-muted">Canvas course</p><p class="font-medium">Introductory Biology, 2026</p></div></div>
+          <div class="grid gap-1.5"><span class="font-medium">Assignment</span><div class="flex items-center gap-3 rounded-box border border-base-300 p-3"><span class="initial-badge size-9" aria-hidden="true">F</span><div class="min-w-0 flex-1"><p class="font-medium">Final Exam</p><p class="text-sm text-muted">60 points</p></div></div></div>
           <div class="rounded-box border border-base-300 p-4"><p class="font-medium">808 matched in Canvas, 4 not found</p><p class="mt-1 text-sm text-muted">Not in this Canvas course: <span class="font-mono">24120093, 24098317, 24064582, 24131776</span></p></div>
           <div class="flex flex-wrap items-center gap-3"><button type="button" class="btn btn-primary" x-on:click="send" :disabled="sending">{% icon "paper-airplane" "size-4" %}Send to Canvas</button><span class="flex items-center gap-2 text-sm text-muted" x-show="sending"><span class="loading loading-spinner loading-sm"></span>Sending marks…</span></div>
         </c-card>
@@ -58,9 +58,9 @@
       <div class="flex-1 pt-7" x-data="studentIds">
         <c-card title="Students" class="flex h-full flex-col" body_class="flex flex-1 flex-col">
           <table class="table"><thead><tr><th>Student ID</th><th class="text-right">Total marks</th></tr></thead>
-            <tbody>{% for student, total in students %}<tr><td><span class="font-mono tabular-nums" x-show="shown">{{ student }}</span><span class="font-mono tabular-nums" data-sid-state="locked" x-show="!shown" x-on:click="toggle"><span class="sr-only">Encrypted</span></span></td><td class="tabular-nums text-right">{{ total|marks }} / 60</td></tr>{% endfor %}</tbody>
+            <tbody>{% for student, total in privacy_students %}<tr><td><span class="font-mono tabular-nums" x-show="isShown">{{ student }}</span><span class="font-mono tabular-nums" data-student-id-state="encrypted" x-show="!isShown" x-on:click="toggle"><span class="sr-only">Encrypted</span></span></td><td class="tabular-nums text-right">{{ total|marks }} / 60</td></tr>{% endfor %}</tbody>
           </table>
-          <div class="mt-auto flex flex-wrap items-center gap-3 border-t border-base-300 px-5 py-4"><span x-show="!shown">{% icon "lock-closed" "size-5 text-muted" %}</span><span x-show="shown">{% icon "lock-open" "size-5 text-muted" %}</span><span x-text="status"></span><button type="button" class="btn btn-sm ml-auto" :class="actionStyle" x-on:click="toggle" x-text="action"></button></div>
+          <div class="mt-auto flex flex-wrap items-center gap-3 border-t border-base-300 px-5 py-4"><span x-show="!isShown">{% icon "lock-closed" "size-5 text-muted" %}</span><span x-show="isShown">{% icon "lock-open" "size-5 text-muted" %}</span><span x-text="status"></span><button type="button" class="btn btn-sm ml-auto" :class="buttonClass" x-on:click="toggle" x-text="buttonLabel"></button></div>
         </c-card>
       </div>
     </article>
@@ -70,13 +70,13 @@
 <section class="px-4 pb-24 sm:px-6 sm:pb-32">
   <div class="landing-glow mx-auto grid max-w-6xl justify-items-center gap-7 rounded-3xl border border-base-300 bg-base-100 px-6 py-18 text-center">
     <div class="grid gap-3"><h2 class="text-balance text-2xl font-semibold tracking-tight sm:text-4xl md:text-5xl">Try it on an exam you've already marked.</h2><p class="text-lg text-muted">GradeFlow is open source under the MIT licence.</p></div>
-    <div class="flex w-full max-w-sm flex-col gap-3 sm:w-auto sm:max-w-none sm:flex-row"><a class="btn btn-primary btn-lg" href="{% url 'account_signup' %}">Create an account</a><a class="btn btn-lg" href="{{ github }}" target="_blank" rel="noopener" hx-boost="false"><c-github />View on GitHub</a></div>
+    <div class="flex w-full max-w-sm flex-col gap-3 sm:w-auto sm:max-w-none sm:flex-row"><a class="btn btn-primary btn-lg" href="{% url 'account_signup' %}">Create an account</a><a class="btn btn-lg" href="{{ github_url }}" target="_blank" rel="noopener" hx-boost="false"><c-github />View on GitHub</a></div>
   </div>
 </section>
 
 <footer class="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-3 px-4 pb-10 text-sm text-muted sm:px-6">
   <span class="flex items-center gap-2 font-semibold tracking-tight text-base-content"><c-logo class="size-6" />GradeFlow</span>
-  <nav class="flex flex-wrap gap-x-6 gap-y-2 sm:ml-auto" aria-label="Footer" hx-boost="false">{% for id, name in sections.items %}<a class="hover:text-base-content" href="#{{ id }}">{{ name }}</a>{% endfor %}<a class="hover:text-base-content" href="{{ github }}" target="_blank" rel="noopener">GitHub</a></nav>
+  <nav class="flex flex-wrap gap-x-6 gap-y-2 sm:ml-auto" aria-label="Footer" hx-boost="false">{% for id, name in sections.items %}<a class="hover:text-base-content" href="#{{ id }}">{{ name }}</a>{% endfor %}<a class="hover:text-base-content" href="{{ github_url }}" target="_blank" rel="noopener">GitHub</a></nav>
 </footer>
 </main>
 {% endblock %}

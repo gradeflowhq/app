@@ -6,22 +6,22 @@ from typing import Any
 
 from gradeflow_core import GradeFlowError, Methods, Problem
 from gradeflow_core import Method as CoreMethod
-from gradeflow_core.editing import MarkingDraft, Slot
+from gradeflow_core.editing import ChecksSetting, MarkingDraft
 
 from gradeflow_app.editor.editing import CheckWorkspace, Conflict, EditorActions
-from gradeflow_app.editor.guide import choices, listed, question_group_check
-from gradeflow_app.libraries.collection import BUILTIN_NAMES, Offers
+from gradeflow_app.editor.guide import choices, joined, question_group_check
+from gradeflow_app.libraries.collection import BUILTIN_NAMES, OfferedMethods
 from gradeflow_app.ui.schemaforms.forms import ObjectForm
 
 
 @dataclass(frozen=True)
-class Child:
-    """A check in a slot, as a card that opens it."""
+class CheckCard:
+    """A check in a setting, as a card that opens it."""
 
     path: str
     label: str
     description: str
-    incomplete: bool
+    has_problems: bool
     problem: str
     """What is wrong with it or a check it holds, rather than not filled in yet."""
     notes: list[str]
@@ -29,77 +29,79 @@ class Child:
 
 
 @dataclass(frozen=True)
-class SlotView:
-    slot: Slot
+class ChecksSettingView:
+    setting: ChecksSetting
     errors: list[str]
-    children: list[Child]
+    children: list[CheckCard]
     questions: list[str]
     """In a question group, the questions an added check may read, chosen before its method."""
     can_add: bool
-    unavailable: str = ""
+    unavailable_reason: str = ""
     """Why checks can't be added yet, as the core says."""
-    addon: str = ""
-    needed: bool = False
+    label_controls: str = ""
+    needs_checks: bool = False
     """It still needs checks, which isn't shown as a mistake until saving."""
 
     @property
-    def fixed(self) -> bool:
+    def has_fixed_count(self) -> bool:
         """A list of exactly so many checks, such as one for each of a question's values, which none are added to or
         removed from."""
-        return self.slot.many and self.slot.minimum == self.slot.maximum
+        return self.setting.is_list and self.setting.minimum == self.setting.maximum
 
 
-def _made_by(method: CoreMethod[Any] | None, offers: Offers) -> str:
+def _made_by(method: CoreMethod[Any] | None, offers: OfferedMethods) -> str:
     if method is None or method.name in BUILTIN_NAMES:
         return ""
     owner = offers.owners.get(method.name)
     return f"by {owner} · Version {method.version}" if owner else f"Version {method.version}"
 
 
-def _elsewhere(workspace: CheckWorkspace, problem: Problem, here: str) -> str:
-    """A problem of a check other than the one at `here`; one not filled in yet, as what to do."""
+def _problem_elsewhere_text(workspace: CheckWorkspace, problem: Problem, open_path: str) -> str:
+    """A problem of a check other than the one at `open_path`; one not filled in yet, as what to do."""
     label = workspace.label(problem.check) if problem.check else "The marking"
-    return f"Finish {label}." if problem.incomplete else workspace.said(problem, here)
+    return f"Finish {label}." if problem.is_incomplete else workspace.problem_text(problem, open_path)
 
 
-def _on_card(workspace: CheckWorkspace, path: str) -> str:
+def _card_problem(workspace: CheckWorkspace, path: str) -> str:
     """The first problem of the check at `path` or a check it holds, as its card says it."""
-    problem = next((each for each in workspace.problems_in(path) if not each.incomplete), None)
-    return workspace.said(problem, path) if problem else ""
+    problem = next((each for each in workspace.problems_in(path) if not each.is_incomplete), None)
+    return workspace.problem_text(problem, path) if problem else ""
 
 
-def _slot(workspace: CheckWorkspace, slot: Slot, errors: list[str], addon: str, needed: bool) -> SlotView:
+def _checks_setting_view(
+    workspace: CheckWorkspace, setting: ChecksSetting, errors: list[str], label_controls: str, needs_checks: bool
+) -> ChecksSettingView:
     checks = workspace.checks
     children = [
-        Child(
+        CheckCard(
             path=child,
             label=workspace.label(child),
             description=checks.describe(child),
-            incomplete=workspace.incomplete(child),
-            problem=_on_card(workspace, child),
+            has_problems=workspace.has_problems(child),
+            problem=_card_problem(workspace, child),
             notes=checks.notes(child),
         )
-        for child in slot.checks
+        for child in setting.checks
     ]
-    offered, unavailable, questions = Methods(), "", []
-    if not slot.full:
-        in_group = question_group_check(checks, slot.new)
-        questions = in_group.questions if in_group else []
+    methods, unavailable_reason, questions = Methods(), "", []
+    if not setting.is_full:
+        group_check = question_group_check(checks, setting.new_check_path)
+        questions = group_check.questions if group_check else []
         try:
-            offered = checks.methods(slot.new, in_group.question if in_group else None)
+            methods = checks.methods(setting.new_check_path, group_check.question if group_check else None)
         except GradeFlowError as error:
-            unavailable = str(error)
-    if errors and not slot.checks:
-        errors = ["Add a check." if not slot.many else "Add at least one check."]
-    return SlotView(
-        slot,
+            unavailable_reason = str(error)
+    if errors and not setting.checks:
+        errors = ["Add a check." if not setting.is_list else "Add at least one check."]
+    return ChecksSettingView(
+        setting,
         errors,
         children,
         questions,
-        bool(choices(offered, workspace.offers)),
-        unavailable=unavailable,
-        addon=addon,
-        needed=needed or bool(slot.minimum),
+        bool(choices(methods, workspace.offers)),
+        unavailable_reason=unavailable_reason,
+        label_controls=label_controls,
+        needs_checks=needs_checks or bool(setting.minimum),
     )
 
 
@@ -111,45 +113,46 @@ class Editor:
     path: str
     form: ObjectForm
     label: str
-    slots: list[SlotView] = field(default_factory=list)
+    checks_settings: list[ChecksSettingView] = field(default_factory=list)
     description: str = ""
-    crumbs: list[tuple[str, str]] = field(default_factory=list)
-    elsewhere: list[tuple[str, str]] = field(default_factory=list)
+    breadcrumbs: list[tuple[str, str]] = field(default_factory=list)
+    problems_elsewhere: list[tuple[str, str]] = field(default_factory=list)
     """Problems elsewhere in the checks, shown when saving: each one's check, and it in words."""
-    changeable: bool = False
+    can_change_method: bool = False
     """Whether another method can mark here."""
-    newer: CoreMethod[Any] | None = None
+    newer_version: CoreMethod[Any] | None = None
     """The latest version of the check's method, when it uses an earlier one."""
     archived: bool = False
     made_by: str = ""
     """Who made a saved method, and its version: "by Quinn QA · Version 2"; empty for a built-in one."""
     editable: bool = False
-    stale: bool = False
+    saved_by_someone_else: bool = False
     """Someone saved the checks after the user started this draft."""
     more_open: bool = False
-    kept: str = ""
+    discard_note: str = ""
     """What discarding the draft leaves, in words."""
     conflicts: Sequence[Conflict] = ()
     """Other markings of the questions this one marks."""
 
     @property
-    def conflict(self) -> str:
+    def conflict_message(self) -> str:
         """Which questions another marking marks, in words."""
         keys = sorted({key for conflict in self.conflicts for key in conflict.questions})
         if not keys:
             return ""
-        return f"{listed(keys)} has another marking." if len(keys) == 1 else f"{listed(keys)} have other markings."
+        return f"{joined(keys)} has another marking." if len(keys) == 1 else f"{joined(keys)} have other markings."
 
     @property
     def holds_checks(self) -> bool:
         """Whether it holds checks, shown as cards that say what its summary would."""
-        return bool(self.slots)
+        return bool(self.checks_settings)
 
 
-def editor(workspace: CheckWorkspace, path: str, *, saving: bool = False, more: bool = False) -> Editor:
-    """The editor at `path`, or at the marking itself if that's gone; with `more` open after a change inside it."""
+def editor(workspace: CheckWorkspace, path: str, *, saving: bool = False, more_open: bool = False) -> Editor:
+    """The editor at `path`, or at the marking itself if that's gone; with More options open after a change inside
+    it."""
     try:
-        return _editor(workspace, path, saving=saving, more=more)
+        return _editor(workspace, path, saving=saving, more_open=more_open)
     except GradeFlowError as error:
         form = ObjectForm({"type": "object", "properties": {}}, {}, data={})
         form.full_clean()
@@ -157,49 +160,53 @@ def editor(workspace: CheckWorkspace, path: str, *, saving: bool = False, more: 
         return Editor(actions=workspace.actions, path="", form=form, label="Can't show this marking")
 
 
-def _holding(checks: MarkingDraft, path: str) -> list[str]:
+def _ancestor_paths(checks: MarkingDraft, path: str) -> list[str]:
     """The paths of the checks from the checks down to the one at `path`, which is last."""
     steps = path.split(".")
     return [at for at in (".".join(steps[:end]) for end in range(len(steps) + 1)) if checks.is_check(at)]
 
 
-def _editor(workspace: CheckWorkspace, path: str, *, saving: bool, more: bool) -> Editor:
+def _editor(workspace: CheckWorkspace, path: str, *, saving: bool, more_open: bool) -> Editor:
     checks = workspace.checks
     if not checks.is_check(path):
         path = ""
     form = workspace.form(path)
     form.add_problems(workspace.problems_at(path, saving=saving))
-    unfilled = [problem for problem in workspace.problems if problem.check == path and problem.incomplete]
+    unfilled = [problem for problem in workspace.problems if problem.check == path and problem.is_incomplete]
     method = checks.method(path)
     return Editor(
         actions=workspace.actions,
         path=path,
         form=form,
-        slots=[
-            _slot(
+        checks_settings=[
+            _checks_setting_view(
                 workspace,
-                slot,
-                form.slot_errors.get(slot.name, []),
-                form.addons.get(slot.name, ""),
-                any(problem.field[:1] == (slot.name,) for problem in unfilled),
+                setting,
+                form.checks_setting_errors.get(setting.name, []),
+                form.label_controls.get(setting.name, ""),
+                any(problem.field[:1] == (setting.name,) for problem in unfilled),
             )
-            for slot in checks.slots(path)
+            for setting in checks.checks_settings(path)
         ],
         label=workspace.label(path),
         description=checks.describe(path),
-        crumbs=[(at, workspace.label(at)) for at in _holding(checks, path)] if path else [],
-        elsewhere=[
-            (problem.check, _elsewhere(workspace, problem, path))
+        breadcrumbs=[(ancestor, workspace.label(ancestor)) for ancestor in _ancestor_paths(checks, path)]
+        if path
+        else [],
+        problems_elsewhere=[
+            (problem.check, _problem_elsewhere_text(workspace, problem, path))
             for problem in workspace.problems_elsewhere(path)
             if saving
         ],
-        changeable=len(choices(checks.methods(path), workspace.offers)) > 1,
-        newer=workspace.offers.newer(method, workspace.methods) if method and workspace.editable else None,
+        can_change_method=len(choices(checks.methods(path), workspace.offers)) > 1,
+        newer_version=workspace.offers.newer_version(method, workspace.methods)
+        if method and workspace.editable
+        else None,
         archived=method is not None and method.name in workspace.offers.archived,
         made_by=_made_by(method, workspace.offers),
         editable=workspace.editable,
-        stale=workspace.stale,
-        more_open=form.more_open or more,
-        kept=workspace.kept,
+        saved_by_someone_else=workspace.saved_by_someone_else,
+        more_open=form.has_advanced_errors or more_open,
+        discard_note=workspace.discard_note,
         conflicts=workspace.conflicts,
     )

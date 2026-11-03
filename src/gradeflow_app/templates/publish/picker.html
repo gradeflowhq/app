@@ -2,11 +2,11 @@
 <div class="grid gap-1.5">
   <span class="font-medium" id="{{ key }}-label">{{ label }}</span>
   <div class="flex items-center gap-3 rounded-box border border-base-300 p-3" x-show="{{ key }}Card">
-    <span class="tile size-9" aria-hidden="true" x-text="{{ key }}Initial"></span>
+    <span class="initial-badge size-9" aria-hidden="true" x-text="{{ key }}Initial"></span>
     <div class="min-w-0 flex-1"><p class="truncate font-medium" x-text="{{ key }}Name"></p><p class="truncate text-sm text-muted" x-show="{{ key }}Detail" x-text="{{ key }}Detail"></p></div>
-    <button type="button" class="btn btn-sm" x-show="connected" x-on:click="pick{{ Key }}">Change</button>
+    <button type="button" class="btn btn-sm" x-show="connected" x-on:click="pick{{ capitalized_key }}">Change</button>
   </div>
-  <button type="button" class="flex items-center gap-3 rounded-box border border-dashed border-base-300 p-3 text-left text-muted hover:border-primary hover:text-base-content" x-show="!{{ key }}Card && connected" x-cloak x-on:click="pick{{ Key }}">
+  <button type="button" class="flex items-center gap-3 rounded-box border border-dashed border-base-300 p-3 text-left text-muted hover:border-primary hover:text-base-content" x-show="!{{ key }}Card && connected" x-cloak x-on:click="pick{{ capitalized_key }}">
     <span class="grid size-9 place-items-center">{% icon "magnifying-glass" "size-5" %}</span>{{ choose }}
   </button>
   <p class="text-sm text-muted" x-show="!{{ key }}Card && !connected" x-cloak>Connect to Canvas to choose.</p>

@@ -1,5 +1,5 @@
 """The settings page's model service. The device sends all it knows of the service with each request, as
-`model_state`, and keeps what the response's `X-Model-State` says it now knows."""
+`model_state`, and keeps what the response's `X-Model-ModelServiceState` says it now knows."""
 
 from dataclasses import dataclass
 from typing import Any
@@ -13,22 +13,22 @@ from gradeflow_core.editing import ModelTrial, list_models
 from pydantic import ValidationError
 
 from gradeflow_app.jobs.models import Job
-from gradeflow_app.jobs.payloads import ModelTry
+from gradeflow_app.jobs.payloads import ModelTrialRequest
 from gradeflow_app.model_service import choosing
-from gradeflow_app.model_service.endpoints import STATE_HEADER, State, endpoint
+from gradeflow_app.model_service.endpoints import STATE_HEADER, ModelServiceState, endpoint
 from gradeflow_app.requests import Request
 
-DISCONNECTED = "This device isn't connected to an AI service."
-WAYS = (
+NOT_CONNECTED_ERROR = "This device isn't connected to an AI service."
+CHOICE_MODES = (
     (
         "automatically",
         "sparkles",
         "Automatically",
         "Tries each model on sample answers and keeps the best. About 10 minutes; you can leave the page.",
     ),
-    ("myself", "adjustments-horizontal", "Myself", "Pick the models, and test them before using them."),
+    ("myself", "adjustments-horizontal", "Pick them myself", "Pick the models, and test them before using them."),
 )
-ROLES = (("decision", "Fast model"), ("reasoning", "Careful model"))
+ROLES = (("fast", "Fast model"), ("careful", "Careful model"))
 
 
 @require_POST
@@ -42,47 +42,55 @@ def connect(request: Request) -> HttpResponse:
     """The card for the AI service this device just connected, or why it couldn't. Listing the service's models
     proves the token works."""
     state = _state(request)
-    if state is None or (found := endpoint(request, state)) is None:
-        return _card(request, None, refusal="Choose an AI service and enter its token.")
+    if state is None or (model_endpoint := endpoint(request, state)) is None:
+        return _card(request, None, connect_error="Choose an AI service and enter its token.")
     try:
-        list_models(found)
+        list_models(model_endpoint)
     except GradeFlowError as error:
-        return _card(request, None, refusal=str(error), provider=state.provider)
+        return _card(request, None, connect_error=str(error), provider=state.provider)
     return _card(request, state)
 
 
 @require_POST
-def chooser(request: Request) -> HttpResponse:
+def choose_dialog(request: Request) -> HttpResponse:
     """The Choose models dialog, with the endpoint's models to pick from."""
-    state, names, problem = _state(request), [], ""
-    if state is None or (found := endpoint(request, state)) is None:
-        problem = DISCONNECTED
+    state, model_names, error = _state(request), [], ""
+    if state is None or (model_endpoint := endpoint(request, state)) is None:
+        error = NOT_CONNECTED_ERROR
     else:
         try:
-            names = list_models(found)
-        except GradeFlowError as error:
-            problem = str(error)
-    running = choosing.running(Job.Kind.MODEL_CHOICE, request.user, state.url).first() if state else None
-    how = "automatically" if running or state is None else state.how or "automatically"
-    picked = {"decision": state.decision_model, "reasoning": state.reasoning_model} if state else {}
-    context = {"ways": WAYS, "how": how, "names": names, "problem": problem, "state": state, "running": running}
-    return _kept(render(request, "model_service/chooser.html", context | _status(request, state, picked)), state)
+            model_names = list_models(model_endpoint)
+        except GradeFlowError as list_error:
+            error = str(list_error)
+    choosing_job = choosing.running(Job.Kind.MODEL_CHOICE, request.user, state.url).first() if state else None
+    chosen_by = "automatically" if choosing_job or state is None else state.chosen_by or "automatically"
+    picked = {"fast": state.fast_model, "careful": state.careful_model} if state else {}
+    context = {
+        "choice_modes": CHOICE_MODES,
+        "chosen_by": chosen_by,
+        "model_names": model_names,
+        "error": error,
+        "state": state,
+        "choosing_job": choosing_job,
+    }
+    response = render(request, "model_service/chooser.html", context | _status(request, state, picked))
+    return _with_state_header(response, state)
 
 
 @require_POST
 def choose(request: Request) -> HttpResponse:
     """Use the models picked, or start choosing automatically, for the endpoint this device is connected to."""
     state = _state(request)
-    if state is None or (found := endpoint(request, state)) is None:
-        return _models(request, state, problem=DISCONNECTED)
-    if request.POST.get("how") != "myself":
+    if state is None or (model_endpoint := endpoint(request, state)) is None:
+        return _models(request, state, error=NOT_CONNECTED_ERROR)
+    if request.POST.get("chosen_by") != "myself":
         if not choosing.running(Job.Kind.MODEL_CHOICE, request.user, state.url).exists():
-            choosing.choose(request.user, found)
+            choosing.choose(request.user, model_endpoint)
         return _models(request, state)
     picked = _picked(request.POST)
-    if not picked["decision"]:
-        return _models(request, state, problem="Choose a fast model.")
-    update = {"decision_model": picked["decision"], "reasoning_model": picked["reasoning"], "how": "myself"}
+    if not picked["fast"]:
+        return _models(request, state, error="Choose a fast model.")
+    update = {"fast_model": picked["fast"], "careful_model": picked["careful"], "chosen_by": "myself"}
     return _models(request, state.model_copy(update=update))
 
 
@@ -91,13 +99,13 @@ def answers_per_request(request: Request) -> HttpResponse:
     """Keep how many students' answers one request to the model holds."""
     state = _state(request)
     if state is None:
-        return _models(request, state, problem=DISCONNECTED)
+        return _models(request, state, error=NOT_CONNECTED_ERROR)
     try:
-        changed = State.model_validate(
+        changed = ModelServiceState.model_validate(
             state.model_dump() | {"answers_per_request": request.POST.get("answers_per_request")}
         )
     except ValidationError:
-        return _models(request, state, answers_problem="Enter a number from 1 to 40.")
+        return _models(request, state, answers_per_request_error="Enter a number from 1 to 40.")
     return _models(request, changed)
 
 
@@ -113,11 +121,13 @@ def stop(request: Request) -> HttpResponse:
 def test(request: Request) -> HttpResponse:
     """Try the models picked in the dialog, each in its role."""
     state, picked = _state(request), _picked(request.POST)
-    if state is None or (found := endpoint(request, state)) is None:
-        return _rendered_status(request, state, picked, problem=DISCONNECTED)
-    tries = [ModelTry.model_validate({"model": model, "role": role}) for role, model in picked.items() if model]
-    if tries:
-        choosing.test(request.user, found, tries)
+    if state is None or (model_endpoint := endpoint(request, state)) is None:
+        return _rendered_status(request, state, picked, error=NOT_CONNECTED_ERROR)
+    trials = [
+        ModelTrialRequest.model_validate({"model": model, "role": role}) for role, model in picked.items() if model
+    ]
+    if trials:
+        choosing.test(request.user, model_endpoint, trials)
     return _rendered_status(request, state, picked)
 
 
@@ -128,26 +138,26 @@ def status(request: Request) -> HttpResponse:
 
 
 @dataclass(frozen=True)
-class Pick:
+class PickedModel:
     """A model picked for a role in the dialog, and what is known of it."""
 
     role: str
     label: str
     model: str
-    tried: ModelTrial | None
-    testing: bool
+    latest_trial: ModelTrial | None
+    is_testing: bool
 
 
-def _state(request: Request) -> State | None:
+def _state(request: Request) -> ModelServiceState | None:
     """What the device knows of its model service, with what its jobs found since it last asked."""
     try:
-        state = State.model_validate_json(request.POST.get("model_state", ""))
+        state = ModelServiceState.model_validate_json(request.POST.get("model_state", ""))
     except ValidationError:
         return None
-    return choosing.collected(request.user, state)
+    return choosing.with_job_results(request.user, state)
 
 
-def _kept(response: HttpResponse, state: State | None) -> HttpResponse:
+def _with_state_header(response: HttpResponse, state: ModelServiceState | None) -> HttpResponse:
     if state is not None:
         response[STATE_HEADER] = state.model_dump_json()
     return response
@@ -157,73 +167,91 @@ def _picked(data: QueryDict) -> dict[str, str]:
     return {role: data.get(f"{role}_model", "")[:200] for role, _ in ROLES}
 
 
-def _status(request: Request, state: State | None, picked: dict[str, str], problem: str = "") -> dict[str, Any]:
-    trials: dict[tuple[str, str], ModelTrial] = {(t.model, t.role): t for t in (state.trials if state else [])}
-    testing = choosing.running(Job.Kind.MODEL_TEST, request.user, state.url) if state else Job.objects.none()
-    under_test = {(each["model"], each["role"]) for job in testing for each in job.provenance.get("tries", [])}
+def _status(
+    request: Request, state: ModelServiceState | None, picked: dict[str, str], error: str = ""
+) -> dict[str, Any]:
+    trials: dict[tuple[str, str], ModelTrial] = {
+        (trial.model, trial.role): trial for trial in (state.trials if state else [])
+    }
+    testing = choosing.running(Job.Kind.MODEL_TRIAL, request.user, state.url) if state else Job.objects.none()
+    under_test = {(trial["model"], trial["role"]) for job in testing for trial in job.marked_with.get("trials", [])}
     picks = [
-        Pick(role, label, model, trials.get((model, role)), (model, role) in under_test)
+        PickedModel(role, label, model, trials.get((model, role)), (model, role) in under_test)
         for role, label in ROLES
         if (model := picked.get(role))
     ]
-    failed = choosing.failed(request.user, state, Job.Kind.MODEL_TEST) if state else ""
+    failure_reason = choosing.failure_reason(request.user, state, Job.Kind.MODEL_TRIAL) if state else ""
     return {
         "picks": picks,
-        "status_problem": problem or (f"Couldn't test: {failed}" if failed else ""),
-        "compared": compared(state),
+        "test_error": error or (f"Couldn't test: {failure_reason}" if failure_reason else ""),
+        "trial_rows": trial_rows(state),
         "testing": bool(under_test),
     }
 
 
-def _rendered_status(request: Request, state: State | None, picked: dict[str, str], problem: str = "") -> HttpResponse:
-    return _kept(render(request, "model_service/status.html", _status(request, state, picked, problem)), state)
+def _rendered_status(
+    request: Request, state: ModelServiceState | None, picked: dict[str, str], error: str = ""
+) -> HttpResponse:
+    response = render(request, "model_service/status.html", _status(request, state, picked, error))
+    return _with_state_header(response, state)
 
 
-Compared = tuple[str, list[tuple[ModelTrial | None, bool]]]
+TrialRow = tuple[str, list[tuple[ModelTrial | None, bool]]]
 
 
-def compared(state: State | None) -> list[Compared]:
+def trial_rows(state: ModelServiceState | None) -> list[TrialRow]:
     """Every model tried, a row each with its trials as the fast and the careful model and whether it is in use as
     each: those in use first, then those that passed, then the rest."""
     if state is None:
         return []
-    in_use = {"decision": state.decision_model, "reasoning": state.reasoning_model}
+    models_in_use = {"fast": state.fast_model, "careful": state.careful_model}
     by_model: dict[str, dict[str, ModelTrial]] = {}
     for trial in state.trials:
         by_model.setdefault(trial.model, {})[trial.role] = trial
     rows = [
-        (model, [(roles.get(role), role in roles and model == in_use[role]) for role, _ in ROLES])
+        (model, [(roles.get(role), role in roles and model == models_in_use[role]) for role, _ in ROLES])
         for model, roles in by_model.items()
     ]
 
-    def rank(row: Compared) -> tuple[bool, bool]:
-        cells = row[1]
-        return (not any(chosen for _, chosen in cells), not any(trial and trial.failure is None for trial, _ in cells))
+    def rank(row: TrialRow) -> tuple[bool, bool]:
+        role_trials = row[1]
+        return (
+            not any(in_use for _, in_use in role_trials),
+            not any(trial and trial.failure is None for trial, _ in role_trials),
+        )
 
     return sorted(rows, key=rank)
 
 
-def _context(request: Request, state: State | None) -> dict[str, Any]:
+def _context(request: Request, state: ModelServiceState | None) -> dict[str, Any]:
     """What the card shows of the device's model service: its models, or the choice running for them."""
     if state is None:
-        return {"state": None, "running": None, "failed": ""}
+        return {"state": None, "choosing_job": None, "failure_reason": ""}
     return {
         "state": state,
-        "running": choosing.running(Job.Kind.MODEL_CHOICE, request.user, state.url).first(),
-        "failed": choosing.failed(request.user, state, Job.Kind.MODEL_CHOICE),
+        "choosing_job": choosing.running(Job.Kind.MODEL_CHOICE, request.user, state.url).first(),
+        "failure_reason": choosing.failure_reason(request.user, state, Job.Kind.MODEL_CHOICE),
     }
 
 
-def _card(request: Request, state: State | None, refusal: str = "", provider: str = "") -> HttpResponse:
+def _card(
+    request: Request, state: ModelServiceState | None, connect_error: str = "", provider: str = ""
+) -> HttpResponse:
     context = _context(request, state) | {
-        "loaded": True,
-        "refusal": refusal,
+        "models_loaded": True,
+        "connect_error": connect_error,
         "provider": provider,
         "providers": settings.GRADEFLOW_MODEL_PROVIDERS,
     }
-    return _kept(render(request, "model_service/card.html#card", context), state)
+    return _with_state_header(render(request, "model_service/card.html#card", context), state)
 
 
-def _models(request: Request, state: State | None, problem: str = "", answers_problem: str = "") -> HttpResponse:
-    context = _context(request, state) | {"loaded": True, "problem": problem, "answers_problem": answers_problem}
-    return _kept(render(request, "model_service/card.html#models", context), state)
+def _models(
+    request: Request, state: ModelServiceState | None, error: str = "", answers_per_request_error: str = ""
+) -> HttpResponse:
+    context = _context(request, state) | {
+        "models_loaded": True,
+        "error": error,
+        "answers_per_request_error": answers_per_request_error,
+    }
+    return _with_state_header(render(request, "model_service/card.html#models", context), state)

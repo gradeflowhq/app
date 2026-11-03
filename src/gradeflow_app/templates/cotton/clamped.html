@@ -1,6 +1,0 @@
-<c-vars class="" />
-{# Long content cut to about ten lines, with a button to show it all. #}
-<div x-data="clamped">
-  <div class="clamped{% if class %} {{ class }}{% endif %}" x-ref="content" x-bind:data-long="long" x-bind:data-open="open"><div x-ref="inner">{{ slot }}</div></div>
-  <button type="button" class="text-link relative mt-1 text-sm" x-show="long" x-cloak x-on:click="toggle" x-text="label"></button>
-</div>

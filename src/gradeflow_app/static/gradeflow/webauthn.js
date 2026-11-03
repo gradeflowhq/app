@@ -2,12 +2,12 @@
 import "../mfa/js/webauthn-json.js";
 import "../mfa/js/webauthn.js";
 import "../account/js/onload.js";
-import { report } from "./toasts.js";
+import { showToast } from "./toasts.js";
 
 document.addEventListener("allauth.error", (event) => {
   event.preventDefault();
   const name = event.detail.exception.name;
-  if (name === "NotAllowedError") report("Passkey request cancelled. Try again.", "info");
-  else if (name === "InvalidStateError") report("This passkey is already registered. Use a different device or security key.");
-  else report("Couldn't use the passkey. Try again.");
+  if (name === "NotAllowedError") showToast("Passkey request cancelled. Try again.", "info");
+  else if (name === "InvalidStateError") showToast("This passkey is already registered. Use a different device or security key.");
+  else showToast("Couldn't use the passkey. Try again.");
 });

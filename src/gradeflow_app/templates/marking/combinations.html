@@ -1,13 +1,13 @@
 {# The answers column of a question group: students grouped by their answers to the questions it marks and reads. #}
 {% partialdef answers inline %}
-<div id="answers" class="flex min-h-full flex-col"{% if oob %} hx-swap-oob="outerMorph"{% endif %}
+<div id="answers" class="flex min-h-full flex-col"{% if out_of_band %} hx-swap-oob="outerMorph"{% endif %}
      hx-get="{{ answers_url }}" hx-target="this" hx-swap="outerMorph"
      hx-trigger="{% listen 'marks' membership.assessment.pk %}, {% listen 'questions' membership.assessment.pk %}, {% listen 'preview' membership.assessment.pk request.user.pk %}">
   <header class="column-sticky">
     <div class="column-head">
       <c-questions-toggle />
-      <h2 class="truncate">{% if keys %}{{ keys|join:", " }}{% else %}Answers{% endif %}</h2>
-      {% if keys %}<span class="tabular-nums shrink-0 text-sm text-muted">{{ students }} student{{ students|pluralize }}</span>{% endif %}
+      <h2 class="truncate">{% if question_keys %}{{ question_keys|join:", " }}{% else %}Answers{% endif %}</h2>
+      {% if question_keys %}<span class="tabular-nums shrink-0 text-sm text-muted">{{ student_count }} student{{ student_count|pluralize }}</span>{% endif %}
       {% if preview_summary %}
       <form class="ml-auto flex items-center gap-2" hx-get="{{ answers_url }}" hx-target="#answers" hx-swap="outerHTML" hx-trigger="change">
         <label for="combinations-filter" class="text-sm text-muted">Show</label>
@@ -18,29 +18,29 @@
     {% include "results/answers.html#preview_bar" %}
   </header>
   <div class="grid content-start gap-3 p-4">
-    {% if not draft %}{% for notice in evaluation_notices %}<p role="status" class="alert alert-warning alert-soft text-sm">{{ notice }}</p>{% endfor %}{% endif %}
-    {% if not keys %}
-      <c-empty class="surface" icon="squares-2x2" title="No questions yet">Choose the questions this question group marks, and their answers show here.</c-empty>
+    {% if not draft %}{% for notice in out_of_date_notices %}<p role="status" class="alert alert-warning alert-soft text-sm">{{ notice }}</p>{% endfor %}{% endif %}
+    {% if not question_keys %}
+      <c-empty-state class="card-box" icon="squares-2x2" title="No questions yet">Choose the questions this question group marks, and their answers show here.</c-empty-state>
     {% elif rows %}
-      <ul class="surface divide-y divide-base-300 overflow-hidden" aria-label="Answers">
+      <ul class="card-box divide-y divide-base-300 overflow-hidden" aria-label="Answers">
         {% for row in rows %}
         <li class="flex flex-col gap-x-4 gap-y-1 px-4 py-3 xl:flex-row xl:items-start{% if row.changed %} changed{% endif %}">
           <dl class="grid min-w-0 flex-1 grid-cols-[3rem_minmax(0,1fr)_7.5rem] items-baseline gap-x-3 gap-y-1">
-            {% for cell in row.cells %}{% with low=cell.low high=cell.high max_marks=cell.max_marks %}
+            {% for cell in row.cells %}{% with low=cell.lowest_marks high=cell.highest_marks max_marks=cell.max_marks %}
               <dt class="text-sm font-semibold{% if cell.read %} text-muted{% endif %}">{{ cell.key }}</dt>
               <dd class="line-clamp-2 break-words{% if cell.read %} text-muted{% endif %}" title="{{ cell.answer }}">{% if cell.answer %}{{ cell.answer }}{% else %}<span class="italic text-muted">Blank</span>{% endif %}</dd>
               {% if cell.read %}<dd class="text-right text-sm text-subtle" title="Read, not marked, by this marking">Read only</dd>{% else %}
-              <dd class="flex justify-end text-sm">{% if cell.changed %}<c-marks :low="cell.new_low" :high="cell.new_high" :before_low="low" :before_high="high" :max_marks="max_marks" />{% else %}<c-marks :low="low" :high="high" :max_marks="max_marks" />{% endif %}</dd>
+              <dd class="flex justify-end text-sm">{% if cell.changed %}<c-marks :low="cell.preview_lowest_marks" :high="cell.preview_highest_marks" :previous_low="low" :previous_high="high" :max_marks="max_marks" />{% else %}<c-marks :low="low" :high="high" :max_marks="max_marks" />{% endif %}</dd>
               {% if cell.feedback %}<dd class="col-span-2 col-start-2 -mt-1 whitespace-pre-line break-words text-sm text-muted">{{ cell.feedback }}</dd>{% endif %}
               {% endif %}
             {% endwith %}{% endfor %}
           </dl>
-          <span class="tabular-nums shrink-0 text-sm text-muted xl:w-24 xl:text-right">{{ row.count }} student{{ row.count|pluralize }}</span>
+          <span class="tabular-nums shrink-0 text-sm text-muted xl:w-24 xl:text-right">{{ row.student_count }} student{{ row.student_count|pluralize }}</span>
         </li>
         {% endfor %}
       </ul>
     {% else %}
-      <c-empty class="surface" icon="inbox" title="No answers match" />
+      <c-empty-state class="card-box" icon="inbox" title="No answers match" />
     {% endif %}
   </div>
 </div>

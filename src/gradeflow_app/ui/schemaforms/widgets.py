@@ -9,7 +9,7 @@ from gradeflow_core.editing import Condition, ConditionRow
 
 from gradeflow_app.ui.forms import posted_indexes
 
-FIRST_TEST = next(iter(Condition.tests))
+DEFAULT_CONDITION_TEST = next(iter(Condition.test_labels))
 
 
 class DecimalInput(forms.NumberInput):
@@ -35,7 +35,7 @@ class CodeInput(forms.Textarea):
 
     def get_context(self, name: str, value: Any, attrs: dict[str, Any] | None) -> dict[str, Any]:
         context = super().get_context(name, value, attrs)
-        context["widget"]["kept_as"] = "-".join(filter(None, ["code", self.path, name])).replace(".", "-")
+        context["widget"]["editor_id"] = "-".join(filter(None, ["code", self.path, name])).replace(".", "-")
         return context
 
 
@@ -58,26 +58,28 @@ class OrderedChoices(forms.SelectMultiple):
         context["widget"] |= {
             "item": self.item,
             "options": options,
-            "rows": [str(v) for v in value or []] or [""],
+            "rows": [str(choice) for choice in value or []] or [""],
         }
         return context
 
 
 class TagsWidget(forms.SelectMultiple):
-    """Tom Select chips (tags.js) for any values, offering suggestions with their counts."""
+    """Tom Select tags (tags.js) for any values, offering suggestions with their counts."""
 
     template_name = "forms/widgets/tags.html"
 
     def __init__(self, suggestions: Mapping[str, int] | None = None, create: bool = True) -> None:
-        super().__init__(attrs={"x-data": "tags", "data-create": "true" if create else "false"})
+        super().__init__(attrs={"x-data": "tagInput", "data-create": "true" if create else "false"})
         self.suggestions = dict(suggestions or {})
 
     def get_context(self, name: str, value: Any, attrs: dict[str, Any] | None) -> dict[str, Any]:
         context = super().get_context(name, value, attrs)
-        chosen = context["widget"]["chosen"] = context["widget"]["value"]
-        offered = self.suggestions or dict.fromkeys((str(choice) for choice, _ in self.choices), 0)
+        selected = context["widget"]["selected"] = context["widget"]["value"]
+        suggestions = self.suggestions or dict.fromkeys((str(choice) for choice, _ in self.choices), 0)
         context["widget"]["suggestions"] = [
-            (text, count) for text, count in sorted(offered.items(), key=lambda item: -item[1]) if text not in chosen
+            (text, count)
+            for text, count in sorted(suggestions.items(), key=lambda item: -item[1])
+            if text not in selected
         ]
         return context
 
@@ -100,12 +102,12 @@ class ConditionWidget(forms.Widget):
         context = super().get_context(name, value, attrs)
         condition = value if isinstance(value, Condition) else Condition() if not value else None
         context["widget"] |= {
-            "text": condition is None,
-            "rows": [*(condition.rows if condition else ()), ConditionRow("", FIRST_TEST)],
-            "join": condition.join if condition else Condition().join,
+            "as_text": condition is None,
+            "rows": [*(condition.rows if condition else ()), ConditionRow("", DEFAULT_CONDITION_TEST)],
+            "match": condition.match if condition else Condition().match,
             "checks": self.checks,
-            "tests": Condition.tests,
-            "joins": Condition.joins,
+            "test_labels": Condition.test_labels,
+            "match_labels": Condition.match_labels,
         }
         return context
 
@@ -118,10 +120,10 @@ class ConditionWidget(forms.Widget):
         rows = tuple(
             ConditionRow(str(data.get(f"{name}-check-{i}", "")), test)
             for i in indexes
-            if (test := data.get(f"{name}-test-{i}", FIRST_TEST)) in Condition.tests
+            if (test := data.get(f"{name}-test-{i}", DEFAULT_CONDITION_TEST)) in Condition.test_labels
         )
-        join = data.get(f"{name}-join", "")
-        return Condition(rows, join) if join in Condition.joins else Condition(rows)
+        match = data.get(f"{name}-combine", "")
+        return Condition(rows, match) if match in Condition.match_labels else Condition(rows)
 
     def value_omitted_from_data(self, data: Mapping[str, Any], files: Any, name: str) -> bool:
         return f"{name}-text" not in data and not posted_indexes(data, f"{name}-check")
@@ -133,17 +135,17 @@ class FeedbackWidget(forms.Widget):
 
     template_name = "forms/widgets/feedback.html"
 
-    def __init__(self, boxes: Sequence[tuple[str, str]], inserts: Mapping[str, str]) -> None:
+    def __init__(self, boxes: Sequence[tuple[str, str]], template_parts: Mapping[str, str]) -> None:
         super().__init__()
-        self.boxes, self.inserts = list(boxes), dict(inserts)
+        self.boxes, self.template_parts = list(boxes), dict(template_parts)
 
     def get_context(self, name: str, value: Any, attrs: dict[str, Any] | None) -> dict[str, Any]:
         context = super().get_context(name, value, attrs)
-        written = value if isinstance(value, Mapping) else {}
+        feedback_by_outcome = value if isinstance(value, Mapping) else {}
         context["widget"] |= {
-            "text": isinstance(value, str) and bool(value),
-            "boxes": [((box, label), written.get(box, "")) for box, label in self.boxes],
-            "inserts": self.inserts,
+            "as_text": isinstance(value, str) and bool(value),
+            "boxes": [((box, label), feedback_by_outcome.get(box, "")) for box, label in self.boxes],
+            "template_parts": self.template_parts,
         }
         return context
 
@@ -151,8 +153,10 @@ class FeedbackWidget(forms.Widget):
         if f"{name}-text" in data:
             return str(data[f"{name}-text"])
         # As typed: a box saved while someone is still writing in it, as when they click Insert, keeps its spaces.
-        written = {box: text for box, _ in self.boxes if (text := str(data.get(f"{name}-{box}", ""))).strip()}
-        return written or None
+        feedback_by_outcome = {
+            box: text for box, _ in self.boxes if (text := str(data.get(f"{name}-{box}", ""))).strip()
+        }
+        return feedback_by_outcome or None
 
     def value_omitted_from_data(self, data: Mapping[str, Any], files: Any, name: str) -> bool:
         return f"{name}-text" not in data and not any(f"{name}-{box}" in data for box, _ in self.boxes)

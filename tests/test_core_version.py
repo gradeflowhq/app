@@ -3,7 +3,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from gradeflow_app import core_build
+from gradeflow_app import core_version
 
 
 @pytest.mark.parametrize(
@@ -17,12 +17,12 @@ from gradeflow_app import core_build
 def test_installed_release_identity(
     monkeypatch: pytest.MonkeyPatch, metadata: dict[str, object] | None, expected: str
 ) -> None:
-    monkeypatch.delenv("GRADEFLOW_CORE_BUILD", raising=False)
+    monkeypatch.delenv("GRADEFLOW_CORE_VERSION", raising=False)
     package = SimpleNamespace(version="0.5.0", read_text=lambda _: json.dumps(metadata) if metadata else None)
-    monkeypatch.setattr(core_build, "distribution", lambda _: package)
-    assert core_build.core_build() == expected
+    monkeypatch.setattr(core_version, "distribution", lambda _: package)
+    assert core_version.core_version() == expected
 
 
 def test_local_build_can_be_identified_explicitly(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("GRADEFLOW_CORE_BUILD", "local-build-42")
-    assert core_build.core_build() == "local-build-42"
+    monkeypatch.setenv("GRADEFLOW_CORE_VERSION", "local-build-42")
+    assert core_version.core_version() == "local-build-42"

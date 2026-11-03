@@ -7,16 +7,16 @@ from typing import Any, Literal
 
 from gradeflow_app.jobs.models import Job
 
-type Task = Literal["mark", "test", "compare", "choose", "try"]
+type Task = Literal["mark", "test", "compare", "choose", "trial"]
 """What the sandbox runs: a payload's submissions marked, a method's test answers marked, texts compared by meaning,
 a model endpoint's models chosen, or some of them tried."""
 
 
-def _nothing(job: Job) -> None:
+def _lock_nothing(job: Job) -> None:
     pass
 
 
-def _always(job: Job) -> bool:
+def _always_current(job: Job) -> bool:
     return True
 
 
@@ -25,11 +25,11 @@ class Handler[T]:
     task: Task
     topics: Callable[[Job], list[str]]
     """What pages showing the job listen to."""
-    lock: Callable[[Job], None] = _nothing
+    lock: Callable[[Job], None] = _lock_nothing
     """Locks what its outcome changes, before the job itself is locked."""
-    current: Callable[[Job], bool] = _always
+    is_current: Callable[[Job], bool] = _always_current
     """Whether its outcome still applies; one that doesn't fails as out of date."""
-    finish: Callable[[Job, T], None] | None = None
+    apply_outcome: Callable[[Job, T], None] | None = None
     """Applies its outcome: the marked submissions of a mark task, the comparison of a compare task. Without it, the
     job keeps the outcome as its result."""
 

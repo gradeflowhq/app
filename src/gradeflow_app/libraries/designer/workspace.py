@@ -10,62 +10,65 @@ from django.db import transaction
 from django.template.loader import render_to_string
 from django.urls import reverse
 from gradeflow_core import GradeFlowError, Methods, ModelEndpoint, QuestionSet
-from gradeflow_core.editing import MarkingDraft, RowResult
-from gradeflow_core.editing import MethodDraft as CoreDraft
+from gradeflow_core.editing import MarkingDraft, MethodDraft, RowResult
 
 from gradeflow_app.accounts.models import User
 from gradeflow_app.courses.models import Course
 from gradeflow_app.editor.editing import CheckWorkspace, EditorActions
 from gradeflow_app.jobs.models import Job
 from gradeflow_app.jobs.payloads import TestRun
-from gradeflow_app.libraries.collection import Offers, needed, offers, usable
-from gradeflow_app.libraries.models import Method, MethodDraft, MethodVersion, VersionTests
-from gradeflow_app.libraries.services import draft_of
-from gradeflow_app.libraries.workbench import Tests, examples_of, questions_of, rows_of
+from gradeflow_app.libraries.collection import OfferedMethods, files_needed_by, offers, usable
+from gradeflow_app.libraries.method_tests import MethodTests, examples_of, questions_of, rows_of
+from gradeflow_app.libraries.models import Method, MethodDraftRecord, MethodVersion, VersionTests
+from gradeflow_app.libraries.services import method_draft
 from gradeflow_app.ui.schemaforms.forms import ObjectForm
-from gradeflow_app.ui.schemaforms.layout import unrepresentable
+from gradeflow_app.ui.schemaforms.layout import unrepresentable_fields
 from gradeflow_app.ui.schemaforms.schema import labels_of, resolve, unwrap_nullable
 
-DRAFT_ONLY = frozenset({"method_picker", "method_field", "method_publish", "method_discard"})
+DRAFT_ONLY_VIEWS = frozenset({"method_choices", "method_field", "method_publish", "method_discard"})
 
 
-class Stale(Exception):
+class StaleWorkspace(Exception):
     """The workspace changed in another tab since the page was shown."""
 
 
 @dataclass
 class MethodWorkspace(CheckWorkspace):
     method: Method
-    session: MethodDraft | VersionTests
+    tests_record: MethodDraftRecord | VersionTests
 
     @property
-    def draft(self) -> MethodDraft | None:
-        return self.session if isinstance(self.session, MethodDraft) else None
+    def draft_record(self) -> MethodDraftRecord | None:
+        return self.tests_record if isinstance(self.tests_record, MethodDraftRecord) else None
 
     @property
     def version(self) -> MethodVersion | None:
         """The published version shown, or the one the draft started from."""
-        return self.session.version if isinstance(self.session, VersionTests) else self.session.based_on
+        return self.tests_record.version if isinstance(self.tests_record, VersionTests) else self.tests_record.based_on
 
     @property
     def editable(self) -> bool:
-        return self.draft is not None
+        return self.draft_record is not None
 
     @property
     def course(self) -> Course | None:
         return self.method.library.course
 
     @cached_property
-    def offers(self) -> Offers:
-        return offers(self.session.user, self.course)
+    def offers(self) -> OfferedMethods:
+        return offers(self.tests_record.user, self.course)
 
     @property
     def definition(self) -> str:
-        return self.session.definition if isinstance(self.session, MethodDraft) else self.session.version.definition
+        return (
+            self.tests_record.definition
+            if isinstance(self.tests_record, MethodDraftRecord)
+            else self.tests_record.version.definition
+        )
 
     @cached_property
-    def tests(self) -> Tests:
-        tests: Tests = deepcopy(self.session.tests)
+    def tests(self) -> MethodTests:
+        tests: MethodTests = deepcopy(self.tests_record.tests)
         return tests
 
     @cached_property
@@ -74,46 +77,50 @@ class MethodWorkspace(CheckWorkspace):
 
     @cached_property
     def methods(self) -> Methods:
-        return usable(self.session.user, self.course)
+        return usable(self.tests_record.user, self.course)
 
     @cached_property
-    def core(self) -> CoreDraft:
-        number = None if self.draft else self.session.version.number  # type: ignore[union-attr]
+    def draft(self) -> MethodDraft:
+        number = None if self.draft_record else self.tests_record.version.number  # type: ignore[union-attr]
         test_values = self.tests.get("test_values", {})
-        return draft_of(self.method, self.definition, self.tests, self.methods, version=number, test_values=test_values)
+        return method_draft(
+            self.method, self.definition, self.tests, self.methods, version=number, test_values=test_values
+        )
 
     @cached_property
     def changed(self) -> bool:
         """Whether the draft's method differs from the version it's based on, if any."""
-        base = self.draft.based_on if self.draft else None
+        base = self.draft_record.based_on if self.draft_record else None
         if base is None:
             return True
-        published = draft_of(self.method, base.definition, self.tests, self.methods, version=self.core.version)
-        return published.to_yaml() != self.core.to_yaml()
+        published = method_draft(self.method, base.definition, self.tests, self.methods, version=self.draft.version)
+        return published.to_yaml() != self.draft.to_yaml()
 
     @property
     def defaults(self) -> dict[str, Any]:
         """Each input's default, where it has one."""
-        return {name: spec["default"] for name, spec in self.core.inputs.items() if "default" in spec}
+        return {
+            name: declaration["default"] for name, declaration in self.draft.inputs.items() if "default" in declaration
+        }
 
     @property
     def checks(self) -> MarkingDraft:
-        return self.core.checks
+        return self.draft.checks
 
     def url(self, name: str) -> str:
         """The workspace's own address for the view `name`."""
         kwargs: dict[str, Any] = {"method": self.method.pk}
-        if isinstance(self.session, VersionTests) and name not in DRAFT_ONLY:
-            kwargs["number"] = self.session.version.number
+        if isinstance(self.tests_record, VersionTests) and name not in DRAFT_ONLY_VIEWS:
+            kwargs["number"] = self.tests_record.version.number
         return reverse(name, kwargs=kwargs)
 
     @property
     def actions(self) -> EditorActions:
         return EditorActions(
             update=self.url("method_check"),
-            methods=self.url("method_picker") if self.editable else "",
-            sync="#method-work:queue all",
-            include="#method-state",
+            methods=self.url("method_choices") if self.editable else "",
+            hx_sync="#method-work:queue all",
+            hx_include="#method-state",
         )
 
     def form(self, path: str, **kwargs: Any) -> ObjectForm:
@@ -121,25 +128,28 @@ class MethodWorkspace(CheckWorkspace):
         if not self.editable:
             form.disable()
             return form
-        fields, inputs = self.core.fields(), self.core.inputs
-        used = {field.input: sum(other.input == field.input for other in fields) for field in fields if field.input}
+        fields, inputs = self.draft.configurable_fields(), self.draft.inputs
+        use_counts = {
+            field.bound_input: sum(other.bound_input == field.bound_input for other in fields)
+            for field in fields
+            if field.bound_input
+        }
         for field in fields:
             if field.check == path:
                 context = {
                     "field": field,
-                    "input": inputs.get(field.input or "", {}),
-                    "default": self.shown_default(field.input) if field.input else None,
-                    "used": used.get(field.input or "", 0),
+                    "input": inputs.get(field.bound_input or "", {}),
+                    "default": self.default_label(field.bound_input) if field.bound_input else None,
                     "compatible": [
-                        (name, inputs[name].get("title") or name, used.get(name, 0))
-                        for name in self.core.compatible_inputs(field.path)
+                        (name, inputs[name].get("title") or name, use_counts.get(name, 0))
+                        for name in self.draft.compatible_inputs(field.path)
                     ],
                     "action": self.url("method_field"),
                 }
-                form.adorn(field.key, render_to_string("methods/configurable.html", context))
-                if field.input:
+                form.add_label_controls(field.key, render_to_string("methods/input_menu.html", context))
+                if field.bound_input:
                     context["inputs_url"] = self.url("method_inputs")
-                    form.fill(field.key, render_to_string("methods/filled.html", context))
+                    form.replace_control(field.key, render_to_string("methods/input_fill.html", context))
         return form
 
     @property
@@ -148,76 +158,76 @@ class MethodWorkspace(CheckWorkspace):
         return self.checks.describe("")
 
     @cached_property
-    def uneditable(self) -> list[str]:
+    def yaml_only_reasons(self) -> list[str]:
         """Why the checks can only be edited as YAML, if they can't be edited field by field."""
-        if found := self.core.uneditable:
-            return found
+        if reasons := self.draft.uneditable_reasons:
+            return reasons
         try:
             shown = [
                 title
                 for path in self.checks.paths()
-                for title in unrepresentable(self.checks.schema(path), self.checks.values(path))
+                for title in unrepresentable_fields(self.checks.schema(path), self.checks.values(path))
             ]
         except GradeFlowError as error:
             return [str(error)]
         return list(dict.fromkeys(f"{title} has a value only YAML can show." for title in shown))
 
-    def shown_default(self, name: str) -> Any:
+    def default_label(self, name: str) -> Any:
         """An input's default as people read it: a choice by its label."""
-        schema = self.core.input_schema(name)
+        schema = self.draft.input_schema(name)
         default, _ = unwrap_nullable(resolve(schema["properties"].get("default", {}), schema.get("$defs", {})))
-        return labelled(self.core.inputs[name].get("default"), labels_of(default))
+        return as_labels(self.draft.inputs[name].get("default"), labels_of(default))
 
-    def uses(self, name: str) -> list[tuple[str, str]]:
+    def settings_filled_by(self, name: str) -> list[tuple[str, str]]:
         """The settings an input fills: each one's check, and where it is. Checks labelled alike are numbered in
         order."""
-        fields = [field for field in self.core.fields() if field.input == name]
+        fields = [field for field in self.draft.configurable_fields() if field.bound_input == name]
         labels = {check: self.label(check) for check in dict.fromkeys(field.check for field in fields)}
-        alike, places = Counter(labels.values()), Counter[str]()
+        label_counts, label_numbers = Counter(labels.values()), Counter[str]()
         for check, label in labels.items():
-            if alike[label] > 1:
-                places[label] += 1
-                labels[check] = f"{label} {places[label]}"
+            if label_counts[label] > 1:
+                label_numbers[label] += 1
+                labels[check] = f"{label} {label_numbers[label]}"
         return [(field.check, f"{labels[field.check]} · {field.title}") for field in fields]
 
-    def results(self) -> list[RowResult] | None:
+    def current_results(self) -> list[RowResult] | None:
         """The results of the last test run, while they mark what is here now."""
-        job = self.session.run
-        return self.last_results() if job is not None and job.revision == self.session.revision else None
+        job = self.tests_record.last_run
+        return self.last_results() if job is not None and job.revision == self.tests_record.revision else None
 
     def last_results(self) -> list[RowResult] | None:
         """The results of the last test run, even if what is here has changed since, to show dimmed."""
-        job = self.session.run
-        if job is None or job.status != Job.Status.COMPLETED or not job.by_this_core:
+        job = self.tests_record.last_run
+        if job is None or job.status != Job.Status.COMPLETED or not job.ran_on_this_core:
             return None
         return [RowResult.model_validate(row) for row in job.result or []]
 
     @cached_property
     def untested(self) -> bool:
         """Whether there are example answers the last test run didn't mark as they are now."""
-        return bool(examples_of(self.tests)) and self.results() is None
+        return bool(examples_of(self.tests)) and self.current_results() is None
 
     def record_examples(self) -> None:
         """Give the example answers what the last test run gave them, for the guide to show."""
-        if rows := examples_of(self.tests, self.results()):
-            self.core.set_example(rows, at=self.tests.get("example_at"))
+        if rows := examples_of(self.tests, self.current_results()):
+            self.draft.set_example(rows, index=self.tests.get("example_index"))
 
     def test_run(self, model_endpoint: ModelEndpoint | None = None) -> TestRun:
         """What a test run of the method marks, asking language models at `model_endpoint` if it does. Raises
         `EditingError` if it can't be tried yet."""
-        method = self.core.finalized()
-        if self.draft is None:
-            files = list(needed([method.ref]))
+        method = self.draft.finalized()
+        if self.draft_record is None:
+            files = list(files_needed_by([method.ref]))
         else:
-            others = [item for item in self.methods if item.ref != method.ref]
+            others = [each for each in self.methods if each.ref != method.ref]
             dependencies = Methods([*others, method]).dependencies(method.ref)
-            files = [*needed(dependencies), (self.method.full_name, self.core.to_yaml())]
+            files = [*files_needed_by(dependencies), (self.method.full_name, self.draft.to_yaml())]
         return TestRun(
             method=method.ref,
             methods=files,
             questions=self.questions,
-            question=self.core.question,
-            inputs=self.core.test_values,
+            question=self.draft.question,
+            inputs=self.draft.test_values,
             rows=rows_of(self.tests),
             model_endpoint=model_endpoint if method.needs_model_endpoint else None,
         )
@@ -226,62 +236,63 @@ class MethodWorkspace(CheckWorkspace):
         """Store the edits made to the workspace as its next revision; with none, as after only opening a check,
         it stays as it is, and so do its test results."""
         tests = self.tests
-        tests["test_values"] = self.core.test_values
+        tests["test_values"] = self.draft.test_values
         definition = self.definition
-        if self.draft is not None:
-            at = tests.get("example_at")
-            if at is not None and at >= len(self.core.examples):
+        if self.draft_record is not None:
+            at = tests.get("example_index")
+            if at is not None and at >= len(self.draft.examples):
                 at = None  # since removed from the YAML
             if at is not None or examples_of(tests):
-                tests["example_at"] = self.core.set_example(examples_of(tests), at=at)
-            definition = self.core.to_yaml()
-        if tests == self.session.tests and definition == self.definition:
+                tests["example_index"] = self.draft.set_example(examples_of(tests), index=at)
+            definition = self.draft.to_yaml()
+        if tests == self.tests_record.tests and definition == self.definition:
             return
-        if self.draft is not None:
-            self.draft.definition = definition
-        self.session.revise(tests)
+        if self.draft_record is not None:
+            self.draft_record.definition = definition
+        self.tests_record.save_revision(tests)
 
 
-def labelled(value: Any, labels: dict[str, str]) -> Any:
+def as_labels(value: Any, labels: dict[str, str]) -> Any:
     """A choice by its label, or each of a list of them."""
     if isinstance(value, list):
-        return [labelled(item, labels) for item in value]
+        return [as_labels(item, labels) for item in value]
     return labels.get(value, value) if isinstance(value, str) else value
 
 
-def example_at(core: CoreDraft, tests: Tests) -> int | None:
+def example_index(draft: MethodDraft, tests: MethodTests) -> int | None:
     """Where among the method's examples the one the chosen test answers make is."""
     chosen = [row.answers for row in examples_of(tests)]
     return next(
-        (at for at, example in enumerate(core.examples) if [row.answers for row in example.rows] == chosen), None
+        (index for index, example in enumerate(draft.examples) if [row.answers for row in example.rows] == chosen),
+        None,
     )
 
 
-def locked(workspace: MethodWorkspace, revision: str | None) -> MethodWorkspace:
+def lock_workspace(workspace: MethodWorkspace, revision: str | None) -> MethodWorkspace:
     """The workspace, locked for an edit made from the page showing `revision`."""
-    model = type(workspace.session)
-    session = model.objects.select_for_update(of=("self",)).get(pk=workspace.session.pk)
-    if revision is None or str(session.revision) != revision:
-        raise Stale
-    return MethodWorkspace(workspace.method, session)
+    model = type(workspace.tests_record)
+    tests_record = model.objects.select_for_update(of=("self",)).get(pk=workspace.tests_record.pk)
+    if revision is None or str(tests_record.revision) != revision:
+        raise StaleWorkspace
+    return MethodWorkspace(workspace.method, tests_record)
 
 
 @transaction.atomic
-def start_draft(method: Method, user: User, version: MethodVersion) -> MethodDraft:
+def start_draft(method: Method, user: User, version: MethodVersion) -> MethodDraftRecord:
     """The person's draft of the method, started from `version` if they have none, as the core reads it: without
     its examples' results. It is based on the latest version, so starting from an earlier one publishes that one
     again as the next."""
-    read = draft_of(method, version.definition, version.tests, usable(user, method.library.course))
-    draft, _ = MethodDraft.objects.get_or_create(
+    draft = method_draft(method, version.definition, version.tests, usable(user, method.library.course))
+    record, _ = MethodDraftRecord.objects.get_or_create(
         method=method,
         user=user,
         defaults={
             "based_on": method.latest_version,
-            "definition": read.to_yaml(),
+            "definition": draft.to_yaml(),
             "tests": deepcopy(version.tests),
         },
     )
-    return draft
+    return record
 
 
 @transaction.atomic

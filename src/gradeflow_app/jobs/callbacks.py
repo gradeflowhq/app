@@ -21,7 +21,7 @@ from gradeflow_app.jobs.handlers import handler
 from gradeflow_app.jobs.models import Job
 
 
-def _signed(job: Job, request: HttpRequest, body: bytes) -> bool:
+def _has_valid_signature(job: Job, request: HttpRequest, body: bytes) -> bool:
     expected = hmac.new(job.secret.encode(), body, hashlib.sha256).hexdigest()
     return hmac.compare_digest(expected, request.headers.get("X-GradeFlow-Signature", ""))
 
@@ -30,7 +30,7 @@ def _signed(job: Job, request: HttpRequest, body: bytes) -> bool:
 @require_GET
 def job_input(request: HttpRequest, job_id: UUID) -> HttpResponse:
     job = get_object_or_404(Job, pk=job_id, status__in=Job.ACTIVE)
-    if not _signed(job, request, b"input") or job.input is None:
+    if not _has_valid_signature(job, request, b"input") or job.input is None:
         return HttpResponseForbidden()
     return JsonResponse(job.input)
 
@@ -40,7 +40,7 @@ def job_input(request: HttpRequest, job_id: UUID) -> HttpResponse:
 @require_POST
 def job_callback(request: HttpRequest, job_id: UUID) -> HttpResponse:
     job = get_object_or_404(Job, pk=job_id)
-    if not _signed(job, request, request.body):
+    if not _has_valid_signature(job, request, request.body):
         return HttpResponseForbidden()
     try:
         event = json.loads(request.body)
@@ -49,32 +49,32 @@ def job_callback(request: HttpRequest, job_id: UUID) -> HttpResponse:
     if not isinstance(event, dict):
         return HttpResponse(status=400)
     try:
-        _receive(job, event)
+        _apply_event(job, event)
     except KeyError, TypeError, ValueError:
         return HttpResponse(status=400)
     return HttpResponse(status=204)
 
 
-def _receive(job: Job, event: dict[str, Any]) -> None:
+def _apply_event(job: Job, event: dict[str, Any]) -> None:
     task = handler(job).task
     match event.get("event"):
         case "started":
-            events.started(job)
+            events.apply_started(job)
         case "compared" if task == "compare":
-            events.compared(job, event)
+            events.apply_comparison_part(job, event)
         case "marked" if task == "mark":
-            events.marked(job, event["submissions"])
+            events.add_marked_batch(job, event["submissions"])
         case "tested" if task == "test":
-            events.tested(job, event["results"])
+            events.store_test_results(job, event["results"])
         case "progress" if task == "mark":
-            events.progressed(job, event)
+            events.record_progress(job, event)
         case "chosen" if task == "choose":
-            events.chosen(job, event["choice"])
-        case "tried" if task == "try":
-            events.tried(job, event["trials"])
+            events.store_model_choice(job, event["choice"])
+        case "trials" if task == "trial":
+            events.store_model_trials(job, event["trials"])
         case "finished":
-            queue.finish(job)
+            queue.end(job)
         case "failed":
-            queue.finish(job, str(event.get("error", "")))
+            queue.end(job, str(event.get("error", "")))
         case _:
             raise ValueError("Unknown job event.")

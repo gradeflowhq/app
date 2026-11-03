@@ -3,13 +3,13 @@
 {% block content %}
 <h1>Profile</h1>
 <c-form-card id="profile" title="Details">{{ form }}</c-form-card>
-<c-card body_class="rows">
-  <c-row label="Theme" detail="On this device">
+<c-card body_class="setting-rows">
+  <c-setting-row label="Theme" detail="On this device">
     <div class="segmented" role="radiogroup" aria-label="Theme" x-data="themeChoice">
       {% for value, label in themes %}
       <label class="segment"><input type="radio" name="theme" class="sr-only" value="{{ value }}" x-on:change="choose" :checked="isTheme('{{ value }}')">{{ label }}</label>
       {% endfor %}
     </div>
-  </c-row>
+  </c-setting-row>
 </c-card>
 {% endblock %}

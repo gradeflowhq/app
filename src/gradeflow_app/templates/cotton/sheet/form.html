@@ -1,8 +1,0 @@
-<c-vars action title foot="" />
-{# A form in the drawer, which comes back into it with its errors. Its foot is Cancel and Save unless `foot` is given; other attributes go on the form. #}
-<form class="flex flex-1 flex-col" hx-post="{{ action }}" hx-target="#sheet-body" hx-swap="innerHTML" hx-status:422="swap:innerHTML" {{ attrs }}>
-  {% csrf_token %}
-  <c-sheet.head title="{{ title }}" />
-  {{ slot }}
-  {% if foot %}{{ foot }}{% else %}<c-sheet.foot submit="Save" />{% endif %}
-</form>

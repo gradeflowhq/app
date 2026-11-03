@@ -5,7 +5,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 
 from gradeflow_app.assessments.models import Assessment
-from gradeflow_app.marking.previews import Previewed
+from gradeflow_app.marking.previews import PreviewResults
 from gradeflow_app.results.marks import awards
 
 
@@ -19,92 +19,92 @@ class Cell:
     read: bool = False
     """Whether the marking only reads this question's answer, as a condition does, rather than marking it."""
     marks: set[float | None] = field(default_factory=set)
-    preview: set[float] = field(default_factory=set)
-    feedbacks: Counter[str] = field(default_factory=Counter)
-    previewed: Counter[str] = field(default_factory=Counter)
-    changes: int = 0
+    preview_marks: set[float] = field(default_factory=set)
+    feedback_counts: Counter[str] = field(default_factory=Counter)
+    preview_feedback_counts: Counter[str] = field(default_factory=Counter)
+    changed_count: int = 0
     problem: str = ""
     """Why the preview couldn't mark this answer, if it couldn't."""
 
     @property
     def feedback(self) -> str:
         """The most common feedback, the preview's while previewing."""
-        commonest = (self.previewed or self.feedbacks).most_common(1)
+        commonest = (self.preview_feedback_counts or self.feedback_counts).most_common(1)
         return commonest[0][0] if commonest else ""
 
     @property
-    def low(self) -> float | None:
+    def lowest_marks(self) -> float | None:
         return min((value for value in self.marks if value is not None), default=None)
 
     @property
-    def high(self) -> float | None:
+    def highest_marks(self) -> float | None:
         return max((value for value in self.marks if value is not None), default=None)
 
     @property
-    def new_low(self) -> float | None:
-        return min(self.preview, default=None)
+    def preview_lowest_marks(self) -> float | None:
+        return min(self.preview_marks, default=None)
 
     @property
-    def new_high(self) -> float | None:
-        return max(self.preview, default=None)
+    def preview_highest_marks(self) -> float | None:
+        return max(self.preview_marks, default=None)
 
     @property
     def changed(self) -> bool:
-        return self.changes > 0
+        return self.changed_count > 0
 
 
 @dataclass
 class Combination:
     cells: list[Cell]
-    count: int = 0
-    changes: int = 0
-    unmarked: int = 0
+    student_count: int = 0
+    changed_count: int = 0
+    unmarked_count: int = 0
 
     @property
     def changed(self) -> bool:
-        return self.changes > 0
+        return self.changed_count > 0
 
 
 def combinations(
-    assessment: Assessment, keys: list[str], results: Previewed | None, reads: Sequence[str] = ()
+    assessment: Assessment, keys: list[str], results: PreviewResults | None, reads: Sequence[str] = ()
 ) -> list[Combination]:
     """Every combination of answers to `keys`, and to the questions in `reads`, that students gave, most common
     first."""
     questions = {question.key: question for question in assessment.questions.filter(key__in=[*keys, *reads])}
     ordered_keys = list(questions)  # in the exam's order, so a condition reads before what it decides
     students = list(assessment.students.all())
-    awarded = awards(list(questions.values()), students)
-    rows: dict[tuple[str, ...], Combination] = {}
+    student_awards = awards(list(questions.values()), students)
+    by_answers: dict[tuple[str, ...], Combination] = {}
     for student in students:
-        given = tuple(questions[key].core.normalize(student.answers.get(key, "")) for key in ordered_keys)
-        row = rows.get(given)
-        if row is None:
+        answers = tuple(questions[key].core_question.normalize(student.answers.get(key, "")) for key in ordered_keys)
+        combination = by_answers.get(answers)
+        if combination is None:
             cells = [
-                Cell(k, a, questions[k].core.max_marks, read=k not in keys)
-                for k, a in zip(ordered_keys, given, strict=True)
+                Cell(key, answer, questions[key].core_question.max_marks, read=key not in keys)
+                for key, answer in zip(ordered_keys, answers, strict=True)
             ]
-            row = rows[given] = Combination(cells)
-        row.count += 1
-        previewed = (results or {}).get(student.key, {})
+            combination = by_answers[answers] = Combination(cells)
+        combination.student_count += 1
+        preview_results = (results or {}).get(student.encrypted_id, {})
         changed = False
         unmarked = False
-        for cell in row.cells:
+        for cell in combination.cells:
             if cell.read:
                 continue
-            award = awarded[student.pk, questions[cell.key].pk]
+            award = student_awards[student.pk, questions[cell.key].pk]
             cell.marks.add(award.marks)
-            cell.feedbacks[award.feedback] += 1
-            if (result := previewed.get(cell.key)) is not None:
-                projected = award.with_projected(result)
-                assert projected.marks is not None
-                cell.preview.add(projected.marks)
-                cell.previewed[projected.feedback] += 1
-                differs = award.differs_from(projected)
-                cell.changes += differs
+            cell.feedback_counts[award.feedback] += 1
+            if (result := preview_results.get(cell.key)) is not None:
+                preview_award = award.with_preview(result)
+                assert preview_award.marks is not None
+                cell.preview_marks.add(preview_award.marks)
+                cell.preview_feedback_counts[preview_award.feedback] += 1
+                differs = award.differs_from(preview_award)
+                cell.changed_count += differs
                 changed |= differs
-                if not result.marked:
+                if not result.is_marked:
                     cell.problem = cell.problem or result.feedback
                     unmarked = True
-        row.changes += changed
-        row.unmarked += unmarked
-    return sorted(rows.values(), key=lambda row: -row.count)
+        combination.changed_count += changed
+        combination.unmarked_count += unmarked
+    return sorted(by_answers.values(), key=lambda combination: -combination.student_count)

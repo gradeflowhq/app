@@ -14,44 +14,44 @@ from pytest_django import DjangoAssertNumQueries
 from gradeflow_app.accounts.models import User
 from gradeflow_app.assessments.models import Assessment
 from gradeflow_app.imports import forms
-from gradeflow_app.imports.models import ResultsFile, file_mark_keys
+from gradeflow_app.imports.models import ResultsFile, imported_mark_keys
 from gradeflow_app.imports.services import apply_question_document, import_results
 from gradeflow_app.marking.models import Marking
-from gradeflow_app.results.marks import results as results_of
+from gradeflow_app.results.marks import assessment_results
 from gradeflow_app.results.models import Adjustment
-from tests.conftest import HTMX, RESULTS, RESULTS_CSV, create_assessment, envelope, upload
+from tests.conftest import EXPORT_CSV, EXPORT_ROWS, HTMX_HEADERS, create_assessment, encrypted_id, upload
 
 pytestmark = pytest.mark.django_db
 
-ENCRYPTED = b"GFF\x01" + os.urandom(28) + b"ciphertext and tag"
-CHOICES = {"sheet": "Results", "header_row": "2", "first_row": "3", "last_row": "5"}
+ENCRYPTED_FILE = b"GFF\x01" + os.urandom(28) + b"ciphertext and tag"
+FILE_SETTINGS = {"sheet": "Results", "header_row": "2", "first_row": "3", "last_row": "5"}
 
 
-def results(*students: tuple[str, str, str, str]) -> str:
+def two_marks_columns_csv(*students: tuple[str, str, str, str]) -> str:
     """A file of Q1 answers with two columns of marks for it."""
-    rows = [f"{envelope(student)},{answer},{a},{b}" for student, answer, a, b in students]
+    rows = [f"{encrypted_id(student)},{answer},{marks_a},{marks_b}" for student, answer, marks_a, marks_b in students]
     return "\n".join(["StudentID,Q1,Marks A,Marks B", *rows]) + "\n"
 
 
-ONE_QUESTION = {"answer_columns": json.dumps(["Q1"]), "marks_columns": json.dumps({"Q1": "Marks A"})}
+Q1_COLUMNS = {"answer_columns": json.dumps(["Q1"]), "marks_columns": json.dumps({"Q1": "Marks A"})}
 
 
-def original() -> SimpleUploadedFile:
-    return SimpleUploadedFile("original", ENCRYPTED, "application/octet-stream")
+def encrypted_original() -> SimpleUploadedFile:
+    return SimpleUploadedFile("original", ENCRYPTED_FILE, "application/octet-stream")
 
 
-def test_keeps_the_encrypted_original_and_the_choices(client: Client) -> None:
+def test_keeps_the_encrypted_original_and_the_import_settings(client: Client) -> None:
     assessment = create_assessment(client)
-    assert upload(client, assessment, original=original(), **CHOICES).status_code == 200
+    assert upload(client, assessment, original=encrypted_original(), **FILE_SETTINGS).status_code == 200
 
     file = ResultsFile.objects.get()
     assert (file.sheet, file.header_row, file.first_row, file.last_row) == ("Results", 2, 3, 5)
     assert file.original is not None
-    assert bytes(file.original) == ENCRYPTED
+    assert bytes(file.original) == ENCRYPTED_FILE
     page = client.get(reverse("import", args=[assessment.pk]))
     assert b"Check columns" in page.content
-    choices = json.loads(page.content.split(b'id="results-file-choices" type="application/json">')[1].split(b"<")[0])
-    assert choices == {
+    import_settings = json.loads(page.content.split(b'id="import-settings" type="application/json">')[1].split(b"<")[0])
+    assert import_settings == {
         "name": "results.csv",
         "sheet": "Results",
         "header_row": 2,
@@ -63,7 +63,7 @@ def test_keeps_the_encrypted_original_and_the_choices(client: Client) -> None:
     }
     fetched = client.get(reverse("import_original", args=[assessment.pk]))
     assert fetched.status_code == 200
-    assert fetched.content == ENCRYPTED
+    assert fetched.content == ENCRYPTED_FILE
 
 
 def test_an_original_that_isnt_encrypted_is_refused(client: Client) -> None:
@@ -76,9 +76,9 @@ def test_an_original_that_isnt_encrypted_is_refused(client: Client) -> None:
 
 
 def test_an_oversized_original_is_refused(client: Client, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(forms, "MAX_FILE_BYTES", len(ENCRYPTED) - 1)
+    monkeypatch.setattr(forms, "MAX_FILE_BYTES", len(ENCRYPTED_FILE) - 1)
     assessment = create_assessment(client)
-    response = upload(client, assessment, original=original())
+    response = upload(client, assessment, original=encrypted_original())
     assert response.status_code == 400
     assert b"too large" in response.content
 
@@ -87,7 +87,7 @@ def test_older_imports_ask_for_the_file_again(client: Client, assessment: Assess
     page = client.get(reverse("import", args=[assessment.pk]))
     assert b"Check columns" not in page.content
     assert b"Drop the new exam export here" in page.content
-    assert b"results-file-choices" not in page.content
+    assert b"import-settings" not in page.content
     assert client.get(reverse("import_original", args=[assessment.pk])).status_code == 404
 
 
@@ -100,25 +100,25 @@ def test_a_replace_knows_the_questions_a_new_file_would_drop(client: Client, ass
 
 def test_changing_columns_replaces_the_results_and_keeps_adjustments(client: Client, user: User) -> None:
     assessment = create_assessment(client)
-    data = results(("S001", "yes", "1", "2"), ("S002", "no", "0", "1"), ("S003", "yes", "1", "0"))
-    upload(client, assessment, data, original=original(), **ONE_QUESTION, **CHOICES)
-    first = assessment.students.get(key=envelope("S001"))
-    Adjustment.objects.create(student=first, question=assessment.questions.get(), marks=0.5)
+    csv = two_marks_columns_csv(("S001", "yes", "1", "2"), ("S002", "no", "0", "1"), ("S003", "yes", "1", "0"))
+    upload(client, assessment, csv, original=encrypted_original(), **Q1_COLUMNS, **FILE_SETTINGS)
+    s001 = assessment.students.get(encrypted_id=encrypted_id("S001"))
+    Adjustment.objects.create(student=s001, question=assessment.questions.get(), marks=0.5)
 
     changed = upload(
         client,
         assessment,
-        results(("S001", "yes", "1", "2"), ("S002", "no", "0", "1")),
-        **ONE_QUESTION | {"marks_columns": json.dumps({"Q1": "Marks B"})},
-        original=original(),
-        **CHOICES | {"last_row": "4"},
+        two_marks_columns_csv(("S001", "yes", "1", "2"), ("S002", "no", "0", "1")),
+        **Q1_COLUMNS | {"marks_columns": json.dumps({"Q1": "Marks B"})},
+        original=encrypted_original(),
+        **FILE_SETTINGS | {"last_row": "4"},
     )
 
     assert changed.status_code == 200
-    assert sorted(assessment.students.values_list("file_marks", flat=True), key=str) == [{"Q1": 1.0}, {"Q1": 2.0}]
-    shown = {row.student.key: row.awards["Q1"].marks for row in results_of(assessment).rows}
-    assert shown[envelope("S002")] == 1, "without marking, a student has the export's marks"
-    assert Adjustment.objects.get().student == first
+    assert sorted(assessment.students.values_list("imported_marks", flat=True), key=str) == [{"Q1": 1.0}, {"Q1": 2.0}]
+    marks_by_student = {row.student.encrypted_id: row.awards["Q1"].marks for row in assessment_results(assessment).rows}
+    assert marks_by_student[encrypted_id("S002")] == 1, "without marking, a student has the export's marks"
+    assert Adjustment.objects.get().student == s001
     current, older = ResultsFile.objects.all()
     assert (current.last_row, current.marks_columns) == (4, {"Q1": "Marks B"})
     assert current.original is not None
@@ -126,21 +126,21 @@ def test_changing_columns_replaces_the_results_and_keeps_adjustments(client: Cli
 
 
 def test_an_import_returns_the_questions_whose_answers_changed(assessment: Assessment, user: User) -> None:
-    def changed_by(data: str) -> set[str]:
+    def changed_by(csv: str) -> set[str]:
         columns = ["Q1", "Q2", "Q3"]
         imported = import_results(
             assessment,
             user,
             name="results.csv",
-            data=data,
+            csv_text=csv,
             student_id_column="StudentID",
             answer_columns=columns,
             marks_columns={},
         )
         return imported.changed_questions
 
-    changed = RESULTS_CSV.replace("respiration", "fermentation")
-    assert changed_by(RESULTS_CSV) == set()
+    changed = EXPORT_CSV.replace("respiration", "fermentation")
+    assert changed_by(EXPORT_CSV) == set()
     assert changed_by(changed) == {"Q1"}
     assert changed_by(changed.rsplit("\n", 2)[0] + "\n") == {"Q1", "Q2", "Q3"}, "a student fewer changes every question"
 
@@ -155,9 +155,9 @@ def test_an_import_stays_on_the_import_page_with_what_it_did(client: Client) -> 
 
 
 def test_a_replace_says_which_students_it_added_and_removed(client: Client, assessment: Assessment) -> None:
-    rows = [("S011", "light", "1", "42", "A"), ("S002", "changed", "1", "42.0", "B"), *RESULTS[2:]]
-    data = "StudentID,Q1,Q1 Pts,Q2,Q3\n" + "".join(f"{envelope(row[0])},{','.join(row[1:])}\n" for row in rows)
-    response = upload(client, assessment, data)
+    rows = [("S011", "light", "1", "42", "A"), ("S002", "changed", "1", "42.0", "B"), *EXPORT_ROWS[2:]]
+    csv = "StudentID,Q1,Q1 Pts,Q2,Q3\n" + "".join(f"{encrypted_id(row[0])},{','.join(row[1:])}\n" for row in rows)
+    response = upload(client, assessment, csv)
     page = client.get(response.headers["HX-Redirect"], follow=True).content.decode()
     assert "Results replaced: 10 students (1 new, 1 removed); 1 with changed answers." in page
 
@@ -165,7 +165,7 @@ def test_a_replace_says_which_students_it_added_and_removed(client: Client, asse
 def test_a_replace_counts_changed_answers_only_in_questions_both_files_have(
     client: Client, assessment: Assessment
 ) -> None:
-    without_q3 = "".join(line.rsplit(",", 1)[0] + "\n" for line in RESULTS_CSV.splitlines())
+    without_q3 = "".join(line.rsplit(",", 1)[0] + "\n" for line in EXPORT_CSV.splitlines())
     response = upload(client, assessment, without_q3, answer_columns=json.dumps(["Q1", "Q2"]))
     page = client.get(response.headers["HX-Redirect"], follow=True).content.decode()
     assert "Results replaced: 10 students; removed question Q3." in page
@@ -175,9 +175,9 @@ def test_activity_names_the_question_of_a_marking_removed_with_it(client: Client
     question = assessment.questions.get(key="Q3")
     definition = dump_yaml({"question": "Q3", "uses": "gradeflow/full-marks@1"})
     Marking.objects.create(assessment=assessment, question=question, definition=definition)
-    without_q3 = "".join(line.rsplit(",", 1)[0] + "\n" for line in RESULTS_CSV.splitlines())
+    without_q3 = "".join(line.rsplit(",", 1)[0] + "\n" for line in EXPORT_CSV.splitlines())
     upload(client, assessment, without_q3, answer_columns=json.dumps(["Q1", "Q2"]))
-    page = client.get(reverse("activity", args=[assessment.pk]), headers=HTMX).content.decode()
+    page = client.get(reverse("activity", args=[assessment.pk]), headers=HTMX_HEADERS).content.decode()
     assert "removed marking for Q3" in page
     assert "question group" not in page
 
@@ -186,13 +186,13 @@ def test_a_first_import_sets_up_the_questions_the_core_infers(client: Client) ->
     assessment = create_assessment(client)
     upload(client, assessment)
     config = AnswersCsv(student_id_column="StudentID", answer_columns=["Q1", "Q2", "Q3"])
-    inferred = QuestionSet({}).updated_from(config.read(RESULTS_CSV))
-    assert {question.key: question.core for question in assessment.questions.all()} == dict(inferred)
+    inferred = QuestionSet({}).updated_from(config.read(EXPORT_CSV))
+    assert {question.key: question.core_question for question in assessment.questions.all()} == dict(inferred)
 
 
 def test_a_failed_import_says_why_in_plain_text(client: Client) -> None:
     assessment = create_assessment(client)
-    response = upload(client, assessment, "StudentID,Q1,Marks A,Marks B\nS001,yes,1,2\n", **ONE_QUESTION)
+    response = upload(client, assessment, "StudentID,Q1,Marks A,Marks B\nS001,yes,1,2\n", **Q1_COLUMNS)
     assert response.status_code == 400
     assert response.headers["Content-Type"].startswith("text/plain")
     assert response.content.decode() == "Student IDs must be encrypted in the browser before they're uploaded."
@@ -217,7 +217,7 @@ def test_malformed_choices_are_refused_plainly(client: Client, fields: dict[str,
 
 def test_a_file_that_isnt_text_is_refused(client: Client) -> None:
     assessment = create_assessment(client)
-    response = upload(client, assessment, results=SimpleUploadedFile("results", b"\xff\xfe\x00binary"))
+    response = upload(client, assessment, answers_csv=SimpleUploadedFile("answers.csv", b"\xff\xfe\x00binary"))
     assert (response.status_code, response.content.decode()) == (400, "The file couldn't be read.")
 
 
@@ -225,35 +225,37 @@ def test_a_large_class_uploads(client: Client) -> None:
     """Larger than Django's limit for a form field, so it has to arrive as a file."""
     assessment = create_assessment(client)
     answer = "photosynthesis " * 200
-    data = results(*((f"S{n:04}", answer, "1", "2") for n in range(1200)))
-    assert len(data) > 2.5 * 2**20
-    response = upload(client, assessment, data, **ONE_QUESTION)
+    csv = two_marks_columns_csv(*((f"S{index:04}", answer, "1", "2") for index in range(1200)))
+    assert len(csv) > 2.5 * 2**20
+    response = upload(client, assessment, csv, **Q1_COLUMNS)
     assert response.status_code == 200, response.content
     assert assessment.students.count() == 1200
 
 
-def choices(*answers: str) -> str:
+def q1_answers_csv(*answers: str) -> str:
     """A file of Q1 answers, one student each."""
-    return "StudentID,Q1\n" + "".join(f"{envelope(f'S{n:03}')},{answer}\n" for n, answer in enumerate(answers))
+    return "StudentID,Q1\n" + "".join(
+        f"{encrypted_id(f'S{index:03}')},{answer}\n" for index, answer in enumerate(answers)
+    )
 
 
-def upload_with_key(client: Client, assessment: Assessment, data: str, key: dict[str, str]) -> None:
+def upload_with_key(client: Client, assessment: Assessment, csv: str, key: dict[str, str]) -> None:
     fields = {"answer_columns": json.dumps(list(key)), "marks_columns": "{}", "answer_key": json.dumps(key)}
-    assert upload(client, assessment, data, **fields).status_code == 200
+    assert upload(client, assessment, csv, **fields).status_code == 200
 
 
-def inferred(data: str, key: dict[str, str]) -> QuestionSet:
+def inferred_questions(csv: str, key: dict[str, str]) -> QuestionSet:
     """The questions the core works out from a file's answers and its answer key."""
-    submissions = AnswersCsv(student_id_column="StudentID", answer_columns=list(key)).read(data)
+    submissions = AnswersCsv(student_id_column="StudentID", answer_columns=list(key)).read(csv)
     return QuestionSet({}).updated_from([*submissions, read_answer_key(key)])
 
 
 def test_the_answer_key_shapes_the_questions_and_is_no_student(client: Client) -> None:
     assessment = create_assessment(client)
-    data, key = choices("A", "B", "A"), {"Q1": "A,C"}
-    upload_with_key(client, assessment, data, key)
+    csv, key = q1_answers_csv("A", "B", "A"), {"Q1": "A,C"}
+    upload_with_key(client, assessment, csv, key)
 
-    assert assessment.questions.get().core == inferred(data, key)["Q1"]
+    assert assessment.questions.get().core_question == inferred_questions(csv, key)["Q1"]
     assert assessment.students.count() == ResultsFile.objects.get().student_count == 3
     assert not Marking.objects.exists()
 
@@ -262,32 +264,34 @@ def test_a_replaced_export_keeps_the_questions_set_up_accepting_its_answers_and_
     client: Client,
 ) -> None:
     assessment = create_assessment(client)
-    upload_with_key(client, assessment, choices("A", "B", "A"), {"Q1": ""})
+    upload_with_key(client, assessment, q1_answers_csv("A", "B", "A"), {"Q1": ""})
     question = assessment.questions.get()
-    question.core = question.core.model_copy(update={"max_marks": 5})
+    question.core_question = question.core_question.model_copy(update={"max_marks": 5})
     question.save()
 
-    data = "StudentID,Q1,Q2\n" + "".join(f"{envelope(f'S{n:03}')},C,{n}\n" for n in range(3))
+    csv = "StudentID,Q1,Q2\n" + "".join(f"{encrypted_id(f'S{index:03}')},C,{index}\n" for index in range(3))
     key = {"Q1": "D", "Q2": ""}
-    upload_with_key(client, assessment, data, key)
+    upload_with_key(client, assessment, csv, key)
 
     first, second = assessment.questions.order_by("position")
-    assert first.core == question.core.accepting(["C", "D"])
+    assert first.core_question == question.core_question.accepting(["C", "D"])
     assert first.definition["options"] == ["a", "b", "c", "d"]
-    assert second.core == inferred(data, key)["Q2"]
+    assert second.core_question == inferred_questions(csv, key)["Q2"]
 
 
 @pytest.mark.parametrize("key", [{"Q9": "A"}, {"Q1": 1}, ["A"]], ids=["other column", "not text", "not by column"])
 def test_a_malformed_answer_key_is_refused(client: Client, key: object) -> None:
     assessment = create_assessment(client)
-    response = upload(client, assessment, choices("A"), answer_columns=json.dumps(["Q1"]), answer_key=json.dumps(key))
+    response = upload(
+        client, assessment, q1_answers_csv("A"), answer_columns=json.dumps(["Q1"]), answer_key=json.dumps(key)
+    )
     assert (response.status_code, response.content.decode()) == (
         400,
         "The answer key must give a cell for answer columns only.",
     )
 
 
-def document(*items: tuple[int, str, str]) -> SimpleUploadedFile:
+def question_document(*items: tuple[int, str, str]) -> SimpleUploadedFile:
     """An ExamSoft question document: each item's number, stem with choices as RTF, and weight."""
     body = "".join(
         rf"\pard Question #: {number}\par\pard {stem}\par\pard Item ID: 1 / 1\par\pard Item Weight: {weight}\par"
@@ -297,9 +301,9 @@ def document(*items: tuple[int, str, str]) -> SimpleUploadedFile:
 
 
 def read_by_the_core(file: SimpleUploadedFile, assessment: Assessment) -> QuestionSet:
-    data = file.read()
+    content = file.read()
     file.seek(0)
-    return read_question_document(data, assessment.question_set())
+    return read_question_document(content, assessment.question_set())
 
 
 def test_the_import_page_offers_the_question_document_once_there_are_questions(client: Client) -> None:
@@ -311,48 +315,48 @@ def test_the_import_page_offers_the_question_document_once_there_are_questions(c
 
 
 def test_a_question_document_describes_its_questions(client: Client, assessment: Assessment) -> None:
-    file = document(
+    file = question_document(
         (1, r"How many?\par\pard\u160?1\u160?\par\pard 1. 42|42.0|", "3.0"),
         (3, r"Which?\par\pard A. One\par\pard B. Two\par\pard E. Five", "2.0"),
         (9, "Unasked", "1.0"),
     )
     described = read_by_the_core(file, assessment)
     with TestCase.captureOnCommitCallbacks(execute=True):
-        response = client.post(reverse("question_document", args=[assessment.pk]), {"file": file}, headers=HTMX)
+        response = client.post(reverse("question_document", args=[assessment.pk]), {"file": file}, headers=HTMX_HEADERS)
 
     assert response.headers["HX-Redirect"] == reverse("questions", args=[assessment.pk])
-    texts = [message.message for message in get_messages(response.wsgi_request)]
+    messages = [message.message for message in get_messages(response.wsgi_request)]
     assert set(described) == {"Q1", "Q3"}
-    assert texts[-1] == "Set up 2 questions from the question document."
-    assert {key: assessment.questions.get(key=key).core for key in described} == dict(described)
+    assert messages[-1] == "Set up 2 questions from the question document."
+    assert {key: assessment.questions.get(key=key).core_question for key in described} == dict(described)
 
 
 def test_a_question_document_returns_the_questions_it_changed(assessment: Assessment) -> None:
-    data = document((1, "How many?", "3.0"), (3, "Which?", "2.0")).read()
+    data = question_document((1, "How many?", "3.0"), (3, "Which?", "2.0")).read()
     assert apply_question_document(assessment, data) == (["Q1", "Q3"], {"Q1", "Q3"})
     assert apply_question_document(assessment, data) == (["Q1", "Q3"], set())
 
 
 def test_a_question_document_without_the_exams_questions_says_so(client: Client, assessment: Assessment) -> None:
-    file = document((9, "Unasked", "1.0"))
-    response = client.post(reverse("question_document", args=[assessment.pk]), {"file": file}, headers=HTMX)
+    file = question_document((9, "Unasked", "1.0"))
+    response = client.post(reverse("question_document", args=[assessment.pk]), {"file": file}, headers=HTMX_HEADERS)
     assert response.status_code == 422
     assert "The question document has none of the exam export&#x27;s questions." in response.content.decode()
-    assert not any(question.core.description for question in assessment.questions.all())
+    assert not any(question.core_question.description for question in assessment.questions.all())
 
 
 def test_a_file_the_core_cant_read_says_why(client: Client, assessment: Assessment) -> None:
     file = SimpleUploadedFile("Midterm.pdf", b"%PDF-1.7")
     with pytest.raises(GradeFlowError) as refused:
         read_by_the_core(file, assessment)
-    response = client.post(reverse("question_document", args=[assessment.pk]), {"file": file}, headers=HTMX)
+    response = client.post(reverse("question_document", args=[assessment.pk]), {"file": file}, headers=HTMX_HEADERS)
     assert response.status_code == 422
     assert escape(str(refused.value)) in response.content.decode()
-    assert not any(question.core.description for question in assessment.questions.all())
+    assert not any(question.core_question.description for question in assessment.questions.all())
 
 
 def test_a_question_document_is_required(client: Client, assessment: Assessment) -> None:
-    response = client.post(reverse("question_document", args=[assessment.pk]), headers=HTMX)
+    response = client.post(reverse("question_document", args=[assessment.pk]), headers=HTMX_HEADERS)
     assert response.status_code == 422
     assert "Choose the question document." in response.content.decode()
 
@@ -360,6 +364,6 @@ def test_a_question_document_is_required(client: Client, assessment: Assessment)
 def test_the_questions_with_marks_in_the_file_are_read_in_one_query(
     assessment: Assessment, django_assert_num_queries: DjangoAssertNumQueries
 ) -> None:
-    assessment.students.create(key="S100", answers={}, file_marks={"Q2": 1})
+    assessment.students.create(encrypted_id="S100", answers={}, imported_marks={"Q2": 1})
     with django_assert_num_queries(1):
-        assert file_mark_keys(assessment) == {"Q1", "Q2"}
+        assert imported_mark_keys(assessment) == {"Q1", "Q2"}

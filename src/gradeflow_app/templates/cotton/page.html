@@ -1,8 +1,8 @@
-<c-vars title meta="" actions="" />
+<c-vars title subtitle="" actions="" />
 <div class="page">
   <header class="flex min-h-10 flex-wrap items-center gap-x-4 gap-y-2">
     <h1>{{ title }}</h1>
-    {% if meta %}<p class="tabular-nums text-sm text-muted">{{ meta }}</p>{% endif %}
+    {% if subtitle %}<p class="tabular-nums text-sm text-muted">{{ subtitle }}</p>{% endif %}
     {% if actions %}<div class="ml-auto flex flex-wrap items-center gap-2">{{ actions }}</div>{% endif %}
   </header>
   {{ slot }}

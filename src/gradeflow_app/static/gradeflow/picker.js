@@ -3,7 +3,7 @@
 import { matches } from "./words.js";
 
 // Shows the `[data-search]` items that have every word typed, the sections that still have one, and `[data-empty]`
-// when nothing typed matches. With nothing typed, it shows the items `listed`: all of them.
+// when nothing typed matches. With nothing typed, it shows the items `isListed`: all of them.
 const searchList = () => ({
   query: "",
 
@@ -12,14 +12,14 @@ const searchList = () => ({
     this.filter();
   },
 
-  listed() {
+  isListed() {
     return true;
   },
 
   filter() {
     const typed = Boolean(this.query.trim());
     for (const item of this.$root.querySelectorAll("[data-search]")) {
-      item.hidden = typed ? !matches(item.dataset.search, this.query) : !this.listed(item);
+      item.hidden = typed ? !matches(item.dataset.search, this.query) : !this.isListed(item);
     }
     for (const section of this.$root.querySelectorAll("[data-section]")) {
       section.hidden = !section.querySelector("[data-search]:not([hidden])");
@@ -32,14 +32,14 @@ const searchList = () => ({
 // A searchable list of options, chosen once one of its radios is.
 export const choiceList = () => ({
   ...searchList(),
-  chosen: false,
+  hasChoice: false,
 
   init() {
-    this.chosen = Boolean(this.$root.querySelector("[type=radio]:checked"));
+    this.hasChoice = Boolean(this.$root.querySelector("[type=radio]:checked"));
   },
 
   choose(event) {
-    if (event.target.type === "radio") this.chosen = true;
+    if (event.target.type === "radio") this.hasChoice = true;
   },
 });
 
@@ -58,15 +58,15 @@ export const methodPicker = () => ({
     chosen?.scrollIntoView({ block: "nearest" });
   },
 
-  shows(tab) {
+  isTabShown(tab) {
     return !this.query && this.tab === tab;
   },
 
-  listed(item) {
+  isListed(item) {
     return item.closest("[data-tab]").dataset.tab === this.tab;
   },
 
-  show(event) {
+  showTab(event) {
     this.tab = event.currentTarget.dataset.tab;
     this.query = this.$refs.search.value = "";
     this.filter();
@@ -74,15 +74,15 @@ export const methodPicker = () => ({
   },
 
   // Arrow keys move to the other tab, as tabs do.
-  next(event) {
+  focusNextTab(event) {
     const tabs = [...this.$root.querySelectorAll("[role=tab]")];
     const next = tabs[(tabs.indexOf(event.target) + 1) % tabs.length];
     next.focus();
     next.click();
   },
 
-  get unchanged() {
-    return this.selected === this.$root.dataset.current;
+  get isCurrentMethod() {
+    return this.selected === this.$root.dataset.currentMethod;
   },
 
   choose(event) {
@@ -90,6 +90,6 @@ export const methodPicker = () => ({
     if (!chosen) return;
     this.selected = chosen.dataset.method;
     this.selectedLabel = chosen.dataset.label;
-    for (const each of this.$root.querySelectorAll("[data-method]")) each.setAttribute("aria-current", String(each === chosen));
+    for (const method of this.$root.querySelectorAll("[data-method]")) method.setAttribute("aria-current", String(method === chosen));
   },
 });

@@ -8,20 +8,20 @@ from django.http import Http404
 from gradeflow_core import Method, Methods
 from gradeflow_core.editing import Example, MarkingDraft, QuestionType
 
-from gradeflow_app.libraries.collection import BUILTIN_NAMES, Offers
-from gradeflow_app.questions.models import TYPE_LABELS
+from gradeflow_app.libraries.collection import BUILTIN_NAMES, OfferedMethods
+from gradeflow_app.questions.models import QUESTION_TYPE_LABELS
 
 
 @dataclass(frozen=True)
 class Section:
     label: str
-    entries: list[tuple[Method[Any], str]] = field(default_factory=list)
+    methods: list[tuple[Method[Any], str]] = field(default_factory=list)
     """Each method, and who made it if someone did."""
     tab: str = "builtin"
     """The picker's tab it's under: the core's methods, the person's own and their courses', or public ones."""
 
 
-TABS = {"builtin": "Built-in", "yours": "Yours", "public": "Public"}
+PICKER_TABS = {"builtin": "Built-in", "yours": "Yours", "public": "Public"}
 
 
 @dataclass(frozen=True)
@@ -29,39 +29,39 @@ class Choices:
     """The latest version of each method to choose from: the everyday built-in ones, the person's saved ones, then
     the advanced ones under "Advanced" if there are everyday ones too."""
 
-    methods: list[Method[Any]]
+    everyday: list[Method[Any]]
     saved: list[Method[Any]]
-    more: list[Method[Any]]
+    advanced: list[Method[Any]]
 
     def __len__(self) -> int:
-        return len(self.methods) + len(self.saved) + len(self.more)
+        return len(self.everyday) + len(self.saved) + len(self.advanced)
 
 
-def choices(methods: Methods, offers: Offers) -> Choices:
+def choices(methods: Methods, offers: OfferedMethods) -> Choices:
     available = {method.name: method for method in methods.latest()}
     builtin = [method for name, method in available.items() if name in BUILTIN_NAMES]
     everyday = [method for method in builtin if method.level == "basic"]
-    more = [method for method in builtin if method.level != "basic"]
+    advanced = [method for method in builtin if method.level != "basic"]
     if not everyday:
-        everyday, more = more, []
+        everyday, advanced = advanced, []
     saved = [available[name] for _, names in offers.sections for name in names if name in available]
-    return Choices(everyday, saved, more)
+    return Choices(everyday, saved, advanced)
 
 
-def sections_of(methods: Methods, offers: Offers) -> list[Section]:
+def sections_of(methods: Methods, offers: OfferedMethods) -> list[Section]:
     """The methods to choose from, in their tabs and sections."""
     newest = methods.latest()
     available = {method.name: method for method in newest}
-    split = choices(newest, offers)
+    method_choices = choices(newest, offers)
 
-    def entries(names: Iterable[str]) -> list[tuple[Method[Any], str]]:
+    def with_owners(names: Iterable[str]) -> list[tuple[Method[Any], str]]:
         return [(available[name], offers.owners[name]) for name in names if name in available]
 
     return [
-        Section("", [(method, "") for method in split.methods]),
-        Section("Advanced", [(method, "") for method in split.more]),
-        *(Section(label, entries(names), "yours") for label, names in offers.sections),
-        Section("Public", entries(offers.public), "public"),  # labelled only among search results
+        Section("", [(method, "") for method in method_choices.everyday]),
+        Section("Advanced", [(method, "") for method in method_choices.advanced]),
+        *(Section(label, with_owners(names), "yours") for label, names in offers.sections),
+        Section("Public", with_owners(offers.public), "public"),  # labelled only among search results
     ]
 
 
@@ -72,57 +72,61 @@ class QuestionGroupCheck(NamedTuple):
     """The one it reads; none for a method of several questions."""
 
 
-def question_group_check(checks: MarkingDraft, target: str, asked: str | None = None) -> QuestionGroupCheck | None:
-    """For a check added at `target` of a question group, which names the question it reads: the question asked
-    for, by default the first, or none, asked as `""`, where methods of several questions can go. None for any
-    other check."""
+def question_group_check(
+    checks: MarkingDraft, target: str, chosen_question: str | None = None
+) -> QuestionGroupCheck | None:
+    """For a check added at `target` of a question group, which names the question it reads: `chosen_question`,
+    by default the first, or none, chosen as `""`, where methods of several questions can go. None for any other
+    check."""
     position = checks.position(target)
     if not position.in_group or position.question is not None:
         return None
     keys = list(checks.questions)
-    if asked == "" and several(checks, target):
+    if chosen_question == "" and allows_group_methods(checks, target):
         return QuestionGroupCheck(keys, None)
-    return QuestionGroupCheck(keys, asked if asked in keys else next(iter(keys), None))
+    return QuestionGroupCheck(keys, chosen_question if chosen_question in keys else next(iter(keys), None))
 
 
-def several(checks: MarkingDraft, target: str) -> bool:
+def allows_group_methods(checks: MarkingDraft, target: str) -> bool:
     """Whether methods of several questions can go at `target`."""
-    return any(method.group for method in checks.methods(target, None))
+    return any(method.marks_question_group for method in checks.methods(target, None))
 
 
-class Marks(Protocol):
+class MarksQuestions(Protocol):
     """What a method, published or a draft, marks."""
 
     @property
     def question_types(self) -> frozenset[QuestionType]: ...
 
     @property
-    def group(self) -> bool: ...
+    def marks_question_group(self) -> bool: ...
 
 
-def _labels(kinds: Iterable[str]) -> list[str]:
-    return [label for kind, label in TYPE_LABELS.items() if kind in kinds]
+def _labels(question_types: Iterable[str]) -> list[str]:
+    return [label for question_type, label in QUESTION_TYPE_LABELS.items() if question_type in question_types]
 
 
-def works_with(method: Marks) -> list[str]:
+def works_with(method: MarksQuestions) -> list[str]:
     """What the method marks, as labels: its question types, then question groups."""
-    return _labels(method.question_types) + (["Question groups"] if method.group else [])
+    return _labels(method.question_types) + (["Question groups"] if method.marks_question_group else [])
 
 
-def listed(items: Sequence[str]) -> str:
+def joined(items: Sequence[str]) -> str:
     """Items in a sentence: "a", "a and b", "a, b and c"."""
     return " and ".join(filter(None, [", ".join(items[:-1]), *items[-1:]]))
 
 
 def used_for(method: Method[Any]) -> str:
     """What the method marks, as a sentence: "For text and number questions and question groups"."""
-    kinds = [label.lower() for label in _labels(method.question_types)]
-    questions = "all" if len(kinds) == len(TYPE_LABELS) else listed(kinds)
-    marks = ([f"{questions} questions"] if kinds else []) + (["question groups"] if method.group else [])
+    type_labels = [label.lower() for label in _labels(method.question_types)]
+    questions = "all" if len(type_labels) == len(QUESTION_TYPE_LABELS) else joined(type_labels)
+    marks = ([f"{questions} questions"] if type_labels else []) + (
+        ["question groups"] if method.marks_question_group else []
+    )
     return f"For {' and '.join(marks)}" if marks else ""
 
 
-class ShownRow(NamedTuple):
+class ExpectedRow(NamedTuple):
     """Answers as an example declares them marked: the feedback, by question when there are several, and the marks."""
 
     answers: dict[str, str]
@@ -131,17 +135,17 @@ class ShownRow(NamedTuple):
     max_marks: float
 
 
-def shown_rows(example: Example) -> list[ShownRow]:
+def expected_rows(example: Example) -> list[ExpectedRow]:
     """The rows of `example` that declare a result."""
     return [
-        ShownRow(
+        ExpectedRow(
             row.answers,
             [
-                (key if len(row.expected) > 1 else "", said.feedback)
-                for key, said in row.expected.items()
-                if said.feedback
+                (key if len(row.expected) > 1 else "", expected.feedback)
+                for key, expected in row.expected.items()
+                if expected.feedback
             ],
-            sum(said.marks for said in row.expected.values()),
+            sum(expected.marks for expected in row.expected.values()),
             sum(example.questions[key].max_marks for key in row.expected),
         )
         for row in example.rows
@@ -149,20 +153,25 @@ def shown_rows(example: Example) -> list[ShownRow]:
     ]
 
 
-def guide_context(ref: str, methods: Methods, kind: str = "", owners: Mapping[str, str] = {}) -> dict[str, Any]:
-    """A method's guide, its examples that show a result with those rows, of marking questions of type `kind` first;
-    for a saved method, who made it (from `owners`, by name) and what using it asks for."""
-    guide = methods.by_ref.get(ref)
-    if guide is None:
+def guide_context(
+    ref: str, methods: Methods, question_type: str = "", owners: Mapping[str, str] = {}
+) -> dict[str, Any]:
+    """A method's guide, its examples that show a result with those rows, of marking questions of `question_type`
+    first; for a saved method, who made it (from `owners`, by name) and what using it asks for."""
+    method = methods.by_ref.get(ref)
+    if method is None:
         raise Http404
-    shown = [(example, rows) for example in guide.examples if (rows := shown_rows(example))]
-    examples = sorted(shown, key=lambda shown: kind not in {q.type for q in shown[0].questions.values()})
-    saved = guide.name not in BUILTIN_NAMES
+    examples_with_rows = [(example, rows) for example in method.examples if (rows := expected_rows(example))]
+    examples = sorted(
+        examples_with_rows,
+        key=lambda pair: question_type not in {question.type for question in pair[0].questions.values()},
+    )
+    is_saved_method = method.name not in BUILTIN_NAMES
     return {
-        "guide": guide,
+        "method": method,
         "examples": examples,
-        "used_for": used_for(guide),
-        "saved": saved,
-        "owner": owners.get(guide.name, ""),
-        "asks": guide.setting_titles if saved else [],
+        "used_for": used_for(method),
+        "is_saved_method": is_saved_method,
+        "owner": owners.get(method.name, ""),
+        "setting_titles": method.setting_titles if is_saved_method else [],
     }

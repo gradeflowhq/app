@@ -11,31 +11,31 @@ from django.urls import reverse
 from gradeflow_core import Methods, QuestionSet
 from gradeflow_core.editing import MarkingDraft, Position, dump_yaml
 
-from gradeflow_app.assessments.models import Membership
+from gradeflow_app.assessments.models import AssessmentAccess
 from gradeflow_app.courses.models import Course
 from gradeflow_app.editor.editing import CheckWorkspace, Conflict, EditorActions
-from gradeflow_app.imports.models import answer_to, has_file_marks
-from gradeflow_app.libraries.collection import Offers, offers, usable
-from gradeflow_app.marking.checks import draft_of
-from gradeflow_app.marking.models import Draft, Marking, Subject
+from gradeflow_app.imports.models import answer_expression, has_imported_marks
+from gradeflow_app.libraries.collection import OfferedMethods, offers, usable
+from gradeflow_app.marking.checks import marking_draft
+from gradeflow_app.marking.models import Marking, MarkingDraftRecord, MarkingTarget
 from gradeflow_app.requests import Request
 
-SUGGESTED = 100
+MAX_SUGGESTIONS = 100
 """The most common answers offered as suggestions."""
 
 
 @dataclass
-class Workspace(CheckWorkspace):
+class MarkingWorkspace(CheckWorkspace):
     """Build one per request: it reads every student's answer."""
 
-    draft: Draft
+    draft: MarkingDraftRecord
 
     @classmethod
     def of(
-        cls, request: Request, membership: Membership, draft_id: UUID, *, lock: bool = False, **filters: Any
+        cls, request: Request, membership: AssessmentAccess, draft_id: UUID, *, lock: bool = False, **filters: Any
     ) -> Self:
         """The user's draft `draft_id` of the assessment; with `lock`, locked with the assessment for a change."""
-        drafts = Draft.objects.select_related("assessment", "question", "marking")
+        drafts = MarkingDraftRecord.objects.select_related("assessment", "question", "marking")
         if lock:
             membership.assessment.lock()
             drafts = drafts.select_for_update(of=("self",))
@@ -44,7 +44,7 @@ class Workspace(CheckWorkspace):
         )
 
     @property
-    def subject(self) -> Subject:
+    def subject(self) -> MarkingTarget:
         return self.draft.subject
 
     @property
@@ -52,7 +52,7 @@ class Workspace(CheckWorkspace):
         return self.subject.assessment.course
 
     @cached_property
-    def offers(self) -> Offers:
+    def offers(self) -> OfferedMethods:
         return offers(self.draft.user, self.course)
 
     @property
@@ -67,18 +67,22 @@ class Workspace(CheckWorkspace):
         )
 
     @property
-    def kept(self) -> str:
+    def discard_note(self) -> str:
         subject = self.subject
         if subject.marking is not None:
             return "The saved marking stays as it was."
-        if subject.key and has_file_marks(subject.assessment, subject.key):
+        if subject.key and has_imported_marks(subject.assessment, subject.key):
             return "Students keep their imported marks."
         return ""
 
     @property
-    def stale(self) -> bool:
+    def saved_by_someone_else(self) -> bool:
         saved = self.subject.marking
-        return saved is not None and self.draft.based_on is not None and saved.updated_at > self.draft.based_on
+        return (
+            saved is not None
+            and self.draft.saved_marking_updated_at is not None
+            and saved.updated_at > self.draft.saved_marking_updated_at
+        )
 
     @cached_property
     def questions(self) -> QuestionSet:
@@ -90,7 +94,7 @@ class Workspace(CheckWorkspace):
 
     @cached_property
     def checks(self) -> MarkingDraft:
-        return draft_of(self.draft.definition, self.questions, self.subject.key, self.methods)
+        return marking_draft(self.draft.definition, self.questions, self.subject.key, self.methods)
 
     def save(self) -> None:
         """Saves the draft; once it is finished, as the core writes it, without what it leaves at defaults."""
@@ -104,9 +108,9 @@ class Workspace(CheckWorkspace):
         """The question's commonest answers, with how many gave each."""
         if self.subject.key is None:
             return {}
-        answers = self.subject.assessment.students.values_list(answer_to(self.subject.key), flat=True)
+        answers = self.subject.assessment.students.values_list(answer_expression(self.subject.key), flat=True)
         counts = Counter(text for answer in answers if (text := answer.strip()))
-        return dict(counts.most_common(SUGGESTED))
+        return dict(counts.most_common(MAX_SUGGESTIONS))
 
     def suggestions_at(self, position: Position) -> dict[str, int]:
         """What a check at `position` reads of the commonest answers, with how many gave each."""
@@ -124,20 +128,26 @@ class Workspace(CheckWorkspace):
     def conflicts(self) -> list[Conflict]:
         """The assessment's other markings of the questions this one marks, once it is finished. A question has one
         marking."""
-        if (marking := self.finished) is None:
+        if (marking := self.finalized) is None:
             return []
-        mine = marking.questions_marked()
-        return [Conflict(sorted(mine & other.outputs), *_named(other)) for other in self.others if mine & other.outputs]
+        marked_keys = marking.questions_marked()
+        return [
+            Conflict(sorted(marked_keys & other.questions_given_marks), *_name_and_url(other))
+            for other in self.other_markings
+            if marked_keys & other.questions_given_marks
+        ]
 
     @cached_property
-    def others(self) -> list[Marking]:
+    def other_markings(self) -> list[Marking]:
         saved = self.subject.marking
-        others = self.subject.assessment.markings.select_related("question")
-        return list(others.exclude(pk=saved.pk) if saved is not None else others)
+        markings = self.subject.assessment.markings.select_related("question")
+        return list(markings.exclude(pk=saved.pk) if saved is not None else markings)
 
 
-def _named(marking: Marking) -> tuple[str, str]:
+def _name_and_url(marking: Marking) -> tuple[str, str]:
     """A marking's name, its question or the questions it marks, and its page."""
     if marking.question is not None:
         return marking.question.key, reverse("question", args=[marking.assessment_id, marking.question_id])
-    return ", ".join(sorted(marking.outputs)), reverse("question_group", args=[marking.assessment_id, marking.pk])
+    return ", ".join(sorted(marking.questions_given_marks)), reverse(
+        "question_group", args=[marking.assessment_id, marking.pk]
+    )

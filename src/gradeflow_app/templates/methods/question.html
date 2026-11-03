@@ -1,17 +1,17 @@
-{# A question of the method's tests: its answer type and settings. #}
+{# A question of the method's tests: its question type and settings. #}
 <c-method-form action="{{ action }}" class="{% if not workspace.editable %}read-only-fields{% endif %}">
   <input type="hidden" name="key" value="{{ key }}">
-  <c-sheet.head title="{% if key %}{{ key }}{% else %}New question{% endif %}" />
+  <c-drawer.head title="{% if key %}{{ key }}{% else %}New question{% endif %}" />
   <fieldset class="grid gap-5 p-6"{% if not workspace.editable %} disabled{% endif %}>
-    <label class="grid gap-1.5"><span class="font-medium">Answer type</span><select class="select w-full" name="type" hx-get="{{ action }}" hx-include="closest form" hx-trigger="change" hx-target="#sheet-body" hx-swap="innerHTML">{% for kind, label in types %}<option value="{{ kind }}"{% if kind == chosen %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+    <label class="grid gap-1.5"><span class="font-medium">Question type</span><select class="select w-full" name="type" hx-get="{{ action }}" hx-include="closest form" hx-trigger="change" hx-target="#drawer-body" hx-swap="innerHTML">{% for kind, label in types %}<option value="{{ kind }}"{% if kind == question_type %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
     {{ form }}
   </fieldset>
   {% if workspace.editable %}
-  <c-sheet.foot submit="{% if key %}Save{% else %}Add question{% endif %}" name="save" value="1">
+  <c-drawer.footer submit="{% if key %}Save{% else %}Add question{% endif %}" name="save" value="1">
     {% if key %}
-    <button name="op" value="duplicate" class="btn btn-ghost">{% icon "document-duplicate" "size-4" %}Duplicate</button>
-    <button name="op" value="remove" class="btn btn-ghost text-error" data-confirm="Remove {{ key }}?" data-confirm-detail="Its test answers go too." data-confirm-button="Remove">Remove</button>
+    <button name="operation" value="duplicate" class="btn btn-ghost">{% icon "document-duplicate" "size-4" %}Duplicate</button>
+    <button name="operation" value="remove" class="btn btn-ghost text-error" data-confirm="Remove {{ key }}?" data-confirm-detail="Its test answers go too." data-confirm-button="Remove">Remove</button>
     {% endif %}
-  </c-sheet.foot>
+  </c-drawer.footer>
   {% endif %}
 </c-method-form>

@@ -3,16 +3,16 @@
 {% block topbar %}<c-topbar :course="member.course" />{% endblock %}
 {% block nav_label %}Course{% endblock %}
 {% block nav_header %}
-  <c-sidebar-header back="{% url 'courses' %}" back_label="All courses" title="{{ member.course.name }}" state="{{ member.course.description }}" />
+  <c-sidebar-header back_url="{% url 'courses' %}" back_label="All courses" title="{{ member.course.name }}" subtitle="{{ member.course.description }}" />
 {% endblock %}
 {% block nav %}
   {% with course=member.course %}
   <c-sidebar-link href="{% url 'course' course.pk %}" icon="document-text" label="Assessments" sections="course" />
   <c-sidebar-link href="{% url 'members' course.pk %}" icon="users" label="Members" sections="members" />
-  <c-sidebar-link href="{% url 'course_methods' course.pk %}" icon="puzzle-piece" label="Methods" sections="course_methods method_page published" />
+  <c-sidebar-link href="{% url 'course_methods' course.pk %}" icon="puzzle-piece" label="Methods" sections="course_methods method_page method_latest" />
   {% if member.can_edit %}
   <c-sidebar-group title="Setup" />
-  <c-sidebar-link href="{% url 'canvas' course.pk %}" icon="link" label="Canvas" sections="canvas" />
+  <c-sidebar-link href="{% url 'canvas_settings' course.pk %}" icon="link" label="Canvas" sections="canvas_settings" />
   {% if member.is_owner %}<c-sidebar-link href="{% url 'course_settings' course.pk %}" icon="cog-6-tooth" label="Settings" sections="course_settings" />{% endif %}
   {% endif %}
   {% endwith %}

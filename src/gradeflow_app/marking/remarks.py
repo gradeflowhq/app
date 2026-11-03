@@ -11,12 +11,12 @@ from gradeflow_app.assessments.models import Assessment
 from gradeflow_app.jobs import queue
 from gradeflow_app.jobs.handlers import Handler, register
 from gradeflow_app.jobs.models import Job
-from gradeflow_app.jobs.payloads import Payload
-from gradeflow_app.libraries.collection import Files, files
-from gradeflow_app.live.topics import publish, topic
+from gradeflow_app.jobs.payloads import MarkingRun
+from gradeflow_app.libraries.collection import MethodFiles, method_files
+from gradeflow_app.live.topics import notify_change, topic
 from gradeflow_app.marking.checks import check_for, questions_involved
 from gradeflow_app.marking.models import Marking
-from gradeflow_app.model_service.endpoints import asks_models, for_checks
+from gradeflow_app.model_service.endpoints import asks_models, endpoint_if_needed
 from gradeflow_app.results.models import Result
 
 
@@ -29,9 +29,9 @@ def remark(
 ) -> None:
     """Mark again with each marking that reads or marks one of the changed questions."""
     assessment.lock()
-    selected = set(keys)
+    changed_keys = set(keys)
     for marking in assessment.markings.select_related("question"):
-        if questions_involved(marking, None) & selected:
+        if questions_involved(marking, None) & changed_keys:
             schedule_marking(marking, user, model_endpoint)
 
 
@@ -47,31 +47,31 @@ def schedule_marking(
         .select_related("question", "assessment__course")
         .get(pk=marking.pk)
     )
-    queue.replace(current.jobs.filter(status__in=Job.ACTIVE))
+    queue.cancel_jobs(current.jobs.filter(status__in=Job.ACTIVE))
     current.revision += 1
     check = check_for(current)
     if check is not None:
-        removed = set(current.output_keys) - check.questions_marked()
+        removed = set(current.questions_marked) - check.questions_marked()
         Result.objects.filter(question__assessment=current.assessment, question__key__in=removed).delete()
-        current.output_keys = sorted(check.questions_marked())
-        current.input_keys = sorted(check.questions_read())
+        current.questions_marked = sorted(check.questions_marked())
+        current.questions_read = sorted(check.questions_read())
     Marking.objects.filter(pk=current.pk).update(
-        revision=current.revision, output_keys=current.output_keys, input_keys=current.input_keys
+        revision=current.revision, questions_marked=current.questions_marked, questions_read=current.questions_read
     )
-    marking.revision, marking.output_keys, marking.input_keys = (
+    marking.revision, marking.questions_marked, marking.questions_read = (
         current.revision,
-        current.output_keys,
-        current.input_keys,
+        current.questions_marked,
+        current.questions_read,
     )
-    if check is None or not current.output_keys:
+    if check is None or not current.questions_marked:
         return None
-    endpoint = for_checks([check], model_endpoint)
+    endpoint = endpoint_if_needed([check], model_endpoint)
     if endpoint is None and asks_models([check]):
-        return None  # keeps the decisions it has; the column says it wasn't marked again
+        return None  # keeps the results it has; the column says it wasn't marked again
     return mark_students(
         current.assessment,
         check,
-        files(current.uses.all()),
+        method_files(current.used_versions.all()),
         endpoint,
         kind=Job.Kind.REMARK,
         user=user,
@@ -83,15 +83,15 @@ def schedule_marking(
 def mark_students(
     assessment: Assessment,
     check: Check,
-    methods: Files,
+    methods: MethodFiles,
     model_endpoint: ModelEndpoint | None,
     *,
     kind: Job.Kind,
     user: User | None,
-    **job: Any,
+    **job_fields: Any,
 ) -> Job:
     """A job marking every student of the assessment with `check`, which uses `methods`."""
-    payload = Payload(
+    payload = MarkingRun(
         questions=assessment.question_set(),
         markings=[check.dump()],
         methods=list(methods),
@@ -102,11 +102,11 @@ def mark_students(
         course=assessment.course,
         assessment=assessment,
         kind=kind,
-        keys=sorted(check.questions_marked()),
-        data=payload.model_dump(mode="json"),
-        provenance={"markings": payload.markings, "methods": payload.methods},
+        question_keys=sorted(check.questions_marked()),
+        input=payload.model_dump(mode="json"),
+        marked_with={"markings": payload.markings, "methods": payload.methods},
         user=user,
-        **job,
+        **job_fields,
     )
 
 
@@ -115,36 +115,38 @@ def delete_marking(marking: Marking) -> None:
     """Delete a marking and its results."""
     marking.assessment.lock()
     current = Marking.objects.select_for_update(of=("self",)).select_related("question").get(pk=marking.pk)
-    queue.replace(current.jobs.filter(status__in=Job.ACTIVE))
-    Result.objects.filter(question__assessment=current.assessment, question__key__in=current.outputs).delete()
+    queue.cancel_jobs(current.jobs.filter(status__in=Job.ACTIVE))
+    Result.objects.filter(
+        question__assessment=current.assessment, question__key__in=current.questions_given_marks
+    ).delete()
     current.delete()
 
 
-def active_jobs(assessment: Assessment) -> list[Job]:
-    return list(assessment.jobs.running().filter(kind=Job.Kind.REMARK).defer("input", "result", "provenance"))
+def running_remarks(assessment: Assessment) -> list[Job]:
+    return list(assessment.jobs.running().filter(kind=Job.Kind.REMARK).defer("input", "result", "marked_with"))
 
 
-def _lock(job: Job) -> None:
+def _lock_marking(job: Job) -> None:
     if job.marking_id is not None:
         Marking.objects.select_for_update().filter(pk=job.marking_id).first()
 
 
-def _current(job: Job) -> bool:
+def _is_current(job: Job) -> bool:
     if job.marking_id is None:
         return False
     marking = Marking.objects.filter(pk=job.marking_id).first()
     return (
         marking is not None
         and marking.revision == job.revision
-        and sorted(marking.output_keys) == sorted(job.questions)
+        and sorted(marking.questions_marked) == sorted(job.question_keys)
     )
 
 
-def _store(job: Job, submissions: Sequence[MarkedSubmission]) -> None:
+def _store_results(job: Job, submissions: Sequence[MarkedSubmission]) -> None:
     assert job.assessment is not None
     assert job.revision is not None
-    questions = {question.key: question for question in job.assessment.questions.filter(key__in=job.questions)}
-    students = dict(job.assessment.students.values_list("key", "id"))
+    questions = {question.key: question for question in job.assessment.questions.filter(key__in=job.question_keys)}
+    students = dict(job.assessment.students.values_list("encrypted_id", "id"))
     Result.objects.filter(question__in=questions.values()).delete()
     Result.objects.bulk_create(
         Result(
@@ -152,9 +154,9 @@ def _store(job: Job, submissions: Sequence[MarkedSubmission]) -> None:
             question=question,
             proportion=result.proportion,
             feedback=result.feedback,
-            method=result.method,
-            marked=result.marked,
-            language_models=list(result.models),
+            method=result.method_label,
+            marked=result.is_marked,
+            language_models=list(result.model_names),
             breakdown=result.breakdown and result.breakdown.model_dump(mode="json"),
             marking_id=job.marking_id,
             revision=job.revision,
@@ -164,7 +166,7 @@ def _store(job: Job, submissions: Sequence[MarkedSubmission]) -> None:
         for key, question in questions.items()
         if (result := submission.results.get(key)) is not None
     )
-    publish(topic("marks", job.assessment_id))
+    notify_change(topic("marks", job.assessment_id))
 
 
 register(
@@ -172,8 +174,8 @@ register(
     Handler[Sequence[MarkedSubmission]](
         task="mark",
         topics=lambda job: [topic("jobs", job.assessment_id)],
-        lock=_lock,
-        current=_current,
-        finish=_store,
+        lock=_lock_marking,
+        is_current=_is_current,
+        apply_outcome=_store_results,
     ),
 )

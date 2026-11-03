@@ -1,0 +1,8 @@
+<c-vars action title footer="" />
+{# A form in the drawer, which comes back into it with its errors. Its footer is Cancel and Save unless `footer` is given; other attributes go on the form. #}
+<form class="flex flex-1 flex-col" hx-post="{{ action }}" hx-target="#drawer-body" hx-swap="innerHTML" hx-status:422="swap:innerHTML" {{ attrs }}>
+  {% csrf_token %}
+  <c-drawer.head title="{{ title }}" />
+  {{ slot }}
+  {% if footer %}{{ footer }}{% else %}<c-drawer.footer submit="Save" />{% endif %}
+</form>

@@ -2,17 +2,17 @@
 {% load allauth %}
 {% block head_title %}Confirm it's you{% endblock %}
 {% block content %}
-  <c-intro title="Confirm it's you">{% block help %}{% endblock %}</c-intro>
+  <c-entrance-heading title="Confirm it's you">{% block help %}{% endblock %}</c-entrance-heading>
   {% block reauthenticate_content %}{% endblock %}
   {% if reauthentication_alternatives %}
   <div class="divider my-0 text-sm text-muted">or</div>
   <div class="grid gap-2">
-    {% for alt in reauthentication_alternatives %}
-    {% if alt.id == "reauthenticate" %}{% element button href=alt.url tags="outline" %}{% icon "key" "size-5" %}Use your password{% endelement %}
-    {% elif alt.id == "mfa_reauthenticate" %}{% element button href=alt.url tags="outline" %}{% icon "device-phone-mobile" "size-5" %}Use a code{% endelement %}
-    {% else %}{% element button href=alt.url tags="outline" %}{% icon "finger-print" "size-5" %}Use a passkey{% endelement %}{% endif %}
+    {% for alternative in reauthentication_alternatives %}
+    {% if alternative.id == "reauthenticate" %}{% element button href=alternative.url tags="outline" %}{% icon "key" "size-5" %}Use your password{% endelement %}
+    {% elif alternative.id == "mfa_reauthenticate" %}{% element button href=alternative.url tags="outline" %}{% icon "device-phone-mobile" "size-5" %}Use a code{% endelement %}
+    {% else %}{% element button href=alternative.url tags="outline" %}{% icon "finger-print" "size-5" %}Use a passkey{% endelement %}{% endif %}
     {% endfor %}
   </div>
   {% endif %}
 {% endblock %}
-{% block links %}<a class="quiet-link" href="{% url 'settings' %}">Cancel</a>{% endblock %}
+{% block links %}<a class="secondary-link" href="{% url 'settings' %}">Cancel</a>{% endblock %}

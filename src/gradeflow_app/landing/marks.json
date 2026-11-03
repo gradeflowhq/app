@@ -40,7 +40,7 @@
   ]
  },
  "grouping": {
-  "before": [
+  "before_accepting": [
    [
     1.0,
     "Correct."
@@ -62,7 +62,7 @@
     "Expected “Release energy”."
    ]
   ],
-  "after": [
+  "after_accepting": [
    [
     1.0,
     "Correct."
@@ -86,7 +86,7 @@
   ]
  },
  "examples": {
-  "assumption": {
+  "combination": {
    "1": [
     [
      2.0,
@@ -168,7 +168,7 @@
     ]
    ]
   },
-  "custom": {
+  "custom_code": {
    "0": [
     [
      2.0,
@@ -224,7 +224,7 @@
     ]
    ]
   },
-  "tests": {
+  "code_tests": {
    "": [
     [
      null,

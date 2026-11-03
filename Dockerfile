@@ -26,12 +26,12 @@ COPY --from=build /app /app
 
 # The sandbox image built from the same commit, which CI passes in.
 ARG SANDBOX_IMAGE=ghcr.io/gradeflowhq/sandbox:latest
-ARG CORE_BUILD=""
+ARG CORE_VERSION=""
 ENV PATH=/app/.venv/bin:$PATH \
     PYTHONUNBUFFERED=1 \
     GRADEFLOW_STATIC_ROOT=/app/staticfiles \
     GRADEFLOW_NOMAD_IMAGE=$SANDBOX_IMAGE \
-    GRADEFLOW_CORE_BUILD=$CORE_BUILD \
+    GRADEFLOW_CORE_VERSION=$CORE_VERSION \
     FORWARDED_ALLOW_IPS=*
 
 USER gradeflow

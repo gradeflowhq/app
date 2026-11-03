@@ -9,11 +9,11 @@ from gradeflow_core import GradeFlowError, Methods, Problem, QuestionSet
 from gradeflow_core.editing import Condition, EditingError, MarkingDraft, Position
 from gradeflow_core.editing import Marking as CoreMarking
 
-from gradeflow_app.libraries.collection import Offers
+from gradeflow_app.libraries.collection import OfferedMethods
 from gradeflow_app.ui.schemaforms.fields import ConditionField
 from gradeflow_app.ui.schemaforms.forms import ObjectForm
 from gradeflow_app.ui.schemaforms.layout import Layout, layout
-from gradeflow_app.ui.schemaforms.schema import SUGGESTIONS, Schema, hint
+from gradeflow_app.ui.schemaforms.schema import SUGGESTIONS_KEY, Schema, hint
 
 
 @dataclass(frozen=True)
@@ -26,8 +26,8 @@ class EditorActions:
     yaml: str = ""
     discard: str = ""
     save: str = ""
-    sync: str = "#question-work:queue all"
-    include: str = ""
+    hx_sync: str = "#question-work:queue all"
+    hx_include: str = ""
 
 
 class Conflict(NamedTuple):
@@ -39,12 +39,14 @@ class Conflict(NamedTuple):
     url: str
 
 
-def located(checks: MarkingDraft, problem: Problem, here: str = "", label: Callable[[str], str] | None = None) -> str:
-    """`problem` in words, after where it is: the `label` of its check, unless that is the check at `here`, then the
-    title of the setting at fault. Where the core can't say, the problem as the core words it."""
+def located(
+    checks: MarkingDraft, problem: Problem, open_path: str = "", label: Callable[[str], str] | None = None
+) -> str:
+    """`problem` in words, after where it is: the `label` of its check, unless that is the check at `open_path`, then
+    the title of the setting at fault. Where the core can't say, the problem as the core words it."""
     label = label or checks.label
     try:
-        where = [] if problem.check == here else [label(problem.check) if problem.check else "The marking"]
+        where = [] if problem.check == open_path else [label(problem.check) if problem.check else "The marking"]
         if problem.field:
             name = str(problem.field[0])
             where.append(checks.schema(problem.check)["properties"].get(name, {}).get("title", name))
@@ -64,7 +66,7 @@ class CheckWorkspace(ABC):
 
     @property
     @abstractmethod
-    def offers(self) -> Offers:
+    def offers(self) -> OfferedMethods:
         """The saved methods to offer."""
 
     @property
@@ -81,7 +83,7 @@ class CheckWorkspace(ABC):
         return True
 
     @property
-    def stale(self) -> bool:
+    def saved_by_someone_else(self) -> bool:
         return False
 
     @property
@@ -89,7 +91,7 @@ class CheckWorkspace(ABC):
         return []
 
     @property
-    def kept(self) -> str:
+    def discard_note(self) -> str:
         """What discarding the draft leaves, in words."""
         return ""
 
@@ -99,9 +101,9 @@ class CheckWorkspace(ABC):
     def label(self, path: str) -> str:
         return self.checks.label(path)
 
-    def said(self, problem: Problem, here: str = "") -> str:
-        """`problem` in words, after where it is unless that is the check at `here`."""
-        return located(self.checks, problem, here, self.label)
+    def problem_text(self, problem: Problem, open_path: str = "") -> str:
+        """`problem` in words, after where it is unless that is the check at `open_path`."""
+        return located(self.checks, problem, open_path, self.label)
 
     def schema(self, path: str) -> Schema:
         return self.checks.schema(path)
@@ -114,32 +116,34 @@ class CheckWorkspace(ABC):
         schema = self.schema(path)
         if suggestions := self.suggestions_at(self.checks.position(path)):
             properties = {
-                name: {**prop, SUGGESTIONS: suggestions} if hint(prop).get("accepts_answers") else prop
-                for name, prop in schema["properties"].items()
+                name: {**property_schema, SUGGESTIONS_KEY: suggestions}
+                if hint(property_schema).get("lists_answers")
+                else property_schema
+                for name, property_schema in schema["properties"].items()
             }
             schema = {**schema, "properties": properties}
         form = ObjectForm(schema, self.checks.values(path), path=path, **kwargs)
         if conditions := [field for field in form.fields.values() if isinstance(field, ConditionField)]:
-            earlier = [(at, self.label(at)) for at in self.checks.earlier(path)]
+            earlier = [(at, self.label(at)) for at in self.checks.earlier_checks(path)]
             for field in conditions:
                 field.widget.checks = earlier
         return form
 
-    def asks(self, path: str) -> tuple[object, ...]:
+    def editor_inputs(self, path: str) -> tuple[object, ...]:
         """What the editor at `path` asks for: its fields, the methods it offers, and the conditions it shows as
         rows."""
         checks = self.checks
         rows = [value for value in checks.values(path).values() if isinstance(value, Condition)]
-        offered: list[object] = [tuple(info.ref for info in checks.methods(path)), *rows]
-        for slot in checks.slots(path):
+        offered: list[object] = [tuple(method.ref for method in checks.methods(path)), *rows]
+        for setting in checks.checks_settings(path):
             try:
-                offered.append(tuple(info.ref for info in checks.methods(slot.new)))
+                offered.append(tuple(method.ref for method in checks.methods(setting.new_check_path)))
             except GradeFlowError as error:
                 offered.append(str(error))
         return self.schema(path), tuple(offered)
 
     @property
-    def finished(self) -> CoreMarking | None:
+    def finalized(self) -> CoreMarking | None:
         """The marking, once the core finds nothing wrong with it."""
         try:
             return self.checks.finalized()
@@ -151,7 +155,7 @@ class CheckWorkspace(ABC):
         return self.checks.problems
 
     def problems_at(self, path: str, *, saving: bool) -> list[Problem]:
-        return [problem for problem in self.problems if problem.check == path and (saving or not problem.incomplete)]
+        return [problem for problem in self.problems if problem.check == path and (saving or not problem.is_incomplete)]
 
     def problems_elsewhere(self, path: str) -> list[Problem]:
         return [problem for problem in self.problems if problem.check != path]
@@ -160,7 +164,7 @@ class CheckWorkspace(ABC):
         """The problems of the check at `path` and the checks it holds."""
         return [problem for problem in self.problems if problem.check == path or problem.check.startswith(f"{path}.")]
 
-    def incomplete(self, path: str) -> bool:
+    def has_problems(self, path: str) -> bool:
         return bool(self.problems_in(path))
 
     @property

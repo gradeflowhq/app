@@ -1,7 +1,7 @@
 """Runs one GradeFlow job: marks submissions or test answers with the core, compares answers for grouping by
 meaning, or chooses or tries a model endpoint's models.
 
-Usage: sandbox.py mark|compare|test|choose|try SECONDS. It fetches input and sends signed callbacks as it goes, and
+Usage: sandbox.py mark|compare|test|choose|trial SECONDS. It fetches input and sends signed callbacks as it goes, and
 stops after SECONDS.
 """
 
@@ -18,11 +18,11 @@ from typing import Any
 
 import httpx
 
-URL = os.environ["GRADEFLOW_JOB_URL"]
-SECRET = os.environ["GRADEFLOW_JOB_SECRET"].encode()
-BATCH_BYTES = 1_000_000
+JOB_URL = os.environ["GRADEFLOW_JOB_URL"]
+JOB_SECRET = os.environ["GRADEFLOW_JOB_SECRET"].encode()
+MAX_BATCH_BYTES = 1_000_000
 """Target size for callbacks with results."""
-REPORT_SECONDS = 1
+MAX_SECONDS_BETWEEN_CALLBACKS = 1
 """Longest wait between callbacks with marked results, which show the job's progress."""
 CHUNK_SIZE = 60
 """Students marked between callbacks when a method asks a language model about many answers at once."""
@@ -30,24 +30,24 @@ PR_SET_DUMPABLE = 4
 
 
 def signature(body: bytes) -> str:
-    return hmac.new(SECRET, body, hashlib.sha256).hexdigest()
+    return hmac.new(JOB_SECRET, body, hashlib.sha256).hexdigest()
 
 
 def call_back(event: dict[str, Any]) -> None:
     body = json.dumps(event).encode()
     headers = {"Content-Type": "application/json", "X-GradeFlow-Signature": signature(body)}
-    httpx.post(URL + "callback", content=body, headers=headers, timeout=120).raise_for_status()
+    httpx.post(JOB_URL + "callback", content=body, headers=headers, timeout=120).raise_for_status()
 
 
-def endpoint(job: dict[str, Any]) -> Any:
+def model_endpoint(job: dict[str, Any]) -> Any:
     """The model endpoint the job asks language models at, if any."""
     from gradeflow_core import ModelEndpoint
 
-    found = job.get("model_endpoint")
-    return ModelEndpoint.model_validate(found) if found else None
+    endpoint_json = job.get("model_endpoint")
+    return ModelEndpoint.model_validate(endpoint_json) if endpoint_json else None
 
 
-class Reporter:
+class ProgressReporter:
     """Says how far a step that waits on a language model has got, about once a second."""
 
     def __init__(self) -> None:
@@ -55,10 +55,12 @@ class Reporter:
 
     def __call__(self, progress: Any) -> None:
         now = time.monotonic()
-        if progress.done < progress.total and now - self.last < REPORT_SECONDS:
+        if progress.completed < progress.total and now - self.last < MAX_SECONDS_BETWEEN_CALLBACKS:
             return
         self.last = now
-        call_back({"event": "progress", "done": progress.done, "total": progress.total, "step": progress.step})
+        call_back(
+            {"event": "progress", "completed": progress.completed, "total": progress.total, "step": progress.step}
+        )
 
 
 def mark(job: dict[str, Any]) -> None:
@@ -69,19 +71,21 @@ def mark(job: dict[str, Any]) -> None:
         QuestionSet.model_validate(job["questions"]),
         MarkScheme.load(job["markings"], methods=BUILTINS.with_files(job["methods"])),
         [Submission.model_validate(raw) for raw in job["submissions"]],
-        model_endpoint=endpoint(job),
-        on_progress=Reporter(),
+        model_endpoint=model_endpoint(job),
+        on_progress=ProgressReporter(),
         chunk_size=CHUNK_SIZE,
     )
     batch: list[dict[str, Any]] = []
-    size, reported = 0, time.monotonic()
+    size, last_callback_at = 0, time.monotonic()
     for submission in submissions:
-        item = submission.model_dump(mode="json")
-        length = len(json.dumps(item))
-        if batch and (size + length > BATCH_BYTES or time.monotonic() - reported >= REPORT_SECONDS):
+        submission_json = submission.model_dump(mode="json")
+        length = len(json.dumps(submission_json))
+        if batch and (
+            size + length > MAX_BATCH_BYTES or time.monotonic() - last_callback_at >= MAX_SECONDS_BETWEEN_CALLBACKS
+        ):
             call_back({"event": "marked", "submissions": batch})
-            batch, size, reported = [], 0, time.monotonic()
-        batch.append(item)
+            batch, size, last_callback_at = [], 0, time.monotonic()
+        batch.append(submission_json)
         size += length
     if batch:
         call_back({"event": "marked", "submissions": batch})
@@ -90,27 +94,28 @@ def mark(job: dict[str, Any]) -> None:
 def compare(job: dict[str, Any]) -> None:
     from gradeflow_core import compare_answers
 
-    comparison = compare_answers(job["texts"], similar="meaning")
-    payload = json.dumps(comparison.model_dump(mode="json"), ensure_ascii=True)
+    comparison = compare_answers(job["texts"], similarity="meaning")
+    comparison_json = json.dumps(comparison.model_dump(mode="json"), ensure_ascii=True)
     # ASCII pieces leave room for JSON escaping and the callback envelope.
-    size = BATCH_BYTES // 4
-    total = (len(payload) + size - 1) // size
-    for index, start in enumerate(range(0, len(payload), size)):
-        call_back({"event": "compared", "index": index, "total": total, "part": payload[start : start + size]})
+    part_size = MAX_BATCH_BYTES // 4
+    total = (len(comparison_json) + part_size - 1) // part_size
+    for index, start in enumerate(range(0, len(comparison_json), part_size)):
+        text = comparison_json[start : start + part_size]
+        call_back({"event": "compared", "index": index, "total": total, "text": text})
 
 
 def test(job: dict[str, Any]) -> None:
     from gradeflow_core import BUILTINS, QuestionSet
-    from gradeflow_core.editing import ExampleRow, evaluate_rows
+    from gradeflow_core.editing import ExampleRow, mark_rows
 
-    results = evaluate_rows(
+    results = mark_rows(
         job["method"],
         methods=BUILTINS.with_files(job["methods"]),
         questions=QuestionSet.model_validate(job["questions"]),
         question=job["question"],
         inputs=job["inputs"],
         rows=[ExampleRow.model_validate(row) for row in job["rows"]],
-        model_endpoint=endpoint(job),
+        model_endpoint=model_endpoint(job),
     )
     call_back({"event": "tested", "results": [result.model_dump(mode="json") for result in results]})
 
@@ -118,14 +123,14 @@ def test(job: dict[str, Any]) -> None:
 def choose(job: dict[str, Any]) -> None:
     from gradeflow_core import choose_models
 
-    choice = choose_models(endpoint(job))
-    chosen = choice.endpoint
+    choice = choose_models(model_endpoint(job))
+    chosen_endpoint = choice.endpoint
     call_back(
         {
             "event": "chosen",
             "choice": {
-                "decision_model": chosen.decision_model,
-                "reasoning_model": chosen.reasoning_model,
+                "fast_model": chosen_endpoint.fast_model,
+                "careful_model": chosen_endpoint.careful_model,
                 "trials": [trial.model_dump(mode="json") for trial in choice.trials],
             },
         }
@@ -135,9 +140,9 @@ def choose(job: dict[str, Any]) -> None:
 def try_models(job: dict[str, Any]) -> None:
     from gradeflow_core.editing import try_model
 
-    model_endpoint = endpoint(job)
-    trials = [try_model(model_endpoint, each["role"], each["model"]) for each in job["tries"]]
-    call_back({"event": "tried", "trials": [trial.model_dump(mode="json") for trial in trials]})
+    endpoint = model_endpoint(job)
+    trials = [try_model(endpoint, trial["role"], trial["model"]) for trial in job["trials"]]
+    call_back({"event": "trials", "trials": [trial.model_dump(mode="json") for trial in trials]})
 
 
 TASKS: dict[str, Callable[[dict[str, Any]], None]] = {
@@ -145,30 +150,30 @@ TASKS: dict[str, Callable[[dict[str, Any]], None]] = {
     "compare": compare,
     "test": test,
     "choose": choose,
-    "try": try_models,
+    "trial": try_models,
 }
 
 
-def undumpable() -> None:
+def hide_secret_from_job_code() -> None:
     """Keeps code the job runs, as the same user, from reading the job's secret from this process's memory or
     environment."""
     if ctypes.CDLL(None, use_errno=True).prctl(PR_SET_DUMPABLE, 0, 0, 0, 0) != 0:
         raise OSError(ctypes.get_errno(), "prctl(PR_SET_DUMPABLE) failed")
 
 
-def stopped(*_: object) -> None:
+def report_time_limit(*_: object) -> None:
     """Reports the job failed at its time limit, or when Nomad stops it, so the app stops waiting for it."""
-    call_back({"event": "failed", "error": "Took too long."})
+    call_back({"event": "failed", "error": "Ran past its time limit."})
     sys.exit(1)
 
 
 def main(task: str, time_limit: int) -> int:
-    undumpable()
-    signal.signal(signal.SIGTERM, stopped)
-    signal.signal(signal.SIGALRM, stopped)
+    hide_secret_from_job_code()
+    signal.signal(signal.SIGTERM, report_time_limit)
+    signal.signal(signal.SIGALRM, report_time_limit)
     signal.alarm(time_limit)
     call_back({"event": "started"})
-    response = httpx.get(URL + "input", headers={"X-GradeFlow-Signature": signature(b"input")}, timeout=120)
+    response = httpx.get(JOB_URL + "input", headers={"X-GradeFlow-Signature": signature(b"input")}, timeout=120)
     response.raise_for_status()
     try:
         TASKS[task](response.json())

@@ -2,7 +2,7 @@
 {% load allauth %}
 {% block head_title %}Sign in{% endblock %}
 {% block content %}
-  <c-intro title="Confirm it's you">Enter a code from your authenticator app, or a recovery code.</c-intro>
+  <c-entrance-heading title="Confirm it's you">Enter a code from your authenticator app, or a recovery code.</c-entrance-heading>
   {% url 'mfa_authenticate' as action_url %}
   {% element form form=form method="post" action=action_url %}
     {% slot body %}{% csrf_token %}{% include "mfa/snippets/code_field.html" with field=form.code %}{% endslot %}

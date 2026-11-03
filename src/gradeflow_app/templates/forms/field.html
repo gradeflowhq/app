@@ -1,26 +1,26 @@
-<div class="grid gap-1.5"{% if field.visible_when %} data-visible-when="{{ field.visible_when }}"{% if field.concealed %} hidden{% endif %}{% endif %}>
-  {% if field.filled %}
-    <div class="flex items-center gap-2"><span class="font-medium">{{ field.label }}</span>{{ field.addon }}</div>
-    {{ field.filled }}
+<div class="grid gap-1.5"{% if field.visible_when %} data-visible-when="{{ field.visible_when }}"{% if field.is_hidden %} hidden{% endif %}{% endif %}>
+  {% if field.replaced_control %}
+    <div class="flex items-center gap-2"><span class="font-medium">{{ field.label }}</span>{{ field.label_controls }}</div>
+    {{ field.replaced_control }}
   {% elif field.widget_type == "checkbox" %}
     <div class="flex items-start gap-3">
       {{ field }}
       <div class="grid min-w-0 gap-0.5">
-        <div class="flex items-center gap-2"><label class="cursor-pointer font-medium" for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field.addon }}</div>
+        <div class="flex items-center gap-2"><label class="cursor-pointer font-medium" for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field.label_controls }}</div>
         {% if field.help_text %}<span class="text-sm text-muted" id="{{ field.auto_id }}_helptext">{{ field.help_text }}</span>{% endif %}
       </div>
     </div>
   {% elif field.use_fieldset %}
     <fieldset class="grid gap-1.5"{% if field.help_text %} aria-describedby="{{ field.auto_id }}_helptext"{% endif %}>
-      <legend class="mb-1.5 flex items-center gap-2 font-medium">{{ field.label }}{{ field.addon }}</legend>
+      <legend class="mb-1.5 flex items-center gap-2 font-medium">{{ field.label }}{{ field.label_controls }}</legend>
       {% if field.help_text %}<p class="-mt-1 mb-1 text-sm text-muted" id="{{ field.auto_id }}_helptext">{{ field.help_text }}</p>{% endif %}
       {{ field }}
     </fieldset>
   {% else %}
-    <div class="flex items-center gap-2"><label class="font-medium" for="{{ field.id_for_label }}">{{ field.label }}{% if field.optional %} <span class="font-normal text-subtle">(optional)</span>{% endif %}</label>{{ field.addon }}</div>
+    <div class="flex items-center gap-2"><label class="font-medium" for="{{ field.id_for_label }}">{{ field.label }}{% if field.is_optional %} <span class="font-normal text-subtle">(optional)</span>{% endif %}</label>{{ field.label_controls }}</div>
     {% if field.help_text %}<div class="-mt-1 text-sm text-muted [&_a]:text-link [&_li]:list-none" id="{{ field.auto_id }}_helptext">{{ field.help_text }}</div>{% endif %}
     {{ field }}
-    {% if field.presets %}<div class="segmented" data-presets="{{ field.auto_id }}" aria-label="Quick picks for {{ field.label }}">{% for value, label, chosen in field.presets %}<button type="button" class="segment" data-preset="{{ value }}" aria-pressed="{{ chosen|yesno:'true,false' }}">{{ label }}</button>{% endfor %}</div>{% endif %}
+    {% if field.presets %}<div class="segmented" data-presets="{{ field.auto_id }}" aria-label="Presets for {{ field.label }}">{% for value, label, is_chosen in field.presets %}<button type="button" class="segment" data-preset="{{ value }}" aria-pressed="{{ is_chosen|yesno:'true,false' }}">{{ label }}</button>{% endfor %}</div>{% endif %}
   {% endif %}
-  {% if not field.filled %}<c-field-errors :errors="field.errors" id="{{ field.auto_id }}_error" />{% endif %}
+  {% if not field.replaced_control %}<c-field-errors :errors="field.errors" id="{{ field.auto_id }}_error" />{% endif %}
 </div>

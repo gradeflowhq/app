@@ -1,7 +1,7 @@
 {% load results %}
 {% partialdef effect %}
-{% if check.effect == "yes" or check.effect == "no" %}<span class="badge badge-ghost badge-sm font-medium">{{ check.effect|capfirst }}</span>
-{% else %}{% with sign=check.effect|effect_icon %}<span class="{{ sign.tone }}" title="{{ sign.label }}">{% icon sign.icon "size-4" %}<span class="sr-only">{{ sign.label }}</span></span>{% endwith %}{% endif %}
+{% if check.effect == "met" or check.effect == "not_met" %}<span class="badge badge-ghost badge-sm font-medium">{% if check.effect == "met" %}Yes{% else %}No{% endif %}</span>
+{% else %}{% with effect_display=check.effect|effect_icon %}<span class="{{ effect_display.color_class }}" title="{{ effect_display.label }}">{% icon effect_display.icon "size-4" %}<span class="sr-only">{{ effect_display.label }}</span></span>{% endwith %}{% endif %}
 {% endpartialdef %}
 {% partialdef value %}
 {% if detail.kind == "code" %}<code class="whitespace-pre-wrap break-words font-mono text-[0.9em]">{{ detail.value|highlight:language }}</code>
@@ -9,10 +9,10 @@
 {% else %}<span class="whitespace-pre-wrap break-words">{{ detail.value }}</span>{% endif %}
 {% endpartialdef %}
 {% partialdef details %}
-{% for detail in check.details %}{% if detail.value|multiline %}<span class="mt-1 grid gap-1"><span class="text-muted">{{ detail.title }}</span>{% if detail.kind == "code" %}<code class="code-block">{{ detail.value|highlight:language }}</code>{% else %}{% partial value %}{% endif %}</span>
+{% for detail in check.details %}{% if detail.value|is_multiline %}<span class="mt-1 grid gap-1"><span class="text-muted">{{ detail.title }}</span>{% if detail.kind == "code" %}<code class="code-block">{{ detail.value|highlight:language }}</code>{% else %}{% partial value %}{% endif %}</span>
 {% else %}<span class="ml-2 inline-flex gap-1"><span class="text-muted">{{ detail.title }}</span> {% partial value %}</span>{% endif %}{% endfor %}
 {% endpartialdef %}
-{% partialdef line %}
+{% partialdef check_row %}
 <span class="mt-0.5 flex w-8 shrink-0 justify-center">{% partial effect %}</span>
 <span class="min-w-0 flex-1">
   <span class="prose-core text-sm{% if check.effect == "uncounted" %} text-muted{% endif %}">{{ check.title|inline_markdown }}</span>{% if check.children %}{% icon "chevron-right" "ml-1 inline size-4 align-text-bottom text-muted transition-transform [details[open]>summary_&]:rotate-90" %}{% endif %}
@@ -21,7 +21,7 @@
 {% if check.marks is not None %}<span class="tabular-nums shrink-0 text-muted">{{ check.marks|signed_marks }}</span>{% endif %}
 {% endpartialdef %}
 <ul class="grid gap-1.5">
-  {% for kind, block in children|laid_out %}
+  {% for kind, block in children|breakdown_blocks %}
   {% if kind == "table" %}
   <li class="overflow-x-auto">
     <table class="table table-sm text-sm">
@@ -42,11 +42,11 @@
   <li>
     {% if check.children %}
     <details{% if check.effect != "uncounted" %} open{% endif %}>
-      <summary class="flex cursor-pointer list-none items-start gap-2">{% partial line %}</summary>
+      <summary class="flex cursor-pointer list-none items-start gap-2">{% partial check_row %}</summary>
       <div class="mt-1.5 ml-10">{% include "results/breakdown_children.html" with children=check.children %}</div>
     </details>
     {% else %}
-    <div class="flex items-start gap-2">{% partial line %}</div>
+    <div class="flex items-start gap-2">{% partial check_row %}</div>
     {% endif %}
   </li>
   {% endwith %}

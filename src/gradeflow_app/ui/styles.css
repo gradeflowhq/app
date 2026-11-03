@@ -143,11 +143,11 @@
 }
 
 /* One-action settings in a card, divided. */
-@utility rows {
+@utility setting-rows {
   @apply divide-y divide-base-300 px-5;
 }
 
-@utility surface {
+@utility card-box {
   @apply rounded-box border border-base-300 bg-base-100;
 }
 
@@ -191,7 +191,7 @@
   }
 }
 
-@utility list-link {
+@utility question-link {
   @apply relative flex items-center gap-3 rounded-field px-3 py-2 hover:bg-base-200;
   &[aria-current="page"] {
     @apply bg-base-300/60;
@@ -199,21 +199,21 @@
 }
 
 /* A row of an account list, such as an email address, passkey or device, with its actions at the end. */
-@utility item-row {
+@utility account-list-row {
   @apply flex min-h-16 items-center gap-3 px-5 py-3;
 }
 
 /* A labelled row of a settings summary: the label, then what's set, then an action. */
-@utility setting-row {
+@utility setting-summary-row {
   @apply flex flex-wrap items-center gap-x-4 gap-y-2 py-3.5;
 }
-@utility setting-label {
+@utility setting-summary-label {
   @apply w-full text-sm text-muted sm:w-28 sm:shrink-0;
 }
 
 /* Text edited where it stands: the text and the field that replaces it share one box, outset so the words line up
    with their neighbours, and the field shows focus as a soft ring rather than an outline over those neighbours. */
-@utility in-place {
+@utility edit-in-place {
   @apply -mx-2 -my-1 rounded-field border border-transparent px-[7px] py-[3px] leading-normal;
   &:is(textarea, input) {
     @apply border-base-300 bg-base-100 shadow-none focus:border-primary focus:outline-none focus:ring-3 focus:ring-primary/15;
@@ -250,28 +250,28 @@
   @apply flex min-h-12 items-center gap-2 border-t border-base-300 bg-secondary/60 px-4 py-2;
 }
 
-/* Long content cut to about ten lines and faded at the cut, until shown in full (clamped.js). */
-@utility clamped {
+/* Long content shortened to about ten lines and faded at the end, until shown in full (collapsible.js). */
+@utility collapsible {
   @apply max-h-64 overflow-hidden;
-  &[data-long] {
+  &[data-overflows] {
     mask-image: linear-gradient(to bottom, black calc(100% - 2.5rem), transparent);
   }
-  &[data-open] {
+  &[data-expanded] {
     @apply max-h-none;
     mask-image: none;
   }
 }
 
-/* Links: `text-link` in a sentence, `quiet-link` for a secondary one beside other content. */
+/* Links: `text-link` in a sentence, `secondary-link` for a secondary one beside other content. */
 @utility text-link {
   @apply font-medium text-primary underline-offset-2 hover:underline;
 }
-@utility quiet-link {
+@utility secondary-link {
   @apply text-muted underline-offset-2 hover:text-base-content hover:underline;
 }
 
 /* A breadcrumb after the logo: a separator, then a link that truncates. */
-@utility crumb {
+@utility breadcrumb {
   @apply flex items-center gap-2 before:text-subtle before:content-['/'];
   & > a {
     @apply truncate text-muted hover:text-base-content;
@@ -282,7 +282,7 @@
 }
 
 /* A sidebar link, a step darker than muted text; ARIA marks the current one. */
-@utility nav-item {
+@utility sidebar-link {
   @apply flex items-center gap-2.5 whitespace-nowrap rounded-md px-2.5 py-1.5 text-[15px] font-medium text-base-content/80 transition-colors hover:bg-base-300/40 hover:text-base-content;
   &[aria-current="page"] {
     @apply bg-base-300/70 text-base-content;
@@ -290,7 +290,7 @@
 }
 
 /* An initial on a tinted square, sized where it's used. */
-@utility tile {
+@utility initial-badge {
   @apply grid shrink-0 place-items-center rounded-md bg-primary/10 font-semibold uppercase text-primary;
 }
 
@@ -383,10 +383,10 @@
   }
   /* Two lines of rendered Markdown until the details holding it open. Safari clamps only inline content, so its
      paragraphs run on as lines meanwhile, and are spaced as lines when open too. */
-  .clamp-closed p + p {
+  .preview-two-lines p + p {
     margin-top: 0;
   }
-  .clamp-closed:not(details[open] *) {
+  .preview-two-lines:not(details[open] *) {
     @apply line-clamp-2;
     & > * {
       display: inline;
@@ -400,7 +400,7 @@
 
 /* A student ID this browser can't open yet, as a lock and masked digits; clicking it asks for the passphrase (ids.js).
    Its text, "Encrypted", is for assistive technology only. */
-[data-sid-state="locked"] {
+[data-student-id-state="encrypted"] {
   @apply inline-flex cursor-pointer items-center gap-1.5 text-subtle hover:text-muted;
   &::before {
     @apply size-3.5 shrink-0 bg-current;
@@ -413,7 +413,7 @@
 }
 
 /* Marks the draft no longer gives, while it waits to be previewed, or the saved marking's, while it marks again. */
-#answers:has(#preview-bar[data-stale]) [data-marks] {
+#answers:has(#preview-bar[data-outdated]) [data-marks] {
   @apply opacity-40;
 }
 
@@ -444,7 +444,7 @@
 /* The loading bar htmx.js shows while a page opens: a quarter of the way in a moment, then slowing towards 90%, and
    on arrival the rest of the way before it fades. Transitions, unlike animations, carry on from where they stop.
    Tailwind's scale-x-* set `scale`, which would multiply with this `transform`. */
-#progress {
+#page-loading-bar {
   @apply pointer-events-none fixed inset-x-0 top-0 z-[60] h-0.5 origin-left bg-primary opacity-0;
   transform: scaleX(0);
   &[data-state="loading"] {
@@ -460,7 +460,7 @@
   }
 }
 /* What an opening page replaces (htmx.js), once it has kept someone waiting. A `contents` box has no opacity. */
-:is([aria-busy="true"]:not(.contents, .btn, .choice), .contents[aria-busy="true"] > *) {
+:is([aria-busy="true"]:not(.contents, .btn, .method-choice), .contents[aria-busy="true"] > *) {
   @apply opacity-50 transition-opacity delay-100 duration-200;
 }
 /* A pressed button whose request takes a moment (htmx.js) shows a spinner in place of its label, at the same size; a
@@ -468,7 +468,7 @@
 .btn[data-spinner] {
   @apply relative;
 }
-:is(.btn[data-spinner], .choice[data-spinner] + .btn) {
+:is(.btn[data-spinner], .method-choice[data-spinner] + .btn) {
   @apply text-transparent transition-none;
   &::after {
     @apply loading loading-spinner loading-sm absolute top-1/2 left-1/2 -translate-1/2;
@@ -487,7 +487,7 @@
     @apply min-w-24 flex-1 bg-transparent text-base-content outline-none;
   }
 }
-/* Chips as long as a sentence, such as key points, wrap rather than run out of the field. */
+/* Values as long as a sentence, such as key points, wrap rather than run out of the field. */
 /* Tom Select's stylesheet isn't layered, so its colours win without `!`. */
 .ts-wrapper.multi .ts-control > .item {
   @apply inline-flex max-w-full items-center gap-1 rounded-selector bg-base-200! px-2 py-0.5 text-sm break-words text-base-content! ring-1 ring-base-300;
@@ -589,7 +589,7 @@
 @utility landing-glow {
   background: radial-gradient(56% 64% at 50% 0%, color-mix(in oklab, var(--color-primary) 16%, transparent), transparent 72%);
 }
-@utility landing-window {
+@utility landing-app-frame {
   @apply overflow-hidden rounded-2xl border border-base-300 bg-base-100;
   box-shadow:
     0 1px 2px oklch(25% 0.02 260 / 0.05),

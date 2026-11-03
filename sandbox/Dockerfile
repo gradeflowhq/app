@@ -22,11 +22,11 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 FROM python:3.14-slim
 
-RUN useradd --create-home --uid 10001 appuser && install -d -o appuser /opt/gradeflow-cache
+RUN useradd --create-home --uid 10001 gradeflow && install -d -o gradeflow /opt/gradeflow-cache
 COPY --from=build /opt/sandbox /opt/sandbox
 COPY sandbox/sandbox.py /app/sandbox.py
 ENV PATH=/opt/sandbox/bin:$PATH GRADEFLOW_CACHE_DIR=/opt/gradeflow-cache
-USER appuser
+USER gradeflow
 
 # Jobs have no network beyond the app, so the models come with the image.
 RUN python -m gradeflow_core setup

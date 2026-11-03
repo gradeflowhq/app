@@ -5,7 +5,7 @@
 <c-card body_class="">
     <ul class="divide-y divide-base-300" aria-label="Your addresses">
       {% for radio in emailaddress_radios|dictsortreversed:"emailaddress.primary" %}{% with address=radio.emailaddress %}
-      <li class="item-row">
+      <li class="account-list-row">
         <div class="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1">
           <span class="min-w-0 truncate font-medium">{{ address.email }}</span>
           {% if address.primary %}<span class="badge badge-sm badge-ghost">Primary</span>{% endif %}

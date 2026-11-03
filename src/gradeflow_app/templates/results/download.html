@@ -3,7 +3,7 @@
   <form method="post" action="{% url 'download' membership.assessment.pk %}" data-decrypt="{{ membership.assessment.pk }}" hx-boost="false">
     {% csrf_token %}
     <div class="grid gap-4 px-6 pt-2">
-      <c-more :open="download.is_bound">{{ download }}</c-more>
+      <c-more-options :open="download_form.is_bound">{{ download_form }}</c-more-options>
       <p class="flex gap-2 text-sm text-muted">{% icon "lock-closed" "size-4 mt-0.5" %}Student IDs are decrypted on this computer as the file downloads.</p>
     </div>
     <c-dialog.footer><button type="button" class="btn" data-close>Cancel</button><button class="btn btn-primary">{% icon "arrow-down-tray" "size-4" %}Download</button></c-dialog.footer>

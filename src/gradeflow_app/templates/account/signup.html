@@ -2,7 +2,7 @@
 {% load allauth courses %}
 {% block head_title %}Create an account{% endblock %}
 {% block content %}
-  <c-intro title="Create an account">{% with course=redirect_field_value|invited_to %}{% if course %}You're invited to <strong>{{ course.name }}</strong>. {% endif %}{% endwith %}Already have one? <a class="text-link" href="{{ login_url }}">Sign in</a></c-intro>
+  <c-entrance-heading title="Create an account">{% with course=redirect_field_value|invited_to %}{% if course %}You're invited to <strong>{{ course.name }}</strong>. {% endif %}{% endwith %}Already have one? <a class="text-link" href="{{ login_url }}">Sign in</a></c-entrance-heading>
   {% url 'account_signup' as action_url %}
   {% element form form=form method="post" action=action_url tags="entrance,signup" %}
     {% slot body %}{% csrf_token %}{% element fields form=form unlabeled=True %}{% endelement %}{{ redirect_field }}{% endslot %}

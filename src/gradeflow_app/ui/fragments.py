@@ -8,7 +8,7 @@ from django_htmx.http import HttpResponseClientRedirect, retarget
 from gradeflow_app.requests import Request, View
 
 
-def part_of(page: str) -> Callable[[View], View]:
+def fragment_of(page: str) -> Callable[[View], View]:
     """For a view that renders part of `page`: requests from anywhere but htmx, such as the URL opened in a new tab,
     go to `page` of the same course or assessment, the URL's first argument."""
 
@@ -29,12 +29,12 @@ def is_fragment(request: Request) -> bool:
     return bool(request.htmx) and not request.htmx.boosted
 
 
-def go(request: Request, url: str) -> HttpResponse:
+def redirect_page(request: Request, url: str) -> HttpResponse:
     """To `url`, as a whole page, from htmx requests too."""
     return HttpResponseClientRedirect(url) if request.htmx else redirect(url)
 
 
-def morph(response: HttpResponse, target: str) -> HttpResponse:
+def morphed_into(response: HttpResponse, target: str) -> HttpResponse:
     """`response` morphed into `target`, in place of what its request aimed at."""
     retarget(response, target)
     response["HX-Reswap"] = "outerMorph"  # django-htmx's reswap() doesn't know htmx 4's morph swaps

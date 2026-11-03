@@ -33,11 +33,11 @@ class Assessment(models.Model):
         Assessment.objects.select_for_update().get(pk=self.pk)
 
     def question_set(self) -> QuestionSet:
-        return QuestionSet({question.key: question.core for question in self.questions.all()})
+        return QuestionSet({question.key: question.core_question for question in self.questions.all()})
 
 
 @dataclass(frozen=True)
-class Membership:
+class AssessmentAccess:
     """A course member's access to one of its assessments: what every assessment view is given."""
 
     member: Member

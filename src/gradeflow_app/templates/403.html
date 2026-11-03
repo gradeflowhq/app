@@ -1,5 +1,5 @@
 {% extends "base.html" %}
 {% block title %}You don't have access to this · GradeFlow{% endblock %}
 {% block content %}
-<c-empty class="surface mx-auto mt-16 max-w-lg" icon="lock-closed" title="You don't have access to this"><c-slot name="action"><a href="{% url 'courses' %}" class="btn">Go to courses</a></c-slot></c-empty>
+<c-empty-state class="card-box mx-auto mt-16 max-w-lg" icon="lock-closed" title="You don't have access to this"><c-slot name="action"><a href="{% url 'courses' %}" class="btn">Go to courses</a></c-slot></c-empty-state>
 {% endblock %}

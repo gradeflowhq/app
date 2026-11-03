@@ -9,8 +9,8 @@
         {% if membership.can_edit %}
         <form method="post">
           {% csrf_token %}
-          {% url 'question_group_methods' membership.assessment.pk as about %}
-          <ul class="grid gap-2">{% for method in methods %}<c-method-choice :method="method" about="{{ about }}" />{% endfor %}</ul>
+          {% url 'question_group_methods' membership.assessment.pk as guide_url %}
+          <ul class="grid gap-2">{% for method in methods %}<c-method-choice :method="method" guide_url="{{ guide_url }}" />{% endfor %}</ul>
         </form>
         {% endif %}
       </div>

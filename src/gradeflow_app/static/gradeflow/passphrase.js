@@ -3,11 +3,11 @@
 
 import { decryptId } from "./crypto.js";
 import { local, session } from "./storage.js";
-import { report } from "./toasts.js";
+import { showToast } from "./toasts.js";
 
 const key = (assessment) => `gradeflow:passphrase:${assessment}`;
 
-export const stored = (assessment) => local.get(key(assessment)) ?? session.get(key(assessment));
+export const storedPassphrase = (assessment) => local.get(key(assessment)) ?? session.get(key(assessment));
 
 export function remember(assessment, passphrase, persist) {
   forget(assessment);
@@ -21,53 +21,53 @@ function forget(assessment) {
 
 // The assessment settings' passphrase row: whether this device knows it, entering it, and forgetting it.
 export const passphraseSettings = () => ({
-  known: false,
+  isKnown: false,
   get assessment() {
     return this.$root.dataset.assessmentId;
   },
   init() {
-    this.known = Boolean(stored(this.assessment));
+    this.isKnown = Boolean(storedPassphrase(this.assessment));
   },
   get status() {
-    if (!this.known) return "Not remembered on this device";
-    return remembered(this.assessment) ? "Remembered on this device" : "Remembered until this tab closes";
+    if (!this.isKnown) return "Not remembered on this device";
+    return isRemembered(this.assessment) ? "Remembered on this device" : "Remembered until this tab closes";
   },
   async enter() {
-    this.known = Boolean(await passphraseFor(this.assessment, this.$root.dataset.sample));
+    this.isKnown = Boolean(await passphraseFor(this.assessment, this.$root.dataset.sampleEncryptedId));
   },
   forget() {
     forget(this.assessment);
-    this.known = false;
-    document.dispatchEvent(new Event("gradeflow:locked"));
-    report("Forgotten on this device.", "success");
+    this.isKnown = false;
+    document.dispatchEvent(new Event("gradeflow:passphrase-forgotten"));
+    showToast("Forgotten on this device.", "success");
   },
 });
 
-export const remembered = (assessment) => local.get(key(assessment)) !== null;
+export const isRemembered = (assessment) => local.get(key(assessment)) !== null;
 
-export const opens = (passphrase, envelope) =>
-  decryptId(envelope, passphrase).then(
+export const passphraseOpens = (passphrase, encryptedId) =>
+  decryptId(encryptedId, passphrase).then(
     () => true,
     () => false,
   );
 
 const asking = new Map();
 
-/** The assessment's passphrase this browser keeps, if it opens `envelope`. Never asks. */
-export async function known(assessment, envelope) {
-  const kept = stored(assessment);
-  return kept && (await opens(kept, envelope)) ? kept : null;
+/** The assessment's passphrase this browser keeps, if it opens `encryptedId`. Never asks. */
+export async function knownPassphrase(assessment, encryptedId) {
+  const passphrase = storedPassphrase(assessment);
+  return passphrase && (await passphraseOpens(passphrase, encryptedId)) ? passphrase : null;
 }
 
-/** The assessment's passphrase, checked against `envelope`; asks for it if needed. Null if the person cancels. */
-export async function passphraseFor(assessment, envelope) {
-  const kept = await known(assessment, envelope);
-  if (kept) return kept;
-  if (!asking.has(assessment)) asking.set(assessment, ask(assessment, envelope).finally(() => asking.delete(assessment)));
+/** The assessment's passphrase, checked against `encryptedId`; asks for it if needed. Null if the person cancels. */
+export async function passphraseFor(assessment, encryptedId) {
+  const passphrase = await knownPassphrase(assessment, encryptedId);
+  if (passphrase) return passphrase;
+  if (!asking.has(assessment)) asking.set(assessment, ask(assessment, encryptedId).finally(() => asking.delete(assessment)));
   return asking.get(assessment);
 }
 
-function ask(assessment, envelope) {
+function ask(assessment, encryptedId) {
   const dialog = document.getElementById("passphrase");
   if (!dialog) return Promise.resolve(null);
   const form = dialog.querySelector("form[data-passphrase]");
@@ -83,14 +83,14 @@ function ask(assessment, envelope) {
         event.preventDefault();
         event.stopPropagation();
         const passphrase = form.elements.passphrase.value;
-        if (!(await opens(passphrase, envelope))) {
+        if (!(await passphraseOpens(passphrase, encryptedId))) {
           error.hidden = false;
           form.elements.passphrase.select();
           return;
         }
         remember(assessment, passphrase, form.elements.remember.checked);
-        document.dispatchEvent(new Event("gradeflow:unlocked"));
-        dialog.close("unlocked");
+        document.dispatchEvent(new Event("gradeflow:passphrase-entered"));
+        dialog.close("entered");
       },
       { capture: true, signal: asked.signal },
     );
@@ -98,7 +98,7 @@ function ask(assessment, envelope) {
       "close",
       () => {
         asked.abort();
-        resolve(dialog.returnValue === "unlocked" ? form.elements.passphrase.value : null);
+        resolve(dialog.returnValue === "entered" ? form.elements.passphrase.value : null);
       },
       { signal: asked.signal },
     );

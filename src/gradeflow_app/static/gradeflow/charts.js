@@ -1,7 +1,7 @@
 // A bar chart of how many students fall in each band of totals, at the chosen bar width, in the theme's colours.
 
-import { script } from "./vendor.js";
-import { plural } from "./words.js";
+import { loadScript } from "./vendor.js";
+import { counted } from "./words.js";
 
 const color = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
@@ -14,19 +14,19 @@ export const ticks = (values, maxMarks) => {
   return [...values.filter((value) => value >= 0 && maxMarks - value >= step / 2), maxMarks];
 };
 
-const band = ([start, end]) => (start === end ? plural(start, "mark") : `${start}–${end} marks`);
+const barLabel = ([start, end]) => (start === end ? counted(start, "mark") : `${start}–${end} marks`);
 
 export const histogram = () => {
   let chart = null; // kept out of Alpine's state: Chart.js overflows the stack when it updates through a proxy
   return {
-    bars: "auto",
+    barWidth: "auto",
     async init() {
       const canvas = this.$el.querySelector("canvas");
-      const { max_marks: maxMarks, bars } = JSON.parse(this.$el.querySelector("script[type='application/json']").textContent);
+      const { max_marks: maxMarks, bars: barsByWidth } = JSON.parse(this.$el.querySelector("script[type='application/json']").textContent);
       // An empty band has no bar rather than a hairline.
-      const points = (name) => bars[name].map(([start, end, students]) => ({ x: (start + end) / 2, y: students || null }));
-      const [min, max] = bounds(bars[this.bars], maxMarks);
-      await script("chart-4.5.1.umd.min.js");
+      const chartPoints = (width) => barsByWidth[width].map(([start, end, students]) => ({ x: (start + end) / 2, y: students || null }));
+      const [min, max] = bounds(barsByWidth[this.barWidth], maxMarks);
+      await loadScript("chart-4.5.1.umd.min.js");
       if (!canvas.isConnected) return;
       Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
       Chart.defaults.font.size = 14;
@@ -36,7 +36,7 @@ export const histogram = () => {
         data: {
           datasets: [
             {
-              data: points(this.bars),
+              data: chartPoints(this.barWidth),
               backgroundColor: color("--color-chart"),
               hoverBackgroundColor: color("--color-primary"), // Chart.js can't shade oklch, and would show black
               borderRadius: 4,
@@ -55,8 +55,8 @@ export const histogram = () => {
             tooltip: {
               displayColors: false,
               callbacks: {
-                title: ([item]) => band(bars[this.bars][item.dataIndex]),
-                label: (item) => plural(item.raw.y, "student"),
+                title: ([item]) => barLabel(barsByWidth[this.barWidth][item.dataIndex]),
+                label: (item) => counted(item.raw.y, "student"),
               },
             },
           },
@@ -82,9 +82,9 @@ export const histogram = () => {
           },
         },
       });
-      this.$watch("bars", (name) => {
-        [chart.options.scales.x.min, chart.options.scales.x.max] = bounds(bars[name], maxMarks);
-        chart.data.datasets[0].data = points(name);
+      this.$watch("barWidth", (width) => {
+        [chart.options.scales.x.min, chart.options.scales.x.max] = bounds(barsByWidth[width], maxMarks);
+        chart.data.datasets[0].data = chartPoints(width);
         chart.update();
       });
     },

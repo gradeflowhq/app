@@ -9,15 +9,15 @@ from django.dispatch import receiver
 
 from gradeflow_app.accounts.models import User
 from gradeflow_app.libraries.models import Library
-from gradeflow_app.libraries.services import follow, free_namespace
+from gradeflow_app.libraries.services import available_namespace, rename_namespace
 
 
 @receiver(post_save, sender=User)
-def _signed_up(instance: User, created: bool, raw: bool, **kwargs: Any) -> None:
+def _create_user_library(instance: User, created: bool, raw: bool, **kwargs: Any) -> None:
     if created and not raw:
-        Library.objects.create(namespace=free_namespace(instance.email), user=instance)
+        Library.objects.create(namespace=available_namespace(instance.email), user=instance)
 
 
 @receiver(email_changed)
-def _email_changed(user: User, to_email_address: EmailAddress, **kwargs: Any) -> None:
-    follow(user.library, to_email_address.email)
+def _rename_user_namespace(user: User, to_email_address: EmailAddress, **kwargs: Any) -> None:
+    rename_namespace(user.library, to_email_address.email)

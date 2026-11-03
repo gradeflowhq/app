@@ -1,5 +1,5 @@
 <c-vars id title="" action="" submit="Save" footer="" />
-{# A card that is one form, submitted from its foot, after anything in `footer`. Other attributes go on the card. #}
+{# A card that is one form, submitted from its footer, after anything in `footer`. Other attributes go on the card. #}
 <c-card title="{{ title }}" :attrs="attrs">
   <form id="{{ id }}" method="post"{% if action %} action="{{ action }}"{% endif %} class="grid gap-5">{% csrf_token %}{{ slot }}</form>
   <c-slot name="footer">{{ footer }}<button form="{{ id }}" class="btn btn-primary ml-auto">{{ submit }}</button></c-slot>

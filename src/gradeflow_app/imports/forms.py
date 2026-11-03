@@ -10,7 +10,7 @@ class UploadForm(forms.Form):
     and the original file encrypted."""
 
     name = forms.CharField(max_length=255)
-    results = forms.FileField()
+    answers_csv = forms.FileField()
     student_id_column = forms.CharField(strip=False)
     answer_columns = forms.JSONField(required=False)
     marks_columns = forms.JSONField(required=False)
@@ -21,9 +21,9 @@ class UploadForm(forms.Form):
     first_row = forms.IntegerField(required=False, min_value=0)
     last_row = forms.IntegerField(required=False, min_value=0)
 
-    def clean_results(self) -> str:
+    def clean_answers_csv(self) -> str:
         try:
-            text: str = self.cleaned_data["results"].read().decode("utf-8-sig")
+            text: str = self.cleaned_data["answers_csv"].read().decode("utf-8-sig")
         except UnicodeDecodeError as error:
             raise ValidationError("The file couldn't be read.") from error
         return text
@@ -51,18 +51,18 @@ class UploadForm(forms.Form):
 
     def clean_original(self) -> bytes | None:
         file = self.cleaned_data["original"]
-        return None if file is None else _read(file, "The file is too large to keep.")
+        return None if file is None else _read_upload(file, "The file is too large to store.")
 
 
 class QuestionDocumentForm(forms.Form):
     file = forms.FileField(error_messages={"required": "Choose the question document."})
 
     def clean_file(self) -> bytes:
-        return _read(self.cleaned_data["file"], "The question document is too large.")
+        return _read_upload(self.cleaned_data["file"], "The question document is too large.")
 
 
-def _read(file: UploadedFile[bytes], too_large: str) -> bytes:
+def _read_upload(file: UploadedFile[bytes], too_large_message: str) -> bytes:
     if file.size is not None and file.size > MAX_FILE_BYTES:
-        raise ValidationError(f"{too_large} The limit is {MAX_FILE_BYTES // 2**20} MB.")
+        raise ValidationError(f"{too_large_message} The limit is {MAX_FILE_BYTES // 2**20} MB.")
     data: bytes = file.read()
     return data

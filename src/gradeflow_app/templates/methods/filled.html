@@ -1,5 +1,0 @@
-{# In place of a setting's control, the input that fills it. Its id keeps a morph from making it of what the control was, such as the wrapper Tom Select added, which goes. #}
-<div id="filled-{{ field.path }}" class="flex items-center gap-3 rounded-field border border-dashed border-base-300 px-3 py-2 text-sm">
-  <span class="min-w-0 flex-1 text-muted">Filled in where it's used · {% if "default" in input %}Default <span class="text-base-content">{{ default|brief }}</span>{% else %}No default{% endif %}</span>
-  <button type="button" class="quiet-link shrink-0" hx-get="{{ inputs_url }}" hx-vals="{% vals tab="inputs" input=field.input %}">Edit input</button>
-</div>

@@ -10,7 +10,7 @@ from gradeflow_app.jobs.queue import recover_queue
 
 
 class Command(BaseCommand):
-    help = "Dispatch queued sandbox jobs and recover interrupted submissions."
+    help = "Dispatch queued sandbox jobs and recover interrupted ones."
 
     def handle(self, *args: Any, **options: Any) -> None:
         while True:

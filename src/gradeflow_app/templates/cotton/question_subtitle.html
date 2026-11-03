@@ -1,3 +1,3 @@
-<c-vars question read=False class="" />
+<c-vars question read_only=False class="" />
 {# A question's label and marks, or that the marking only reads it. #}
-<span class="truncate text-sm text-muted{% if class %} {{ class }}{% endif %}">{{ question.label }} · {% if read %}Read only{% else %}<span class="tabular-nums">{{ question.max_marks|marks }}</span> mark{{ question.max_marks|pluralize }}{% endif %}</span>
+<span class="truncate text-sm text-muted{% if class %} {{ class }}{% endif %}">{{ question.label }} · {% if read_only %}Read only{% else %}<span class="tabular-nums">{{ question.max_marks|marks }}</span> mark{{ question.max_marks|pluralize }}{% endif %}</span>

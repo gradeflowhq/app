@@ -7,19 +7,26 @@ from typing import Any
 
 from gradeflow_core import BUILTINS, MarkScheme, Method
 
-from gradeflow_app.landing.content import Answer, Example, Marks, compatible, content, marks
-from gradeflow_app.landing.forms import Settings
+from gradeflow_app.landing.content import (
+    Answer,
+    Example,
+    MarkRange,
+    compatible_landing_methods,
+    core_marks,
+    landing_content,
+)
+from gradeflow_app.landing.forms import ExampleSettingsForm
 
-GITHUB = "https://github.com/gradeflowhq"
+GITHUB_URL = "https://github.com/gradeflowhq"
 SECTIONS = {"grouping": "Grouping", "methods": "Methods", "canvas": "Canvas", "privacy": "Privacy"}
 
 
 @dataclass(frozen=True)
-class Row:
+class AnswerRow:
     answers: dict[str, str]
-    students: int
-    marks: Marks | None
-    before: Marks | None
+    student_count: int
+    marks: MarkRange | None
+    marks_before: MarkRange | None
     feedback: str
 
     @property
@@ -28,85 +35,87 @@ class Row:
         return list(self.answers.values())[-1]
 
     @property
-    def changed(self) -> bool:
-        return self.marks != self.before
+    def marks_changed(self) -> bool:
+        return self.marks != self.marks_before
 
 
 @dataclass(frozen=True)
-class Variant:
+class SettingVariant:
     value: str
     description: str
-    rows: list[Row]
+    rows: list[AnswerRow]
 
 
 @dataclass(frozen=True)
-class Shown:
+class ShownExample:
     key: str
     example: Example
     method: Method[Any]
-    start: str
-    variants: list[Variant]
+    initial_value: str
+    variants: list[SettingVariant]
 
 
 @dataclass(frozen=True)
 class AnswerGroup:
     answers: tuple[Answer, ...]
-    before: Marks
-    accepted: Marks
+    marks_before: MarkRange
+    marks_when_accepted: MarkRange
     """Its marks once all its answers are accepted."""
 
     @property
-    def students(self) -> int:
-        return sum(answer.students for answer in self.answers)
+    def student_count(self) -> int:
+        return sum(answer.student_count for answer in self.answers)
 
     @property
     def texts_json(self) -> str:
         return json.dumps([answer.text for answer in self.answers])
 
     @property
-    def accepted_at_first(self) -> bool:
-        return all(answer.text in content().grouping.accepted for answer in self.answers)
+    def is_accepted_initially(self) -> bool:
+        return all(answer.text in landing_content().grouping.accepted_answers for answer in self.answers)
 
 
 def other_methods() -> list[str]:
     """The names of the methods without an example, simplest first."""
-    with_examples = {BUILTINS.by_ref[example.method].label for example in content().examples.values()}
-    by_level = sorted(compatible(), key=lambda info: info.level != "basic")
-    return list(dict.fromkeys(info.label for info in by_level if info.label not in with_examples))
+    with_examples = {BUILTINS.by_ref[example.method].label for example in landing_content().examples.values()}
+    by_level = sorted(compatible_landing_methods(), key=lambda method: method.level != "basic")
+    return list(dict.fromkeys(method.label for method in by_level if method.label not in with_examples))
 
 
 @cache
-def examples() -> list[Shown]:
+def examples() -> list[ShownExample]:
     """Every example with each value of its setting: its markings as the core describes them, and its answers' marks
     beside those it starts with."""
-    core = marks()["examples"]
-    start = Settings().initial_values()
+    example_marks = core_marks()["examples"]
+    initial_values = ExampleSettingsForm().initial_values()
     return [
-        Shown(
+        ShownExample(
             key,
             example,
             BUILTINS.by_ref[example.method],
-            start[key],
+            initial_values[key],
             [
-                Variant(
+                SettingVariant(
                     value,
                     "\n\n".join(check.describe() for check in MarkScheme.load(markings).markings),
-                    rows(example, core[key][value], core[key][start[key]]),
+                    rows(example, example_marks[key][value], example_marks[key][initial_values[key]]),
                 )
                 for value, markings in example.markings.items()
             ],
         )
-        for key, example in content().examples.items()
+        for key, example in landing_content().examples.items()
     ]
 
 
-def rows(example: Example, marked: list[tuple[float | None, str]], before: list[tuple[float | None, str]]) -> list[Row]:
-    def single(value: float | None) -> Marks | None:
-        return None if value is None else Marks(value, value)
+def rows(
+    example: Example, marks: list[tuple[float | None, str]], marks_before: list[tuple[float | None, str]]
+) -> list[AnswerRow]:
+    def exact_range(mark: float | None) -> MarkRange | None:
+        return None if mark is None else MarkRange(mark, mark)
 
     return [
-        Row(answered.answers, answered.students, single(value), single(was), feedback)
-        for answered, (value, feedback), (was, _) in zip(example.answers, marked, before, strict=True)
+        AnswerRow(answer.answers, answer.student_count, exact_range(mark), exact_range(mark_before), feedback)
+        for answer, (mark, feedback), (mark_before, _) in zip(example.answers, marks, marks_before, strict=True)
     ]
 
 
@@ -114,36 +123,38 @@ def rows(example: Example, marked: list[tuple[float | None, str]], before: list[
 def answer_groups() -> dict[str, list[AnswerGroup]]:
     """Q1's answers grouped by the same answer and by meaning, each group with its marks before and after its answers
     are accepted."""
-    grouping = content().grouping
-    core = marks()["grouping"]
-    marked = {
+    grouping = landing_content().grouping
+    grouping_marks = core_marks()["grouping"]
+    marks = {
         answer.text: (before, after)
-        for answer, (before, _), (after, _) in zip(grouping.answers, core["before"], core["after"], strict=True)
+        for answer, (before, _), (after, _) in zip(
+            grouping.answers, grouping_marks["before_accepting"], grouping_marks["after_accepting"], strict=True
+        )
     }
 
     def group(answers: list[Answer]) -> AnswerGroup:
-        before, after = zip(*(marked[answer.text] for answer in answers), strict=True)
-        return AnswerGroup(tuple(answers), Marks.of(list(before)), Marks.of(list(after)))
+        before, after = zip(*(marks[answer.text] for answer in answers), strict=True)
+        return AnswerGroup(tuple(answers), MarkRange.spanning(list(before)), MarkRange.spanning(list(after)))
 
     by_meaning: dict[str, list[Answer]] = {}
     for answer in grouping.answers:
-        by_meaning.setdefault(answer.meaning, []).append(answer)
+        by_meaning.setdefault(answer.meaning_group, []).append(answer)
     return {
-        "answers": [group([answer]) for answer in grouping.answers],
-        "meaning": [group(answers) for answers in by_meaning.values()],
+        "by_answer": [group([answer]) for answer in grouping.answers],
+        "by_meaning": [group(answers) for answers in by_meaning.values()],
     }
 
 
-def context() -> dict[str, Any]:
+def landing_context() -> dict[str, Any]:
     """What the landing page shows, apart from the settings form."""
-    landing = content()
+    landing = landing_content()
     return {
-        "github": GITHUB,
+        "github_url": GITHUB_URL,
         "sections": SECTIONS,
         "workspace": landing.workspace,
         "grouping": landing.grouping,
         "answer_groups": answer_groups(),
         "examples": examples(),
         "other_methods": other_methods(),
-        "students": landing.students,
+        "privacy_students": landing.privacy_students,
     }

@@ -2,7 +2,7 @@
 {# The account's settings pages. #}
 {% block title %}{% block page_title %}{% endblock %}GradeFlow{% endblock %}
 {% block nav_label %}Account{% endblock %}
-{% block nav_header %}<c-sidebar-header back="{% url 'courses' %}" back_label="All courses" title="{{ user.name|default:user.email }}" state="{% if user.name %}{{ user.email }}{% endif %}" person />{% endblock %}
+{% block nav_header %}<c-sidebar-header back_url="{% url 'courses' %}" back_label="All courses" title="{{ user.name|default:user.email }}" subtitle="{% if user.name %}{{ user.email }}{% endif %}" shows_avatar />{% endblock %}
 {% block nav %}
   <c-sidebar-link href="{% url 'settings' %}" icon="user-circle" label="Profile" sections="settings" />
   <c-sidebar-link href="{% url 'integrations' %}" icon="link" label="Integrations" sections="integrations" />

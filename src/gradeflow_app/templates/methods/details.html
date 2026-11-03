@@ -1,6 +1,6 @@
 {# The method's name, summary and guide, and how it marks. #}
 <c-method-form action="{{ action }}" class="{% if not workspace.editable %}read-only-fields{% endif %}">
-  <c-sheet.head title="Details" />
+  <c-drawer.head title="Details" />
   <div class="grid gap-5 p-6">{{ form }}</div>
-  {% if workspace.editable %}<c-sheet.foot submit="Save" />{% endif %}
+  {% if workspace.editable %}<c-drawer.footer submit="Save" />{% endif %}
 </c-method-form>

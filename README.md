@@ -28,7 +28,7 @@ uv run manage.py job_worker      # starts queued sandbox jobs and recovers them 
 
 Then sign up at http://localhost:8000. Emails, sign-up codes included, are written to `GRADEFLOW_EMAIL_FILE_PATH`.
 
-### Checks
+### Linting and tests
 
 ```sh
 uv run ruff check && uv run ruff format --check
@@ -41,7 +41,7 @@ Tests run jobs in-process, so they need PostgreSQL but not Nomad. pytest keeps i
 
 ### Nomad
 
-Marking and grouping answers by meaning run as Nomad batch jobs in the sandbox image. For development, start an agent with `nomad agent -dev` and the Docker driver, and point `GRADEFLOW_JOB_URL` at an address of this machine its containers can reach. Uvicorn listens on all interfaces for that reason.
+Marking and grouping answers by meaning run as Nomad batch jobs in the sandbox image. For development, start an agent with `nomad agent -dev` and the Docker driver, and point `GRADEFLOW_APP_URL_FOR_JOBS` at an address of this machine its containers can reach. Uvicorn listens on all interfaces for that reason.
 
 Jobs pull the sandbox from a registry on port 5055, which runs as a Nomad service job. Submit it once, and again whenever the agent restarts:
 
@@ -72,7 +72,7 @@ echo 'export UV_NO_SYNC=1' >> dev.env
 
 Add `--reload-dir path/to/core/src/gradeflow_core` to the uvicorn command to reload on core changes.
 
-Each job records the sandbox image and the core build it ran with, and meaning comparisons are cached per core build. The build is the installed core's commit, or its version for a release wheel; set `GRADEFLOW_CORE_BUILD` to name a local editable build.
+Each job records the sandbox image and the core version it ran with, and meaning comparisons are cached per core version. The version is the installed core's commit, or its version for a release wheel; set `GRADEFLOW_CORE_VERSION` to name a local editable build.
 
 ## Configuration
 
@@ -96,11 +96,11 @@ Each job records the sandbox image and the core build it ran with, and meaning c
 | `GRADEFLOW_NOMAD_DATACENTER` | `dc1` | |
 | `GRADEFLOW_NOMAD_NAMESPACE` | `default` | |
 | `GRADEFLOW_NOMAD_IMAGE` | `localhost:5055/gradeflow-sandbox:latest` | The app image sets the sandbox built with it |
-| `GRADEFLOW_JOB_URL` | `http://localhost:8000` | Where jobs reach the app |
+| `GRADEFLOW_APP_URL_FOR_JOBS` | `http://localhost:8000` | Where jobs reach the app |
 | `GRADEFLOW_JOB_TIME_LIMIT` | `600` | Seconds a job may run, not counting time queued |
 | `GRADEFLOW_MODEL_JOB_TIME_LIMIT` | `1800` | Seconds a job that asks a language model may run |
-| `GRADEFLOW_JOBS_PER_USER` | `5` | Jobs one person may run at once |
-| `GRADEFLOW_CORE_BUILD` | the installed core's commit or version | |
+| `GRADEFLOW_RUNNING_JOBS_PER_USER` | `5` | Jobs one person may have running at once |
+| `GRADEFLOW_CORE_VERSION` | the installed core's commit or version | |
 | `GRADEFLOW_CACHE_DIR` | `$XDG_CACHE_HOME/gradeflow` or `~/.cache/gradeflow` | The core's model cache |
 
 ## Deployment
@@ -119,12 +119,12 @@ CI publishes two images for each push to `main` (tag `main`) and each `v*` tag (
 - `GRADEFLOW_ALLOWED_HOSTS`, the domain
 - an email backend and its settings, such as `GRADEFLOW_EMAIL_BACKEND=anymail.backends.mailgun.EmailBackend` with `GRADEFLOW_ANYMAIL_*`, and `GRADEFLOW_FROM_EMAIL`
 - `GRADEFLOW_NOMAD_URL` and `GRADEFLOW_NOMAD_TOKEN`
-- `GRADEFLOW_JOB_URL`
+- `GRADEFLOW_APP_URL_FOR_JOBS`
 - `GRADEFLOW_CORS_PROXY_URL`, to send marks to Canvas
 - `GRADEFLOW_MODEL_PROVIDERS`, to mark with AI
 - `GRADEFLOW_VERSION`, an image tag such as `0.1`, to stay on a release line instead of `latest`
 
-The Nomad cluster's Docker driver must be able to pull the sandbox image, and its jobs must reach `GRADEFLOW_JOB_URL`. Jobs call back to `/jobs/`, which is exempt from the HTTPS redirect, so the job URL can be plain HTTP on a private network.
+The Nomad cluster's Docker driver must be able to pull the sandbox image, and its jobs must reach `GRADEFLOW_APP_URL_FOR_JOBS`. Jobs call back to `/jobs/`, which is exempt from the HTTPS redirect, so the job URL can be plain HTTP on a private network.
 
 Each person connects one of the `GRADEFLOW_MODEL_PROVIDERS` in Settings. The token stays in their browser and reaches a job only while it runs. Neither the app nor its jobs contact any other endpoint, so the cluster's network policy can limit jobs to the app and those hosts.
 

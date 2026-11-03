@@ -15,17 +15,17 @@ from gradeflow_app.assessments.models import Assessment
 from gradeflow_app.ui.forms import MarkdownInput
 from gradeflow_app.ui.templatetags.ui import (
     ago,
-    brief,
     browser,
     code_language,
-    day,
     highlight,
+    history_day,
     initials,
     marks,
     math_markdown,
     percent,
+    short_value,
 )
-from tests.conftest import HTMX, create_assessment
+from tests.conftest import HTMX_HEADERS, create_assessment
 
 CHROME_ON_LINUX = (
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36"
@@ -46,32 +46,33 @@ def test_times_ago_name_only_their_largest_unit() -> None:
 
 def test_days_in_a_history_give_the_year_only_when_it_is_another() -> None:
     now = timezone.now()
-    assert day(now) == "Today"
-    assert day(now - timedelta(days=1)) == "Yesterday"
+    assert history_day(now) == "Today"
+    assert history_day(now - timedelta(days=1)) == "Yesterday"
     long_ago = timezone.localtime(now - timedelta(days=400))
-    assert day(long_ago) == f"{long_ago.day} {long_ago:%B %Y}"
+    assert history_day(long_ago) == f"{long_ago.day} {long_ago:%B %Y}"
 
 
 def test_question_text_leaves_formulas_to_the_browser() -> None:
-    html = math_markdown("Is $\\frac{1}{2} < x$ worth $5 or $6?\n<b>Yes</b>")
-    assert '<span class="math inline">\\frac{1}{2} &lt; x</span>' in html
-    assert "worth $5 or $6?<br />\n&lt;b&gt;Yes&lt;/b&gt;" in html
+    rendered = math_markdown("Is $\\frac{1}{2} < x$ worth $5 or $6?\n<b>Yes</b>")
+    assert '<span class="math inline">\\frac{1}{2} &lt; x</span>' in rendered
+    assert "worth $5 or $6?<br />\n&lt;b&gt;Yes&lt;/b&gt;" in rendered
 
 
 def test_markdown_previews_as_its_pages_show_it(client: Client) -> None:
     text = "Is $x^2$ **big**?\n<b>No</b>"
-    preview = client.post(reverse("markdown_preview"), {"text": text}, headers=HTMX).content.decode()
+    preview = client.post(reverse("markdown_preview"), {"text": text}, headers=HTMX_HEADERS).content.decode()
     assert 'x-data="math"' in preview
     assert str(math_markdown(text)) in preview
     assert (
-        "Nothing to preview" in client.post(reverse("markdown_preview"), {"text": " \n"}, headers=HTMX).content.decode()
+        "Nothing to preview"
+        in client.post(reverse("markdown_preview"), {"text": " \n"}, headers=HTMX_HEADERS).content.decode()
     )
 
 
 def test_read_only_markdown_shows_as_its_pages_show_it() -> None:
-    shown = MarkdownInput().render("guide", "**Bold** $x$", {"disabled": True, "id": "id_guide"})
-    assert "<textarea" not in shown
-    assert str(math_markdown("**Bold** $x$")) in shown
+    rendered = MarkdownInput().render("guide", "**Bold** $x$", {"disabled": True, "id": "id_guide"})
+    assert "<textarea" not in rendered
+    assert str(math_markdown("**Bold** $x$")) in rendered
 
 
 def test_initials_come_from_the_first_two_words() -> None:
@@ -102,19 +103,19 @@ def test_a_settings_card_posts_its_form_from_its_footer(client: Client) -> None:
     )
 
 
-def test_an_alert_alpine_shows_stays_hidden_until_it_does(client: Client) -> None:
+def test_an_alert_shown_by_alpine_is_hidden_until_shown(client: Client) -> None:
     page = client.get(reverse("import", args=[create_assessment(client).pk])).content.decode()
     assert re.search(r'<div role="alert" class="alert alert-error alert-soft *" x-show="error" x-cloak>', page)
 
 
 def test_a_list_of_settings_shows_each_by_its_first_text() -> None:
     rows = [{"marks": 1, "text": "Wrong idea"}, {"text": "", "point": "Mentions sun"}, {"marks": 2}]
-    assert brief(rows) == "Wrong idea, Mentions sun, 1 set"
+    assert short_value(rows) == "Wrong idea, Mentions sun, 1 setting"
 
 
 def test_a_table_of_settings_shows_its_row_names() -> None:
     parameters = {"alpha": {"type": "integer", "value": 1}, "beta": {"type": "text", "value": "two"}}
-    assert brief(parameters) == "alpha, beta"
+    assert short_value(parameters) == "alpha, beta"
 
 
 def test_marks_and_percentages_round_halves_up_alike() -> None:
@@ -123,7 +124,7 @@ def test_marks_and_percentages_round_halves_up_alike() -> None:
     assert marks(2.2, 2) == "2.20"
 
 
-def test_fields_with_errors_are_marked() -> None:
+def test_fields_with_errors_are_highlighted() -> None:
     class Sample(forms.Form):
         name = forms.CharField()
         kind = forms.ChoiceField(choices=[("a", "A")])
@@ -139,30 +140,32 @@ def test_fields_with_errors_are_marked() -> None:
 
 
 def test_times_show_in_the_browsers_time_zone(client: Client, assessment: Assessment) -> None:
-    imported = assessment.results_files.get().uploaded_at
+    uploaded_at = assessment.results_files.get().uploaded_at
     client.cookies["tz"] = "Asia/Singapore"
-    page = client.get(reverse("activity", args=[assessment.pk]), headers=HTMX).content.decode()
-    assert imported.astimezone(ZoneInfo("Asia/Singapore")).strftime("%H:%M") in page
+    page = client.get(reverse("activity", args=[assessment.pk]), headers=HTMX_HEADERS).content.decode()
+    assert uploaded_at.astimezone(ZoneInfo("Asia/Singapore")).strftime("%H:%M") in page
     client.cookies["tz"] = "Not/A_Zone"
-    assert client.get(reverse("activity", args=[assessment.pk]), headers=HTMX).status_code == 200
+    assert client.get(reverse("activity", args=[assessment.pk]), headers=HTMX_HEADERS).status_code == 200
 
 
 def test_pages_are_compressed_but_live_streams_are_not(client: Client, assessment: Assessment) -> None:
     url = reverse("questions", args=[assessment.pk])
-    stream = re.search(r'hx-sse:connect="([^"]+)"', client.get(url, follow=True).content.decode())
-    assert stream is not None
-    gzip = {"Accept-Encoding": "gzip"}
-    assert client.get(url, follow=True, headers=gzip).headers["Content-Encoding"] == "gzip"
-    live = client.get(stream[1], headers=gzip)
-    assert "Content-Encoding" not in live.headers
-    live.close()
+    stream_url_match = re.search(r'hx-sse:connect="([^"]+)"', client.get(url, follow=True).content.decode())
+    assert stream_url_match is not None
+    gzip_headers = {"Accept-Encoding": "gzip"}
+    assert client.get(url, follow=True, headers=gzip_headers).headers["Content-Encoding"] == "gzip"
+    stream = client.get(stream_url_match[1], headers=gzip_headers)
+    assert "Content-Encoding" not in stream.headers
+    stream.close()
 
 
 def test_messages_from_in_page_actions_show_at_once(client: Client, assessment: Assessment) -> None:
     question = assessment.questions.get(key="Q2")
     student = assessment.students.values_list("pk", flat=True).first()
     response = client.post(
-        reverse("adjust", args=[assessment.pk, question.pk]), {"student": [str(student)], "marks": "9"}, headers=HTMX
+        reverse("adjust", args=[assessment.pk, question.pk]),
+        {"student": [str(student)], "marks": "9"},
+        headers=HTMX_HEADERS,
     )
     assert response.status_code == 422
     assert {"level": "error", "text": "Marks must be between 0 and 1."} in json.loads(response.headers["X-Messages"])
@@ -172,7 +175,7 @@ def test_messages_from_in_page_actions_show_at_once(client: Client, assessment: 
 def test_messages_show_once_when_a_whole_page_follows(client: Client) -> None:
     assessment = create_assessment(client)
     client.post(reverse("assessment_settings", args=[assessment.pk]), {"name": "Final", "description": ""})
-    page = client.get(reverse("assessment_settings", args=[assessment.pk]), headers=HTMX)
+    page = client.get(reverse("assessment_settings", args=[assessment.pk]), headers=HTMX_HEADERS)
     assert b"Saved." in page.content
     assert "X-Messages" not in page.headers
 
@@ -180,8 +183,8 @@ def test_messages_show_once_when_a_whole_page_follows(client: Client) -> None:
 def test_a_live_refresh_leaves_messages_for_the_page_the_person_goes_to(client: Client) -> None:
     assessment = create_assessment(client)
     client.post(reverse("assessment_settings", args=[assessment.pk]), {"name": "Final", "description": ""})
-    live = HTMX | {"X-Live-Refresh": "true"}
-    refresh = client.get(reverse("question_list", args=[assessment.pk]), headers=live)
+    live_headers = HTMX_HEADERS | {"X-Live-Refresh": "true"}
+    refresh = client.get(reverse("question_list", args=[assessment.pk]), headers=live_headers)
     assert refresh.status_code == 200
     assert "X-Messages" not in refresh.headers
     assert b"Saved." in client.get(reverse("assessment_settings", args=[assessment.pk])).content
@@ -192,8 +195,8 @@ def test_messages_survive_a_reload(client: Client, assessment: Assessment) -> No
     url = reverse("question_settings", args=[assessment.pk, question.pk])
     response = client.post(
         url,
-        {"question_type": question.core.type, "save": "1", "max_marks": "2", "description": "Changed"},
-        headers=HTMX,
+        {"question_type": question.core_question.type, "save": "1", "max_marks": "2", "description": "Changed"},
+        headers=HTMX_HEADERS,
     )
     assert response.headers["HX-Refresh"] == "true"
     assert "X-Messages" not in response.headers

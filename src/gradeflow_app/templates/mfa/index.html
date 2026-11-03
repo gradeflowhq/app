@@ -2,20 +2,20 @@
 {% block head_title %}Passkeys and 2FA{% endblock %}
 {% block content %}
 <h1>Passkeys and 2FA</h1>
-<c-card body_class="rows">
+<c-card body_class="setting-rows">
   {% with passkeys=authenticators.webauthn|length %}
-  <c-row label="Passkeys" detail="{% if passkeys %}{{ passkeys }} added{% else %}None added{% endif %}">
+  <c-setting-row label="Passkeys" detail="{% if passkeys %}{{ passkeys }} added{% else %}None added{% endif %}">
       {% if passkeys %}<a class="btn" href="{% url 'mfa_list_webauthn' %}">Manage</a>{% else %}<a class="btn" href="{% url 'mfa_add_webauthn' %}">Add passkey</a>{% endif %}
-  </c-row>
+  </c-setting-row>
   {% endwith %}
-  <c-row label="Authenticator app" detail="{% if authenticators.totp %}On{% else %}Off{% endif %}">
+  <c-setting-row label="Authenticator app" detail="{% if authenticators.totp %}On{% else %}Off{% endif %}">
       {% if authenticators.totp %}<a class="btn" href="{% url 'mfa_deactivate_totp' %}">Turn off</a>{% else %}<a class="btn" href="{% url 'mfa_activate_totp' %}">Turn on</a>{% endif %}
-  </c-row>
+  </c-setting-row>
   {% if is_mfa_enabled %}
   {% with unused=authenticators.recovery_codes.get_unused_codes|length %}
-  <c-row label="Recovery codes" detail="{% if authenticators.recovery_codes %}{{ unused }} unused{% else %}None yet{% endif %}">
+  <c-setting-row label="Recovery codes" detail="{% if authenticators.recovery_codes %}{{ unused }} unused{% else %}None yet{% endif %}">
       {% if unused %}<a class="btn" href="{% url 'mfa_view_recovery_codes' %}">View</a>{% else %}<a class="btn" href="{% url 'mfa_generate_recovery_codes' %}">New codes</a>{% endif %}
-  </c-row>
+  </c-setting-row>
   {% endwith %}
   {% endif %}
 </c-card>

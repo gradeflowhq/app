@@ -186,7 +186,7 @@ TAILWIND_CLI_DIST_CSS = "css/gradeflow.css"
 
 GRADEFLOW_CORS_PROXY_URL = os.environ.get("GRADEFLOW_CORS_PROXY_URL", "")
 """Where the browser sends its Canvas requests; without one, marks can only be downloaded."""
-_PROXY = urlsplit(GRADEFLOW_CORS_PROXY_URL)
+_PROXY_URL_PARTS = urlsplit(GRADEFLOW_CORS_PROXY_URL)
 
 SECURE_CSP = {
     "default-src": [CSP.SELF],
@@ -195,7 +195,10 @@ SECURE_CSP = {
     "img-src": [CSP.SELF, "data:", "blob:"],
     "font-src": [CSP.SELF, "data:"],
     "worker-src": [CSP.SELF, "blob:"],
-    "connect-src": [CSP.SELF, *([f"{_PROXY.scheme}://{_PROXY.netloc}"] if _PROXY.netloc else [])],
+    "connect-src": [
+        CSP.SELF,
+        *([f"{_PROXY_URL_PARTS.scheme}://{_PROXY_URL_PARTS.netloc}"] if _PROXY_URL_PARTS.netloc else []),
+    ],
     "frame-ancestors": [CSP.NONE],
     "form-action": [CSP.SELF],
 }
@@ -225,7 +228,7 @@ GRADEFLOW_NOMAD = {
     "datacenter": os.environ.get("GRADEFLOW_NOMAD_DATACENTER", "dc1"),
     "namespace": os.environ.get("GRADEFLOW_NOMAD_NAMESPACE", "default"),
 }
-GRADEFLOW_JOB_URL = os.environ.get("GRADEFLOW_JOB_URL", "http://localhost:8000")
+GRADEFLOW_APP_URL_FOR_JOBS = os.environ.get("GRADEFLOW_APP_URL_FOR_JOBS", "http://localhost:8000")
 """Where sandbox jobs reach the app for their input and callbacks."""
 GRADEFLOW_JOB_TIME_LIMIT = int(os.environ.get("GRADEFLOW_JOB_TIME_LIMIT", "600"))
 """Seconds a job may run in the sandbox."""
@@ -233,5 +236,5 @@ GRADEFLOW_MODEL_JOB_TIME_LIMIT = int(os.environ.get("GRADEFLOW_MODEL_JOB_TIME_LI
 """For jobs that ask a language model, whose reasoning takes minutes."""
 GRADEFLOW_MODEL_PROVIDERS: dict[str, str] = json.loads(os.environ.get("GRADEFLOW_MODEL_PROVIDERS", "{}"))
 """The AI services people may connect, each name with its OpenAI-compatible endpoint. No request goes to any other."""
-GRADEFLOW_JOBS_PER_USER = int(os.environ.get("GRADEFLOW_JOBS_PER_USER", "5"))
+GRADEFLOW_RUNNING_JOBS_PER_USER = int(os.environ.get("GRADEFLOW_RUNNING_JOBS_PER_USER", "5"))
 """Most jobs a user may have running at once."""

@@ -7,7 +7,7 @@ from simple_history.models import HistoricalRecords
 
 from gradeflow_app.assessments.models import Assessment
 
-TYPE_LABELS: dict[QuestionType, str] = {kind: question.label for kind, question in QUESTION_TYPES.items()}
+QUESTION_TYPE_LABELS: dict[QuestionType, str] = {kind: question.label for kind, question in QUESTION_TYPES.items()}
 """Each question type's name, in the core's order."""
 
 
@@ -20,7 +20,7 @@ class Question(models.Model):
     definition = models.JSONField()
     history = HistoricalRecords()
 
-    _core: tuple[object, CoreQuestion] | None = None
+    _core_question: tuple[object, CoreQuestion] | None = None
     """The core's question and the definition it was validated from, as pages read it once per student."""
 
     class Meta:
@@ -31,12 +31,12 @@ class Question(models.Model):
         return self.key
 
     @property
-    def core(self) -> CoreQuestion:
-        if self._core is None or self._core[0] is not self.definition:
-            self._core = (self.definition, CoreQuestion.load(self.definition))
-        return self._core[1]
+    def core_question(self) -> CoreQuestion:
+        if self._core_question is None or self._core_question[0] is not self.definition:
+            self._core_question = (self.definition, CoreQuestion.load(self.definition))
+        return self._core_question[1]
 
-    @core.setter
-    def core(self, question: CoreQuestion) -> None:
+    @core_question.setter
+    def core_question(self, question: CoreQuestion) -> None:
         self.definition = question.model_dump(mode="json")
-        self._core = (self.definition, question)
+        self._core_question = (self.definition, question)

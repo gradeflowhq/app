@@ -10,46 +10,46 @@
   </div>
   {% endif %}
   {% if methods or drafts %}
-  <div class="surface overflow-x-auto">
+  <div class="card-box overflow-x-auto">
     <table class="table">
-      <thead><tr><th>Method</th><th class="max-sm:hidden">Answer type</th><th class="max-sm:hidden">Used in</th><th class="max-md:hidden">Who can use it</th><th class="text-right">Version</th></tr></thead>
+      <thead><tr><th>Method</th><th class="max-sm:hidden">Question type</th><th class="max-sm:hidden">Used in</th><th class="max-md:hidden">Who can use it</th><th class="text-right">Version</th></tr></thead>
       <tbody>
-        {% for item in drafts %}
-        <tr data-href="{% url 'method_page' item.draft.method_id %}">
-          <td><span class="flex items-center gap-2"><a class="font-medium hover:underline" href="{% url 'method_page' item.draft.method_id %}">{{ item.label }}</a><span class="badge badge-primary badge-soft badge-sm">Draft</span></span>{% if item.summary %}<p class="max-w-48 truncate text-sm text-muted sm:max-w-md">{{ item.summary }}</p>{% endif %}</td>
-          <td class="text-muted max-sm:hidden">{{ item.kinds|join:", "|default:"—" }}</td>
+        {% for row in drafts %}
+        <tr data-href="{% url 'method_page' row.draft.method_id %}">
+          <td><span class="flex items-center gap-2"><a class="font-medium hover:underline" href="{% url 'method_page' row.draft.method_id %}">{{ row.label }}</a><span class="badge badge-primary badge-soft badge-sm">Draft</span></span>{% if row.summary %}<p class="max-w-48 truncate text-sm text-muted sm:max-w-md">{{ row.summary }}</p>{% endif %}</td>
+          <td class="text-muted max-sm:hidden">{{ row.type_labels|join:", "|default:"—" }}</td>
           <td class="text-muted max-sm:hidden">Not used</td>
           <td class="text-muted max-md:hidden">Only you</td>
           <td class="text-right text-muted">—</td>
         </tr>
         {% endfor %}
-        {% for item in methods %}
-        <tr data-href="{% url 'method_page' item.method.pk item.version.version %}">
-          <td><a class="font-medium hover:underline" href="{% url 'method_page' item.method.pk item.version.version %}">{{ item.version.label }}</a><p class="max-w-48 truncate text-sm text-muted sm:max-w-md">{{ item.version.summary }}</p></td>
-          <td class="text-muted max-sm:hidden">{{ item.kinds|join:", " }}</td>
-          <td class="text-muted max-sm:hidden">{% if item.used %}{{ item.used }} marking{{ item.used|pluralize }}{% else %}Not used{% endif %}</td>
-          <td class="text-muted max-md:hidden">{% if item.method.public %}Anyone{% elif member %}Members{% else %}Only you{% endif %}</td>
-          <td class="tabular-nums text-right">{{ item.version.version }}</td>
+        {% for row in methods %}
+        <tr data-href="{% url 'method_page' row.method.pk row.version.version %}">
+          <td><a class="font-medium hover:underline" href="{% url 'method_page' row.method.pk row.version.version %}">{{ row.version.label }}</a><p class="max-w-48 truncate text-sm text-muted sm:max-w-md">{{ row.version.summary }}</p></td>
+          <td class="text-muted max-sm:hidden">{{ row.type_labels|join:", " }}</td>
+          <td class="text-muted max-sm:hidden">{% if row.marking_count %}{{ row.marking_count }} marking{{ row.marking_count|pluralize }}{% else %}Not used{% endif %}</td>
+          <td class="text-muted max-md:hidden">{% if row.method.public %}Anyone{% elif member %}Members{% else %}Only you{% endif %}</td>
+          <td class="tabular-nums text-right">{{ row.version.version }}</td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
-  {% elif not elsewhere %}
-  {% if archived %}<c-empty class="surface" icon="archive-box" title="Nothing archived" />{% else %}<c-empty class="surface" icon="puzzle-piece" title="No methods yet">Save a marking as a method, or make a new one.{% if can_edit %}<c-slot name="action"><button class="btn btn-primary" data-dialog="new-method">{% icon "plus" %}New method</button></c-slot>{% endif %}</c-empty>{% endif %}
+  {% elif not other_library_methods %}
+  {% if archived %}<c-empty-state class="card-box" icon="archive-box" title="Nothing archived" />{% else %}<c-empty-state class="card-box" icon="puzzle-piece" title="No methods yet">Save a marking as a method, or make a new one.{% if can_edit %}<c-slot name="action"><button class="btn btn-primary" data-dialog="new-method">{% icon "plus" %}New method</button></c-slot>{% endif %}</c-empty-state>{% endif %}
   {% endif %}
-  {% if elsewhere %}
+  {% if other_library_methods %}
   <section class="grid gap-3" aria-labelledby="used-here">
-    <h2 id="used-here">Used here, from elsewhere</h2>
-    <div class="surface overflow-x-auto">
+    <h2 id="used-here">From other libraries</h2>
+    <div class="card-box overflow-x-auto">
       <table class="table">
         <thead><tr><th>Method</th><th class="max-sm:hidden">Used in</th><th class="text-right">Version</th></tr></thead>
         <tbody>
-          {% for item in elsewhere %}
-          <tr data-href="{% url 'method_page' item.method.pk item.version.version %}">
-            <td><a class="font-medium hover:underline" href="{% url 'method_page' item.method.pk item.version.version %}">{{ item.version.label }}</a><p class="text-sm text-muted">by {{ item.method.library.owner }}</p></td>
-            <td class="text-muted max-sm:hidden">{{ item.used }} marking{{ item.used|pluralize }}</td>
-            <td class="whitespace-nowrap text-right">{% if item.method.archived %}<span class="badge badge-ghost badge-sm">Archived</span> {% elif item.newer %}<span class="badge badge-info badge-soft badge-sm">{{ item.newer }} is out</span> {% endif %}<span class="tabular-nums">{{ item.version.version }}</span></td>
+          {% for row in other_library_methods %}
+          <tr data-href="{% url 'method_page' row.method.pk row.version.version %}">
+            <td><a class="font-medium hover:underline" href="{% url 'method_page' row.method.pk row.version.version %}">{{ row.version.label }}</a><p class="text-sm text-muted">by {{ row.method.library.owner_name }}</p></td>
+            <td class="text-muted max-sm:hidden">{{ row.marking_count }} marking{{ row.marking_count|pluralize }}</td>
+            <td class="whitespace-nowrap text-right">{% if row.method.archived %}<span class="badge badge-ghost badge-sm">Archived</span> {% elif row.newer_version_number %}<span class="badge badge-info badge-soft badge-sm">{{ row.newer_version_number }} available</span> {% endif %}<span class="tabular-nums">{{ row.version.version }}</span></td>
           </tr>
           {% endfor %}
         </tbody>

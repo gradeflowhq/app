@@ -7,99 +7,99 @@ from django.urls import reverse
 from django.utils.html import format_html
 from gradeflow_core.editing import HINT_KEY
 
-from gradeflow_app.ui.schemaforms.fields import SEGMENTED_UP_TO
+from gradeflow_app.ui.schemaforms.fields import MAX_SEGMENTS
 from gradeflow_app.ui.schemaforms.forms import ObjectForm
-from gradeflow_app.ui.schemaforms.layout import unrepresentable
+from gradeflow_app.ui.schemaforms.layout import unrepresentable_fields
 from gradeflow_app.ui.schemaforms.schema import Schema
 from gradeflow_app.ui.schemaforms.widgets import DecimalInput
 
 
-def obj(**properties: Schema) -> Schema:
+def object_schema(**properties: Schema) -> Schema:
     return {"type": "object", "properties": properties}
 
 
-def hinted(prop: Schema, **hints: Any) -> Schema:
-    return {**prop, HINT_KEY: hints}
+def hinted(property_schema: Schema, **hints: Any) -> Schema:
+    return {**property_schema, HINT_KEY: hints}
 
 
 def names(sections: list[tuple[str, list[Any]]]) -> list[str]:
     return [field.name for _, fields in sections for field in fields]
 
 
-CHOICE = obj(
+CHECK_SCHEMA = object_schema(
     combine={"type": "string", "enum": ["all", "sum"], "default": "all"},
-    out_of=hinted({"type": "number"}, advanced=True, applies_when={"combine": "sum"}),
+    max_marks=hinted({"type": "number"}, advanced=True, applies_when={"combine": "sum"}),
     strict=hinted({"type": "boolean", "default": False}, advanced=True, applies_when={"combine": "all"}),
     points={"type": "array", "items": {"type": "string"}},
-    whole=hinted({"type": "boolean", "default": False}, advanced=True),
+    whole_words=hinted({"type": "boolean", "default": False}, advanced=True),
 )
 
 
 def test_rarely_changed_options_wait_under_more_options() -> None:
-    form = ObjectForm(CHOICE, {})
-    assert names(form.basic) == ["combine", "out_of", "points"], "beside the choice it follows"
-    assert names(form.more) == ["strict", "whole"], "strict applies by default"
-    assert (form.more_changed, form.more_open) == (0, False)
-    assert ObjectForm(CHOICE, {"whole": True}).more_changed == 1
+    form = ObjectForm(CHECK_SCHEMA, {})
+    assert names(form.basic_sections) == ["combine", "max_marks", "points"], "beside the choice it follows"
+    assert names(form.advanced_sections) == ["strict", "whole_words"], "strict applies by default"
+    assert (form.advanced_changed_count, form.has_advanced_errors) == (0, False)
+    assert ObjectForm(CHECK_SCHEMA, {"whole_words": True}).advanced_changed_count == 1
 
 
 def test_groups_keep_their_place_among_the_fields() -> None:
-    setup = hinted(obj(code={"type": "string", "default": ""}), advanced=True)
-    schema = obj(
+    setup = hinted(object_schema(code={"type": "string", "default": ""}), advanced=True)
+    schema = object_schema(
         setup=setup,
         expected=hinted({"type": "boolean", "default": True}, advanced=True),
         name=hinted({"type": "string"}, advanced=True),
     )
-    assert [label for label, _ in ObjectForm(schema, {}).more] == ["Setup", ""]
+    assert [label for label, _ in ObjectForm(schema, {}).advanced_sections] == ["Setup", ""]
 
 
 def test_a_field_following_a_rarely_changed_choice_waits_with_it() -> None:
-    schema = obj(
-        decide=hinted({"type": "string", "enum": ["fast", "careful"], "default": "fast"}, advanced=True),
-        effort=hinted({"type": "string"}, advanced=True, applies_when={"decide": "careful"}),
+    schema = object_schema(
+        model=hinted({"type": "string", "enum": ["fast", "careful"], "default": "fast"}, advanced=True),
+        careful_effort=hinted({"type": "string"}, advanced=True, applies_when={"model": "careful"}),
     )
     form = ObjectForm(schema, {})
-    assert (names(form.basic), names(form.more)) == ([], ["decide", "effort"])
+    assert (names(form.basic_sections), names(form.advanced_sections)) == ([], ["model", "careful_effort"])
 
 
 def test_a_field_shows_only_while_its_condition_holds() -> None:
-    shown = ObjectForm(CHOICE, {"combine": "sum"}, prefix="check")
-    hidden = ObjectForm(CHOICE, {"combine": "all"})
-    assert json.loads(shown["out_of"].visible_when) == {"check-combine": "sum"}
-    assert not shown["out_of"].concealed
-    assert hidden["out_of"].concealed
+    shown = ObjectForm(CHECK_SCHEMA, {"combine": "sum"}, prefix="check")
+    hidden = ObjectForm(CHECK_SCHEMA, {"combine": "all"})
+    assert json.loads(shown["max_marks"].visible_when) == {"check-combine": "sum"}
+    assert not shown["max_marks"].is_hidden
+    assert hidden["max_marks"].is_hidden
 
 
-@pytest.mark.parametrize(("match", "concealed"), [("exact", True), ("spelling", False), ("meaning", False)])
-def test_a_condition_listing_values_holds_for_any_of_them(match: str, concealed: bool) -> None:
-    schema = obj(
+@pytest.mark.parametrize(("match", "is_hidden"), [("exact", True), ("spelling", False), ("meaning", False)])
+def test_a_condition_listing_values_holds_for_any_of_them(match: str, is_hidden: bool) -> None:
+    schema = object_schema(
         match={"type": "string", "enum": ["exact", "spelling", "meaning"]},
-        near=hinted({"type": "number"}, applies_when={"match": ["spelling", "meaning"]}),
+        threshold=hinted({"type": "number"}, applies_when={"match": ["spelling", "meaning"]}),
     )
     form = ObjectForm(schema, {"match": match}, prefix="check")
-    assert json.loads(form["near"].visible_when) == {"check-match": ["spelling", "meaning"]}
-    assert form["near"].concealed is concealed
+    assert json.loads(form["threshold"].visible_when) == {"check-match": ["spelling", "meaning"]}
+    assert form["threshold"].is_hidden is is_hidden
 
 
 def test_choices_read_as_the_core_labels_them_or_as_written() -> None:
-    schema = obj(option=hinted({"type": "string", "enum": ["mark", "mRNA"]}, labels={"mark": "Mark it"}))
+    schema = object_schema(option=hinted({"type": "string", "enum": ["mark", "mRNA"]}, labels={"mark": "Mark it"}))
     choices = dict(ObjectForm(schema, {}).fields["option"].choices)  # type: ignore[attr-defined]
     assert choices == {"mark": "Mark it", "mRNA": "mRNA"}
 
 
 def test_a_read_only_form_leaves_out_fields_without_a_value() -> None:
-    form = ObjectForm(CHOICE, {"points": []})
+    form = ObjectForm(CHECK_SCHEMA, {"points": []})
     form.disable()
-    assert names(form.basic) == ["combine"]
+    assert names(form.basic_sections) == ["combine"]
 
 
 def test_a_long_list_of_choices_starts_with_none_chosen_unless_one_is_the_default() -> None:
-    keys = [f"Q{n}" for n in range(1, 8)]
+    keys = [f"Q{number}" for number in range(1, 8)]
     unset = {"type": "string", "title": "Question", "enum": keys, "default": ""}
-    schema = {"type": "object", "properties": {"question": unset, "set": {**unset, "default": "Q3"}}}
+    schema = {"type": "object", "properties": {"question": unset, "preset_question": {**unset, "default": "Q3"}}}
     form = ObjectForm(schema, {})
     assert form.fields["question"].choices[0] == ("", "Choose question")  # type: ignore[attr-defined]
-    assert form.fields["set"].choices[0] == ("Q1", "Q1")  # type: ignore[attr-defined]
+    assert form.fields["preset_question"].choices[0] == ("Q1", "Q1")  # type: ignore[attr-defined]
 
 
 def test_numbers_read_as_people_write_them() -> None:
@@ -108,14 +108,14 @@ def test_numbers_read_as_people_write_them() -> None:
 
 
 def test_core_errors_land_on_the_field_holding_their_value() -> None:
-    schema = obj(
+    schema = object_schema(
         evaluate={"type": "boolean"},
-        setup=obj(time_limit={"type": "number"}),
+        setup=object_schema(time_limit={"type": "number"}),
         answers={"type": "array", "items": {"type": "string"}},
     )
     form = ObjectForm(schema, {})
-    for loc in [("evaluate",), ("setup", "time_limit"), ("answers", 0), (), ("elsewhere",)]:
-        form.add_problem(loc, "Wrong.")
+    for field in [("evaluate",), ("setup", "time_limit"), ("answers", 0), (), ("elsewhere",)]:
+        form.add_problem(field, "Wrong.")
     assert form.problems == {
         "evaluate": ["Wrong."],
         "setup__time_limit": ["Wrong."],
@@ -125,14 +125,14 @@ def test_core_errors_land_on_the_field_holding_their_value() -> None:
 
 
 def test_a_field_left_out_of_a_post_stays_as_it_was() -> None:
-    schema = obj(
+    schema = object_schema(
         types={"type": "array", "items": {"type": "string"}},
         separator={"type": "string", "default": ","},
-        reading=obj(trim={"type": "boolean", "default": True}),
+        reading=object_schema(trim={"type": "boolean", "default": True}),
     )
-    posted = ObjectForm(schema, {"separator": ";"}, data={"types": ["text"]})
-    assert posted.is_valid()
-    assert posted.values() == {
+    form = ObjectForm(schema, {"separator": ";"}, data={"types": ["text"]})
+    assert form.is_valid()
+    assert form.values() == {
         "types": ["text"],
         "separator": ";",
         "reading": {"trim": False},
@@ -156,8 +156,8 @@ def test_the_core_alone_says_what_is_required() -> None:
 @pytest.mark.parametrize("kind", ["", "markdown", "code"])
 @pytest.mark.parametrize("value", [" ", "  a phrase\n"])
 def test_generated_text_fields_preserve_whitespace(kind: str, value: str) -> None:
-    prop = {"type": "string", HINT_KEY: {"kind": kind}}
-    form = ObjectForm({"type": "object", "properties": {"value": prop}}, {}, data={"value": value})
+    property_schema = {"type": "string", HINT_KEY: {"kind": kind}}
+    form = ObjectForm({"type": "object", "properties": {"value": property_schema}}, {}, data={"value": value})
     assert form.is_valid()
     assert form.values() == {"value": value}
 
@@ -173,13 +173,13 @@ def test_markdown_fields_have_formatting_buttons_and_a_preview() -> None:
 def test_a_code_editor_outlives_redraws_of_its_own_field_only() -> None:
     schema = {"type": "object", "properties": {"code": {"type": "string", HINT_KEY: {"kind": "code"}}}}
 
-    def kept_as(path: str, code: str) -> str:
+    def editor_id(path: str, code: str) -> str:
         found = re.search(r'id="([^"]+)" hx-morph-skip-children', str(ObjectForm(schema, {"code": code}, path=path)))
         assert found is not None
         return found[1]
 
-    assert kept_as("", "a") == kept_as("", "b"), "typing keeps the editor"
-    assert kept_as("", "a") != kept_as("with.checks.0", "a"), "another check's code gets its own editor"
+    assert editor_id("", "a") == editor_id("", "b"), "typing keeps the editor"
+    assert editor_id("", "a") != editor_id("with.checks.0", "a"), "another check's code gets its own editor"
 
 
 def test_a_choice_of_numbers_is_posted_back_as_a_number() -> None:
@@ -190,7 +190,7 @@ def test_a_choice_of_numbers_is_posted_back_as_a_number() -> None:
 
 
 def test_numbers_offer_quick_picks_as_people_write_them() -> None:
-    schema = obj(
+    schema = object_schema(
         tolerance={"type": "number", "examples": [0.01, 0.05, 0.1]},
         weight={"type": "number", "default": 1, "examples": [2, 1, 0.5, 0.25, -0.5, -1]},
     )
@@ -204,44 +204,44 @@ def test_numbers_offer_quick_picks_as_people_write_them() -> None:
 
 def test_a_few_short_choices_sit_side_by_side_and_others_are_listed() -> None:
     def widget(count: int, label: str = "c") -> Any:
-        schema = obj(choice={"type": "string", "enum": [f"{label}{n}" for n in range(count)]})
+        schema = object_schema(choice={"type": "string", "enum": [f"{label}{index}" for index in range(count)]})
         return ObjectForm(schema, {})["choice"].field.widget
 
-    assert widget(SEGMENTED_UP_TO).template_name.endswith("segmented.html")
-    assert widget(SEGMENTED_UP_TO + 1).input_type == "select"
-    assert widget(SEGMENTED_UP_TO, "Neighbours in order ").input_type == "select", "too long for one row"
+    assert widget(MAX_SEGMENTS).template_name.endswith("segmented.html")
+    assert widget(MAX_SEGMENTS + 1).input_type == "select"
+    assert widget(MAX_SEGMENTS, "Neighbours in order ").input_type == "select", "too long for one row"
 
 
 def test_checks_held_in_a_check_are_shown_as_cards() -> None:
     check = hinted({"type": "object"}, kind="check")
-    schema = obj(check=check, checks={"type": "array", "items": check})
-    assert unrepresentable(schema, {"check": {"uses": "a"}, "checks": [{"uses": "b"}]}) == []
+    schema = object_schema(check=check, checks={"type": "array", "items": check})
+    assert unrepresentable_fields(schema, {"check": {"uses": "a"}, "checks": [{"uses": "b"}]}) == []
 
 
 def test_what_fills_a_field_shows_in_its_place_and_the_post_leaves_it_alone() -> None:
     value = {"combine": "sum", "points": ["light"], "strict": True}
-    form = ObjectForm(CHOICE, value, data={"combine": "all", "points": ["sun"]})
+    form = ObjectForm(CHECK_SCHEMA, value, data={"combine": "all", "points": ["sun"]})
     for name in ("combine", "points", "strict"):
-        form.fill(name, format_html('<p id="filled-{}"></p>', name))
+        form.replace_control(name, format_html('<p id="filled-{}"></p>', name))
     page = str(form)
     assert all(f'id="filled-{name}"' in page for name in ("combine", "points", "strict"))
     assert not re.search(r'name="(combine|points|strict)"', page), "whatever its control"
     assert form.is_valid()
-    assert form.values() == value | {"whole": False}
+    assert form.values() == value | {"whole_words": False}
 
 
 def test_a_field_shown_for_a_value_filled_elsewhere_always_shows() -> None:
-    form = ObjectForm(CHOICE, {"combine": "all"})
-    form.fill("combine", "<p></p>")
-    assert (form["out_of"].visible_when, form["out_of"].concealed) == ("", False)
+    form = ObjectForm(CHECK_SCHEMA, {"combine": "all"})
+    form.replace_control("combine", "<p></p>")
+    assert (form["max_marks"].visible_when, form["max_marks"].is_hidden) == ("", False)
 
 
 def test_a_whole_number_stays_whole() -> None:
-    form = ObjectForm(obj(out_of={"type": "number"}), {}, data={"out_of": "2"})
+    form = ObjectForm(object_schema(max_marks={"type": "number"}), {}, data={"max_marks": "2"})
     assert form.is_valid()
-    assert repr(form.values()["out_of"]) == "2"
+    assert repr(form.values()["max_marks"]) == "2"
 
 
 def test_quick_picks_are_only_the_examples_that_are_numbers() -> None:
-    form = ObjectForm(obj(out_of={"type": "number", "examples": [2, "abc", 1.5]}), {})
-    assert [value for value, _, _ in form["out_of"].presets] == ["2", "1.5"]
+    form = ObjectForm(object_schema(max_marks={"type": "number", "examples": [2, "abc", 1.5]}), {})
+    assert [value for value, _, _ in form["max_marks"].presets] == ["2", "1.5"]

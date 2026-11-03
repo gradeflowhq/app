@@ -13,44 +13,51 @@ from django.utils.safestring import mark_safe
 from django.views.decorators.http import require_POST
 from django_htmx.http import HttpResponseLocation, push_url
 from gradeflow_core import Check, GradeFlowError
-from gradeflow_core.editing import DECISIONS, Decision, MarkingDraft, answer_decisions, dump_yaml, mark_by_example
-from gradeflow_core.editing import MethodDraft as CoreDraft
+from gradeflow_core.editing import (
+    DECISIONS,
+    Decision,
+    MarkingDraft,
+    MethodDraft,
+    answer_decisions,
+    dump_yaml,
+    mark_by_example,
+)
 
-from gradeflow_app.assessments.access import member
-from gradeflow_app.assessments.models import Assessment, Membership
+from gradeflow_app.assessments.access import assessment_member
+from gradeflow_app.assessments.models import Assessment, AssessmentAccess
 from gradeflow_app.courses.models import Role
 from gradeflow_app.editor import operations
 from gradeflow_app.editor.guide import sections_of
-from gradeflow_app.editor.picker import PickerUse, check_picker, picker
+from gradeflow_app.editor.picker import PickerForm, check_picker, picker
 from gradeflow_app.editor.presenters import Editor, editor
 from gradeflow_app.jobs.queue import stop
 from gradeflow_app.libraries import services as libraries
 from gradeflow_app.libraries.collection import offers, usable
 from gradeflow_app.libraries.forms import SaveMethodForm
-from gradeflow_app.live.topics import publish, topic
+from gradeflow_app.live.topics import notify_change, topic
 from gradeflow_app.marking import presenters, previews
-from gradeflow_app.marking.answers.column import column, editing, preview_bar
-from gradeflow_app.marking.checks import check_for, check_of, checks, methods_for, questions_marked
-from gradeflow_app.marking.models import Draft, Marking, Subject
+from gradeflow_app.marking.answers.column import answers_column_html, draft_workspace, preview_bar
+from gradeflow_app.marking.checks import assessment_checks, check_for, check_of, methods_for, questions_marked
+from gradeflow_app.marking.models import Marking, MarkingDraftRecord, MarkingTarget
 from gradeflow_app.marking.presenters import drafted_method, saved_summary
 from gradeflow_app.marking.remarks import delete_marking, schedule_marking
-from gradeflow_app.marking.workspace import Workspace
+from gradeflow_app.marking.workspace import MarkingWorkspace
 from gradeflow_app.model_service.endpoints import endpoint
 from gradeflow_app.questions.models import Question
 from gradeflow_app.requests import Request
-from gradeflow_app.ui.fragments import go, morph
+from gradeflow_app.ui.fragments import morphed_into, redirect_page
 
 
-def _question_group(membership: Membership, marking_id: UUID) -> Marking:
+def _question_group(membership: AssessmentAccess, marking_id: UUID) -> Marking:
     return get_object_or_404(Marking, pk=marking_id, assessment=membership.assessment, question=None)
 
 
-def _drafts_changed(request: Request, assessment: Assessment) -> None:
-    publish(topic("drafts", assessment.pk, request.user.pk))
+def _notify_drafts_changed(request: Request, assessment: Assessment) -> None:
+    notify_change(topic("drafts", assessment.pk, request.user.pk))
 
 
-@member()
-def questions(request: Request, membership: Membership) -> HttpResponse:
+@assessment_member()
+def questions(request: Request, membership: AssessmentAccess) -> HttpResponse:
     """The first question; a click in the app gets its page at once, saving a round trip."""
     assessment = membership.assessment
     first = assessment.questions.first()
@@ -58,41 +65,42 @@ def questions(request: Request, membership: Membership) -> HttpResponse:
         return render(request, "marking/no_questions.html", {"membership": membership})
     if not request.htmx:
         return redirect("question", assessment.pk, first.pk)
-    page = _question(request, membership, first, checks(assessment))
+    page = _question(request, membership, first, assessment_checks(assessment))
     return push_url(page, reverse("question", args=[assessment.pk, first.pk]))
 
 
-@member()
-def question(request: Request, membership: Membership, question_id: UUID) -> HttpResponse:
-    return _question(request, membership, membership.question(question_id), checks(membership.assessment))
+@assessment_member()
+def question(request: Request, membership: AssessmentAccess, question_id: UUID) -> HttpResponse:
+    return _question(request, membership, membership.question(question_id), assessment_checks(membership.assessment))
 
 
 def _question(
-    request: Request, membership: Membership, question: Question, accepted: Mapping[Marking, Check]
+    request: Request, membership: AssessmentAccess, question: Question, accepted: Mapping[Marking, Check]
 ) -> HttpResponse:
-    subject = Subject.of(membership.assessment, question)
-    workspace = editing(request, membership, subject)
-    context = _marking(request, membership, question, subject, workspace, accepted) | {
+    subject = MarkingTarget.of(membership.assessment, question)
+    workspace = draft_workspace(request, membership, subject)
+    context = _marking_column_context(request, membership, question, subject, workspace, accepted) | {
         "question": question,
-        "questions": presenters.question_list(membership, str(question.pk), accepted),
-        "answers": column(request, membership, subject, workspace, accepted=accepted),
+        "question_list": presenters.question_list(membership, str(question.pk), accepted),
+        "answers": answers_column_html(request, membership, subject, workspace, accepted=accepted),
     }
     return render(request, "marking/workspace.html", context)
 
 
-@member()
-def question_list(request: Request, membership: Membership) -> HttpResponse:
+@assessment_member()
+def question_list(request: Request, membership: AssessmentAccess) -> HttpResponse:
     """The question list alone, to refresh it in place, highlighting what the page asking for it shows."""
-    questions = presenters.question_list(membership, request.GET.get("shown", ""))
-    return render(request, "marking/question_list.html#list", {"membership": membership, "questions": questions})
+    question_list = presenters.question_list(membership, request.GET.get("question", ""))
+    context = {"membership": membership, "question_list": question_list}
+    return render(request, "marking/question_list.html#list", context)
 
 
-def _marking(
+def _marking_column_context(
     request: Request,
-    membership: Membership,
+    membership: AssessmentAccess,
     question: Question,
-    subject: Subject,
-    workspace: Workspace | None,
+    subject: MarkingTarget,
+    workspace: MarkingWorkspace | None,
     accepted: Mapping[Marking, Check] | None = None,
 ) -> dict[str, Any]:
     """The marking column of a question: the user's draft in `workspace`, or else the saved marking."""
@@ -105,33 +113,37 @@ def _marking(
     }
 
 
-def _editor(request: Request, workspace: Workspace, path: str) -> Editor:
-    return editor(workspace, path, saving=request.POST.get("op") == "save", more=bool(request.POST.get("more")))
+def _editor(request: Request, workspace: MarkingWorkspace, path: str) -> Editor:
+    return editor(
+        workspace, path, saving=request.POST.get("operation") == "save", more_open=bool(request.POST.get("more_open"))
+    )
 
 
-def _column(request: Request, membership: Membership, question: Question, *, answers: bool = False) -> HttpResponse:
+def _render_marking_column(
+    request: Request, membership: AssessmentAccess, question: Question, *, answers: bool = False
+) -> HttpResponse:
     """The marking column; with `answers`, the answers column too, swapped in beside it."""
-    subject = Subject.of(membership.assessment, question)
-    workspace = editing(request, membership, subject)
-    context = _marking(request, membership, question, subject, workspace)
+    subject = MarkingTarget.of(membership.assessment, question)
+    workspace = draft_workspace(request, membership, subject)
+    context = _marking_column_context(request, membership, question, subject, workspace)
     if answers:
-        context["answers_html"] = column(request, membership, subject, workspace, oob=True)
+        context["answers_html"] = answers_column_html(request, membership, subject, workspace, out_of_band=True)
     return render(request, "marking/panel.html", context)
 
 
-@member()
-def marking_panel(request: Request, membership: Membership, question_id: UUID) -> HttpResponse:
-    return _column(request, membership, membership.question(question_id))
+@assessment_member()
+def marking_panel(request: Request, membership: AssessmentAccess, question_id: UUID) -> HttpResponse:
+    return _render_marking_column(request, membership, membership.question(question_id))
 
 
 @require_POST
-@member(Role.EDITOR)
+@assessment_member(Role.EDITOR)
 @transaction.atomic
-def start_marking(request: Request, membership: Membership, question_id: UUID) -> HttpResponse:
+def start_marking(request: Request, membership: AssessmentAccess, question_id: UUID) -> HttpResponse:
     """A draft of new marking with the chosen method, or of the saved marking."""
     membership.assessment.lock()
     question = membership.question(question_id)
-    subject = Subject.of(membership.assessment, question)
+    subject = MarkingTarget.of(membership.assessment, question)
     if method := request.POST.get("method"):
         definition = _new_marking(request, subject, method)
     elif subject.marking is not None:
@@ -139,29 +151,29 @@ def start_marking(request: Request, membership: Membership, question_id: UUID) -
     else:
         raise Http404
     _start_draft(request, subject, definition)
-    return _column(request, membership, question, answers=True)
+    return _render_marking_column(request, membership, question, answers=True)
 
 
 @transaction.atomic
-def _start_draft(request: Request, subject: Subject, definition: str) -> None:
+def _start_draft(request: Request, subject: MarkingTarget, definition: str) -> None:
     """Start the user's draft of the subject's marking from `definition`, replacing any they had."""
     subject.assessment.lock()
-    owner = {"question": subject.question} if subject.question else {"marking": subject.marking}
-    Draft.objects.update_or_create(
+    draft_target = {"question": subject.question} if subject.question else {"marking": subject.marking}
+    MarkingDraftRecord.objects.update_or_create(
         user=request.user,
-        **owner,
+        **draft_target,
         defaults={
             "assessment": subject.assessment,
             "definition": definition,
-            "based_on": subject.marking.updated_at if subject.marking else None,
+            "saved_marking_updated_at": subject.marking.updated_at if subject.marking else None,
             "preview": None,
-            "previewed": None,
+            "preview_input": None,
         },
     )
-    _drafts_changed(request, subject.assessment)
+    _notify_drafts_changed(request, subject.assessment)
 
 
-def _new_marking(request: Request, subject: Subject, method: str) -> str:
+def _new_marking(request: Request, subject: MarkingTarget, method: str) -> str:
     try:
         draft = MarkingDraft.new(
             method,
@@ -174,63 +186,65 @@ def _new_marking(request: Request, subject: Subject, method: str) -> str:
     return dump_yaml(draft.data)
 
 
-@member(Role.EDITOR)
+@assessment_member(Role.EDITOR)
 @transaction.atomic
-def draft_view(request: Request, membership: Membership, draft: UUID) -> HttpResponse:
-    """The editor at `path`; posting saves fields to the draft and applies the operation in `op`, if any."""
+def draft_view(request: Request, membership: AssessmentAccess, draft_id: UUID) -> HttpResponse:
+    """The editor at `path`; posting saves fields to the draft and applies the operation in `operation`, if any."""
     try:
-        workspace = Workspace.of(request, membership, draft, lock=request.method == "POST")
+        workspace = MarkingWorkspace.of(request, membership, draft_id, lock=request.method == "POST")
     except Http404:
         # Saving or discarding can remove a draft before its queued live refresh arrives.
-        if request.method == "GET" and request.GET.get("status"):
+        if request.method == "GET" and request.GET.get("status_only"):
             return HttpResponse(status=204)
         raise
     path = request.POST.get("path", request.GET.get("path", ""))
     if request.method != "POST":
-        if request.GET.get("status"):
+        if request.GET.get("status_only"):
             return render(
                 request,
                 "marking/status.html",
                 {
                     "editor": _editor(request, workspace, path),
-                    "answers_html": column(request, membership, workspace.subject, workspace, oob=True),
+                    "answers_html": answers_column_html(
+                        request, membership, workspace.subject, workspace, out_of_band=True
+                    ),
                 },
             )
         return render(
             request, "marking/panel.html", {"membership": membership, "editor": _editor(request, workspace, path)}
         )
-    typing = not request.POST.get("op")
-    asked = workspace.asks(path) if workspace.checks.is_check(path) else None
+    fields_only = not request.POST.get("operation")
+    inputs_before = workspace.editor_inputs(path) if workspace.checks.is_check(path) else None
     decisions = answer_decisions(workspace.checks.data, methods=workspace.methods)
     method = drafted_method(workspace.checks)
-    shown = _editor(request, workspace, _apply(request, workspace, path))
-    _list_method(request, workspace, method)
-    context: dict[str, Any] = {"membership": membership, "editor": shown}
+    next_editor = _editor(request, workspace, _apply(request, workspace, path))
+    _refresh_list_if_method_changed(request, workspace, method)
+    context: dict[str, Any] = {"membership": membership, "editor": next_editor}
     # Typing keeps the form in place unless its fields change; answer decisions refresh beside it, and so does the
     # preview once the draft is back to what it previewed.
-    if typing and workspace.asks(shown.path) == asked:
+    if fields_only and workspace.editor_inputs(next_editor.path) == inputs_before:
         answers_html = (
-            column(request, membership, workspace.subject, workspace, oob=True)
+            answers_column_html(request, membership, workspace.subject, workspace, out_of_band=True)
             if workspace.subject.question is None
             or decisions != answer_decisions(workspace.checks.data, methods=workspace.methods)
-            or not previews.stale(workspace)
+            or not previews.preview_is_stale(workspace)
             else preview_bar(request, workspace)
         )
-        saved = '<span id="editor-status" hx-swap-oob="true" class="text-sm text-muted">Draft saved</span>'
-        context |= {"live": True, "live_html": mark_safe(answers_html + saved)}
-        return render(request, "marking/check.html#live", context)
-    context["answers_html"] = column(request, membership, workspace.subject, workspace, oob=True)
+        status_html = '<span id="editor-status" hx-swap-oob="true" class="text-sm text-muted">Draft saved</span>'
+        context |= {"fields_only_update": True, "update_html": mark_safe(answers_html + status_html)}
+        return render(request, "marking/check.html#notices", context)
+    context["answers_html"] = answers_column_html(request, membership, workspace.subject, workspace, out_of_band=True)
     response = render(request, "marking/panel.html", context)
-    return morph(response, "#marking-panel") if typing else response
+    return morphed_into(response, "#marking-panel") if fields_only else response
 
 
-def _list_method(request: Request, workspace: Workspace, before: str) -> None:
+def _refresh_list_if_method_changed(request: Request, workspace: MarkingWorkspace, before: str) -> None:
     """Refresh the user's question list where it names the draft's method, once that changed from `before`."""
     if drafted_method(workspace.checks) != before:
-        _drafts_changed(request, workspace.subject.assessment)
+        _notify_drafts_changed(request, workspace.subject.assessment)
 
 
-def _apply(request: Request, workspace: Workspace, path: str) -> str:
+def _apply(request: Request, workspace: MarkingWorkspace, path: str) -> str:
     try:
         path = operations.apply(workspace, request.POST, path)
     except GradeFlowError:
@@ -240,42 +254,48 @@ def _apply(request: Request, workspace: Workspace, path: str) -> str:
 
 
 @require_POST
-@member(Role.EDITOR)
-def preview(request: Request, membership: Membership, draft: UUID) -> HttpResponse:
-    workspace = Workspace.of(request, membership, draft)
-    previews.run(request, membership, workspace)
-    return HttpResponse(column(request, membership, workspace.subject, workspace))
+@assessment_member(Role.EDITOR)
+def preview(request: Request, membership: AssessmentAccess, draft_id: UUID) -> HttpResponse:
+    workspace = MarkingWorkspace.of(request, membership, draft_id)
+    previews.run_preview(request, membership, workspace)
+    return HttpResponse(answers_column_html(request, membership, workspace.subject, workspace))
 
 
-@member()
-def question_group_answers(request: Request, membership: Membership, marking_id: UUID) -> HttpResponse:
+@assessment_member()
+def question_group_answers(request: Request, membership: AssessmentAccess, marking_id: UUID) -> HttpResponse:
     marking = Marking.objects.filter(pk=marking_id, assessment=membership.assessment, question=None).first()
     if marking is None:
         # Removed while its page was open: the page goes to the questions.
         if not request.htmx:
             raise Http404
         return HttpResponseLocation(reverse("questions", args=[membership.assessment.pk]))
-    subject = Subject.of(membership.assessment, marking=marking)
-    return HttpResponse(column(request, membership, subject, editing(request, membership, subject)))
+    subject = MarkingTarget.of(membership.assessment, marking=marking)
+    return HttpResponse(
+        answers_column_html(request, membership, subject, draft_workspace(request, membership, subject))
+    )
 
 
-@member(Role.EDITOR)
-def question_group_draft_answers(request: Request, membership: Membership, draft: UUID) -> HttpResponse:
+@assessment_member(Role.EDITOR)
+def question_group_draft_answers(request: Request, membership: AssessmentAccess, draft_id: UUID) -> HttpResponse:
     try:
-        workspace = Workspace.of(request, membership, draft, question=None)
+        workspace = MarkingWorkspace.of(request, membership, draft_id, question=None)
     except Http404:
         return HttpResponse(status=204)  # saved or discarded since the refresh was queued
-    return HttpResponse(column(request, membership, workspace.subject, workspace))
+    return HttpResponse(answers_column_html(request, membership, workspace.subject, workspace))
 
 
 @require_POST
-@member(Role.EDITOR)
+@assessment_member(Role.EDITOR)
 @transaction.atomic
-def save(request: Request, membership: Membership, draft: UUID) -> HttpResponse:
-    workspace = Workspace.of(request, membership, draft, lock=True)
+def save(request: Request, membership: AssessmentAccess, draft_id: UUID) -> HttpResponse:
+    workspace = MarkingWorkspace.of(request, membership, draft_id, lock=True)
     path = _apply(request, workspace, request.POST.get("path", ""))
     if not workspace.valid or workspace.conflicts:
-        path = path if workspace.problems_at(path, saving=True) else next((p.check for p in workspace.problems), path)
+        path = (
+            path
+            if workspace.problems_at(path, saving=True)
+            else next((problem.check for problem in workspace.problems), path)
+        )
         context = {"membership": membership, "editor": _editor(request, workspace, path)}
         return render(request, "marking/editor.html", context)
     subject = workspace.subject
@@ -285,25 +305,25 @@ def save(request: Request, membership: Membership, draft: UUID) -> HttpResponse:
     stop(workspace.draft.preview)
     workspace.draft.delete()
     schedule_marking(marking, request.user, endpoint(request))
-    publish(topic("questions", membership.assessment.pk))
+    notify_change(topic("questions", membership.assessment.pk))
     messages.success(request, "Saved. Marking students…")
     if subject.question is None:
         return HttpResponseLocation(reverse("question_group", args=[membership.assessment.pk, marking.pk]))
-    return _column(request, membership, subject.question, answers=True)
+    return _render_marking_column(request, membership, subject.question, answers=True)
 
 
 @require_POST
-@member(Role.EDITOR)
+@assessment_member(Role.EDITOR)
 @transaction.atomic
-def discard(request: Request, membership: Membership, draft: UUID) -> HttpResponse:
-    workspace = Workspace.of(request, membership, draft, lock=True)
+def discard(request: Request, membership: AssessmentAccess, draft_id: UUID) -> HttpResponse:
+    workspace = MarkingWorkspace.of(request, membership, draft_id, lock=True)
     subject = workspace.subject
     stop(workspace.draft.preview)
     workspace.draft.delete()
-    _drafts_changed(request, membership.assessment)
+    _notify_drafts_changed(request, membership.assessment)
     messages.success(request, "Changes discarded.")
     if subject.question is not None:
-        return _column(request, membership, subject.question, answers=True)
+        return _render_marking_column(request, membership, subject.question, answers=True)
     assessment = membership.assessment
     if subject.marking is not None:
         return HttpResponseLocation(reverse("question_group", args=[assessment.pk, subject.marking.pk]))
@@ -311,157 +331,162 @@ def discard(request: Request, membership: Membership, draft: UUID) -> HttpRespon
 
 
 @require_POST
-@member(Role.EDITOR)
+@assessment_member(Role.EDITOR)
 @transaction.atomic
-def remove(request: Request, membership: Membership, question_id: UUID) -> HttpResponse:
+def remove(request: Request, membership: AssessmentAccess, question_id: UUID) -> HttpResponse:
     question = membership.question(question_id)
     membership.assessment.lock()
     if marking := Marking.objects.filter(question=question).first():
         delete_marking(marking)
-    publish(topic("questions", membership.assessment.pk))
+    notify_change(topic("questions", membership.assessment.pk))
     messages.success(request, "Marking removed.")
-    return _column(request, membership, question)
+    return _render_marking_column(request, membership, question)
 
 
-@member()
-def history(request: Request, membership: Membership, question_id: UUID) -> HttpResponse:
+@assessment_member()
+def history(request: Request, membership: AssessmentAccess, question_id: UUID) -> HttpResponse:
     question = membership.question(question_id)
     methods, questions = usable(request.user, membership.course), membership.assessment.question_set()
-    versions = Marking.history.filter(question_id=question.pk).select_related("history_user").order_by("-history_date")
+    history = Marking.history.filter(question_id=question.pk).select_related("history_user").order_by("-history_date")
     current = Marking.objects.filter(question=question).exists()
-    entries = [
+    versions = [
         {
             "version": version,
             "summary": saved_summary(version.definition, question.key, methods, questions),
             "current": current and index == 0,
         }
-        for index, version in enumerate(version for version in versions if version.history_type != "-")
+        for index, version in enumerate(version for version in history if version.history_type != "-")
     ]
-    return render(request, "marking/history.html", {"membership": membership, "question": question, "entries": entries})
+    context = {"membership": membership, "question": question, "versions": versions}
+    return render(request, "marking/history.html", context)
 
 
 @require_POST
-@member(Role.EDITOR)
-def restore(request: Request, membership: Membership, question_id: UUID, version: int) -> HttpResponse:
+@assessment_member(Role.EDITOR)
+def restore(request: Request, membership: AssessmentAccess, question_id: UUID, history_id: int) -> HttpResponse:
     question = membership.question(question_id)
-    historical = get_object_or_404(Marking.history, history_id=version, question_id=question.pk)
-    _start_draft(request, Subject.of(membership.assessment, question), historical.definition)
+    historical = get_object_or_404(Marking.history, history_id=history_id, question_id=question.pk)
+    _start_draft(request, MarkingTarget.of(membership.assessment, question), historical.definition)
     messages.success(request, "Restored as your draft. Save it to use it.")
     return HttpResponseLocation(reverse("question", args=[membership.assessment.pk, question.pk]))
 
 
 @require_POST
-@member(Role.EDITOR)
+@assessment_member(Role.EDITOR)
 @transaction.atomic
-def mark_example(request: Request, membership: Membership, question_id: UUID) -> HttpResponse:
+def mark_example(request: Request, membership: AssessmentAccess, question_id: UUID) -> HttpResponse:
     """Changes the draft being edited so an answer group's answers get the marks given them."""
     membership.assessment.lock()
     question = membership.question(question_id)
-    subject = Subject.of(membership.assessment, question)
-    draft = subject.draft_of(request.user, lock=True)
+    subject = MarkingTarget.of(membership.assessment, question)
+    draft = subject.user_draft(request.user, lock=True)
     if draft is None:
         raise Http404
-    workspace = Workspace(draft)
-    answers, given = request.POST.getlist("answer"), _given(request)
+    workspace = MarkingWorkspace(draft)
+    answers, decision = request.POST.getlist("answer"), _posted_decision(request)
     try:
-        marked = mark_by_example(
-            workspace.checks.data, answers, given, methods=workspace.methods, question=question.core
+        updated_data = mark_by_example(
+            workspace.checks.data, answers, decision, methods=workspace.methods, question=question.core_question
         )
     except GradeFlowError as error:
         messages.error(request, str(error))
     else:
         method = drafted_method(workspace.checks)
-        workspace.checks.replace(marked)
+        workspace.checks.replace(updated_data)
         workspace.save()
-        _list_method(request, workspace, method)
+        _refresh_list_if_method_changed(request, workspace, method)
     context = {
         "membership": membership,
         "editor": _editor(request, workspace, ""),
-        "answers_html": column(request, membership, subject, workspace, oob=True),
+        "answers_html": answers_column_html(request, membership, subject, workspace, out_of_band=True),
     }
     return render(request, "marking/panel.html", context)
 
 
-@member()
+@assessment_member()
 @transaction.atomic
-def question_group_new(request: Request, membership: Membership) -> HttpResponse:
+def question_group_new(request: Request, membership: AssessmentAccess) -> HttpResponse:
     if request.method == "POST":
         if not membership.can_edit:
             raise PermissionDenied
         membership.assessment.lock()
-        definition = _new_marking(request, Subject.of(membership.assessment), request.POST.get("method", ""))
-        draft = Draft.objects.create(assessment=membership.assessment, user=request.user, definition=definition)
+        definition = _new_marking(request, MarkingTarget.of(membership.assessment), request.POST.get("method", ""))
+        draft = MarkingDraftRecord.objects.create(
+            assessment=membership.assessment, user=request.user, definition=definition
+        )
         return redirect("question_group_draft", membership.assessment.pk, draft.pk)
     context = {
         "membership": membership,
-        "questions": presenters.question_list(membership, "new"),
+        "question_list": presenters.question_list(membership, "new"),
         "methods": [
             method
             for section in sections_of(
                 methods_for(request.user, membership.assessment), offers(request.user, membership.course)
             )
             if section.tab != "public"
-            for method, _ in section.entries
+            for method, _ in section.methods
         ],
     }
     return render(request, "marking/question_group_new.html", context)
 
 
-def _given(request: Request) -> Decision | Literal["cancel"]:
-    given = request.POST.get("given", "")
-    if given in DECISIONS or given == "cancel":
-        return cast("Decision | Literal['cancel']", given)
+def _posted_decision(request: Request) -> Decision | Literal["cancel"]:
+    decision = request.POST.get("decision", "")
+    if decision in DECISIONS or decision == "cancel":
+        return cast("Decision | Literal['cancel']", decision)
     raise BadRequest
 
 
-@member(Role.EDITOR)
-def question_methods(request: Request, membership: Membership, question_id: UUID) -> HttpResponse:
+@assessment_member(Role.EDITOR)
+def question_methods(request: Request, membership: AssessmentAccess, question_id: UUID) -> HttpResponse:
     question = membership.question(question_id)
     methods = methods_for(request.user, membership.assessment, question.key)
     action = reverse("marking_start", args=[membership.assessment.pk, question.pk])
-    use = PickerUse(action=action, field="method", target="#marking-panel", swap="outerHTML")
+    picker_form = PickerForm(action=action, field="method", target="#marking-panel", swap="outerHTML")
     sections = sections_of(methods, offers(request.user, membership.course))
-    return picker(request, sections, request.GET.get("selected", ""), use, membership.course, question.core.type)
+    return picker(
+        request, sections, request.GET.get("selected", ""), picker_form, membership.course, question.core_question.type
+    )
 
 
-@member(Role.EDITOR)
-def draft_methods(request: Request, membership: Membership, draft: UUID) -> HttpResponse:
+@assessment_member(Role.EDITOR)
+def draft_methods(request: Request, membership: AssessmentAccess, draft_id: UUID) -> HttpResponse:
     """The method picker for the check at `target` of the draft, which opens the editor at `path` after."""
-    workspace = Workspace.of(request, membership, draft)
+    workspace = MarkingWorkspace.of(request, membership, draft_id)
     args = [membership.assessment.pk, workspace.draft.pk]
-    use = PickerUse(
+    picker_form = PickerForm(
         action=reverse("draft", args=args),
-        field="value",
+        field="method",
         target="#marking-panel",
         swap="outerHTML",
         fields={"path": request.GET.get("path", request.GET.get("target", ""))},
     )
-    here = reverse("draft_methods", args=args)
-    return check_picker(request, workspace.checks, workspace.offers, membership.course, use, here)
+    picker_url = reverse("draft_methods", args=args)
+    return check_picker(request, workspace.checks, workspace.offers, membership.course, picker_form, picker_url)
 
 
-@member(Role.EDITOR)
-def question_group_methods(request: Request, membership: Membership) -> HttpResponse:
-    use = PickerUse(action=reverse("question_group_new", args=[membership.assessment.pk]), field="method")
+@assessment_member(Role.EDITOR)
+def question_group_methods(request: Request, membership: AssessmentAccess) -> HttpResponse:
+    picker_form = PickerForm(action=reverse("question_group_new", args=[membership.assessment.pk]), field="method")
     sections = sections_of(methods_for(request.user, membership.assessment), offers(request.user, membership.course))
-    return picker(request, sections, request.GET.get("selected", ""), use, membership.course)
+    return picker(request, sections, request.GET.get("selected", ""), picker_form, membership.course)
 
 
-@member()
-def question_group(request: Request, membership: Membership, marking_id: UUID) -> HttpResponse:
+@assessment_member()
+def question_group(request: Request, membership: AssessmentAccess, marking_id: UUID) -> HttpResponse:
     marking = _question_group(membership, marking_id)
-    subject = Subject.of(membership.assessment, marking=marking)
-    workspace = editing(request, membership, subject)
-    accepted = checks(membership.assessment)
-    saved = presenters.saved_group(membership.assessment, marking, accepted.get(marking))
+    subject = MarkingTarget.of(membership.assessment, marking=marking)
+    workspace = draft_workspace(request, membership, subject)
+    accepted = assessment_checks(membership.assessment)
+    group = presenters.saved_group(membership.assessment, marking, accepted.get(marking))
     context: dict[str, Any] = {
         "membership": membership,
-        "questions": presenters.question_list(membership, str(marking.pk), accepted),
+        "question_list": presenters.question_list(membership, str(marking.pk), accepted),
         "question_group": marking,
-        "question_group_marks": saved.marks,
-        "question_group_keys": saved.keys,
-        "summary": saved.summary,
-        "answers": column(request, membership, subject, workspace, accepted=accepted),
+        "question_group_marked_keys": group.marked_keys,
+        "question_group_involved_keys": group.involved_keys,
+        "summary": group.summary,
+        "answers": answers_column_html(request, membership, subject, workspace, accepted=accepted),
     }
     if workspace is not None:
         context["editor"] = _editor(request, workspace, request.GET.get("path", ""))
@@ -469,57 +494,57 @@ def question_group(request: Request, membership: Membership, marking_id: UUID) -
 
 
 @require_POST
-@member(Role.EDITOR)
-def question_group_edit(request: Request, membership: Membership, marking_id: UUID) -> HttpResponse:
+@assessment_member(Role.EDITOR)
+def question_group_edit(request: Request, membership: AssessmentAccess, marking_id: UUID) -> HttpResponse:
     marking = _question_group(membership, marking_id)
-    _start_draft(request, Subject.of(membership.assessment, marking=marking), marking.definition)
+    _start_draft(request, MarkingTarget.of(membership.assessment, marking=marking), marking.definition)
     return redirect("question_group", membership.assessment.pk, marking.pk)
 
 
-@member(Role.EDITOR)
-def question_group_draft(request: Request, membership: Membership, draft: UUID) -> HttpResponse:
-    workspace = Workspace.of(request, membership, draft, question=None)
+@assessment_member(Role.EDITOR)
+def question_group_draft(request: Request, membership: AssessmentAccess, draft_id: UUID) -> HttpResponse:
+    workspace = MarkingWorkspace.of(request, membership, draft_id, question=None)
     if workspace.draft.marking is not None:
         return redirect("question_group", membership.assessment.pk, workspace.draft.marking.pk)
     context = {
         "membership": membership,
-        "questions": presenters.question_list(membership, str(workspace.draft.pk)),
+        "question_list": presenters.question_list(membership, str(workspace.draft.pk)),
         "editor": _editor(request, workspace, request.GET.get("path", "")),
-        "answers": column(request, membership, workspace.subject, workspace),
+        "answers": answers_column_html(request, membership, workspace.subject, workspace),
     }
     return render(request, "marking/question_group.html", context)
 
 
 @require_POST
-@member(Role.EDITOR)
+@assessment_member(Role.EDITOR)
 @transaction.atomic
-def question_group_remove(request: Request, membership: Membership, marking_id: UUID) -> HttpResponse:
+def question_group_remove(request: Request, membership: AssessmentAccess, marking_id: UUID) -> HttpResponse:
     membership.assessment.lock()
     marking = _question_group(membership, marking_id)
-    marked = sorted(questions_marked(marking, check_for(marking)))
+    marked_keys = sorted(questions_marked(marking, check_for(marking)))
     delete_marking(marking)
-    publish(topic("questions", membership.assessment.pk))
-    messages.success(request, f"Removed the question group marking {', '.join(marked) or 'no questions'}.")
+    notify_change(topic("questions", membership.assessment.pk))
+    messages.success(request, f"Removed the question group marking {', '.join(marked_keys) or 'no questions'}.")
     return redirect("questions", membership.assessment.pk)
 
 
-@member(Role.EDITOR)
-def save_as_method(request: Request, membership: Membership, question_id: UUID) -> HttpResponse:
+@assessment_member(Role.EDITOR)
+def save_as_method(request: Request, membership: AssessmentAccess, question_id: UUID) -> HttpResponse:
     marking = get_object_or_404(Marking, question=question_id, question__assessment=membership.assessment)
     return _save_as_method(
         request, membership, marking, reverse("method_save", args=[membership.assessment.pk, question_id])
     )
 
 
-@member(Role.EDITOR)
-def question_group_save_as_method(request: Request, membership: Membership, marking_id: UUID) -> HttpResponse:
+@assessment_member(Role.EDITOR)
+def question_group_save_as_method(request: Request, membership: AssessmentAccess, marking_id: UUID) -> HttpResponse:
     marking = _question_group(membership, marking_id)
     action = reverse("question_group_method_save", args=[membership.assessment.pk, marking_id])
     return _save_as_method(request, membership, marking, action)
 
 
 @transaction.atomic
-def _save_as_method(request: Request, membership: Membership, marking: Marking, action: str) -> HttpResponse:
+def _save_as_method(request: Request, membership: AssessmentAccess, marking: Marking, action: str) -> HttpResponse:
     """A draft of a new method, in the course's library, that marks as the marking does."""
     course = membership.course
     form = SaveMethodForm(data=request.POST or None)
@@ -527,14 +552,14 @@ def _save_as_method(request: Request, membership: Membership, marking: Marking, 
         methods = usable(request.user, course)
         check = check_of(marking.definition, methods)
         if check is None:
-            form.add_error(None, "Fix the marking before saving it as a method.")
+            form.add_error(None, "Finish the marking before saving it as a method.")
         else:
-            build = partial(CoreDraft.from_marking, check, membership.assessment.question_set(), methods=methods)
+            make_draft = partial(MethodDraft.from_marking, check, membership.assessment.question_set(), methods=methods)
             try:
-                method = libraries.start(course.library, request.user, build, **form.cleaned_data)
+                method = libraries.create_method(course.library, request.user, make_draft, **form.cleaned_data)
             except ValidationError as error:
                 form.add_error("label", error)
             else:
-                return go(request, reverse("method_page", args=[method.pk]))
+                return redirect_page(request, reverse("method_page", args=[method.pk]))
     context = {"form": form, "action": action}
     return render(request, "methods/save.html", context, status=422 if form.is_bound else 200)

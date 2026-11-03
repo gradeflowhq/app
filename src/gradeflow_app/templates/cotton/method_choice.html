@@ -1,11 +1,11 @@
-<c-vars method about compact=False />
+<c-vars method guide_url compact=False />
 {# A method to start marking with: a card, or a plain row among the advanced ones. #}
 <li class="relative">
-  <button name="method" value="{{ method.ref }}" class="choice flex w-full text-left transition-colors {% if compact %}rounded-field py-2 pl-3 pr-12 hover:bg-base-200{% else %}rounded-box border bg-base-100 py-3 pl-4 pr-12 border-base-300 hover:border-primary hover:bg-base-200/40{% endif %}">
+  <button name="method" value="{{ method.ref }}" class="method-choice flex w-full text-left transition-colors {% if compact %}rounded-field py-2 pl-3 pr-12 hover:bg-base-200{% else %}rounded-box border bg-base-100 py-3 pl-4 pr-12 border-base-300 hover:border-primary hover:bg-base-200/40{% endif %}">
     <span class="min-w-0">
       <span class="flex flex-wrap items-center gap-2 font-medium">{{ method.label }}</span>
       <span class="mt-0.5 block text-sm text-muted">{{ method.summary }}</span>
     </span>
   </button>
-  <button type="button" class="btn btn-ghost btn-square btn-sm absolute right-2 {% if compact %}top-1.5{% else %}top-2{% endif %} text-muted" hx-get="{{ about }}?selected={{ method.ref|urlencode }}" hx-target="#picker-body" data-dialog="picker" aria-label="About {{ method.label }}">{% icon "question-mark-circle" "size-5" %}</button>
+  <button type="button" class="btn btn-ghost btn-square btn-sm absolute right-2 {% if compact %}top-1.5{% else %}top-2{% endif %} text-muted" hx-get="{{ guide_url }}?selected={{ method.ref|urlencode }}" hx-target="#picker-body" data-dialog="picker" aria-label="About {{ method.label }}">{% icon "question-mark-circle" "size-5" %}</button>
 </li>

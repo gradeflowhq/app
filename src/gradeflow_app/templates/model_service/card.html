@@ -2,7 +2,7 @@
 {% partialdef card inline %}
 <c-card id="model-service" title="AI service" body_class="" x-data="modelService" data-model-service
         data-connect="{% url 'model_service_connect' %}"
-        data-refused="{{ refusal|yesno:'true,' }}">
+        data-refused="{{ connect_error|yesno:'true,' }}">
   <c-slot name="actions"><button type="button" class="btn btn-ghost btn-square btn-sm -mr-2 text-muted" data-dialog="ai-service-guide" aria-label="How to connect an AI service">{% icon "question-mark-circle" %}</button></c-slot>
   <div x-show="disconnected" x-cloak>
     {% if providers %}
@@ -15,34 +15,34 @@
         <label class="font-medium" for="model-token">Token</label>
         <input id="model-token" type="password" class="input w-full" x-model="token" autocomplete="off">
       </div>
-      {% if refusal %}<c-alert>{{ refusal }}</c-alert>{% endif %}
+      {% if connect_error %}<c-alert>{{ connect_error }}</c-alert>{% endif %}
     </div>
     <footer class="flex flex-wrap items-center gap-3 border-t border-base-300 px-5 py-4"><span class="flex items-center gap-1.5 text-sm text-muted">{% icon "lock-closed" "size-4" %}Kept on this device only</span><button type="button" class="btn btn-primary ml-auto" x-on:click="connect" :disabled="connecting"><span class="loading loading-spinner loading-xs" x-show="connecting" x-cloak></span>Connect</button></footer>
     {% else %}
     <p class="p-5 text-muted">This server offers no AI service.</p>
     {% endif %}
   </div>
-  <div class="rows" x-show="connected" x-cloak>
-    <c-connected label="Service" host="provider" confirm="Disconnect this device?" confirm_detail="It forgets the token. Marking that uses AI waits until you connect again." />
+  <div class="setting-rows" x-show="connected" x-cloak>
+    <c-connected-service label="Service" host_property="provider" confirm="Disconnect this device?" confirm_detail="It forgets the token. Marking that uses AI waits until you connect again." />
     {# Only the models refresh as a choice goes on, so what someone is typing above stays. The page doesn't know the device's models, so they load with what it keeps. #}
     {% partialdef models inline %}
-    <div id="model-service-models" class="divide-y divide-base-300" hx-post="{% url 'model_service' %}" hx-trigger="{% if not loaded %}load, {% endif %}{% listen 'models' request.user.pk %}" hx-swap="outerHTML">
-      <c-row label="Models">
+    <div id="model-service-models" class="divide-y divide-base-300" hx-post="{% url 'model_service' %}" hx-trigger="{% if not models_loaded %}load, {% endif %}{% listen 'models' request.user.pk %}" hx-swap="outerHTML">
+      <c-setting-row label="Models">
         <c-slot name="detail">
-          {% if not loaded %}<span class="skeleton block h-4 w-56"></span>
-          {% elif running %}<span class="flex items-center gap-2"><span class="loading loading-spinner loading-xs"></span>Choosing automatically, about 10 minutes. You can leave this page.</span>
-          {% elif state.decision_model %}<span class="flex flex-wrap gap-x-2"><span>Fast <code>{{ state.decision_model }}</code></span>{% if state.reasoning_model %}<span>· Careful <code>{{ state.reasoning_model }}</code></span>{% endif %}</span>
-          {% elif problem %}<span class="text-error">{{ problem }}</span>
-          {% elif failed %}<span class="text-error">Couldn't choose automatically: {{ failed }}</span>
+          {% if not models_loaded %}<span class="skeleton block h-4 w-56"></span>
+          {% elif choosing_job %}<span class="flex items-center gap-2"><span class="loading loading-spinner loading-xs"></span>Choosing automatically, about 10 minutes. You can leave this page.</span>
+          {% elif state.fast_model %}<span class="flex flex-wrap gap-x-2"><span>Fast <code>{{ state.fast_model }}</code></span>{% if state.careful_model %}<span>· Careful <code>{{ state.careful_model }}</code></span>{% endif %}</span>
+          {% elif error %}<span class="text-error">{{ error }}</span>
+          {% elif failure_reason %}<span class="text-error">Couldn't choose automatically: {{ failure_reason }}</span>
           {% else %}Not chosen yet.{% endif %}
         </c-slot>
-        {% if loaded %}{% include "model_service/change.html" %}{% endif %}
-      </c-row>
-      {% if loaded %}
-        <c-row label="Answers per request">
-          <c-slot name="detail">{% if answers_problem %}<span class="text-error">{{ answers_problem }}</span>{% else %}How many students' answers each request to the AI holds.{% endif %}</c-slot>
+        {% if models_loaded %}{% include "model_service/change.html" %}{% endif %}
+      </c-setting-row>
+      {% if models_loaded %}
+        <c-setting-row label="Answers per request">
+          <c-slot name="detail">{% if answers_per_request_error %}<span class="text-error">{{ answers_per_request_error }}</span>{% else %}How many students' answers each request to the AI holds.{% endif %}</c-slot>
           <input type="number" name="answers_per_request" value="{{ state.answers_per_request|default:12 }}" min="1" max="40" class="input w-20 tabular-nums" aria-label="Answers per request" hx-post="{% url 'model_service_answers_per_request' %}" hx-trigger="change" hx-target="#model-service-models" hx-swap="outerHTML">
-        </c-row>
+        </c-setting-row>
       {% endif %}
     </div>
     {% endpartialdef %}

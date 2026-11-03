@@ -1,98 +1,98 @@
-// Shows the plaintext of student ID envelopes (c-sid) as they come into view, with the passphrase this browser keeps.
-// Without one they show as encrypted, with a page's "Show student IDs" button (#locked-ids) offering to show them; only
+// Shows the plaintext of encrypted student IDs (c-student-id) as they come into view, with the passphrase this browser keeps.
+// Without one they show as encrypted, with a page's "Show student IDs" button (#show-student-ids) offering to show them; only
 // that, or clicking an encrypted ID, asks for the passphrase.
 
 import { decryptId } from "./crypto.js";
-import { known, passphraseFor } from "./passphrase.js";
+import { knownPassphrase, passphraseFor } from "./passphrase.js";
 
-const revealing = new WeakMap(); // each ID to its promise of being shown or locked
+const showing = new WeakMap(); // each ID to its promise of being shown or left encrypted
 
-function reveal(elements) {
+function showDecryptedIds(elements) {
   const byAssessment = Map.groupBy(elements, (element) => element.closest("[data-assessment]")?.dataset.assessment);
-  const revealed = [...byAssessment].map(([assessment, group]) => {
-    const done = showAll(assessment, group);
+  const shownPromises = [...byAssessment].map(([assessment, group]) => {
+    const shownPromise = showAll(assessment, group);
     for (const element of group) {
-      element.dataset.sidState = "opening";
-      revealing.set(element, done);
+      element.dataset.studentIdState = "decrypting";
+      showing.set(element, shownPromise);
     }
-    return done;
+    return shownPromise;
   });
-  Promise.all(revealed).then(() => {
-    const notice = document.getElementById("locked-ids");
-    if (notice) notice.hidden = !document.querySelector('[data-sid-state="locked"]');
+  Promise.all(shownPromises).then(() => {
+    const notice = document.getElementById("show-student-ids");
+    if (notice) notice.hidden = !document.querySelector('[data-student-id-state="encrypted"]');
   });
 }
 
 async function showAll(assessment, group) {
-  const passphrase = assessment && (await known(assessment, group[0].dataset.sid));
+  const passphrase = assessment && (await knownPassphrase(assessment, group[0].dataset.studentId));
   await Promise.all(group.map((element) => show(element, passphrase)));
 }
 
 async function show(element, passphrase) {
-  const id = passphrase && (await decryptId(element.dataset.sid, passphrase).catch(() => null));
+  const id = passphrase && (await decryptId(element.dataset.studentId, passphrase).catch(() => null));
   if (id) {
     element.textContent = id;
-    element.dataset.sidState = "shown";
+    element.dataset.studentIdState = "shown";
   } else {
     element.replaceChildren(Object.assign(document.createElement("span"), { className: "sr-only", textContent: "Encrypted" }));
     element.title = "Show student IDs";
-    element.dataset.sidState = "locked";
+    element.dataset.studentIdState = "encrypted";
   }
 }
 
-const visible = new IntersectionObserver((entries) => {
-  const found = entries.filter((entry) => entry.isIntersecting).map((entry) => entry.target);
-  for (const element of found) visible.unobserve(element);
-  if (found.length) reveal(found);
+const visibilityObserver = new IntersectionObserver((entries) => {
+  const visible = entries.filter((entry) => entry.isIntersecting).map((entry) => entry.target);
+  for (const element of visible) visibilityObserver.unobserve(element);
+  if (visible.length) showDecryptedIds(visible);
 });
 
-function watch() {
-  for (const element of document.querySelectorAll("[data-sid]:not([data-sid-state])")) {
-    element.dataset.sidState = "waiting";
-    visible.observe(element);
+function watchNewIds() {
+  for (const element of document.querySelectorAll("[data-student-id]:not([data-student-id-state])")) {
+    element.dataset.studentIdState = "waiting";
+    visibilityObserver.observe(element);
   }
 }
 
-/** Shows every ID inside `root` now, visible or not, and resolves once each is shown or locked. */
+/** Shows every ID inside `root` now, visible or not, and resolves once each is shown or left encrypted. */
 export async function revealIn(root) {
-  const elements = [...root.querySelectorAll("[data-sid]")];
-  const pending = elements.filter((element) => !["opening", "shown"].includes(element.dataset.sidState));
-  for (const element of pending) visible.unobserve(element);
-  if (pending.length) reveal(pending);
-  await Promise.all(elements.map((element) => revealing.get(element)));
+  const elements = [...root.querySelectorAll("[data-student-id]")];
+  const pending = elements.filter((element) => !["decrypting", "shown"].includes(element.dataset.studentIdState));
+  for (const element of pending) visibilityObserver.unobserve(element);
+  if (pending.length) showDecryptedIds(pending);
+  await Promise.all(elements.map((element) => showing.get(element)));
 }
 
 /** Shows every ID again from scratch: after the passphrase is forgotten, or entered. */
-function relock() {
-  for (const element of document.querySelectorAll("[data-sid]")) {
-    delete element.dataset.sidState;
+function resetStudentIds() {
+  for (const element of document.querySelectorAll("[data-student-id]")) {
+    delete element.dataset.studentIdState;
     element.textContent = "…";
   }
-  watch();
+  watchNewIds();
 }
 
 /** Asks for the passphrase, which shows every ID it opens. */
-function unlock(assessment) {
-  const envelope = document.querySelector(`[data-assessment="${assessment}"] [data-sid-state="locked"]`)?.dataset.sid;
-  if (envelope) passphraseFor(assessment, envelope);
+function askForPassphrase(assessment) {
+  const encryptedId = document.querySelector(`[data-assessment="${assessment}"] [data-student-id-state="encrypted"]`)?.dataset.studentId;
+  if (encryptedId) passphraseFor(assessment, encryptedId);
 }
 
 // Captured, so clicking an encrypted ID in a clickable row asks for the passphrase instead of opening the row.
 document.addEventListener(
   "click",
   (event) => {
-    const target = event.target.closest('[data-unlock], [data-sid-state="locked"]');
+    const target = event.target.closest('[data-ask-passphrase], [data-student-id-state="encrypted"]');
     const assessment = target?.closest("[data-assessment]")?.dataset.assessment;
     if (!assessment) return;
     event.preventDefault();
     event.stopImmediatePropagation();
-    unlock(assessment);
+    askForPassphrase(assessment);
   },
   true,
 );
 
 // Before any other listener, so what they reveal starts from scratch.
-for (const name of ["gradeflow:locked", "gradeflow:unlocked"]) document.addEventListener(name, relock);
+for (const name of ["gradeflow:passphrase-forgotten", "gradeflow:passphrase-entered"]) document.addEventListener(name, resetStudentIds);
 
-new MutationObserver(watch).observe(document.documentElement, { childList: true, subtree: true });
-watch();
+new MutationObserver(watchNewIds).observe(document.documentElement, { childList: true, subtree: true });
+watchNewIds();

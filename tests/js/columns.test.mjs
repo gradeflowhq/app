@@ -47,12 +47,12 @@ test('an Email column identifies students when nothing better exists', () => {
 
 test('ranks student IDs, then logins, then email, then any other ID; values must be unique', () => {
   const header = ['ID', 'Email', 'Login ID', 'Student Number', 'Q1'];
-  const id = (rows) => detectColumns(header, rows).studentId;
-  assert.equal(id([['1', 'a@x.edu', 'e1', 'A1', 'A'], ['2', 'b@x.edu', 'e2', 'A2', 'B']]), 'Student Number');
-  assert.equal(id([['1', 'a@x.edu', 'e1', 'A1', 'A'], ['2', 'b@x.edu', 'e2', 'A1', 'B']]), 'Login ID');
-  assert.equal(id([['1', 'a@x.edu', 'e1', 'A1', 'A'], ['2', 'b@x.edu', 'e1', 'A1', 'B']]), 'Email');
-  assert.equal(id([['1', 'a@x.edu', 'e1', 'A1', 'A'], ['2', 'a@x.edu', 'e1', 'A1', 'B']]), 'ID');
-  assert.equal(id([['1', 'a@x.edu', 'e1', 'A1', 'A'], ['1', 'a@x.edu', 'e1', 'A1', 'B']]), null);
+  const studentIdColumn = (rows) => detectColumns(header, rows).studentId;
+  assert.equal(studentIdColumn([['1', 'a@x.edu', 'e1', 'A1', 'A'], ['2', 'b@x.edu', 'e2', 'A2', 'B']]), 'Student Number');
+  assert.equal(studentIdColumn([['1', 'a@x.edu', 'e1', 'A1', 'A'], ['2', 'b@x.edu', 'e2', 'A1', 'B']]), 'Login ID');
+  assert.equal(studentIdColumn([['1', 'a@x.edu', 'e1', 'A1', 'A'], ['2', 'b@x.edu', 'e1', 'A1', 'B']]), 'Email');
+  assert.equal(studentIdColumn([['1', 'a@x.edu', 'e1', 'A1', 'A'], ['2', 'a@x.edu', 'e1', 'A1', 'B']]), 'ID');
+  assert.equal(studentIdColumn([['1', 'a@x.edu', 'e1', 'A1', 'A'], ['1', 'a@x.edu', 'e1', 'A1', 'B']]), null);
 });
 
 test('falls back to a column of unique ID-like values, or none', () => {
@@ -105,11 +105,11 @@ test('detectStudentRows leaves out leading and trailing rows without an ID', () 
 });
 
 test('detectStudentRows keeps any row whose ID looks like one, whatever its format', () => {
-  const ids = (...values) => [['Email'], ...values.map((value) => [value])];
-  assert.deepEqual(detectStudentRows(ids('e1@u.edu', 'BEN2@U.EDU', 'Mean'), 1, 0), [1, 2]);
-  assert.deepEqual(detectStudentRows(ids('12345', '678', 'Total: 2'), 1, 0), [1, 2]);
-  assert.deepEqual(detectStudentRows(ids('V1234567', 'S1000001', 'S1000002', 'S1000003', 'X99'), 1, 0), [1, 5], 'exchange students first or last');
-  assert.deepEqual(detectStudentRows(ids('alice', 'S1000001', 'zoe.tan', 'Max', 'Std Dev'), 1, 0), [1, 3], 'usernames without digits');
+  const emailRows = (...values) => [['Email'], ...values.map((value) => [value])];
+  assert.deepEqual(detectStudentRows(emailRows('e1@u.edu', 'BEN2@U.EDU', 'Mean'), 1, 0), [1, 2]);
+  assert.deepEqual(detectStudentRows(emailRows('12345', '678', 'Total: 2'), 1, 0), [1, 2]);
+  assert.deepEqual(detectStudentRows(emailRows('V1234567', 'S1000001', 'S1000002', 'S1000003', 'X99'), 1, 0), [1, 5], 'exchange students first or last');
+  assert.deepEqual(detectStudentRows(emailRows('alice', 'S1000001', 'zoe.tan', 'Max', 'Std Dev'), 1, 0), [1, 3], 'usernames without digits');
 });
 
 test('detectStudentRows keeps every row below the header without IDs to compare', () => {

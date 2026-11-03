@@ -1,6 +1,6 @@
 // Typesets the LaTeX in the `.math` elements of Markdown the server rendered, with KaTeX loaded on first use.
 
-import { script } from "./vendor.js";
+import { loadScript } from "./vendor.js";
 
 export const math = () => ({
   init() {
@@ -11,7 +11,7 @@ export const math = () => ({
   async typeset() {
     const formulas = this.$el.querySelectorAll(".math");
     if (!formulas.length) return;
-    await script("katex-0.19.0/katex.min.js");
+    await loadScript("katex-0.19.0/katex.min.js");
     for (const formula of formulas) {
       katex.render(formula.textContent, formula, {
         displayMode: formula.classList.contains("block"),

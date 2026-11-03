@@ -13,17 +13,17 @@ type Operation = Callable[[CheckWorkspace, str, QueryDict], str]
 
 
 def apply(workspace: CheckWorkspace, data: QueryDict, path: str) -> str:
-    """Apply the posted fields and operation in `op` to the check at `path`; returns the path to show next. An
+    """Apply the posted fields and operation in `operation` to the check at `path`; returns the path to show next. An
     operation the core refuses, as on a check or row that's gone after a double click or an edit in another tab, or
     with a method it doesn't offer there, changes nothing."""
     if not workspace.checks.is_check(path):
         return ""
-    op = str(data.get("op", ""))
-    if "fields" in data and op not in ("open", "retype"):
-        posted = workspace.form(path, data=data)
-        posted.full_clean()
-        workspace.checks.update(path, posted.values())
-    operation = _OPERATIONS.get(op)
+    name = str(data.get("operation", ""))
+    if "fields_posted" in data and name not in ("open", "change_method"):
+        form = workspace.form(path, data=data)
+        form.full_clean()
+        workspace.checks.update(path, form.values())
+    operation = _OPERATIONS.get(name)
     if operation is None:
         return path
     try:
@@ -40,15 +40,16 @@ def _open(workspace: CheckWorkspace, path: str, data: QueryDict) -> str:
     return _target(data) if workspace.checks.is_check(_target(data)) else path
 
 
-def _retype(workspace: CheckWorkspace, path: str, data: QueryDict) -> str:
-    workspace.checks.retype(_target(data), str(data.get("value", "")))
+def _change_method(workspace: CheckWorkspace, path: str, data: QueryDict) -> str:
+    workspace.checks.change_method(_target(data), str(data.get("method", "")))
     return _target(data)
 
 
 def _add(workspace: CheckWorkspace, path: str, data: QueryDict) -> str:
-    """Add a check of the posted method at `target`, a slot's new path, reading the posted question if any."""
+    """Add a check of the posted method at `target`, where a setting that holds checks takes a new one, reading the
+    posted question if any."""
     question = str(data.get("question") or "") or None
-    workspace.checks.add(_target(data), str(data.get("value", "")), question)
+    workspace.checks.add(_target(data), str(data.get("method", "")), question)
     return _target(data)
 
 
@@ -57,14 +58,14 @@ def _remove(workspace: CheckWorkspace, path: str, data: QueryDict) -> str:
 
 
 def _move(workspace: CheckWorkspace, path: str, data: QueryDict) -> str:
-    workspace.checks.move(_target(data), 1 if data.get("value") == "down" else -1)
+    workspace.checks.move(_target(data), 1 if data.get("direction") == "down" else -1)
     return path
 
 
-def _update(workspace: CheckWorkspace, path: str, data: QueryDict) -> str:
+def _use_latest(workspace: CheckWorkspace, path: str, data: QueryDict) -> str:
     """Use the latest version of the method of the check at `target`, wherever the marking uses that version."""
     method = workspace.checks.method(_target(data))
-    latest = workspace.offers.newer(method, workspace.methods) if method else None
+    latest = workspace.offers.newer_version(method, workspace.methods) if method else None
     if method is not None and latest is not None:
         workspace.checks.replace(rewrite_references(workspace.checks.data, {method.ref: latest.ref}))
     return path
@@ -79,10 +80,10 @@ def _rows(workspace: CheckWorkspace, path: str, data: QueryDict) -> str:
 
 _OPERATIONS: dict[str, Operation] = {
     "open": _open,
-    "retype": _retype,
+    "change_method": _change_method,
     "add": _add,
     "remove": _remove,
-    "update": _update,
+    "use_latest": _use_latest,
     "move": _move,
     "add_row": _rows,
     "remove_row": _rows,

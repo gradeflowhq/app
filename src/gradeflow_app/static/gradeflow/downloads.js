@@ -1,8 +1,8 @@
-// A form marked `data-decrypt` downloads its file with every student ID envelope replaced by its plaintext.
+// A form marked `data-decrypt` downloads its file with every encrypted student ID replaced by its plaintext.
 
-import { decryptText, ENVELOPES } from "./crypto.js";
+import { decryptText, ENCRYPTED_IDS } from "./crypto.js";
 import { passphraseFor } from "./passphrase.js";
-import { report } from "./toasts.js";
+import { showToast } from "./toasts.js";
 
 document.addEventListener("submit", async (event) => {
   const form = event.target.closest("form[data-decrypt]");
@@ -16,10 +16,10 @@ document.addEventListener("submit", async (event) => {
     if (!response.ok) throw new Error(response.statusText);
     // Kept whole: text() drops a byte order mark, which spreadsheets need to read the file as UTF-8.
     let text = new TextDecoder("utf-8", { ignoreBOM: true }).decode(await response.arrayBuffer());
-    const envelope = text.match(ENVELOPES)?.[0];
-    if (envelope) {
-      const passphrase = await passphraseFor(form.dataset.decrypt, envelope);
-      if (!passphrase) return report("Not downloaded: the student IDs need the passphrase.");
+    const encryptedId = text.match(ENCRYPTED_IDS)?.[0];
+    if (encryptedId) {
+      const passphrase = await passphraseFor(form.dataset.decrypt, encryptedId);
+      if (!passphrase) return showToast("Not downloaded: the student IDs need the passphrase.");
       text = await decryptText(text, passphrase);
     }
     const disposition = response.headers.get("Content-Disposition") ?? "";
@@ -33,15 +33,15 @@ document.addEventListener("submit", async (event) => {
     URL.revokeObjectURL(link.href);
     form.closest("dialog")?.close();
   } catch {
-    report("The download failed. Try again.");
+    showToast("The download failed. Try again.");
   } finally {
     button?.classList.remove("btn-disabled");
   }
 });
 
-function showErrors(form, page) {
-  const answered = new DOMParser().parseFromString(page, "text/html").querySelector("form[data-decrypt]");
-  if (!answered) throw new Error("No form in the answer");
-  form.replaceWith(answered);
-  htmx.process(answered);
+function showErrors(form, html) {
+  const returnedForm = new DOMParser().parseFromString(html, "text/html").querySelector("form[data-decrypt]");
+  if (!returnedForm) throw new Error("No form in the answer");
+  form.replaceWith(returnedForm);
+  htmx.process(returnedForm);
 }

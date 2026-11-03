@@ -1,7 +1,7 @@
 // What this browser keeps. A browser can refuse storage, as some private modes do: nothing is found there then, and
 // keeping or removing does nothing.
 
-const guarded = (area) => ({
+const safeStorage = (area) => ({
   get(key) {
     try {
       return window[area].getItem(key);
@@ -29,5 +29,5 @@ const guarded = (area) => ({
   },
 });
 
-export const local = guarded("localStorage");
-export const session = guarded("sessionStorage");
+export const local = safeStorage("localStorage");
+export const session = safeStorage("sessionStorage");

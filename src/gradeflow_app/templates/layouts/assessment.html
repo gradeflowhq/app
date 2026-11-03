@@ -5,7 +5,7 @@
 {% endblock %}
 {% block nav_label %}Assessment{% endblock %}
 {% block nav_header %}
-  <c-sidebar-header back="{% url 'course' membership.course.pk %}" back_label="{{ membership.course.name }}" title="{{ membership.assessment.name }}" state="{{ membership.assessment.description }}" />
+  <c-sidebar-header back_url="{% url 'course' membership.course.pk %}" back_label="{{ membership.course.name }}" title="{{ membership.assessment.name }}" subtitle="{{ membership.assessment.description }}" />
 {% endblock %}
 {% block nav %}
   {% with assessment=membership.assessment %}

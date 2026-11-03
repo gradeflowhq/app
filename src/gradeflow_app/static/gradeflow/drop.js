@@ -1,6 +1,6 @@
-// A drop zone: whether a file is dragged over it, and `onFile` (called as one of the component's methods) with the
+// A drop zone: whether a file is dragged over it, and `onFiles` (called as one of the component's methods) with the
 // files dropped.
-export const dropZone = (onFile) => ({
+export const dropZone = (onFiles) => ({
   dragging: false,
   dragOver() {
     this.dragging = true;
@@ -10,7 +10,7 @@ export const dropZone = (onFile) => ({
   },
   drop(event) {
     this.dragging = false;
-    onFile.call(this, event.dataTransfer.files);
+    onFiles.call(this, event.dataTransfer.files);
   },
 });
 
@@ -19,10 +19,10 @@ export const dropZone = (onFile) => ({
 export const fileDrop = () => ({
   ...dropZone(function (files) {
     this.$refs.file.files = files;
-    this.chosen();
+    this.fileChosen();
   }),
   fileName: "",
-  chosen() {
+  fileChosen() {
     this.fileName = this.$refs.file.files[0]?.name ?? "";
     if (this.fileName) this.$refs.submit.click();
   },

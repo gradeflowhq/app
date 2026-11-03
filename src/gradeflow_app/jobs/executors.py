@@ -13,21 +13,21 @@ from gradeflow_app.jobs.handlers import handler
 from gradeflow_app.jobs.models import Job
 
 _LOG = logging.getLogger(__name__)
-PREFIX = "gradeflow-"
+NOMAD_JOB_PREFIX = "gradeflow-"
 
 
-class Unavailable(Exception):
+class ExecutorUnavailable(Exception):
     """The executor can't be reached, or refused a job."""
 
 
 class Executor(Protocol):
     def submit(self, job: Job) -> None:
-        """Hand `job` over to run; handing it over again changes nothing. Raises `Unavailable`."""
+        """Hand `job` over to run; handing it over again changes nothing. Raises `ExecutorUnavailable`."""
 
     def cancel(self, job: Job) -> None: ...
 
-    def received(self) -> dict[UUID, bool]:
-        """The jobs handed over, and whether each has ended. Raises `Unavailable`."""
+    def submitted_jobs(self) -> dict[UUID, bool]:
+        """The jobs handed over, and whether each has ended. Raises `ExecutorUnavailable`."""
 
 
 class Nomad:
@@ -41,41 +41,45 @@ class Nomad:
     def submit(self, job: Job) -> None:
         try:
             self.client.post(
-                "/v1/jobs", params={"namespace": self.namespace}, json={"Job": self.spec(job)}
+                "/v1/jobs", params={"namespace": self.namespace}, json={"Job": self.nomad_spec(job)}
             ).raise_for_status()
         except httpx.HTTPError as error:
-            raise Unavailable from error
+            raise ExecutorUnavailable from error
 
     def cancel(self, job: Job) -> None:
         try:
-            self.client.delete(f"/v1/job/{self.name(job)}", params={"namespace": self.namespace, "purge": "true"})
+            self.client.delete(
+                f"/v1/job/{self.nomad_job_id(job)}", params={"namespace": self.namespace, "purge": "true"}
+            )
         except httpx.HTTPError:
-            _LOG.warning("Couldn't stop Nomad job %s", self.name(job))
+            _LOG.warning("Couldn't stop Nomad job %s", self.nomad_job_id(job))
 
-    def received(self) -> dict[UUID, bool]:
+    def submitted_jobs(self) -> dict[UUID, bool]:
         try:
-            response = self.client.get("/v1/jobs", params={"namespace": self.namespace, "prefix": PREFIX})
+            response = self.client.get("/v1/jobs", params={"namespace": self.namespace, "prefix": NOMAD_JOB_PREFIX})
             response.raise_for_status()
         except httpx.HTTPError as error:
-            raise Unavailable from error
-        found = {}
-        for listed in response.json():
+            raise ExecutorUnavailable from error
+        ended_by_job = {}
+        for nomad_job in response.json():
             try:
-                found[UUID(listed["ID"].removeprefix(PREFIX))] = listed["Status"] == "dead"
+                ended_by_job[UUID(nomad_job["ID"].removeprefix(NOMAD_JOB_PREFIX))] = nomad_job["Status"] == "dead"
             except ValueError:
                 continue  # not one of our jobs, such as a registry
-        return found
+        return ended_by_job
 
     @staticmethod
-    def name(job: Job) -> str:
-        return f"{PREFIX}{job.pk}"
+    def nomad_job_id(job: Job) -> str:
+        return f"{NOMAD_JOB_PREFIX}{job.pk}"
 
-    def spec(self, job: Job) -> dict[str, object]:
-        url = settings.GRADEFLOW_JOB_URL.rstrip("/") + reverse("job_input", args=[job.pk]).removesuffix("input")
+    def nomad_spec(self, job: Job) -> dict[str, object]:
+        url = settings.GRADEFLOW_APP_URL_FOR_JOBS.rstrip("/") + reverse("job_input", args=[job.pk]).removesuffix(
+            "input"
+        )
         task = handler(job).task
         return {
-            "ID": self.name(job),
-            "Name": self.name(job),
+            "ID": self.nomad_job_id(job),
+            "Name": self.nomad_job_id(job),
             "Namespace": self.namespace,
             "Type": "batch",
             "Datacenters": [self.datacenter],

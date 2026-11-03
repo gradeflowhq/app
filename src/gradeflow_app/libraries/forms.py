@@ -5,9 +5,9 @@ from typing import Any
 
 from django import forms
 
-from gradeflow_app.questions.models import TYPE_LABELS
+from gradeflow_app.questions.models import QUESTION_TYPE_LABELS
 
-label_field = partial(forms.CharField, label="Name", max_length=100)
+label_field = partial(forms.CharField, label="Label", max_length=100)
 summary_field = partial(forms.CharField, label="What it does", max_length=300)
 
 
@@ -16,7 +16,7 @@ class NewMethodForm(forms.Form):
     summary = summary_field(
         required=False, widget=forms.TextInput(attrs={"placeholder": "Full marks for mentioning photosynthesis."})
     )
-    question_type = forms.ChoiceField(label="Answer type", choices=TYPE_LABELS.items())
+    question_type = forms.ChoiceField(label="Question type", choices=QUESTION_TYPE_LABELS.items())
 
 
 class SaveMethodForm(forms.Form):

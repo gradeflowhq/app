@@ -2,12 +2,12 @@
 {% block head_title %}Authenticator app{% endblock %}
 {% block content %}
 <h1>Authenticator app</h1>
-<c-card body_class="rows">
-  <c-row label="Turn off" detail="Signing in stops asking for a code from your app.">
+<c-card body_class="setting-rows">
+  <c-setting-row label="Turn off" detail="Signing in stops asking for a code from your app.">
     <form method="post" action="{% url 'mfa_deactivate_totp' %}" class="grid justify-items-end gap-3">
       {% csrf_token %}<c-form-errors :errors="form.non_field_errors" />
       <button class="btn btn-error btn-outline">Turn off</button>
     </form>
-  </c-row>
+  </c-setting-row>
 </c-card>
 {% endblock %}

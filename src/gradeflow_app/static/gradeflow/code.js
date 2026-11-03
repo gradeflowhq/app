@@ -2,23 +2,23 @@
 // textarea's value in sync. `data-language` names the language; `data-fill` grows it to fill a flex column instead
 // of fitting its content. Its Expand button opens the same code in the code dialog (base.html).
 
-import { script, vendor } from "./vendor.js";
+import { loadScript, vendorUrl } from "./vendor.js";
 
-const dark = matchMedia("(prefers-color-scheme: dark)");
+const darkScheme = matchMedia("(prefers-color-scheme: dark)");
 const theme = () => {
   const chosen = document.documentElement.dataset.theme;
-  return (chosen ? chosen === "dark" : dark.matches) ? "vs-dark" : "vs";
+  return (chosen ? chosen === "dark" : darkScheme.matches) ? "vs-dark" : "vs";
 };
 let loading;
 
 function loadMonaco() {
-  loading ??= script("monaco-0.57.0/vs/loader.js").then(() => {
+  loading ??= loadScript("monaco-0.57.0/vs/loader.js").then(() => {
     // Otherwise the other UMD libraries would define AMD modules instead of globals.
     delete define.amd;
-    require.config({ paths: { vs: vendor("monaco-0.57.0/vs") } });
+    require.config({ paths: { vs: vendorUrl("monaco-0.57.0/vs") } });
     return new Promise((resolve) => {
       require(["vs/editor/editor.main"], () => {
-        dark.addEventListener("change", () => monaco.editor.setTheme(theme()));
+        darkScheme.addEventListener("change", () => monaco.editor.setTheme(theme()));
         resolve();
       });
     });
@@ -43,7 +43,7 @@ const options = {
 
 export const codeEditor = () => {
   let editor;
-  let holder;
+  let editorContainer;
   let expanded;
   return {
     async init() {
@@ -51,14 +51,14 @@ export const codeEditor = () => {
       const fill = "fill" in textarea.dataset;
       await loadMonaco();
       if (!textarea.isConnected) return;
-      holder = Object.assign(document.createElement("div"), {
+      editorContainer = Object.assign(document.createElement("div"), {
         className: `relative w-full overflow-hidden rounded-field border border-base-300${fill ? " min-h-48 flex-1" : ""}`,
       });
-      holder.setAttribute("x-ignore", "");
+      editorContainer.setAttribute("x-ignore", "");
       textarea.hidden = true;
-      textarea.after(holder);
+      textarea.after(editorContainer);
       const label = textarea.labels?.[0]?.textContent.trim() || textarea.ariaLabel || "Code";
-      editor = monaco.editor.create(holder, {
+      editor = monaco.editor.create(editorContainer, {
         ...options,
         value: textarea.value,
         readOnly: textarea.readOnly || textarea.disabled,
@@ -67,7 +67,7 @@ export const codeEditor = () => {
         theme: theme(),
       });
       if (!fill) {
-        const fit = () => (holder.style.height = `${Math.min(Math.max(editor.getContentHeight(), 180), 520)}px`);
+        const fit = () => (editorContainer.style.height = `${Math.min(Math.max(editor.getContentHeight(), 180), 520)}px`);
         editor.onDidContentSizeChange(fit);
         fit();
       }
@@ -104,13 +104,13 @@ export const codeEditor = () => {
         dialog.showModal();
         expanded.focus();
       });
-      holder.prepend(expand);
+      editorContainer.prepend(expand);
     },
     destroy() {
       if (expanded) document.getElementById("code").close();
       editor?.getModel()?.dispose();
       editor?.dispose();
-      holder?.remove();
+      editorContainer?.remove();
     },
   };
 };

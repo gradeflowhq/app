@@ -24,20 +24,20 @@ class Result(models.Model):
     revision = models.PositiveIntegerField()
 
     class Meta:
-        constraints = (models.UniqueConstraint(fields=("student", "question"), name="one_result_per_question"),)
+        constraints = (models.UniqueConstraint(fields=("student", "question"), name="one_result_per_student_question"),)
 
     def __str__(self) -> str:
         return f"{self.proportion:.0%}"
 
-    def core(self, max_marks: float) -> QuestionResult:
+    def question_result(self, max_marks: float) -> QuestionResult:
         """The core's result, out of the question's `max_marks` as they are now."""
         return QuestionResult(
             proportion=self.proportion,
             max_marks=max_marks,
             feedback=self.feedback,
-            method=self.method,
-            marked=self.marked,
-            models=tuple(self.language_models),
+            method_label=self.method,
+            is_marked=self.marked,
+            model_names=tuple(self.language_models),
             breakdown=self.breakdown,
         )
 
@@ -53,7 +53,9 @@ class Adjustment(models.Model):
     history = HistoricalRecords()
 
     class Meta:
-        constraints = (models.UniqueConstraint(fields=("student", "question"), name="one_adjustment_per_question"),)
+        constraints = (
+            models.UniqueConstraint(fields=("student", "question"), name="one_adjustment_per_student_question"),
+        )
 
     def __str__(self) -> str:
         return f"{self.marks}"

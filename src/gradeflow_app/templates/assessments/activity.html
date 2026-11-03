@@ -1,14 +1,14 @@
-<c-sheet.head title="Activity" />
+<c-drawer.head title="Activity" />
 <div class="grid gap-6 p-6">
-  {% regroup entries by at|date:"Y-m-d" as days %}
+  {% regroup events by occurred_at|date:"Y-m-d" as days %}
   {% for day in days %}
   <section class="grid gap-1" aria-labelledby="day-{{ forloop.counter }}">
-    <h3 id="day-{{ forloop.counter }}" class="px-3 text-sm font-medium text-muted">{{ day.list.0.at|day }}</h3>
+    <h3 id="day-{{ forloop.counter }}" class="px-3 text-sm font-medium text-muted">{{ day.list.0.occurred_at|history_day }}</h3>
     <ol class="-mx-3 grid">
-      {% for event in day.list %}<li>{% include "assessments/event.html" with when=event.at|time:"H:i" %}</li>{% endfor %}
+      {% for event in day.list %}<li>{% include "assessments/event.html" with when=event.occurred_at|time:"H:i" %}</li>{% endfor %}
     </ol>
   </section>
   {% empty %}
-  <c-empty icon="clock" title="Nothing yet">Imports, changes to marking and adjustments show here.</c-empty>
+  <c-empty-state icon="clock" title="Nothing yet">Imports, changes to marking and adjustments show here.</c-empty-state>
   {% endfor %}
 </div>

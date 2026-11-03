@@ -5,27 +5,27 @@ document.addEventListener("click", (event) => {
   const row = event.target.closest("tr[data-href]");
   if (row && !event.target.closest("a, button, input, label, select")) row.querySelector("a[href]")?.click();
 });
-// An insert button adds its value where the cursor was in the last feedback box used.
-let lastBox;
+// An insert button adds its value where the cursor was in the last feedback field used.
+let lastFeedbackField;
 document.addEventListener("focusin", (event) => {
-  if (event.target.closest("[data-inserts]") && event.target.matches("textarea")) lastBox = event.target;
+  if (event.target.closest("[data-feedback-fields]") && event.target.matches("textarea")) lastFeedbackField = event.target;
 });
 document.addEventListener("click", (event) => {
   const insert = event.target.closest("[data-insert]");
-  const box = insert && (insert.closest("[data-inserts]").contains(lastBox) ? lastBox : insert.closest("[data-inserts]").querySelector("textarea"));
-  if (!box) return;
-  const at = box.selectionStart ?? box.value.length;
-  box.setRangeText(insert.dataset.insert, at, box.selectionEnd ?? at, "end");
-  box.focus();
-  box.dispatchEvent(new Event("change", { bubbles: true }));
+  const field = insert && (insert.closest("[data-feedback-fields]").contains(lastFeedbackField) ? lastFeedbackField : insert.closest("[data-feedback-fields]").querySelector("textarea"));
+  if (!field) return;
+  const cursor = field.selectionStart ?? field.value.length;
+  field.setRangeText(insert.dataset.insert, cursor, field.selectionEnd ?? cursor, "end");
+  field.focus();
+  field.dispatchEvent(new Event("change", { bubbles: true }));
 });
-// A quick pick beside a field sets the field, as typing it would.
+// A preset beside a field sets the field, as typing it would.
 document.addEventListener("click", (event) => {
-  const pick = event.target.closest("[data-preset]");
-  const input = pick && document.getElementById(pick.closest("[data-presets]").dataset.presets);
+  const preset = event.target.closest("[data-preset]");
+  const input = preset && document.getElementById(preset.closest("[data-presets]").dataset.presets);
   if (!input) return;
-  input.value = pick.dataset.preset;
-  for (const other of pick.parentElement.children) other.setAttribute("aria-pressed", String(other === pick));
+  input.value = preset.dataset.preset;
+  for (const other of preset.parentElement.children) other.setAttribute("aria-pressed", String(other === preset));
   input.dispatchEvent(new Event("change", { bubbles: true }));
 });
 
@@ -38,13 +38,13 @@ document.addEventListener("htmx:finally:request", ({ detail: { ctx } }) => {
 // of them, as the server decided when it rendered them (schemaforms.HintedField).
 const currentValue = (control) => (control?.type === "checkbox" ? control.checked : control?.value);
 const same = (value, wanted) => (typeof wanted === "boolean" ? Boolean(value) === wanted : String(value) === String(wanted));
-const wants = (form, [name, wanted]) => {
+const meetsCondition = (form, [name, wanted]) => {
   const value = currentValue(form.elements.namedItem(name));
   return [wanted].flat().some((option) => same(value, option));
 };
 document.addEventListener("change", ({ target: { form } }) => {
   for (const field of form?.querySelectorAll("[data-visible-when]") ?? []) {
-    field.hidden = !Object.entries(JSON.parse(field.dataset.visibleWhen)).every((condition) => wants(form, condition));
+    field.hidden = !Object.entries(JSON.parse(field.dataset.visibleWhen)).every((condition) => meetsCondition(form, condition));
   }
 });
 // Toggles in a `data-toggles` row open one panel at a time, as tabs do, and close again when pressed.

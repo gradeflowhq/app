@@ -11,7 +11,7 @@ from django.utils import timezone
 
 from gradeflow_app.requests import HtmxRequest
 
-NAVIGATING = ("HX-Location", "HX-Redirect", "HX-Refresh")
+NAVIGATION_HEADERS = ("HX-Location", "HX-Redirect", "HX-Refresh")
 """Headers that have htmx load another page, which shows the messages itself."""
 LIVE_REFRESH = "X-Live-Refresh"
 """Marks a request a page sends by itself as something changed (htmx.js): the page may be on its way to another."""
@@ -37,14 +37,16 @@ class HtmxMessagesMiddleware:
 
     def __call__(self, request: HtmxRequest) -> HttpResponse:
         response = self.get_response(request)
-        navigating = response.status_code in range(300, 400) or any(header in response for header in NAVIGATING)
-        if not request.htmx or request.htmx.boosted or navigating or LIVE_REFRESH in request.headers:
+        is_navigation = response.status_code in range(300, 400) or any(
+            header in response for header in NAVIGATION_HEADERS
+        )
+        if not request.htmx or request.htmx.boosted or is_navigation or LIVE_REFRESH in request.headers:
             return response
-        stored = messages.get_messages(request)
-        if getattr(stored, "used", False):  # a whole page, which shows them itself
+        message_storage = messages.get_messages(request)
+        if getattr(message_storage, "used", False):  # a whole page, which shows them itself
             return response
-        if shown := toasts(stored):
-            response["X-Messages"] = json.dumps(shown)
+        if toast_list := toasts(message_storage):
+            response["X-Messages"] = json.dumps(toast_list)
         return response
 
 

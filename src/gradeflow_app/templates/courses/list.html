@@ -4,7 +4,7 @@
 <c-page title="Courses">
   <c-slot name="actions"><button class="btn btn-primary" data-dialog="new-course">{% icon "plus" %}New course</button></c-slot>
   {% if cards or query %}
-  {% if searchable %}
+  {% if offers_search %}
   <form role="search" hx-get="{% url 'courses' %}" hx-trigger="input changed delay:250ms from:input, search" hx-select="#course-cards" hx-target="#course-cards" hx-swap="outerHTML" hx-push-url="true">
     <c-search class="w-full max-w-xs" label="Search courses" name="q" value="{{ query }}" />
   </form>
@@ -14,15 +14,15 @@
     <ul class="grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4" aria-label="Courses">
       {% for card in cards %}{% with member=card.member course=card.member.course %}
       <li>
-        <a href="{% url 'course' course.pk %}" class="surface flex h-full flex-col gap-1 p-5 transition-colors hover:bg-base-200/60">
-          <p class="flex items-center gap-2"><span class="truncate font-semibold">{{ course.name }}</span>{% if mixed_roles %}<span class="badge badge-ghost badge-sm shrink-0">{{ member.get_role_display }}</span>{% endif %}</p>
+        <a href="{% url 'course' course.pk %}" class="card-box flex h-full flex-col gap-1 p-5 transition-colors hover:bg-base-200/60">
+          <p class="flex items-center gap-2"><span class="truncate font-semibold">{{ course.name }}</span>{% if has_mixed_roles %}<span class="badge badge-ghost badge-sm shrink-0">{{ member.get_role_display }}</span>{% endif %}</p>
           {% if course.description %}<p class="truncate text-sm text-muted">{{ course.description }}</p>{% endif %}
           <p class="mt-auto flex flex-wrap gap-x-4 gap-y-1 pt-3 text-sm text-muted [&_b]:font-medium [&_b]:tabular-nums [&>span]:flex [&>span]:items-center [&>span]:gap-1.5">
-            {% if card.assessments %}
-            <span>{% icon "document-text" "size-4" mini=True %}<b class="text-base-content">{{ card.assessments }}</b> assessment{{ card.assessments|pluralize }}</span>
-            {% if card.to_mark %}<span>{% icon "pencil-square" "size-4" mini=True %}<b class="text-base-content">{{ card.to_mark }}</b> to mark</span>{% endif %}
-            {% if card.to_send %}<span class="font-medium text-primary">{% icon "paper-airplane" "size-4" mini=True %}<b>{{ card.to_send }}</b> ready to send</span>{% endif %}
-            {% if card.sent %}<span>{% icon "check-circle" "size-4" mini=True %}<b class="text-base-content">{{ card.sent }}</b> sent</span>{% endif %}
+            {% if card.assessment_count %}
+            <span>{% icon "document-text" "size-4" mini=True %}<b class="text-base-content">{{ card.assessment_count }}</b> assessment{{ card.assessment_count|pluralize }}</span>
+            {% if card.to_mark_count %}<span>{% icon "pencil-square" "size-4" mini=True %}<b class="text-base-content">{{ card.to_mark_count }}</b> to mark</span>{% endif %}
+            {% if card.to_send_count %}<span class="font-medium text-primary">{% icon "paper-airplane" "size-4" mini=True %}<b>{{ card.to_send_count }}</b> ready to send</span>{% endif %}
+            {% if card.sent_count %}<span>{% icon "check-circle" "size-4" mini=True %}<b class="text-base-content">{{ card.sent_count }}</b> sent</span>{% endif %}
             {% else %}
             <span>No assessments yet</span>
             {% endif %}
@@ -32,11 +32,11 @@
       {% endwith %}{% endfor %}
     </ul>
     {% else %}
-    <c-empty class="surface" icon="magnifying-glass" title="No courses match “{{ query }}”"><c-slot name="action"><a class="btn" href="{% url 'courses' %}">Clear search</a></c-slot></c-empty>
+    <c-empty-state class="card-box" icon="magnifying-glass" title="No courses match “{{ query }}”"><c-slot name="action"><a class="btn" href="{% url 'courses' %}">Clear search</a></c-slot></c-empty-state>
     {% endif %}
   </div>
   {% else %}
-  <c-empty class="surface" icon="academic-cap" title="No courses yet">A course holds its assessments and the people who mark them.<c-slot name="action"><button class="btn btn-primary" data-dialog="new-course">{% icon "plus" %}New course</button></c-slot></c-empty>
+  <c-empty-state class="card-box" icon="academic-cap" title="No courses yet">A course holds its assessments and the people who mark them.<c-slot name="action"><button class="btn btn-primary" data-dialog="new-course">{% icon "plus" %}New course</button></c-slot></c-empty-state>
   {% endif %}
 </c-page>
 <c-form-dialog id="new-course" title="New course" action="{% url 'courses' %}" submit="Create" :form="form" />

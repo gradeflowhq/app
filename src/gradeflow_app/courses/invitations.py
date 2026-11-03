@@ -21,42 +21,44 @@ _SALT = "gradeflow.invitation"
 
 
 @task
-def deliver(subject: str, body: str, to: str) -> None:
+def send_email_task(subject: str, body: str, to: str) -> None:
     send_mail(subject, body, None, [to])
 
 
-def send(name: str, to: str, context: dict[str, Any]) -> None:
-    subject, _, body = render_to_string(f"emails/{name}.txt", context).strip().partition("\n")
-    deliver.enqueue(subject=subject.strip(), body=body.strip() + "\n", to=to)
+def send_email(template: str, to: str, context: dict[str, Any]) -> None:
+    subject, _, body = render_to_string(f"emails/{template}.txt", context).strip().partition("\n")
+    send_email_task.enqueue(subject=subject.strip(), body=body.strip() + "\n", to=to)
 
 
-def token(invitation: Invitation) -> str:
+def invitation_token(invitation: Invitation) -> str:
     return signing.dumps(str(invitation.pk), salt=_SALT)
 
 
-def invitation_of(value: str) -> Invitation | None:
+def invitation_from_token(token: str) -> Invitation | None:
     try:
-        return Invitation.objects.select_related("course").filter(pk=signing.loads(value, salt=_SALT)).first()
+        return Invitation.objects.select_related("course").filter(pk=signing.loads(token, salt=_SALT)).first()
     except signing.BadSignature:
         return None
 
 
 @transaction.atomic
-def accept_all(user: User, email: str) -> list[Member]:
-    """Turn every live invitation sent to `email` into a membership of `user`."""
-    live = [
+def accept_invitations(user: User, email: str) -> list[Member]:
+    """Turn every open invitation sent to `email` into a membership of `user`."""
+    open_invitations = [
         invitation
         for invitation in Invitation.objects.select_for_update().filter(email__iexact=email, accepted_at=None)
-        if not invitation.expired
+        if not invitation.is_expired
     ]
     members = [
         Member.objects.get_or_create(course=invitation.course, user=user, defaults={"role": invitation.role})[0]
-        for invitation in live
+        for invitation in open_invitations
     ]
-    Invitation.objects.filter(pk__in=[invitation.pk for invitation in live]).update(accepted_at=timezone.now())
+    Invitation.objects.filter(pk__in=[invitation.pk for invitation in open_invitations]).update(
+        accepted_at=timezone.now()
+    )
     return members
 
 
 @receiver(email_confirmed)
 def _accept_on_confirmation(request: HttpRequest, email_address: EmailAddress, **kwargs: Any) -> None:
-    accept_all(email_address.user, email_address.email)
+    accept_invitations(email_address.user, email_address.email)

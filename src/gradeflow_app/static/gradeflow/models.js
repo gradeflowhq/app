@@ -5,40 +5,40 @@
 
 import { local } from "./storage.js";
 
-const KEY = "gradeflow:models";
+const MODELS_STORAGE_KEY = "gradeflow:models";
 const STATE_HEADER = "X-Model-State";
 
-function connection() {
-  const found = local.json(KEY);
-  return found?.provider && found?.token ? found : null;
+function storedModelService() {
+  const stored = local.json(MODELS_STORAGE_KEY);
+  return stored?.provider && stored?.token ? stored : null;
 }
 
-const keep = (found) => local.set(KEY, JSON.stringify(found));
+const store = (state) => local.set(MODELS_STORAGE_KEY, JSON.stringify(state));
 
-const forget = () => local.remove(KEY);
+const clear = () => local.remove(MODELS_STORAGE_KEY);
 
 export function modelHeaders() {
-  const found = connection();
-  if (!found) return {};
-  const { provider, decision_model = "", reasoning_model = "", answers_per_request = 12 } = found;
-  const state = { provider, decision_model, reasoning_model, answers_per_request };
-  return { "X-Model-Token": found.token, [STATE_HEADER]: JSON.stringify(state) };
+  const stored = storedModelService();
+  if (!stored) return {};
+  const { provider, fast_model = "", careful_model = "", answers_per_request = 12 } = stored;
+  const state = { provider, fast_model, careful_model, answers_per_request };
+  return { "X-Model-Token": stored.token, [STATE_HEADER]: JSON.stringify(state) };
 }
 
 // All the device knows of its model service but the token, for the model service's own requests.
 export function modelState() {
-  const { token, ...state } = connection() ?? {};
+  const { token, ...state } = storedModelService() ?? {};
   return JSON.stringify(state);
 }
 
 // The model service's responses say what the device now knows: the models chosen, and how each did when tried.
 // One for a service the device has since left is dropped.
-export function keepModelState(response) {
-  const sent = response?.headers.get(STATE_HEADER);
-  const found = connection();
-  if (!sent || !found) return;
-  const state = JSON.parse(sent);
-  if (state.provider === found.provider) keep({ ...state, token: found.token });
+export function storeModelState(response) {
+  const stateHeader = response?.headers.get(STATE_HEADER);
+  const stored = storedModelService();
+  if (!stateHeader || !stored) return;
+  const state = JSON.parse(stateHeader);
+  if (state.provider === stored.provider) store({ ...state, token: stored.token });
 }
 
 // The settings card and the answers column's notice: whether this device is connected, connecting it, and
@@ -53,11 +53,11 @@ export const modelService = () => ({
   init() {
     if (this.$root.id === "model-service") {
       const offered = [...this.$root.querySelectorAll("#model-provider option")].map((option) => option.value);
-      if (this.$root.dataset.refused || !offered.includes(connection()?.provider)) forget();
+      if (this.$root.dataset.refused || !offered.includes(storedModelService()?.provider)) clear();
     }
-    const found = connection();
-    this.connected = Boolean(found);
-    this.provider = found?.provider ?? "";
+    const stored = storedModelService();
+    this.connected = Boolean(stored);
+    this.provider = stored?.provider ?? "";
   },
   get disconnected() {
     return !this.connected;
@@ -66,15 +66,15 @@ export const modelService = () => ({
   // tried the token.
   async connect() {
     const provider = this.$refs.provider.value;
-    const found = connection();
+    const stored = storedModelService();
     const token = this.token.trim();
-    keep(found?.provider === provider ? { ...found, token } : { provider, token });
+    store(stored?.provider === provider ? { ...stored, token } : { provider, token });
     this.connecting = true;
     await this.send(this.$root.dataset.connect);
     this.connecting = false;
   },
   disconnect() {
-    forget();
+    clear();
     this.connected = false;
   },
   // The card comes back in place of this one. Whether this component or a new one holds it, a refused connection is
@@ -82,7 +82,7 @@ export const modelService = () => ({
   async send(url) {
     await htmx.ajax("POST", url, { source: this.$root, target: "#model-service", swap: "outerHTML" });
     if (document.getElementById("model-service")?.dataset.refused) {
-      forget();
+      clear();
       this.connected = false;
     }
   },

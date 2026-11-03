@@ -4,10 +4,10 @@
 <c-page title="Settings">
   <div class="settings">
     <c-form-card id="course-details" title="Details">{{ form }}</c-form-card>
-    <c-card body_class="rows">
-      <c-row label="Delete course">
+    <c-card body_class="setting-rows">
+      <c-setting-row label="Delete course">
         <form method="post" action="{% url 'delete_course' member.course_id %}">{% csrf_token %}<button class="btn btn-error btn-outline" data-confirm="Delete “{{ member.course.name }}”?" data-confirm-detail="Its assessments and their marks are deleted for everyone. This can't be undone." data-confirm-button="Delete">Delete course</button></form>
-      </c-row>
+      </c-setting-row>
     </c-card>
   </div>
 </c-page>

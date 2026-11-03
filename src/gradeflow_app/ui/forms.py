@@ -27,7 +27,7 @@ class BoundField(forms.BoundField):
     gets the server's error beside it rather than the browser's bubble."""
 
     @property
-    def optional(self) -> bool:
+    def is_optional(self) -> bool:
         return not self.field.required and self.field.initial is None
 
     def build_widget_attrs(self, attrs: dict[str, Any], widget: forms.Widget | None = None) -> dict[str, Any]:

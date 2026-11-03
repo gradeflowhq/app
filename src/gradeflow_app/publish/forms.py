@@ -3,7 +3,7 @@ from typing import Any
 
 from django import forms
 
-from gradeflow_app.publish.models import AssessmentCanvas, CourseCanvas, Mode, Publication
+from gradeflow_app.publish.models import AssessmentCanvas, CourseCanvas, MarksMode, SentMarks
 from gradeflow_app.ui.schemaforms.widgets import Segmented
 from gradeflow_app.ui.templatetags.ui import marks
 
@@ -15,10 +15,10 @@ rounding_field = partial(
     error_messages={"min_value": "Round to 0 or more."},
 )
 
-LABELS = {"marks_mode": "Send as", "include_feedback": "Send feedback"}
+CANVAS_FORM_LABELS = {"marks_mode": "Send as", "include_feedback": "Send feedback"}
 
 
-class CanvasCourseForm(forms.ModelForm[CourseCanvas]):
+class CourseCanvasForm(forms.ModelForm[CourseCanvas]):
     """The Canvas course a course's marks go to, and how they're sent."""
 
     rounding = rounding_field(widget=forms.NumberInput(attrs={"placeholder": "0.5", "class": "max-w-40"}))
@@ -28,18 +28,18 @@ class CanvasCourseForm(forms.ModelForm[CourseCanvas]):
         fields = (
             "canvas_course",
             "canvas_course_name",
-            "canvas_group",
-            "canvas_group_name",
+            "canvas_assignment_group",
+            "canvas_assignment_group_name",
             "marks_mode",
             "rounding",
             "include_feedback",
         )
-        labels = LABELS
+        labels = CANVAS_FORM_LABELS
         help_texts = {"include_feedback": "As a comment with each student's marks. Feedback shows the correct answers."}
         widgets = {"marks_mode": Segmented}
 
 
-class SendingForm(forms.ModelForm[AssessmentCanvas]):
+class AssessmentCanvasForm(forms.ModelForm[AssessmentCanvas]):
     """An assessment's Canvas assignment, and how its marks are sent where that differs from its course."""
 
     assignment = forms.CharField(max_length=50, required=False, widget=forms.HiddenInput)
@@ -48,7 +48,7 @@ class SendingForm(forms.ModelForm[AssessmentCanvas]):
     class Meta:
         model = AssessmentCanvas
         fields = ("marks_mode", "rounding", "include_feedback")
-        labels = LABELS
+        labels = CANVAS_FORM_LABELS
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
@@ -56,7 +56,7 @@ class SendingForm(forms.ModelForm[AssessmentCanvas]):
         self.initial.setdefault("assignment", self.instance.canvas_assignment)
         as_course = "As the course ({})".format
         mode = as_course(course.get_marks_mode_display().lower())
-        self.fields["marks_mode"].widget = forms.Select(choices=[("", mode), *Mode.choices])
+        self.fields["marks_mode"].widget = forms.Select(choices=[("", mode), *MarksMode.choices])
         feedback = forms.NullBooleanSelect()
         feedback.choices = [
             ("unknown", as_course("yes" if course.include_feedback else "no")),
@@ -74,9 +74,9 @@ class SendingForm(forms.ModelForm[AssessmentCanvas]):
         return super().save(commit)
 
 
-class PublicationForm(forms.ModelForm[Publication]):
+class SentMarksForm(forms.ModelForm[SentMarks]):
     """What the browser reports sending to Canvas: the assignment, and how many students."""
 
     class Meta:
-        model = Publication
+        model = SentMarks
         fields = ("assignment_name", "student_count")

@@ -3,7 +3,7 @@
 {% block content %}
 <h1>Signed-in devices</h1>
 {% partialdef device %}
-<li class="item-row">
+<li class="account-list-row">
   <div class="min-w-0 flex-1">
     <p class="flex items-center gap-2 font-medium"><span class="min-w-0 truncate" title="{{ session.user_agent }}">{{ session.user_agent|browser }}</span>{% if session.is_current %}<span class="badge badge-ghost badge-sm">This device</span>{% endif %}</p>
     <p class="text-sm text-muted">{{ session.ip }} · {% if session.is_current %}Active now{% else %}Last seen {{ session.last_seen_at|ago }}{% endif %}</p>
@@ -28,10 +28,10 @@
 </c-card>
 {% endwith %}
 {% if session_count > 1 %}
-<c-card body_class="rows">
-  <c-row label="Sign out other devices" detail="Every device but this one needs to sign in again.">
+<c-card body_class="setting-rows">
+  <c-setting-row label="Sign out other devices" detail="Every device but this one needs to sign in again.">
     <form method="post" action="{% url 'usersessions_list' %}">{% csrf_token %}<button class="btn btn-error btn-outline" data-confirm="Sign out other devices?" data-confirm-detail="They need to sign in again." data-confirm-button="Sign out">Sign out other devices</button></form>
-  </c-row>
+  </c-setting-row>
 </c-card>
 {% endif %}
 {% endblock %}

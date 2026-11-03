@@ -2,10 +2,10 @@
 {% block head_title %}Remove passkey{% endblock %}
 {% block content %}
 <h1>Remove passkey</h1>
-<c-card body_class="rows">
-  <c-row label="{{ authenticator }}" detail="You can't sign in with it after this.">
+<c-card body_class="setting-rows">
+  <c-setting-row label="{{ authenticator }}" detail="You can't sign in with it after this.">
     <a class="btn" href="{% url 'mfa_list_webauthn' %}">Cancel</a>
     <form method="post" action="{% url 'mfa_remove_webauthn' pk=authenticator.pk %}">{% csrf_token %}<button class="btn btn-error btn-outline">Remove</button></form>
-  </c-row>
+  </c-setting-row>
 </c-card>
 {% endblock %}

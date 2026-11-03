@@ -19,104 +19,108 @@ marking and each of its checks, and Q1's answers before and after they are all a
 them, and writes them when run."""
 
 
-type Marking = dict[str, Any]
-"""A marking as the core takes it, with ``question`` naming the question it marks unless it is a question
+type MarkingJson = dict[str, Any]
+"""A marking's JSON as the core takes it, with ``question`` naming the question it marks unless it is a question
 group's."""
 
 
-class Data(BaseModel):
+class LandingModel(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
 
 @dataclass(frozen=True)
-class Marks:
+class MarkRange:
     """Marks from low to high: one mark when they are the same."""
 
     low: float
     high: float
 
     @classmethod
-    def of(cls, values: list[float]) -> Marks:
+    def spanning(cls, values: list[float]) -> MarkRange:
         return cls(min(values), max(values))
 
 
 # The workspace in the hero: one question's answers grouped by the checks they pass.
 
 
-class HeroQuestion(Data):
-    number: str
+class WorkspaceQuestion(LandingModel):
+    question_key: str
     method: str | None = None
     average: int | None = None
     grouped: bool = False
 
 
-class HeroCheck(Data):
+class WorkspaceCheck(LandingModel):
     name: str
     """What it checks, in a word or two, beside each answer."""
-    check: Marking
+    marking: MarkingJson
     """It alone, as Q5's marking."""
 
 
-class HeroGroup(Data):
-    code: str
-    others: int
-    students: int
+class WorkspaceAnswerGroup(LandingModel):
+    answer: str
+    other_answer_count: int
+    student_count: int
 
 
-class HeroWorkspace(Data):
+class Workspace(LandingModel):
     course: str
     assessment: str
-    number: str
-    question: str
+    question_key: str
+    question_text: str
     question_set: QuestionSet
-    questions: list[HeroQuestion]
-    marking: Marking
+    questions: list[WorkspaceQuestion]
+    marking: MarkingJson
     """The marking combining the checks."""
-    setting: str
+    setting_name: str
     """The marking's setting shown beside it."""
-    checks: list[HeroCheck]
-    answers: list[HeroGroup]
+    checks: list[WorkspaceCheck]
+    answer_groups: list[WorkspaceAnswerGroup]
 
-    def draft(self, marking: Marking) -> MarkingDraft:
-        return MarkingDraft(marking, self.question_set, self.number)
-
-    @property
-    def method(self) -> str:
-        return self.draft(self.marking).label("")
+    def marking_draft(self, marking: MarkingJson) -> MarkingDraft:
+        return MarkingDraft(marking, self.question_set, self.question_key)
 
     @property
-    def aggregation(self) -> tuple[str, str]:
+    def method_label(self) -> str:
+        return self.marking_draft(self.marking).label("")
+
+    @property
+    def setting_label(self) -> tuple[str, str]:
         """The core's title for the marking's setting, and its label for the value it has."""
-        draft = self.draft(self.marking)
+        draft = self.marking_draft(self.marking)
         schema = draft.schema("")
-        setting = resolve(schema["properties"][self.setting], schema.get("$defs", {}))
-        return setting["title"], hint(setting)["labels"][draft.values("")[self.setting]]
+        setting = resolve(schema["properties"][self.setting_name], schema.get("$defs", {}))
+        return setting["title"], hint(setting)["labels"][draft.values("")[self.setting_name]]
 
     @property
-    def cards(self) -> list[tuple[str, str]]:
+    def check_descriptions(self) -> list[tuple[str, str]]:
         """Each check, as the core names and describes it."""
-        return [(draft.label(""), draft.describe("")) for draft in (self.draft(check.check) for check in self.checks)]
+        drafts = (self.marking_draft(check.marking) for check in self.checks)
+        return [(draft.label(""), draft.describe("")) for draft in drafts]
 
     @property
-    def listed(self) -> list[tuple[HeroQuestion, str | None]]:
+    def questions_with_methods(self) -> list[tuple[WorkspaceQuestion, str | None]]:
         """Each question, with the name of the method that marks it."""
         return [(question, question.method and BUILTINS.by_ref[question.method].label) for question in self.questions]
 
     @property
     def max_marks(self) -> float:
-        return self.question_set[self.number].max_marks
+        return self.question_set[self.question_key].max_marks
 
     @property
-    def marked(self) -> int:
+    def marked_count(self) -> int:
         return sum(1 for question in self.questions if question.method)
 
     @property
-    def rows(self) -> list[tuple[HeroGroup, Marks, list[tuple[HeroCheck, bool]]]]:
-        core = marks()["workspace"]
+    def rows(self) -> list[tuple[WorkspaceAnswerGroup, MarkRange, list[tuple[WorkspaceCheck, bool]]]]:
+        workspace_marks = core_marks()["workspace"]
         return [
-            (group, Marks(value, value), list(zip(self.checks, correct, strict=True)))
+            (group, MarkRange(value, value), list(zip(self.checks, correct, strict=True)))
             for group, (value, _), correct in zip(
-                self.answers, core["marks"], zip(*core["correct"], strict=True), strict=True
+                self.answer_groups,
+                workspace_marks["marks"],
+                zip(*workspace_marks["correct"], strict=True),
+                strict=True,
             )
         ]
 
@@ -124,83 +128,83 @@ class HeroWorkspace(Data):
 # Grouping: Q1's answers, alone or with others that mean the same, and marked by the answers accepted.
 
 
-class Answer(Data):
+class Answer(LandingModel):
     text: str
-    students: int
-    meaning: str
+    student_count: int
+    meaning_group: str
     """The group BAAI/bge-small-en-v1.5 puts it in, at GradeFlow's default of 85% similar."""
 
 
-class Grouping(Data):
-    number: str
-    question: str
+class Grouping(LandingModel):
+    question_key: str
+    question_text: str
     question_set: QuestionSet
-    accepted: list[str]
+    accepted_answers: list[str]
     answers: list[Answer]
-    markings: dict[str, list[Marking]]
+    markings: dict[str, list[MarkingJson]]
     """Its marking before and after all its answers are accepted."""
 
     @property
     def accepted_json(self) -> str:
-        return json.dumps(self.accepted)
+        return json.dumps(self.accepted_answers)
 
 
 # The methods: an example of each, with one setting to change.
 
 
-class Answered(Data):
+class ExampleAnswer(LandingModel):
     answers: dict[str, str]
     """Each answer, by question."""
-    students: int
+    student_count: int
 
 
-class Example(Data):
+class Example(LandingModel):
     method: str
-    number: str
-    question: str
-    marked: str
+    question_key: str
+    question_text: str
+    marked_question: str
     """The question whose marks it shows."""
     question_set: QuestionSet
-    answers: list[Answered]
+    answers: list[ExampleAnswer]
     choices: dict[str, str] = {}
     """Its setting's values and their labels, when it has a list of them."""
-    markings: dict[str, list[Marking]]
+    markings: dict[str, list[MarkingJson]]
     """Its markings for each value of its setting, as the browser submits it."""
 
     @property
     def max_marks(self) -> float:
-        return self.question_set[self.marked].max_marks
+        return self.question_set[self.marked_question].max_marks
 
 
-class Content(Data):
-    workspace: HeroWorkspace
+class LandingContent(LandingModel):
+    workspace: Workspace
     grouping: Grouping
     examples: dict[str, Example]
-    students: list[tuple[str, float]]
+    privacy_students: list[tuple[str, float]]
     """The privacy example's students: ID and total, out of 60."""
 
 
 @cache
-def content() -> Content:
-    return Content.model_validate_json(EXAMPLES.read_text())
+def landing_content() -> LandingContent:
+    return LandingContent.model_validate_json(EXAMPLES.read_text())
 
 
 @cache
-def marks() -> dict[str, Any]:
-    core: dict[str, Any] = json.loads(MARKS.read_text())
-    return core
+def core_marks() -> dict[str, Any]:
+    marks: dict[str, Any] = json.loads(MARKS.read_text())
+    return marks
 
 
 @cache
-def compatible() -> list[Method[Any]]:
+def compatible_landing_methods() -> list[Method[Any]]:
     """The core's methods for the page's questions."""
-    landing = content()
+    landing = landing_content()
     question_sets = [landing.workspace.question_set, landing.grouping.question_set]
     question_sets += [example.question_set for example in landing.examples.values()]
-    found = (
-        info
+    methods = (
+        method
         for question_set in question_sets
         for question in [None, *question_set]
-        for info in compatible_methods(Position(question_set, question, in_group=question is None))
+        for method in compatible_methods(Position(question_set, question, in_group=question is None))
     )
-    return list({info.ref: info for info in found}.values())
+    return list({method.ref: method for method in methods}.values())

@@ -1,10 +1,10 @@
 <c-vars summary question_group="" archived=False />
 {# A marking's method and what it does, under the questions it marks together if it's a question group's, and why it can't mark if it can't. #}
-{% if question_group or summary.method or summary.description %}
+{% if question_group or summary.method_label or summary.description %}
 <div>
   {% if question_group %}<p class="text-sm text-muted">Question group {{ question_group }}</p>{% endif %}
-  {% if summary.method %}<h3 class="{% if question_group %}mt-0.5 {% endif %}font-semibold">{{ summary.method }}{% if archived %} <span class="badge badge-ghost badge-sm align-middle font-normal">Archived</span>{% endif %}</h3>{% endif %}
-  {% if summary.description %}<c-clamped class="prose-core mt-1">{{ summary.description|markdown }}</c-clamped>{% endif %}
+  {% if summary.method_label %}<h3 class="{% if question_group %}mt-0.5 {% endif %}font-semibold">{{ summary.method_label }}{% if archived %} <span class="badge badge-ghost badge-sm align-middle font-normal">Archived</span>{% endif %}</h3>{% endif %}
+  {% if summary.description %}<c-collapsible class="prose-core mt-1">{{ summary.description|markdown }}</c-collapsible>{% endif %}
 </div>
 {% endif %}
-{% if summary.broken %}<c-broken :problems="summary.problems" />{% endif %}
+{% if summary.has_problems %}<c-invalid-marking :problems="summary.problems" />{% endif %}

@@ -8,13 +8,13 @@ from django.contrib.auth.password_validation import MinimumLengthValidator, get_
 
 
 def _password_help() -> str:
-    length = next(
+    min_length_validator = next(
         validator for validator in get_default_password_validators() if isinstance(validator, MinimumLengthValidator)
     )
-    return f"At least {length.min_length} characters."
+    return f"At least {min_length_validator.min_length} characters."
 
 
-class PlainLabels:
+class PlainLabelsMixin:
     """Sentence-case labels, no placeholders, and help only for a new password. allauth's other help is a
     forgotten-password link, which the pages show by the form."""
 
@@ -33,49 +33,49 @@ class PlainLabels:
             field.help_text = _password_help() if name == "password1" else ""
 
 
-class LoginForm(PlainLabels, allauth.LoginForm):
+class LoginForm(PlainLabelsMixin, allauth.LoginForm):
     pass
 
 
-class SignupForm(PlainLabels, allauth.SignupForm):
+class SignupForm(PlainLabelsMixin, allauth.SignupForm):
     LABELS: ClassVar[dict[str, str]] = {"password1": "Password"}
 
 
-class AddEmailForm(PlainLabels, allauth.AddEmailForm):
+class AddEmailForm(PlainLabelsMixin, allauth.AddEmailForm):
     pass
 
 
-class ChangePasswordForm(PlainLabels, allauth.ChangePasswordForm):
+class ChangePasswordForm(PlainLabelsMixin, allauth.ChangePasswordForm):
     pass
 
 
-class SetPasswordForm(PlainLabels, allauth.SetPasswordForm):
+class SetPasswordForm(PlainLabelsMixin, allauth.SetPasswordForm):
     pass
 
 
-class ResetPasswordForm(PlainLabels, allauth.ResetPasswordForm):
+class ResetPasswordForm(PlainLabelsMixin, allauth.ResetPasswordForm):
     pass
 
 
-class ResetPasswordKeyForm(PlainLabels, allauth.ResetPasswordKeyForm):
+class ResetPasswordKeyForm(PlainLabelsMixin, allauth.ResetPasswordKeyForm):
     pass
 
 
-class RequestLoginCodeForm(PlainLabels, allauth.RequestLoginCodeForm):
+class RequestLoginCodeForm(PlainLabelsMixin, allauth.RequestLoginCodeForm):
     pass
 
 
-class ConfirmLoginCodeForm(PlainLabels, allauth.ConfirmLoginCodeForm):
+class ConfirmLoginCodeForm(PlainLabelsMixin, allauth.ConfirmLoginCodeForm):
     pass
 
 
-class ConfirmEmailVerificationCodeForm(PlainLabels, allauth.ConfirmEmailVerificationCodeForm):
+class ConfirmEmailVerificationCodeForm(PlainLabelsMixin, allauth.ConfirmEmailVerificationCodeForm):
     pass
 
 
-class ConfirmPasswordResetCodeForm(PlainLabels, allauth.ConfirmPasswordResetCodeForm):
+class ConfirmPasswordResetCodeForm(PlainLabelsMixin, allauth.ConfirmPasswordResetCodeForm):
     pass
 
 
-class ReauthenticateForm(PlainLabels, allauth.ReauthenticateForm):
+class ReauthenticateForm(PlainLabelsMixin, allauth.ReauthenticateForm):
     pass

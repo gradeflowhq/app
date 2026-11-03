@@ -1,19 +1,19 @@
 // Loads vendored libraries on first use. Static files serve them under their unhashed names too.
 
-const loaded = new Map();
+const scriptLoads = new Map();
 
-export const vendor = (path) => new URL(`../vendor/${path}`, import.meta.url).href;
+export const vendorUrl = (path) => new URL(`../vendor/${path}`, import.meta.url).href;
 
 /** Runs the script at `path` in the vendor folder, once. */
-export function script(path) {
-  if (!loaded.has(path)) {
-    const element = Object.assign(document.createElement("script"), { src: vendor(path) });
-    const done = new Promise((resolve, reject) => {
+export function loadScript(path) {
+  if (!scriptLoads.has(path)) {
+    const element = Object.assign(document.createElement("script"), { src: vendorUrl(path) });
+    const loading = new Promise((resolve, reject) => {
       element.addEventListener("load", resolve);
       element.addEventListener("error", () => reject(new Error(`Couldn't load ${path}`)));
     });
     document.head.append(element);
-    loaded.set(path, done);
+    scriptLoads.set(path, loading);
   }
-  return loaded.get(path);
+  return scriptLoads.get(path);
 }

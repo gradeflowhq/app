@@ -17,96 +17,96 @@ from gradeflow_app.ui.schemaforms.forms import ObjectForm
 MAX_ROWS = 200
 
 
-class Row(TypedDict):
+class TestAnswerRow(TypedDict):
     answers: dict[str, str]
-    example: bool
+    is_example: bool
 
 
-class Tests(TypedDict, total=False):
+class MethodTests(TypedDict, total=False):
     questions: dict[str, Any]
     test_values: dict[str, Any]
-    rows: list[Row]
-    example_at: int | None
+    rows: list[TestAnswerRow]
+    example_index: int | None
     """Where the example the chosen rows make is among the method's examples."""
 
 
-def new_tests(questions: QuestionSet) -> Tests:
-    return {"questions": questions.model_dump(mode="json"), "test_values": {}, "rows": [], "example_at": None}
+def new_tests(questions: QuestionSet) -> MethodTests:
+    return {"questions": questions.model_dump(mode="json"), "test_values": {}, "rows": [], "example_index": None}
 
 
-def questions_of(tests: Tests) -> QuestionSet:
+def questions_of(tests: MethodTests) -> QuestionSet:
     return QuestionSet.model_validate(tests.get("questions", {}))
 
 
-def rows_of(tests: Tests) -> list[ExampleRow]:
+def rows_of(tests: MethodTests) -> list[ExampleRow]:
     return [ExampleRow(answers=row["answers"]) for row in tests.get("rows", [])]
 
 
-def examples_of(tests: Tests, results: Sequence[RowResult] | None = None) -> list[ExampleRow]:
+def examples_of(tests: MethodTests, results: Sequence[RowResult] | None = None) -> list[ExampleRow]:
     """The submissions chosen as examples, with what `results`, a run of every submission, gave them."""
     rows = tests.get("rows", [])
-    marked: Sequence[RowResult | None] = results if results is not None else [None] * len(rows)
+    row_results: Sequence[RowResult | None] = results if results is not None else [None] * len(rows)
     return [
         ExampleRow(answers=row["answers"]) if result is None else result.as_example()
-        for row, result in zip(rows, marked, strict=True)
-        if row["example"]
+        for row, result in zip(rows, row_results, strict=True)
+        if row["is_example"]
     ]
 
 
-def add_answer(tests: Tests, question: str, text: str) -> None:
+def add_answer(tests: MethodTests, question: str, text: str) -> None:
     rows = tests.setdefault("rows", [])
     if len(rows) >= MAX_ROWS:
         raise GradeFlowError(f"Keep at most {MAX_ROWS} test answers.")
     answers = dict.fromkeys(tests.get("questions", {}), "")
-    rows.append({"answers": answers | {question: text}, "example": False})
+    rows.append({"answers": answers | {question: text}, "is_example": False})
 
 
-def set_answer(tests: Tests, row: int, question: str, text: str) -> None:
+def set_answer(tests: MethodTests, row: int, question: str, text: str) -> None:
     _row(tests, row)["answers"][question] = text
 
 
-def delete_row(tests: Tests, row: int) -> None:
+def delete_row(tests: MethodTests, row: int) -> None:
     _row(tests, row)
     tests["rows"].pop(row)
 
 
-def toggle_example(tests: Tests, row: int) -> None:
-    found = _row(tests, row)
-    found["example"] = not found["example"]
+def toggle_example(tests: MethodTests, row: int) -> None:
+    test_answer = _row(tests, row)
+    test_answer["is_example"] = not test_answer["is_example"]
 
 
-def _row(tests: Tests, row: int) -> Row:
+def _row(tests: MethodTests, row: int) -> TestAnswerRow:
     rows = tests.get("rows", [])
     if not 0 <= row < len(rows):
         raise GradeFlowError("This answer is no longer there.")
     return rows[row]
 
 
-def set_question(tests: Tests, key: str, question: Question) -> str:
+def set_question(tests: MethodTests, key: str, question: Question) -> str:
     """Change the question `key`, or add `question` when `key` is new; its key."""
     questions = tests.setdefault("questions", {})
     if not key:
-        key = next(f"Q{n}" for n in range(1, len(questions) + 2) if f"Q{n}" not in questions)
+        key = next(f"Q{number}" for number in range(1, len(questions) + 2) if f"Q{number}" not in questions)
         for row in tests.get("rows", []):
             row["answers"][key] = ""
     questions[key] = question.model_dump(mode="json")
     return key
 
 
-def duplicate_question(tests: Tests, key: str) -> str:
+def duplicate_question(tests: MethodTests, key: str) -> str:
     copy = set_question(tests, "", questions_of(tests)[key])
     for row in tests.get("rows", []):
         row["answers"][copy] = row["answers"].get(key, "")
     return copy
 
 
-def remove_question(tests: Tests, key: str) -> None:
+def remove_question(tests: MethodTests, key: str) -> None:
     tests.get("questions", {}).pop(key, None)
     for row in tests.get("rows", []):
         row["answers"].pop(key, None)
 
 
-def answers_to(tests: Tests, question: str) -> list[str]:
+def answers_to(tests: MethodTests, question: str) -> list[str]:
     return [row["answers"].get(question, "") for row in tests.get("rows", [])]
 
 
@@ -134,7 +134,7 @@ def posted_answer(question: Question | None, data: Mapping[str, Any]) -> str:
     return question.answer_from(form.values())
 
 
-def values_shown(question: Question | None, answer: str) -> list[tuple[str, str]] | None:
+def answer_value_pairs(question: Question | None, answer: str) -> list[tuple[str, str]] | None:
     """Each value of an answer of several values, a list's items one by one, with what it is; None for an answer
     written whole or as one value."""
     if question is None or not answer or (schema := question.answer_schema()).get("type") != "object":
@@ -143,23 +143,23 @@ def values_shown(question: Question | None, answer: str) -> list[tuple[str, str]
     if len(schema["properties"]) < 2 and not any(isinstance(value, list) for value in values.values()):
         return None
     return [
-        (prop.get("title", name), "" if item is None else str(item))
-        for name, prop in schema["properties"].items()
-        for item in _items(values.get(name))
+        (property_schema.get("title", name), "" if item is None else str(item))
+        for name, property_schema in schema["properties"].items()
+        for item in _as_list(values.get(name))
     ]
 
 
-def _items(value: Any) -> list[Any]:
+def _as_list(value: Any) -> list[Any]:
     return value if isinstance(value, list) else [value]
 
 
 @dataclass(frozen=True)
-class Listed:
+class TestAnswerView:
     """A submission as the answers column shows it: its answer to one question, and what the last run gave it."""
 
     index: int
     answer: str
-    example: bool
+    is_example: bool
     result: QuestionResult | None
     marks: float | None
     form: ObjectForm | None = None
@@ -172,16 +172,20 @@ class Listed:
         return self.index + 1
 
 
-def listed(tests: Tests, question: str, results: list[RowResult] | None, shown: Question | None = None) -> list[Listed]:
+def answer_rows(
+    tests: MethodTests, question: str, results: list[RowResult] | None, shown_question: Question | None = None
+) -> list[TestAnswerView]:
     """Each submission's answer to `question`, with what the run of `results` gave it, if it marked these answers."""
     rows = tests.get("rows", [])
-    marked = results or []
-    found = []
+    row_results = results or []
+    views = []
     for index, row in enumerate(rows):
-        result = marked[index] if index < len(marked) and marked[index].answers == row["answers"] else None
-        own = result.results.get(question) if result is not None else None
-        marks = own.marks if own is not None else None
+        matches = index < len(row_results) and row_results[index].answers == row["answers"]
+        result = row_results[index] if matches else None
+        question_result = result.results.get(question) if result is not None else None
+        marks = question_result.marks if question_result is not None else None
         answer = row["answers"].get(question, "")
-        form = answer_form(shown, answer, f"answer{index}")
-        found.append(Listed(index, answer, row["example"], own, marks, form, values_shown(shown, answer)))
-    return found
+        form = answer_form(shown_question, answer, f"answer{index}")
+        pairs = answer_value_pairs(shown_question, answer)
+        views.append(TestAnswerView(index, answer, row["is_example"], question_result, marks, form, pairs))
+    return views

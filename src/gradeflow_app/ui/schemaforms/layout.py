@@ -1,4 +1,4 @@
-"""How an object's schema is edited: its fields, groups, rows, maps of tagged values and slots of checks."""
+"""How an object's schema is edited: its fields, groups, rows, maps of tagged values and settings that hold checks."""
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field, replace
@@ -8,12 +8,20 @@ from typing import Any
 from django import forms
 
 from gradeflow_app.ui.schemaforms.fields import field_for
-from gradeflow_app.ui.schemaforms.schema import Schema, editable, hint, holds_checks, resolve, title_of, unwrap_nullable
+from gradeflow_app.ui.schemaforms.schema import (
+    Schema,
+    hint,
+    holds_checks,
+    is_editable,
+    resolve,
+    title_of,
+    unwrap_nullable,
+)
 
-NESTED = "__"
+NESTED_SEPARATOR = "__"
 """Joins a nested object's name and its field's in form field names, which become HTML IDs."""
 
-SCALARS = frozenset({"string", "number", "integer", "boolean"})
+SCALAR_TYPES = frozenset({"string", "number", "integer", "boolean"})
 
 
 @dataclass(frozen=True)
@@ -26,9 +34,9 @@ class Tag:
     schema: Schema
 
     @property
-    def editable(self) -> bool:
+    def is_editable(self) -> bool:
         """Whether its value is one typed in; others, like lists, are kept as they are."""
-        return self.schema.get("type") in SCALARS
+        return self.schema.get("type") in SCALAR_TYPES
 
 
 @dataclass(frozen=True)
@@ -43,7 +51,7 @@ class TaggedMap:
 
     @property
     def editable_tags(self) -> list[Tag]:
-        return [tag for tag in self.tags if tag.editable]
+        return [tag for tag in self.tags if tag.is_editable]
 
     def tag_of(self, entry: object) -> Tag | None:
         return next(
@@ -53,13 +61,13 @@ class TaggedMap:
     def new_entry(self, taken: Mapping[str, Any]) -> tuple[str, dict[str, Any]]:
         """A name not yet `taken`, and an entry of the first type, its value left to fill in."""
         stem = "_".join(self.item.split())
-        name = next(name for n in count(len(taken) + 1) if (name := f"{stem}_{n}") not in taken)
+        name = next(name for number in count(len(taken) + 1) if (name := f"{stem}_{number}") not in taken)
         first = self.editable_tags[0]
         return name, {first.field: first.value}
 
 
 @dataclass(frozen=True)
-class Extras:
+class FieldHints:
     """What the core's hints say of a field beyond its type."""
 
     required: bool = False
@@ -69,13 +77,13 @@ class Extras:
     """The core's examples of a number, to pick at a click beside the field."""
 
 
-def extras_of(schema: Schema, required: bool) -> Extras:
-    prop, nullable = unwrap_nullable(schema)
-    gradeflow = hint(prop)
-    numeric = prop.get("type") in ("number", "integer")
-    return Extras(
+def field_hints(schema: Schema, required: bool) -> FieldHints:
+    property_schema, nullable = unwrap_nullable(schema)
+    hints = hint(property_schema)
+    numeric = property_schema.get("type") in ("number", "integer")
+    return FieldHints(
         required=required and not nullable,
-        visible_when=gradeflow.get("applies_when") or {},
+        visible_when=hints.get("applies_when") or {},
         presets=tuple(value for value in schema.get("examples") or () if isinstance(value, int | float))
         if numeric
         else (),
@@ -87,7 +95,7 @@ class Layout:
     """How an object's schema is edited."""
 
     fields: dict[str, forms.Field] = field(default_factory=dict)
-    extras: dict[str, Extras] = field(default_factory=dict)
+    hints: dict[str, FieldHints] = field(default_factory=dict)
     groups: list[tuple[str, list[str]]] = field(default_factory=list)
     """Labelled fieldsets of nested objects' fields."""
     rows: dict[str, Schema] = field(default_factory=dict)
@@ -96,7 +104,7 @@ class Layout:
     """Maps of tagged values by name."""
     headings: dict[str, tuple[str, str]] = field(default_factory=dict)
     """The label and help of each list of rows and map, by name."""
-    slots: list[str] = field(default_factory=list)
+    checks_settings: list[str] = field(default_factory=list)
     """The names of the fields that hold checks."""
     advanced: set[str] = field(default_factory=set)
     """Fields, rows, maps and groups most people leave as they are, by name."""
@@ -105,11 +113,12 @@ class Layout:
         """A nested object's fields, as `<name>__<field>` fields in a labelled group."""
         names = []
         for inner, made in nested.fields.items():
-            extras = nested.extras[inner]
-            prefixed = f"{name}{NESTED}{inner}"
+            hints = nested.hints[inner]
+            prefixed = f"{name}{NESTED_SEPARATOR}{inner}"
             self.fields[prefixed] = made
-            self.extras[prefixed] = replace(
-                extras, visible_when={f"{name}{NESTED}{key}": value for key, value in extras.visible_when.items()}
+            self.hints[prefixed] = replace(
+                hints,
+                visible_when={f"{name}{NESTED_SEPARATOR}{key}": value for key, value in hints.visible_when.items()},
             )
             if inner in nested.advanced or name in self.advanced:
                 self.advanced.add(prefixed)
@@ -117,10 +126,12 @@ class Layout:
         self.groups.append((label, names))
 
 
-def _follows_a_choice(prop: Schema, properties: Mapping[str, Schema], defs: Mapping[str, Schema]) -> bool:
+def _depends_on_basic_choice(
+    property_schema: Schema, properties: Mapping[str, Schema], defs: Mapping[str, Schema]
+) -> bool:
     """Whether a field applies only once another field leaves its default. If so, it shows next to that field instead
     of under More options, unless that field is there too."""
-    wanted = hint(prop).get("applies_when") or {}
+    wanted = hint(property_schema).get("applies_when") or {}
     choices = [(resolve(properties.get(name, {}), defs), values) for name, values in wanted.items()]
     return bool(wanted) and all(
         not hint(choice).get("advanced")
@@ -135,27 +146,35 @@ def layout(schema: Schema, defs: Mapping[str, Schema] | None = None) -> Layout:
     result = Layout()
     required = set(schema.get("required", ()))
     for name, raw in schema.get("properties", {}).items():
-        prop = resolve(raw, defs)
-        if not editable(prop):
+        property_schema = resolve(raw, defs)
+        if not is_editable(property_schema):
             continue
-        label, help_text = title_of(prop, name), prop.get("description", "")
-        if hint(prop).get("advanced") and not _follows_a_choice(prop, schema["properties"], defs):
+        label, help_text = title_of(property_schema, name), property_schema.get("description", "")
+        if hint(property_schema).get("advanced") and not _depends_on_basic_choice(
+            property_schema, schema["properties"], defs
+        ):
             result.advanced.add(name)
-        if holds_checks(prop):
-            result.slots.append(name)
-        elif prop.get("type") == "object" and "properties" in prop:
-            result.add_group(name, label, layout(prop, defs))
-        elif prop.get("type") == "array" and resolve(prop.get("items", {}), defs).get("type") == "object":
-            result.rows[name] = resolve(prop["items"], defs)
+        if holds_checks(property_schema):
+            result.checks_settings.append(name)
+        elif property_schema.get("type") == "object" and "properties" in property_schema:
+            result.add_group(name, label, layout(property_schema, defs))
+        elif (
+            property_schema.get("type") == "array"
+            and resolve(property_schema.get("items", {}), defs).get("type") == "object"
+        ):
+            result.rows[name] = resolve(property_schema["items"], defs)
             result.headings[name] = label, help_text
-        elif isinstance(prop.get("additionalProperties"), dict) and "oneOf" in prop["additionalProperties"]:
-            tags = _tags(prop["additionalProperties"], defs)
-            item = hint(prop).get("item") or "entry"
-            result.tagged[name] = TaggedMap(tags, item, prop.get("propertyNames", {}).get("pattern", ""))
+        elif (
+            isinstance(property_schema.get("additionalProperties"), dict)
+            and "oneOf" in property_schema["additionalProperties"]
+        ):
+            tags = _tags(property_schema["additionalProperties"], defs)
+            item = hint(property_schema).get("item_label") or "entry"
+            result.tagged[name] = TaggedMap(tags, item, property_schema.get("propertyNames", {}).get("pattern", ""))
             result.headings[name] = label, help_text
-        elif (made := field_for(prop, label, help_text, defs)) is not None:
+        elif (made := field_for(property_schema, label, help_text, defs)) is not None:
             result.fields[name] = made
-            result.extras[name] = extras_of(prop, name in required)
+            result.hints[name] = field_hints(property_schema, name in required)
     return result
 
 
@@ -164,37 +183,54 @@ def _tags(union: Schema, defs: Mapping[str, Schema]) -> list[Tag]:
     for option in union["oneOf"]:
         member = resolve(option, defs)
         properties = member.get("properties", {})
-        tagged = next(((name, prop["const"]) for name, prop in properties.items() if "const" in prop), None)
+        tagged = next(
+            (
+                (name, property_schema["const"])
+                for name, property_schema in properties.items()
+                if "const" in property_schema
+            ),
+            None,
+        )
         if tagged is not None:
             name, tag = tagged
             tags.append(Tag(name, tag, title_of(member, tag), properties.get("value", {})))
     return tags
 
 
-def unrepresentable(schema: Schema, values: Mapping[str, Any]) -> list[str]:
+def unrepresentable_fields(schema: Schema, values: Mapping[str, Any]) -> list[str]:
     """What of `values` an `ObjectForm` of `schema` can't show, by title."""
     defs = schema.get("$defs", {})
-    shape = layout(schema)
+    form_layout = layout(schema)
     represented = (
-        {name.split("__", 1)[0] for name in shape.fields} | set(shape.rows) | set(shape.tagged) | set(shape.slots)
+        {name.split(NESTED_SEPARATOR, 1)[0] for name in form_layout.fields}
+        | set(form_layout.rows)
+        | set(form_layout.tagged)
+        | set(form_layout.checks_settings)
     )
     found = []
     for name, raw in schema.get("properties", {}).items():
-        prop = resolve(raw, defs)
-        if not editable(prop) or name in shape.slots:
+        property_schema = resolve(raw, defs)
+        if not is_editable(property_schema) or name in form_layout.checks_settings:
             continue
-        title, value = prop.get("title", name), values.get(name)
+        title, value = property_schema.get("title", name), values.get(name)
         if name not in represented:
             found.append(title)
-        elif name in shape.tagged and isinstance(value, dict):
-            tagged = shape.tagged[name]
-            if any((tag := tagged.tag_of(item)) is None or not tag.editable for item in value.values()):
+        elif name in form_layout.tagged and isinstance(value, dict):
+            tagged = form_layout.tagged[name]
+            if any((tag := tagged.tag_of(item)) is None or not tag.is_editable for item in value.values()):
                 found.append(title)
-        elif prop.get("type") == "object" and "properties" in prop:
-            found += unrepresentable({**prop, "$defs": defs}, value if isinstance(value, dict) else {})
-        elif name in shape.rows:
+        elif property_schema.get("type") == "object" and "properties" in property_schema:
+            found += unrepresentable_fields(
+                {**property_schema, "$defs": defs}, value if isinstance(value, dict) else {}
+            )
+        elif name in form_layout.rows:
             for row in value if isinstance(value, list) and value else [{}]:
-                found += unrepresentable({**shape.rows[name], "$defs": defs}, row if isinstance(row, dict) else {})
-        elif prop.get("type") == "array" and resolve(prop.get("items", {}), defs).get("type") == "array":
+                found += unrepresentable_fields(
+                    {**form_layout.rows[name], "$defs": defs}, row if isinstance(row, dict) else {}
+                )
+        elif (
+            property_schema.get("type") == "array"
+            and resolve(property_schema.get("items", {}), defs).get("type") == "array"
+        ):
             found.append(title)
     return found

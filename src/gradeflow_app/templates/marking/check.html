@@ -1,16 +1,16 @@
 {# A check of a marking being edited, as a form, with the cards of the checks it holds: the editor of a question's marking and of a method alike. Read-only where the editor isn't editable. A button is disabled while its request is out, so a second click, as on a check that has since moved, isn't sent. A morph keeps each check's More options as the user left it there, and a check opened anew gets its own, open if it shows an error. #}
 {% with draft_url=editor.actions.update %}
-<form id="marking-form" class="flex flex-1 flex-col{% if not editor.editable %} read-only-fields{% endif %}" hx-post="{{ draft_url }}" hx-trigger="change, input delay:700ms" hx-target="#editor-live" hx-swap="innerHTML" hx-disable:inherited="closest button" novalidate>
+<form id="marking-form" class="flex flex-1 flex-col{% if not editor.editable %} read-only-fields{% endif %}" hx-post="{{ draft_url }}" hx-trigger="change, input delay:700ms" hx-target="#editor-notices" hx-swap="innerHTML" hx-disable:inherited="closest button" novalidate>
   {% csrf_token %}
   <input type="hidden" name="path" value="{{ editor.path }}">
-  <input type="hidden" name="fields" value="1">
+  <input type="hidden" name="fields_posted" value="1">
   <div class="grid max-w-3xl gap-5 p-5">
     <div>
-      {% if editor.crumbs %}
+      {% if editor.breadcrumbs %}
       <nav aria-label="Where you are" class="mb-1 flex flex-wrap items-center gap-1 text-sm">
-        {% for crumb_path, crumb_label in editor.crumbs %}
+        {% for breadcrumb_path, breadcrumb_label in editor.breadcrumbs %}
           {% if not forloop.last %}
-            <button type="button" class="quiet-link" hx-post="{{ draft_url }}" hx-vals="{% vals op="open" target=crumb_path %}">{{ crumb_label }}</button>
+            <button type="button" class="secondary-link" hx-post="{{ draft_url }}" hx-vals="{% hx_vals operation="open" target=breadcrumb_path %}">{{ breadcrumb_label }}</button>
             {% icon "chevron-right" "size-3.5 text-subtle" %}
           {% endif %}
         {% endfor %}
@@ -18,142 +18,142 @@
       {% endif %}
       <div class="flex items-center gap-2">
         <h3 class="min-w-0 flex-1 font-semibold">{{ editor.label }}{% if editor.archived %} <span class="badge badge-ghost badge-sm align-middle font-normal">Archived</span>{% endif %}</h3>
-        {% if editor.editable and editor.changeable %}<button type="button" class="btn btn-ghost btn-sm" hx-get="{{ editor.actions.methods }}?op=retype&amp;target={{ editor.path|urlencode }}" hx-target="#picker-body" hx-swap="innerHTML" data-dialog="picker">{% icon "arrows-right-left" "size-4" %}Change</button>{% endif %}
+        {% if editor.editable and editor.can_change_method %}<button type="button" class="btn btn-ghost btn-sm" hx-get="{{ editor.actions.methods }}?operation=change_method&amp;target={{ editor.path|urlencode }}" hx-target="#picker-body" hx-swap="innerHTML" data-dialog="picker">{% icon "arrows-right-left" "size-4" %}Change</button>{% endif %}
       </div>
       {% if editor.made_by %}<p class="text-sm text-muted">{{ editor.made_by }}</p>{% endif %}
-      {% if editor.newer %}
+      {% if editor.newer_version %}
       <div class="mt-2 flex items-center gap-3 rounded-box bg-info/10 px-3 py-2 text-sm">
-        <span class="min-w-0 flex-1">Version {{ editor.newer.version }} of {{ editor.newer.label }} is out.</span>
-        <button type="button" class="btn btn-sm" hx-post="{{ draft_url }}" hx-vals="{% vals op="update" target=editor.path %}">Update</button>
+        <span class="min-w-0 flex-1">Version {{ editor.newer_version.version }} of {{ editor.newer_version.label }} is available.</span>
+        <button type="button" class="btn btn-sm" hx-post="{{ draft_url }}" hx-vals="{% hx_vals operation="use_latest" target=editor.path %}">Update</button>
       </div>
       {% endif %}
     </div>
 
-    <div id="editor-live" class="grid gap-3 [&:not(:has(*))]:hidden">
-      {% partialdef live inline %}
+    <div id="editor-notices" class="grid gap-3 [&:not(:has(*))]:hidden">
+      {% partialdef notices inline %}
         {% if editor.description and not editor.holds_checks %}<c-summary :text="editor.description" />{% endif %}
-        {% if editor.stale %}<div role="alert" class="alert alert-warning alert-soft">{% icon "exclamation-triangle" %}<div class="grid justify-items-start gap-2"><p>Someone saved this marking after you started. Saving replaces their version.</p><button type="button" class="btn btn-sm" hx-post="{{ editor.actions.discard }}" data-confirm="Discard your changes?" data-confirm-detail="{{ editor.kept }}" data-confirm-button="Discard">Use theirs</button></div></div>{% endif %}
+        {% if editor.saved_by_someone_else %}<div role="alert" class="alert alert-warning alert-soft">{% icon "exclamation-triangle" %}<div class="grid justify-items-start gap-2"><p>Someone saved this marking after you started. Saving replaces their version.</p><button type="button" class="btn btn-sm" hx-post="{{ editor.actions.discard }}" data-confirm="Discard your changes?" data-confirm-detail="{{ editor.discard_note }}" data-confirm-button="Discard">Use theirs</button></div></div>{% endif %}
         {% if editor.conflicts %}
           <c-alert class="items-start">
-            <div class="grid gap-2"><p>{{ editor.conflict }} A question has one marking.</p><div class="flex flex-wrap gap-2">{% for conflict in editor.conflicts %}<a class="btn btn-sm" href="{{ conflict.url }}">Open {{ conflict.name }}</a>{% endfor %}</div></div>
+            <div class="grid gap-2"><p>{{ editor.conflict_message }} A question has one marking.</p><div class="flex flex-wrap gap-2">{% for conflict in editor.conflicts %}<a class="btn btn-sm" href="{{ conflict.url }}">Open {{ conflict.name }}</a>{% endfor %}</div></div>
           </c-alert>
         {% endif %}
-        {% if editor.elsewhere %}
+        {% if editor.problems_elsewhere %}
           <c-alert>
             <p>Fix these first:</p>
-            <ul class="mt-1">{% for path, said in editor.elsewhere %}<li><button type="button" class="font-medium underline underline-offset-2" hx-post="{{ editor.actions.update }}" hx-vals="{% vals op="open" target=path %}">{{ said }}</button></li>{% endfor %}</ul>
+            <ul class="mt-1">{% for path, problem in editor.problems_elsewhere %}<li><button type="button" class="font-medium underline underline-offset-2" hx-post="{{ editor.actions.update }}" hx-vals="{% hx_vals operation="open" target=path %}">{{ problem }}</button></li>{% endfor %}</ul>
           </c-alert>
         {% endif %}
         <c-form-errors :errors="editor.form.non_field_errors" />
-        {% if live %}
+        {% if fields_only_update %}
           {% for field in editor.form %}<c-field-errors :errors="field.errors" id="{{ field.auto_id }}_error" hx-swap-oob="true" />{% endfor %}
-          {% for set in editor.form.rows %}{% for row in set.forms %}{% for field in row %}<c-field-errors :errors="field.errors" id="{{ field.auto_id }}_error" hx-swap-oob="true" />{% endfor %}{% endfor %}{% endfor %}
-          {% for set in editor.form.entries %}{% for entry in set.entries %}<c-field-errors :errors="entry.errors" id="{{ entry.prefix }}-error" hx-swap-oob="true" />{% endfor %}{% endfor %}
-          {% for slot in editor.slots %}<c-field-errors :errors="slot.errors" id="slot-{{ slot.slot.name }}-error" hx-swap-oob="true" />{% endfor %}
-          {{ live_html|default:"" }}
+          {% for field_set in editor.form.rows %}{% for row in field_set.forms %}{% for field in row %}<c-field-errors :errors="field.errors" id="{{ field.auto_id }}_error" hx-swap-oob="true" />{% endfor %}{% endfor %}{% endfor %}
+          {% for field_set in editor.form.maps %}{% for entry in field_set.entries %}<c-field-errors :errors="entry.errors" id="{{ entry.prefix }}-error" hx-swap-oob="true" />{% endfor %}{% endfor %}
+          {% for setting_view in editor.checks_settings %}<c-field-errors :errors="setting_view.errors" id="checks-setting-{{ setting_view.setting.name }}-error" hx-swap-oob="true" />{% endfor %}
+          {{ update_html|default:"" }}
         {% endif %}
       {% endpartialdef %}
     </div>
 
-    {% with sets=editor.form.basic_rows %}{% partial row_sets %}{% endwith %}
-    {% with sets=editor.form.basic_entries %}{% partial tagged_sets %}{% endwith %}
-    {% include "forms/object.html#groups" with groups=editor.form.basic %}
+    {% with field_sets=editor.form.basic_rows %}{% partial row_lists %}{% endwith %}
+    {% with field_sets=editor.form.basic_maps %}{% partial typed_maps %}{% endwith %}
+    {% include "forms/object.html#groups" with groups=editor.form.basic_sections %}
 
-    {% for slot in editor.slots %}
-    <section class="grid gap-2" aria-labelledby="slot-{{ forloop.counter }}">
+    {% for setting_view in editor.checks_settings %}
+    <section class="grid gap-2" aria-labelledby="checks-setting-{{ forloop.counter }}">
       <div class="flex items-center gap-2">
-        <h3 id="slot-{{ forloop.counter }}" class="font-medium">{{ slot.slot.title }}</h3>
-        {{ slot.addon }}
+        <h3 id="checks-setting-{{ forloop.counter }}" class="font-medium">{{ setting_view.setting.title }}</h3>
+        {{ setting_view.label_controls }}
       </div>
       <ul class="grid gap-2">
-        {% for child in slot.children %}
-        <li class="surface group/check relative flex items-start gap-2 p-3 hover:border-primary/50">
+        {% for child in setting_view.children %}
+        <li class="card-box group/check relative flex items-start gap-2 p-3 hover:border-primary/50">
           <div class="min-w-0 flex-1">
-            <button type="button" class="block text-left font-medium after:absolute after:inset-0 after:rounded-box" hx-post="{{ draft_url }}" hx-vals="{% vals op="open" target=child.path %}">{{ child.label }}</button>
+            <button type="button" class="block text-left font-medium after:absolute after:inset-0 after:rounded-box" hx-post="{{ draft_url }}" hx-vals="{% hx_vals operation="open" target=child.path %}">{{ child.label }}</button>
             {% if child.notes %}<p class="text-sm text-muted">{{ child.notes|join:" · " }}</p>{% endif %}
-            {% if child.incomplete and not child.problem %}<p class="text-sm text-warning">Needs setting up</p>{% elif child.description %}<c-clamped class="prose-core text-sm text-muted">{{ child.description|markdown }}</c-clamped>{% endif %}
+            {% if child.has_problems and not child.problem %}<p class="text-sm text-warning">Not set up yet</p>{% elif child.description %}<c-collapsible class="prose-core text-sm text-muted">{{ child.description|markdown }}</c-collapsible>{% endif %}
             {% if child.problem %}<p class="text-sm text-error">{{ child.problem }}</p>{% endif %}
           </div>
-          {% if editor.editable and not slot.fixed %}
+          {% if editor.editable and not setting_view.has_fixed_count %}
           <div class="relative -my-1 flex shrink-0 items-center">
-            {% if slot.slot.many and slot.children|length > 1 %}
-            <button type="button" class="btn btn-ghost btn-square btn-sm" hx-post="{{ draft_url }}" hx-vals="{% vals op="move" target=child.path value="up" %}" aria-label="Move up"{% if forloop.first %} disabled{% endif %}>{% icon "arrow-up" "size-4" %}</button>
-            <button type="button" class="btn btn-ghost btn-square btn-sm" hx-post="{{ draft_url }}" hx-vals="{% vals op="move" target=child.path value="down" %}" aria-label="Move down"{% if forloop.last %} disabled{% endif %}>{% icon "arrow-down" "size-4" %}</button>
+            {% if setting_view.setting.is_list and setting_view.children|length > 1 %}
+            <button type="button" class="btn btn-ghost btn-square btn-sm" hx-post="{{ draft_url }}" hx-vals="{% hx_vals operation="move" target=child.path direction="up" %}" aria-label="Move up"{% if forloop.first %} disabled{% endif %}>{% icon "arrow-up" "size-4" %}</button>
+            <button type="button" class="btn btn-ghost btn-square btn-sm" hx-post="{{ draft_url }}" hx-vals="{% hx_vals operation="move" target=child.path direction="down" %}" aria-label="Move down"{% if forloop.last %} disabled{% endif %}>{% icon "arrow-down" "size-4" %}</button>
             {% endif %}
-            <button type="button" class="btn btn-ghost btn-square btn-sm text-error" hx-post="{{ draft_url }}" hx-vals="{% vals op="remove" target=child.path %}" aria-label="Remove {{ child.label }}" data-confirm="Remove “{{ child.label }}”?" data-confirm-button="Remove">{% icon "trash" "size-4" %}</button>
+            <button type="button" class="btn btn-ghost btn-square btn-sm text-error" hx-post="{{ draft_url }}" hx-vals="{% hx_vals operation="remove" target=child.path %}" aria-label="Remove {{ child.label }}" data-confirm="Remove “{{ child.label }}”?" data-confirm-button="Remove">{% icon "trash" "size-4" %}</button>
           </div>
           {% endif %}
         </li>
         {% empty %}
-        <li class="rounded-box border border-dashed border-base-300 p-3 text-sm text-muted">None yet.{% if slot.needed and not slot.errors %} {% if not slot.slot.many %}Add a check.{% elif slot.slot.minimum > 1 %}Add at least {{ slot.slot.minimum }} checks.{% else %}Add at least one check.{% endif %}{% endif %}</li>
+        <li class="rounded-box border border-dashed border-base-300 p-3 text-sm text-muted">None yet.{% if setting_view.needs_checks and not setting_view.errors %} {% if not setting_view.setting.is_list %}Add a check.{% elif setting_view.setting.minimum > 1 %}Add at least {{ setting_view.setting.minimum }} checks.{% else %}Add at least one check.{% endif %}{% endif %}</li>
         {% endfor %}
       </ul>
-      <c-field-errors :errors="slot.errors" id="slot-{{ slot.slot.name }}-error" />
+      <c-field-errors :errors="setting_view.errors" id="checks-setting-{{ setting_view.setting.name }}-error" />
       {% if editor.editable %}
-        {% if slot.can_add %}
-        <div><button type="button" class="btn" hx-get="{{ editor.actions.methods }}?op=add&amp;target={{ slot.slot.new|urlencode }}&amp;path={{ editor.path|urlencode }}" hx-target="#picker-body" hx-swap="innerHTML" data-dialog="picker">{% icon "plus" "size-4" %}Add check</button></div>
-        {% elif slot.unavailable %}
-        <p class="text-sm text-muted">{{ slot.unavailable }}</p>
+        {% if setting_view.can_add %}
+        <div><button type="button" class="btn" hx-get="{{ editor.actions.methods }}?operation=add&amp;target={{ setting_view.setting.new_check_path|urlencode }}&amp;path={{ editor.path|urlencode }}" hx-target="#picker-body" hx-swap="innerHTML" data-dialog="picker">{% icon "plus" "size-4" %}Add check</button></div>
+        {% elif setting_view.unavailable_reason %}
+        <p class="text-sm text-muted">{{ setting_view.unavailable_reason }}</p>
         {% endif %}
       {% endif %}
     </section>
     {% endfor %}
-    {% if editor.form.more or editor.form.more_rows or editor.form.more_entries %}
-    <c-more :open="editor.more_open" id="more-{{ editor.path|default:'marking' }}" label="More options{% if editor.form.more_changed %} · {{ editor.form.more_changed }} changed{% endif %}">
-      {% include "forms/object.html#groups" with groups=editor.form.more %}
-      {% with sets=editor.form.more_rows more=True %}{% partial row_sets %}{% endwith %}
-      {% with sets=editor.form.more_entries more=True %}{% partial tagged_sets %}{% endwith %}
-    </c-more>
+    {% if editor.form.advanced_sections or editor.form.advanced_rows or editor.form.advanced_maps %}
+    <c-more-options :open="editor.more_open" id="more-{{ editor.path|default:'marking' }}" label="More options{% if editor.form.advanced_changed_count %} · {{ editor.form.advanced_changed_count }} changed{% endif %}">
+      {% include "forms/object.html#groups" with groups=editor.form.advanced_sections %}
+      {% with field_sets=editor.form.advanced_rows more=True %}{% partial row_lists %}{% endwith %}
+      {% with field_sets=editor.form.advanced_maps more=True %}{% partial typed_maps %}{% endwith %}
+    </c-more-options>
     {% endif %}
   </div>
 </form>
 {% endwith %}
 
-{# A row or tagged set's heading and help, and the field saying it was posted, so an empty one clears it; none for a set an input fills. #}
-{% partialdef set_head %}
-        <legend class="mb-1 flex items-center gap-2 font-medium">{{ set.label }}{{ set.addon }}</legend>
-        {% if not set.filled %}
-        {% if set.help %}<p class="-mt-1 text-sm text-muted">{{ set.help }}</p>{% endif %}
-        <input type="hidden" name="{{ set.name }}-present" value="1">
+{# A row list or typed map's heading and help, and the field saying it was posted, so an empty one clears it; none for one an input fills. #}
+{% partialdef field_set_head %}
+        <legend class="mb-1 flex items-center gap-2 font-medium">{{ field_set.label }}{{ field_set.label_controls }}</legend>
+        {% if not field_set.replaced_control %}
+        {% if field_set.help %}<p class="-mt-1 text-sm text-muted">{{ field_set.help }}</p>{% endif %}
+        <input type="hidden" name="{{ field_set.name }}-posted" value="1">
         {% endif %}
 {% endpartialdef %}
 
-{% partialdef row_sets %}
-      {% for set in sets %}
+{% partialdef row_lists %}
+      {% for field_set in field_sets %}
       <fieldset class="grid gap-3"{% if not editable|default_if_none:editor.editable %} disabled{% endif %}>
-        {% partial set_head %}
-        {% if set.filled %}{{ set.filled }}{% else %}
-        {% for row in set.forms %}
+        {% partial field_set_head %}
+        {% if field_set.replaced_control %}{{ field_set.replaced_control }}{% else %}
+        {% for row in field_set.forms %}
           <div class="relative grid gap-4 rounded-box border border-base-300 p-4 pr-12">
             <c-form-errors :errors="row.non_field_errors" />
             {% for field in row %}{{ field.as_field_group }}{% endfor %}
-            <button type="button" class="btn btn-ghost btn-square btn-sm absolute right-2 top-2 text-error" hx-post="{{ draft_url }}" hx-vals="{% vals op="remove_row" target=set.name value=forloop.counter0 more=more %}" aria-label="Remove" data-confirm="Remove row {{ forloop.counter }}?" data-confirm-button="Remove">{% icon "trash" "size-4" %}</button>
+            <button type="button" class="btn btn-ghost btn-square btn-sm absolute right-2 top-2 text-error" hx-post="{{ draft_url }}" hx-vals="{% hx_vals operation="remove_row" target=field_set.name value=forloop.counter0 more_open=more %}" aria-label="Remove" data-confirm="Remove row {{ forloop.counter }}?" data-confirm-button="Remove">{% icon "trash" "size-4" %}</button>
           </div>
         {% endfor %}
-        <div><button type="button" class="btn" hx-post="{{ draft_url }}" hx-vals="{% vals op="add_row" target=set.name more=more %}">{% icon "plus" "size-4" %}Add</button></div>
+        <div><button type="button" class="btn" hx-post="{{ draft_url }}" hx-vals="{% hx_vals operation="add_row" target=field_set.name more_open=more %}">{% icon "plus" "size-4" %}Add</button></div>
         {% endif %}
       </fieldset>
       {% endfor %}
 {% endpartialdef %}
 
-{% partialdef tagged_sets %}
-      {% for set in sets %}
+{% partialdef typed_maps %}
+      {% for field_set in field_sets %}
       <fieldset class="grid gap-3"{% if not editable|default_if_none:editor.editable %} disabled{% endif %}>
-        {% partial set_head %}
-        {% for entry in set.entries %}
+        {% partial field_set_head %}
+        {% for entry in field_set.entries %}
           {# Two lines, so a name has room: name and remove, then type and value. #}
           <div class="grid gap-1.5">
             <div class="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-2 rounded-box border border-base-300 p-2">
-              {% if entry.tag and not entry.tag.editable %}
+              {% if entry.tag and not entry.tag.is_editable %}
                 <input type="hidden" name="{{ entry.prefix }}-key" value="{{ entry.key }}">
                 <span class="truncate px-1 font-mono text-sm">{{ entry.key }}</span>
                 <span class="px-1 text-sm">{{ entry.tag.label }} <span class="text-muted">· Can't be edited here</span></span>
               {% else %}
-                <input class="input input-sm col-span-2 w-full font-mono" name="{{ entry.prefix }}-key" value="{{ entry.key }}" aria-label="Name" placeholder="Name"{% if set.map.pattern %} pattern="{{ set.map.pattern }}"{% endif %} aria-describedby="{{ entry.prefix }}-error">
+                <input class="input input-sm col-span-2 w-full font-mono" name="{{ entry.prefix }}-key" value="{{ entry.key }}" aria-label="Name" placeholder="Name"{% if field_set.map.pattern %} pattern="{{ field_set.map.pattern }}"{% endif %} aria-describedby="{{ entry.prefix }}-error">
               {% endif %}
-              <button type="button" class="btn btn-ghost btn-square btn-sm text-error" hx-post="{{ draft_url }}" hx-vals="{% vals op="remove_row" target=set.name value=forloop.counter0 more=more %}" aria-label="Remove {{ set.map.item }}" data-confirm="Remove {{ entry.key }}?" data-confirm-button="Remove">{% icon "trash" "size-4" %}</button>
-              {% if not entry.tag or entry.tag.editable %}
-                <select class="select select-sm w-full" name="{{ entry.prefix }}-tag" aria-label="Type">{% for tag in set.map.editable_tags %}<option value="{{ tag.value }}"{% if tag == entry.tag %} selected{% endif %}>{{ tag.label }}</option>{% endfor %}</select>
+              <button type="button" class="btn btn-ghost btn-square btn-sm text-error" hx-post="{{ draft_url }}" hx-vals="{% hx_vals operation="remove_row" target=field_set.name value=forloop.counter0 more_open=more %}" aria-label="Remove {{ field_set.map.item }}" data-confirm="Remove {{ entry.key }}?" data-confirm-button="Remove">{% icon "trash" "size-4" %}</button>
+              {% if not entry.tag or entry.tag.is_editable %}
+                <select class="select select-sm w-full" name="{{ entry.prefix }}-tag" aria-label="Type">{% for tag in field_set.map.editable_tags %}<option value="{{ tag.value }}"{% if tag == entry.tag %} selected{% endif %}>{{ tag.label }}</option>{% endfor %}</select>
                 {% if entry.tag.schema.type == "boolean" %}
                 <select class="select select-sm w-full" name="{{ entry.prefix }}-value" aria-label="Value"><option value="false">No</option><option value="true"{% if entry.value %} selected{% endif %}>Yes</option></select>
                 {% else %}
@@ -166,7 +166,7 @@
         {% empty %}
           <p class="text-sm text-muted">None yet.</p>
         {% endfor %}
-        <div><button type="button" class="btn" hx-post="{{ draft_url }}" hx-vals="{% vals op="add_row" target=set.name more=more %}">{% icon "plus" "size-4" %}Add {{ set.map.item }}</button></div>
+        <div><button type="button" class="btn" hx-post="{{ draft_url }}" hx-vals="{% hx_vals operation="add_row" target=field_set.name more_open=more %}">{% icon "plus" "size-4" %}Add {{ field_set.map.item }}</button></div>
       </fieldset>
       {% endfor %}
 {% endpartialdef %}

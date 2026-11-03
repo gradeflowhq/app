@@ -3,7 +3,7 @@
 import Alpine from "../vendor/alpinejs-csp-3.17.4/module.esm.min.js";
 import { canvasConnection, canvasCourse, canvasPublisher } from "./canvas.js";
 import { histogram } from "./charts.js";
-import { clamped } from "./clamped.js";
+import { collapsible } from "./collapsible.js";
 import { codeEditor } from "./code.js";
 import "./downloads.js";
 import { fileDrop } from "./drop.js";
@@ -15,14 +15,14 @@ import { modelService } from "./models.js";
 import { orderedChoices } from "./ordered.js";
 import { choiceList, methodPicker } from "./picker.js";
 import { passphraseSettings } from "./passphrase.js";
-import { adjustment } from "./student.js";
+import { adjustForm } from "./student.js";
 import { studentTable } from "./table.js";
-import { tags } from "./tags.js";
+import { tagInput } from "./tags.js";
 import { themeChoice } from "./theme.js";
 // Listeners on every page, in the order they run.
 import { testAnswer } from "./methods.js";
 import "./htmx.js";
-import { shownDialog } from "./dialogs.js";
+import { openOnLoad } from "./dialogs.js";
 import "./fields.js";
 
 // allauth starts its passkey forms on DOMContentLoaded, which a page that htmx swaps in never fires, so they start
@@ -43,7 +43,7 @@ document.addEventListener("htmx:after:settle", () => {
 });
 
 const components = {
-  adjustment,
+  adjustForm,
   answerGroup,
   answerGroups,
   canvasConnection,
@@ -51,7 +51,7 @@ const components = {
   canvasPublisher,
   canvasSend,
   choiceList,
-  clamped,
+  collapsible,
   codeEditor,
   fileDrop,
   histogram,
@@ -63,10 +63,10 @@ const components = {
   modelService,
   orderedChoices,
   passphraseSettings,
-  shownDialog,
+  openOnLoad,
   studentIds,
   studentTable,
-  tags,
+  tagInput,
   testAnswer,
   themeChoice,
 };

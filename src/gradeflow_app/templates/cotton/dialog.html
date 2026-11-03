@@ -1,6 +1,6 @@
 <c-vars id title=None body_id="" open=False box_class="max-w-lg" />
 {# Without a title, the body brings its own title row (c-dialog.head), as one loaded into `body_id` does. #}
-<dialog id="{{ id }}" class="modal" aria-labelledby="{{ id }}-title"{% if open %} x-data="shownDialog"{% endif %} {{ attrs }}>
+<dialog id="{{ id }}" class="modal" aria-labelledby="{{ id }}-title"{% if open %} x-data="openOnLoad"{% endif %} {{ attrs }}>
   <div{% if body_id %} id="{{ body_id }}"{% endif %} tabindex="-1" class="modal-box outline-none p-0 {{ box_class }}">
     {% if title is not None %}<c-dialog.head id="{{ id }}" title="{{ title }}" />{% endif %}
     {{ slot }}

@@ -8,14 +8,14 @@
     </a>
     {% if course %}
     <ol class="flex min-w-0 items-center gap-2 text-sm xl:hidden" aria-label="Breadcrumb">
-      <li class="crumb min-w-0{% if assessment %} max-sm:hidden{% endif %}"><a href="{% url 'course' course.pk %}"{% if not assessment %} aria-current="page"{% endif %}>{{ course.name }}</a></li>
-      {% if assessment %}<li class="crumb min-w-0"><a href="{% url 'overview' assessment.pk %}" aria-current="page">{{ assessment.name }}</a></li>{% endif %}
+      <li class="breadcrumb min-w-0{% if assessment %} max-sm:hidden{% endif %}"><a href="{% url 'course' course.pk %}"{% if not assessment %} aria-current="page"{% endif %}>{{ course.name }}</a></li>
+      {% if assessment %}<li class="breadcrumb min-w-0"><a href="{% url 'overview' assessment.pk %}" aria-current="page">{{ assessment.name }}</a></li>{% endif %}
     </ol>
     {% endif %}
     {{ nav }}
     <div class="ml-auto flex shrink-0 items-center gap-1">
       {% if user.is_authenticated %}
-        <c-menu id="account-menu" label="Account" button_class="btn btn-ghost btn-circle btn-sm" width="w-64">
+        <c-menu id="account-menu" label="Account" button_class="btn btn-ghost btn-circle btn-sm" panel_class="w-64">
           <c-slot name="trigger"><c-avatar :user="user" /></c-slot>
           <c-slot name="header">
             <div class="px-4 pb-1 pt-2.5">

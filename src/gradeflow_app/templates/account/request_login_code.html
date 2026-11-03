@@ -2,11 +2,11 @@
 {% load allauth %}
 {% block head_title %}Sign in with a code{% endblock %}
 {% block content %}
-  <c-intro title="Sign in with a code">We'll email you a code to sign in with, no password needed.</c-intro>
+  <c-entrance-heading title="Sign in with a code">We'll email you a code to sign in with, no password needed.</c-entrance-heading>
   {% url 'account_request_login_code' as login_url %}
   {% element form form=form method="post" action=login_url tags="entrance,login" %}
     {% slot body %}{% csrf_token %}{% element fields form=form unlabeled=True %}{% endelement %}{{ redirect_field }}{% endslot %}
     {% slot actions %}{% element button type="submit" tags="prominent,login" %}Email me a code{% endelement %}{% endslot %}
   {% endelement %}
 {% endblock %}
-{% block links %}<a class="quiet-link" href="{% url 'account_login' %}">Back to sign in</a>{% endblock %}
+{% block links %}<a class="secondary-link" href="{% url 'account_login' %}">Back to sign in</a>{% endblock %}

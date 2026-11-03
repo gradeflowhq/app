@@ -1,12 +1,12 @@
 // The landing page's demos: marking answers, the marking examples, sending to Canvas and showing student IDs. The
 // page holds every mark they show, as the core gave them; these only choose which to show.
 
-import { report } from "./toasts.js";
+import { showToast } from "./toasts.js";
 
 const SENDING_MS = 1400;
 
 export const answerGroups = () => ({
-  grouping: "meaning",
+  grouping: "by_meaning",
   accepted: [],
   init() {
     this.accepted = JSON.parse(this.$el.dataset.accepted);
@@ -19,13 +19,13 @@ export const answerGroup = () => ({
   init() {
     this.answers = JSON.parse(this.$el.dataset.answers);
   },
-  get done() {
+  get isAccepted() {
     return this.answers.every((answer) => this.accepted.includes(answer));
   },
   fullMarks() {
     const added = this.answers.filter((answer) => !this.accepted.includes(answer));
     this.accepted.push(...added);
-    report("Full marks for this answer group.", "success");
+    showToast("Full marks for this answer group.", "success");
   },
 });
 
@@ -49,22 +49,22 @@ export const canvasSend = () => ({
     this.sending = true;
     await new Promise((resolve) => setTimeout(resolve, SENDING_MS));
     this.sending = false;
-    report("Sent 808 students' marks to “Final Exam”.", "success");
+    showToast("Sent 808 students' marks to “Final Exam”.", "success");
   },
 });
 
 export const studentIds = () => ({
-  shown: false,
+  isShown: false,
   toggle() {
-    this.shown = !this.shown;
+    this.isShown = !this.isShown;
   },
   get status() {
-    return this.shown ? "Decrypted in this browser" : "Student IDs are encrypted";
+    return this.isShown ? "Decrypted in this browser" : "Student IDs are encrypted";
   },
-  get action() {
-    return this.shown ? "Forget" : "Show IDs";
+  get buttonLabel() {
+    return this.isShown ? "Forget" : "Show IDs";
   },
-  get actionStyle() {
-    return this.shown ? "" : "btn-primary";
+  get buttonClass() {
+    return this.isShown ? "" : "btn-primary";
   },
 });

@@ -1,6 +1,6 @@
 {% extends "account/base_entrance.html" %}
 {% block head_title %}Account access{% endblock %}
 {% block content %}
-  <c-intro title="Account access">If your account is inactive, ask your GradeFlow administrator to reactivate it.</c-intro>
+  <c-entrance-heading title="Account access">If your account is inactive, ask your GradeFlow administrator to reactivate it.</c-entrance-heading>
 {% endblock %}
-{% block links %}<a class="quiet-link" href="{% url 'account_login' %}">Back to sign in</a>{% endblock %}
+{% block links %}<a class="secondary-link" href="{% url 'account_login' %}">Back to sign in</a>{% endblock %}

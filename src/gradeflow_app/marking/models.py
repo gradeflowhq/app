@@ -11,7 +11,7 @@ from simple_history.models import HistoricalRecords
 from gradeflow_app.accounts.models import User
 from gradeflow_app.assessments.models import Assessment
 from gradeflow_app.libraries.models import MethodVersion
-from gradeflow_app.marking.checks import tree_of
+from gradeflow_app.marking.checks import definition_data
 from gradeflow_app.questions.models import Question
 
 
@@ -22,13 +22,13 @@ class Marking(models.Model):
     assessment = models.ForeignKey(Assessment, on_delete=models.CASCADE, related_name="markings")
     question = models.OneToOneField(Question, null=True, blank=True, on_delete=models.CASCADE, related_name="marking")
     definition = models.TextField()
-    uses = models.ManyToManyField(MethodVersion, through="MarkingUse", related_name="markings")
+    used_versions = models.ManyToManyField(MethodVersion, through="MarkingUse", related_name="markings")
     """Every saved version it needs, directly or through others."""
     revision = models.PositiveIntegerField(default=0)
     """Counts its remarks; marks and jobs of an earlier one are out of date."""
-    output_keys = models.JSONField(default=list)
+    questions_marked = models.JSONField(default=list)
     """The questions it marked when it last could, kept while it can't so they stay its own."""
-    input_keys = models.JSONField(default=list)
+    questions_read = models.JSONField(default=list)
     """The questions it read then: a change to one remarks it."""
     updated_at = models.DateTimeField(auto_now=True)
     history = HistoricalRecords()
@@ -43,15 +43,15 @@ class Marking(models.Model):
     def save(self, *args: Any, **kwargs: Any) -> None:
         super().save(*args, **kwargs)
         if "definition" in (kwargs.get("update_fields") or ["definition"]):
-            self.uses.set(MethodVersion.objects.linked(methods_used(tree_of(self.definition))))
+            self.used_versions.set(MethodVersion.objects.linked(methods_used(definition_data(self.definition))))
 
     @property
-    def outputs(self) -> set[str]:
+    def questions_given_marks(self) -> set[str]:
         """The questions it gives marks to."""
-        return set(self.output_keys) | ({self.question.key} if self.question else set())
+        return set(self.questions_marked) | ({self.question.key} if self.question else set())
 
 
-class Draft(models.Model):
+class MarkingDraftRecord(models.Model):
     """A user's unsaved marking of a question, or of a question group, new or saved."""
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
@@ -60,12 +60,12 @@ class Draft(models.Model):
     question = models.ForeignKey(Question, null=True, blank=True, on_delete=models.CASCADE, related_name="+")
     marking = models.ForeignKey(Marking, null=True, blank=True, on_delete=models.CASCADE, related_name="+")
     definition = models.TextField()
-    based_on = models.DateTimeField(null=True, blank=True)
+    saved_marking_updated_at = models.DateTimeField(null=True, blank=True)
     """When the saved marking this draft started from was saved; none for new marking."""
     preview = models.ForeignKey("jobs.Job", null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
     """Its latest preview since editing started, kept here rather than in the session: tabs share a session, and
     each request saves it whole."""
-    previewed = models.TextField(null=True, blank=True)  # noqa: DJ001 - null is "never previewed"
+    preview_input = models.TextField(null=True, blank=True)  # noqa: DJ001 - null is "never previewed"
     """What `preview` marked with: the definition and the questions it marked or read, as they were."""
 
     class Meta:
@@ -82,12 +82,12 @@ class Draft(models.Model):
         return f"Draft by {self.user}"
 
     @cached_property
-    def subject(self) -> Subject:
-        return Subject.of(self.assessment, self.question, self.marking)
+    def subject(self) -> MarkingTarget:
+        return MarkingTarget.of(self.assessment, self.question, self.marking)
 
 
 @dataclass(frozen=True)
-class Subject:
+class MarkingTarget:
     """What a marking marks: a question, or a question group when there is no `question`. `marking` is the saved
     marking, None until there is one."""
 
@@ -96,7 +96,9 @@ class Subject:
     marking: Marking | None
 
     @classmethod
-    def of(cls, assessment: Assessment, question: Question | None = None, marking: Marking | None = None) -> Subject:
+    def of(
+        cls, assessment: Assessment, question: Question | None = None, marking: Marking | None = None
+    ) -> MarkingTarget:
         """The subject of a question's marking, looked up by `question`, or of the question group `marking` is;
         with neither, of a new question group."""
         if question is not None:
@@ -108,9 +110,9 @@ class Subject:
         """The question's key, as the core names it; None for a question group."""
         return self.question.key if self.question else None
 
-    def draft_of(self, user: User, *, lock: bool = False) -> Draft | None:
+    def user_draft(self, user: User, *, lock: bool = False) -> MarkingDraftRecord | None:
         """The user's draft of this marking; a new question group is known only by its draft."""
-        drafts = Draft.objects.filter(user=user)
+        drafts = MarkingDraftRecord.objects.filter(user=user)
         if lock:
             drafts = drafts.select_for_update()
         if self.question is not None:

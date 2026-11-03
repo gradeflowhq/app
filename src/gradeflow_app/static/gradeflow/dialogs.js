@@ -2,27 +2,27 @@
 
 // A dialog shows a skeleton until what a button loads into it arrives, never what it showed before.
 document.addEventListener("click", (event) => {
-  const opener = event.target.closest("[data-dialog][hx-get][hx-target]");
-  const target = opener && document.querySelector(opener.getAttribute("hx-target"));
+  const openButton = event.target.closest("[data-dialog][hx-get][hx-target]");
+  const target = openButton && document.querySelector(openButton.getAttribute("hx-target"));
   if (target) target.innerHTML = '<div class="grid gap-3 p-6"><div class="skeleton h-7 w-1/2"></div><div class="skeleton h-40 w-full"></div></div>';
 });
-// A `data-dialog` button opens the dialog it names; a `shownDialog` opens as soon as it appears. Focus goes to its
+// A `data-dialog` button opens the dialog it names; an `openOnLoad` dialog opens as soon as it appears. Focus goes to its
 // first field, or else the dialog itself, never its close button.
 function openDialog(dialog) {
   dialog.showModal();
   (dialog.querySelector("[autofocus], input:not([type=hidden]), select, textarea") ?? dialog.querySelector(".modal-box"))?.focus();
 }
 document.addEventListener("click", (event) => {
-  const opener = event.target.closest("[data-dialog]");
-  if (opener) openDialog(document.getElementById(opener.dataset.dialog));
+  const openButton = event.target.closest("[data-dialog]");
+  if (openButton) openDialog(document.getElementById(openButton.dataset.dialog));
 });
 // Closing one shown with errors drops them, so opening it again starts afresh.
-export const shownDialog = () => ({
+export const openOnLoad = () => ({
   init() {
     openDialog(this.$el);
-    this.$el.addEventListener("close", () => this.forget(), { once: true });
+    this.$el.addEventListener("close", () => this.clearErrors(), { once: true });
   },
-  forget() {
+  clearErrors() {
     for (const alert of this.$el.querySelectorAll("form [role=alert]")) alert.remove();
     for (const errors of this.$el.querySelectorAll('[id$="_error"]')) errors.replaceChildren();
     for (const field of this.$el.querySelectorAll("[aria-invalid]")) {
@@ -59,11 +59,11 @@ document.addEventListener(
     event.stopImmediatePropagation();
     const dialog = document.getElementById("confirm");
     const detail = dialog.querySelector("[data-detail]");
-    const accept = dialog.querySelector("[value=confirm]");
+    const confirmButton = dialog.querySelector("[value=confirm]");
     dialog.querySelector("h2").textContent = button.dataset.confirm;
     detail.textContent = button.dataset.confirmDetail ?? "";
     detail.hidden = !detail.textContent;
-    accept.textContent = button.dataset.confirmButton ?? button.textContent.trim();
+    confirmButton.textContent = button.dataset.confirmButton ?? button.textContent.trim();
     dialog.returnValue = "";
     dialog.onclose = () => {
       if (dialog.returnValue !== "confirm") return;

@@ -11,44 +11,44 @@ from django_htmx.http import HttpResponseClientRefresh
 from gradeflow_core import InvalidError
 from gradeflow_core.editing import MarkingDraft, dump_yaml
 
-from gradeflow_app.assessments.access import member
-from gradeflow_app.assessments.models import Membership
+from gradeflow_app.assessments.access import assessment_member
+from gradeflow_app.assessments.models import AssessmentAccess
 from gradeflow_app.courses.models import Role
 from gradeflow_app.editor.presenters import editor
-from gradeflow_app.marking.answers.column import column
-from gradeflow_app.marking.workspace import Workspace
+from gradeflow_app.marking.answers.column import answers_column_html
+from gradeflow_app.marking.workspace import MarkingWorkspace
 from gradeflow_app.requests import Request
 
 
-@member(Role.EDITOR)
+@assessment_member(Role.EDITOR)
 @transaction.atomic
-def draft_yaml(request: Request, membership: Membership, draft: UUID) -> HttpResponse:
+def draft_yaml(request: Request, membership: AssessmentAccess, draft_id: UUID) -> HttpResponse:
     """The draft as YAML; posting saves the marking it reads as, of its question, then shows what else is wrong, if
     anything, with the editor behind brought up to date."""
-    workspace = Workspace.of(request, membership, draft, lock=request.method == "POST")
-    found = workspace.draft
-    text = found.definition
-    wrong: list[str] = []
-    action = reverse("draft_yaml", args=[membership.assessment.pk, found.pk])
+    workspace = MarkingWorkspace.of(request, membership, draft_id, lock=request.method == "POST")
+    draft_record = workspace.draft
+    text = draft_record.definition
+    problems: list[str] = []
+    action = reverse("draft_yaml", args=[membership.assessment.pk, draft_record.pk])
     context: dict[str, Any] = {"action": action}
     if request.method == "POST":
         text = str(request.POST.get("definition", ""))
         try:
-            read = MarkingDraft.from_yaml(text, workspace.questions, workspace.subject.key, methods=workspace.methods)
+            draft = MarkingDraft.from_yaml(text, workspace.questions, workspace.subject.key, methods=workspace.methods)
         except InvalidError as error:
-            wrong = [str(problem) for problem in error.problems]
+            problems = [str(problem) for problem in error.problems]
         else:
-            wrong = [str(problem) for problem in read.problems]
-            found.definition = dump_yaml(read.data)
-            found.save(update_fields=["definition"])
-            if not wrong:
+            problems = [str(problem) for problem in draft.problems]
+            draft_record.definition = dump_yaml(draft.data)
+            draft_record.save(update_fields=["definition"])
+            if not problems:
                 return HttpResponseClientRefresh()
-            saved = Workspace(found)
+            saved = MarkingWorkspace(draft_record)
             context |= {
                 "membership": membership,
                 "editor": editor(saved, str(request.POST.get("path", ""))),
-                "answers_html": column(request, membership, saved.subject, saved, oob=True),
-                "oob_editor": True,
+                "answers_html": answers_column_html(request, membership, saved.subject, saved, out_of_band=True),
+                "out_of_band_editor": True,
             }
-    context |= {"text": text, "problems": wrong}
-    return render(request, "marking/yaml.html", context, status=422 if wrong else 200)
+    context |= {"text": text, "problems": problems}
+    return render(request, "marking/yaml.html", context, status=422 if problems else 200)

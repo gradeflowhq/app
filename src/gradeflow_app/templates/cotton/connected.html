@@ -1,6 +1,0 @@
-<c-vars label host confirm confirm_detail />
-{# A service this device is connected to: `host`, the Alpine property naming it, and Disconnect, once confirmed. #}
-<c-row label="{{ label }}">
-  <c-slot name="detail"><span class="flex items-center gap-2"><span class="status status-success"></span><span x-text="{{ host }}"></span></span></c-slot>
-  <button type="button" class="btn btn-ghost text-error" x-on:click="disconnect" data-confirm="{{ confirm }}" data-confirm-detail="{{ confirm_detail }}" data-confirm-button="Disconnect">Disconnect</button>
-</c-row>

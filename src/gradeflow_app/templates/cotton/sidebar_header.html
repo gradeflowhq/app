@@ -1,11 +1,11 @@
-<c-vars back back_label title state="" person=False />
+<c-vars back_url back_label title subtitle="" shows_avatar=False />
 <div class="border-b border-base-300 p-2 max-sm:hidden xl:px-3 xl:pb-4 xl:pt-3">
-  <a class="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium text-muted hover:bg-base-300/40 hover:text-base-content max-xl:tooltip max-xl:tooltip-right max-xl:justify-center max-xl:py-2" data-tip="{{ back_label }}" aria-label="{{ back_label }}" href="{{ back }}">{% icon "arrow-left" "size-4 xl:size-3.5" %}<span class="max-xl:sr-only">{{ back_label }}</span></a>
+  <a class="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium text-muted hover:bg-base-300/40 hover:text-base-content max-xl:tooltip max-xl:tooltip-right max-xl:justify-center max-xl:py-2" data-tip="{{ back_label }}" aria-label="{{ back_label }}" href="{{ back_url }}">{% icon "arrow-left" "size-4 xl:size-3.5" %}<span class="max-xl:sr-only">{{ back_label }}</span></a>
   <div class="mt-2 hidden items-center gap-2.5 px-2.5 xl:flex">
-    {% if person %}<c-avatar :user="title" />{% else %}<span class="tile size-8 text-xs" aria-hidden="true">{{ title|initials }}</span>{% endif %}
+    {% if shows_avatar %}<c-avatar :user="title" />{% else %}<span class="initial-badge size-8 text-xs" aria-hidden="true">{{ title|initials }}</span>{% endif %}
     <div class="min-w-0">
       <p class="line-clamp-2 break-words font-semibold leading-snug" title="{{ title }}">{{ title }}</p>
-      {% if state %}<p class="truncate text-xs text-muted" title="{{ state }}">{{ state }}</p>{% endif %}
+      {% if subtitle %}<p class="truncate text-xs text-muted" title="{{ subtitle }}">{{ subtitle }}</p>{% endif %}
     </div>
   </div>
 </div>

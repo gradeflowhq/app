@@ -12,13 +12,13 @@ from pydantic import BaseModel, TypeAdapter, ValidationError, model_validator
 
 from gradeflow_app.assessments.models import Assessment
 from gradeflow_app.jobs.handlers import Task, handler
-from gradeflow_app.jobs.models import Batch, Job
-from gradeflow_app.live.topics import publish
+from gradeflow_app.jobs.models import Job, SubmissionBatch
+from gradeflow_app.live.topics import notify_change
 
-UNREADABLE = "The marking service sent results that can't be read."
+UNREADABLE_RESULTS_ERROR = "The marking service sent results that can't be read."
 
 
-def _lock(job: Job) -> Job:
+def _locked(job: Job) -> Job:
     if job.assessment_id is not None:
         Assessment.objects.select_for_update().get(pk=job.assessment_id)
     handler(job).lock(job)
@@ -26,174 +26,174 @@ def _lock(job: Job) -> Job:
 
 
 @transaction.atomic
-def started(job: Job) -> None:
-    job = _lock(job)
+def apply_started(job: Job) -> None:
+    job = _locked(job)
     if job.status != Job.Status.QUEUED:
         return
     job.status, job.started_at = Job.Status.RUNNING, timezone.now()
-    job.admitted_at = job.admitted_at or job.started_at
-    job.save(update_fields=["status", "started_at", "admitted_at"])
-    changed(job)
+    job.dispatched_at = job.dispatched_at or job.started_at
+    job.save(update_fields=["status", "started_at", "dispatched_at"])
+    notify_job_change(job)
 
 
 @transaction.atomic
-def compared(job: Job, event: dict[str, Any]) -> None:
-    job = _lock(job)
-    if not job.active or not job.input:
+def apply_comparison_part(job: Job, event: dict[str, Any]) -> None:
+    job = _locked(job)
+    if not job.is_active or not job.input:
         return
-    sent = _Part.model_validate(event)
-    result = job.result or {"parts": [], "total": sent.total}
+    part = _ComparisonPart.model_validate(event)
+    result = job.result or {"parts": [], "total": part.total}
     parts = result["parts"]
-    if result["total"] != sent.total or sent.index > len(parts):
+    if result["total"] != part.total or part.index > len(parts):
         raise ValueError("Comparison parts must arrive in order.")
-    if sent.index < len(parts):
-        if parts[sent.index] != sent.part:
+    if part.index < len(parts):
+        if parts[part.index] != part.text:
             raise ValueError("A comparison part cannot change.")
         return
-    parts.append(sent.part)
-    job.result, job.progress = result, len(parts) / sent.total
+    parts.append(part.text)
+    job.result, job.progress = result, len(parts) / part.total
     job.save(update_fields=["result", "progress"])
-    changed(job)
+    notify_job_change(job)
 
 
-class _Part(BaseModel, strict=True):
+class _ComparisonPart(BaseModel, strict=True):
     """A piece of a comparison's JSON: one of `total`, from 0."""
 
     index: int
     total: int
-    part: str
+    text: str
 
     @model_validator(mode="after")
-    def _one_of_them(self) -> Self:
+    def _index_in_range(self) -> Self:
         if not 0 <= self.index < self.total:
             raise ValueError("Invalid comparison part.")
         return self
 
 
 @transaction.atomic
-def marked(job: Job, submissions: Sequence[dict[str, Any]]) -> None:
-    job = _lock(job)
-    if not job.active or not job.input or not handler(job).current(job):
+def add_marked_batch(job: Job, submissions: Sequence[dict[str, Any]]) -> None:
+    job = _locked(job)
+    if not job.is_active or not job.input or not handler(job).is_current(job):
         return
     try:
-        sent = [MarkedSubmission.model_validate(item).model_dump(mode="json") for item in submissions]
+        marked = [MarkedSubmission.model_validate(item).model_dump(mode="json") for item in submissions]
     except ValidationError:
-        fail(job, UNREADABLE)
+        fail(job, UNREADABLE_RESULTS_ERROR)
         return
-    if not job.batches.filter(submissions=sent).exists():
-        Batch.objects.create(job=job, submissions=sent)
+    if not job.batches.filter(submissions=marked).exists():
+        SubmissionBatch.objects.create(job=job, submissions=marked)
         total = len(job.input["submissions"])
-        Job.objects.filter(pk=job.pk).update(progress=F("progress") + len(sent) / max(total, 1))
-        changed(job)
+        Job.objects.filter(pk=job.pk).update(progress=F("progress") + len(marked) / max(total, 1))
+        notify_job_change(job)
 
 
-def tested(job: Job, results: object) -> None:
-    _keep(job, _ROWS, results, current=True)
+def store_test_results(job: Job, results: object) -> None:
+    _store_result(job, _ROW_RESULTS_ADAPTER, results, only_if_current=True)
 
 
-def chosen(job: Job, choice: object) -> None:
-    _keep(job, _CHOICE, choice)
+def store_model_choice(job: Job, choice: object) -> None:
+    _store_result(job, _MODEL_CHOICE_ADAPTER, choice)
 
 
-def tried(job: Job, trials: object) -> None:
-    _keep(job, TRIALS, trials)
+def store_model_trials(job: Job, trials: object) -> None:
+    _store_result(job, MODEL_TRIALS_ADAPTER, trials)
 
 
 @transaction.atomic
-def _keep(job: Job, read: TypeAdapter[Any], sent: object, *, current: bool = False) -> None:
-    """Keep what the job sent, as `read` reads it, for its result; with `current`, only while its outcome still
-    applies."""
-    job = _lock(job)
-    if not job.active or (current and not handler(job).current(job)):
+def _store_result(job: Job, adapter: TypeAdapter[Any], reported: object, *, only_if_current: bool = False) -> None:
+    """Keep what the job reported, as `adapter` reads it, for its result; with `only_if_current`, only while its
+    outcome still applies."""
+    job = _locked(job)
+    if not job.is_active or (only_if_current and not handler(job).is_current(job)):
         return
     try:
-        job.result = read.dump_python(read.validate_python(sent), mode="json")
+        job.result = adapter.dump_python(adapter.validate_python(reported), mode="json")
     except ValidationError:
-        fail(job, UNREADABLE)
+        fail(job, UNREADABLE_RESULTS_ERROR)
         return
     job.save(update_fields=["result"])
 
 
 @transaction.atomic
-def progressed(job: Job, event: dict[str, Any]) -> None:
-    job = _lock(job)
-    if not job.active:
+def record_progress(job: Job, event: dict[str, Any]) -> None:
+    job = _locked(job)
+    if not job.is_active:
         return
     try:
         progress = _Progress.model_validate(event)
     except ValidationError:
         return
-    job.step = f"{progress.step[:150]}: {progress.done} of {progress.total}"
-    job.save(update_fields=["step"])
-    changed(job)
+    job.progress_text = f"{progress.step[:150]}: {progress.completed} of {progress.total}"
+    job.save(update_fields=["progress_text"])
+    notify_job_change(job)
 
 
 class _Progress(BaseModel):
-    done: int
+    completed: int
     total: int
     step: str
 
 
 class _Choice(BaseModel):
-    decision_model: str | None
-    reasoning_model: str | None
+    fast_model: str | None
+    careful_model: str | None
     trials: list[ModelTrial]
 
 
-_ROWS = TypeAdapter(list[RowResult])
-_CHOICE = TypeAdapter(_Choice)
-TRIALS = TypeAdapter(list[ModelTrial])
+_ROW_RESULTS_ADAPTER = TypeAdapter(list[RowResult])
+_MODEL_CHOICE_ADAPTER = TypeAdapter(_Choice)
+MODEL_TRIALS_ADAPTER = TypeAdapter(list[ModelTrial])
 
 
 @transaction.atomic
 def complete(job: Job) -> None:
-    job = _lock(job)
-    if not job.active:
+    job = _locked(job)
+    if not job.is_active:
         return
-    kind = handler(job)
-    if not kind.current(job):
+    job_handler = handler(job)
+    if not job_handler.is_current(job):
         fail(job, "Out of date.")
         return
     try:
-        outcome, kept = _outcome(job, kind.task)
+        outcome, result_json = _outcome_and_result(job, job_handler.task)
     except ValueError as error:
         fail(job, str(error))
         return
-    if kind.finish is not None:
-        kind.finish(job, outcome)
-    job.result = None if kind.finish is not None else kept
+    if job_handler.apply_outcome is not None:
+        job_handler.apply_outcome(job, outcome)
+    job.result = None if job_handler.apply_outcome is not None else result_json
     job.batches.all().delete()
-    job.status, job.progress, job.finished_at, job.step = Job.Status.COMPLETED, 1, timezone.now(), ""
+    job.status, job.progress, job.finished_at, job.progress_text = Job.Status.COMPLETED, 1, timezone.now(), ""
     job.input = None
     job.save()
-    changed(job)
+    notify_job_change(job)
 
 
-def _outcome(job: Job, task: Task) -> tuple[Any, Any]:
+def _outcome_and_result(job: Job, task: Task) -> tuple[Any, Any]:
     """What the job's task gave, and the JSON the job keeps of it as its result. Raises `ValueError` if it doesn't
     answer what the job ran on."""
     match task:
         case "mark":
-            sent = _submissions(job)
-            return sent, [submission.model_dump(mode="json") for submission in sent]
+            submissions = _submissions(job)
+            return submissions, [submission.model_dump(mode="json") for submission in submissions]
         case "compare":
             return _comparison(job), None
         case "test":
             return _test_results(job), job.result
-        case "choose" | "try":
+        case "choose" | "trial":
             if job.result is None:
                 raise ValueError("The marking service didn't say how the models did.")
             return job.result, job.result
 
 
 def _submissions(job: Job) -> list[MarkedSubmission]:
-    sent = [MarkedSubmission.model_validate(item) for batch in job.batches.all() for item in batch.submissions]
+    submissions = [MarkedSubmission.model_validate(item) for batch in job.batches.all() for item in batch.submissions]
     expected = {item["student_id"] for item in (job.input or {}).get("submissions", [])}
-    received = {submission.student_id for submission in sent}
-    missing_outputs = any(set(job.questions) - submission.results.keys() for submission in sent)
-    if received != expected or len(sent) != len(received) or missing_outputs:
+    received = {submission.student_id for submission in submissions}
+    missing_outputs = any(set(job.question_keys) - submission.results.keys() for submission in submissions)
+    if received != expected or len(submissions) != len(received) or missing_outputs:
         raise ValueError("The marking service returned an incomplete set of student results.")
-    return sent
+    return submissions
 
 
 def _test_results(job: Job) -> list[dict[str, Any]]:
@@ -213,7 +213,7 @@ def _comparison(job: Job) -> AnswerComparison:
         comparison = AnswerComparison.model_validate_json("".join(job.result["parts"]))
     except ValueError as error:
         raise ValueError("The marking service returned an invalid answer comparison.") from error
-    if comparison.texts != tuple((job.input or {}).get("texts", [])) or comparison.similar != "meaning":
+    if comparison.texts != tuple((job.input or {}).get("texts", [])) or comparison.similarity != "meaning":
         raise ValueError("The answer comparison does not match this job's inputs.")
     return comparison
 
@@ -223,24 +223,24 @@ def fail(job: Job, error: str) -> None:
 
 
 @transaction.atomic
-def fail_all(failed: Sequence[Job], error: str) -> None:
-    names: set[str] = set()
+def fail_all(jobs: Sequence[Job], error: str) -> None:
+    topics: set[str] = set()
     for candidate in sorted(
-        failed, key=lambda item: (str(item.course_id), str(item.assessment_id), str(item.marking_id), str(item.pk))
+        jobs, key=lambda item: (str(item.course_id), str(item.assessment_id), str(item.marking_id), str(item.pk))
     ):
-        job = _lock(candidate)
-        if not job.active:
+        job = _locked(candidate)
+        if not job.is_active:
             continue
         job.status, job.error, job.finished_at, job.input = Job.Status.FAILED, error, timezone.now(), None
         if handler(job).task == "compare":
             job.result = None
         job.save(update_fields=["status", "error", "finished_at", "input", "result"])
         job.batches.all().delete()
-        names.update(handler(job).topics(job))
-    if names:
-        publish(*sorted(names))
+        topics.update(handler(job).topics(job))
+    if topics:
+        notify_change(*sorted(topics))
 
 
-def changed(job: Job) -> None:
-    if names := handler(job).topics(job):
-        publish(*names)
+def notify_job_change(job: Job) -> None:
+    if topics := handler(job).topics(job):
+        notify_change(*topics)

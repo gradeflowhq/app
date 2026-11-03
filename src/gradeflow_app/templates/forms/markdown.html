@@ -2,11 +2,11 @@
 <div class="grid gap-1.5" x-data="markdownEditor" data-preview="{% url 'markdown_preview' %}">
   <div class="flex flex-wrap items-center justify-between gap-2">
     <div class="segmented" role="tablist">
-      <button type="button" role="tab" class="segment py-1" aria-selected="true" :aria-selected="writing" x-on:click="write">Write</button>
-      <button type="button" role="tab" class="segment py-1" aria-selected="false" :aria-selected="!writing" x-on:click="preview">Preview</button>
+      <button type="button" role="tab" class="segment py-1" aria-selected="true" :aria-selected="isWriting" x-on:click="write">Write</button>
+      <button type="button" role="tab" class="segment py-1" aria-selected="false" :aria-selected="!isWriting" x-on:click="preview">Preview</button>
     </div>
     {# The library sets no role on its buttons. #}
-    <markdown-toolbar for="{{ widget.attrs.id }}" class="flex" x-show="writing">
+    <markdown-toolbar for="{{ widget.attrs.id }}" class="flex" x-show="isWriting">
       <md-bold role="button" class="btn btn-ghost btn-square btn-sm text-muted" aria-label="Bold" title="Bold">{% icon "bold" "size-4" mini=True %}</md-bold>
       <md-italic role="button" class="btn btn-ghost btn-square btn-sm text-muted" aria-label="Italic" title="Italic">{% icon "italic" "size-4" mini=True %}</md-italic>
       <md-code role="button" class="btn btn-ghost btn-square btn-sm text-muted" aria-label="Code" title="Code">{% icon "code-bracket" "size-4" mini=True %}</md-code>
@@ -16,6 +16,6 @@
     </markdown-toolbar>
   </div>
   {% include "django/forms/widgets/textarea.html" %}
-  <div x-ref="preview" x-show="!writing" x-cloak class="min-h-20 rounded-field border border-base-300 px-3 py-2" role="tabpanel" hx-morph-skip-children></div>
+  <div x-ref="preview" x-show="!isWriting" x-cloak class="min-h-20 rounded-field border border-base-300 px-3 py-2" role="tabpanel" hx-morph-skip-children></div>
 </div>
 {% endif %}

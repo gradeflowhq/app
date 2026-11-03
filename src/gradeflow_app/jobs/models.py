@@ -9,24 +9,24 @@ from django.db.models import DurationField, ExpressionWrapper, F
 from django.db.models.functions import Now
 
 from gradeflow_app.assessments.models import Assessment
-from gradeflow_app.core_build import CORE_BUILD
+from gradeflow_app.core_version import CORE_VERSION
 from gradeflow_app.courses.models import Course
 
 
 class JobQuerySet(models.QuerySet["Job"]):
     def running(self) -> Self:
-        return self.filter(status__in=Job.ACTIVE).exclude(_lost())
+        return self.filter(status__in=Job.ACTIVE).exclude(_timed_out())
 
-    def lost(self) -> Self:
+    def timed_out(self) -> Self:
         """Jobs the sandbox has given up on: past its time limit since they started, or since they were handed to
         it without starting. They won't call back."""
-        return self.filter(status__in=Job.ACTIVE).filter(_lost())
+        return self.filter(status__in=Job.ACTIVE).filter(_timed_out())
 
 
-def _lost() -> models.Q:
+def _timed_out() -> models.Q:
     before = Now() - ExpressionWrapper((F("time_limit") + 60) * timedelta(seconds=1), output_field=DurationField())
     started = models.Q(status=Job.Status.RUNNING, started_at__lt=before)
-    return started | models.Q(status=Job.Status.QUEUED, admitted_at__lt=before)
+    return started | models.Q(status=Job.Status.QUEUED, dispatched_at__lt=before)
 
 
 def _time_limit() -> int:
@@ -41,7 +41,7 @@ class Job(models.Model):
         DRAFT_TESTS = "draft_tests"
         VERSION_TESTS = "version_tests"
         MODEL_CHOICE = "model_choice"
-        MODEL_TEST = "model_test"
+        MODEL_TRIAL = "model_trial"
 
     class Status(models.TextChoices):
         QUEUED = "queued"
@@ -56,24 +56,26 @@ class Job(models.Model):
     course = models.ForeignKey(Course, null=True, on_delete=models.CASCADE, related_name="jobs")
     """None for tests of a person's own method."""
     marking = models.ForeignKey("marking.Marking", null=True, on_delete=models.SET_NULL, related_name="jobs")
-    method_draft = models.ForeignKey("libraries.MethodDraft", null=True, on_delete=models.SET_NULL, related_name="jobs")
+    method_draft = models.ForeignKey(
+        "libraries.MethodDraftRecord", null=True, on_delete=models.SET_NULL, related_name="jobs"
+    )
     version_tests = models.ForeignKey(
         "libraries.VersionTests", null=True, on_delete=models.SET_NULL, related_name="jobs"
     )
     revision = models.PositiveIntegerField(null=True)
-    core_build = models.CharField(max_length=128, blank=True)
-    """The core release that ran it, for tracing results."""
+    core_version = models.CharField(max_length=128, blank=True)
+    """The core version that ran it, for tracing results."""
     image = models.CharField(max_length=512, blank=True)
-    provenance = models.JSONField(default=dict)
+    marked_with = models.JSONField(default=dict)
     """What it marked with, kept after its input is let go: the markings and methods, or a comparison's key."""
     kind = models.CharField(max_length=20, choices=Kind.choices)
-    questions = models.JSONField(default=list)
+    question_keys = models.JSONField(default=list)
     """Keys of the questions the job marks."""
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.QUEUED)
     progress = models.FloatField(default=0)
     time_limit = models.PositiveIntegerField(default=_time_limit)
     """Seconds the sandbox may run it."""
-    step = models.CharField(max_length=200, blank=True)
+    progress_text = models.CharField(max_length=200, blank=True)
     """What a running job is waiting on, such as "Deciding criteria: 12 of 30"."""
     error = models.TextField(blank=True)
     input = models.JSONField(null=True, blank=True)
@@ -84,7 +86,7 @@ class Job(models.Model):
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+")
     created_at = models.DateTimeField(auto_now_add=True)
     started_at = models.DateTimeField(null=True, blank=True)
-    admitted_at = models.DateTimeField(null=True, blank=True)
+    dispatched_at = models.DateTimeField(null=True, blank=True)
     finished_at = models.DateTimeField(null=True, blank=True)
 
     objects = JobQuerySet.as_manager()
@@ -96,16 +98,16 @@ class Job(models.Model):
         return f"{self.kind} {self.status}"
 
     @property
-    def by_this_core(self) -> bool:
-        """Whether this build of the core ran it: another's results may not read or mark as this one's do."""
-        return self.core_build == CORE_BUILD
+    def ran_on_this_core(self) -> bool:
+        """Whether this version of the core ran it: another's results may not read or mark as this one's do."""
+        return self.core_version == CORE_VERSION
 
     @property
-    def active(self) -> bool:
+    def is_active(self) -> bool:
         return self.status in self.ACTIVE
 
 
-class Batch(models.Model):
+class SubmissionBatch(models.Model):
     """Results a running job sent in one callback, kept until it finishes."""
 
     job = models.ForeignKey(Job, on_delete=models.CASCADE, related_name="batches")

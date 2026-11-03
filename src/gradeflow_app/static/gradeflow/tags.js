@@ -1,14 +1,14 @@
-// Tom Select over a `<select multiple>`: chips for the values, the most common answers as suggestions (their
+// Tom Select over a `<select multiple>`: removable values, the most common answers as suggestions (their
 // count in `data-data`), and any new value typed in.
 
-import { script } from "./vendor.js";
+import { loadScript } from "./vendor.js";
 
-const escaped = (text) => Object.assign(document.createElement("span"), { textContent: text }).innerHTML;
+const escapeHtml = (text) => Object.assign(document.createElement("span"), { textContent: text }).innerHTML;
 
-export const tags = () => ({
+export const tagInput = () => ({
   select: null,
   async init() {
-    await script("tom-select-2.6.2/tom-select.complete.min.js");
+    await loadScript("tom-select-2.6.2/tom-select.complete.min.js");
     // Morphs are synchronous: Tom Select is built again from the select once the morph has brought it up to date.
     this.$el.addEventListener("morph", () => {
       this.destroy();
@@ -37,8 +37,8 @@ export const tags = () => ({
       sortField: [{ field: "count", direction: "desc" }, { field: "$order" }],
       render: {
         option: (data) =>
-          `<div><span>${escaped(data.text)}</span>${data.count ? `<span class="tabular-nums text-xs text-muted">${data.count}</span>` : ""}</div>`,
-        option_create: (data) => `<div class="create">Add <strong>${escaped(data.input)}</strong></div>`,
+          `<div><span>${escapeHtml(data.text)}</span>${data.count ? `<span class="tabular-nums text-xs text-muted">${data.count}</span>` : ""}</div>`,
+        option_create: (data) => `<div class="create">Add <strong>${escapeHtml(data.input)}</strong></div>`,
         no_results: () => null,
       },
       onItemAdd() {
@@ -47,9 +47,9 @@ export const tags = () => ({
       },
     });
     // A click in the box keeps it focused for the next value: Tom Select's own click on an open box blurs it.
-    const click = this.select.onClick.bind(this.select);
+    const originalClick = this.select.onClick.bind(this.select);
     this.select.onClick = () => {
-      if (!(this.select.isFocused && this.select.isOpen)) click();
+      if (!(this.select.isFocused && this.select.isOpen)) originalClick();
     };
     // Esc closes the list of suggestions, not the dialog the field is in, with what was typed in it.
     this.select.wrapper.addEventListener("keydown", (event) => {

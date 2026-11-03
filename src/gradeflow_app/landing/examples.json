@@ -2,8 +2,8 @@
   "workspace": {
     "course": "Introduction to Programming",
     "assessment": "Final Exam",
-    "number": "Q5",
-    "question": "Write a recursive function sum_digits(n) that returns the sum of n's digits. Don't use loops.",
+    "question_key": "Q5",
+    "question_text": "Write a recursive function sum_digits(n) that returns the sum of n's digits. Don't use loops.",
     "question_set": {
       "Q5": {
         "type": "code",
@@ -12,43 +12,43 @@
     },
     "questions": [
       {
-        "number": "Q1",
+        "question_key": "Q1",
         "method": "gradeflow/multiple-choice@1",
         "average": 82
       },
       {
-        "number": "Q2",
+        "question_key": "Q2",
         "method": "gradeflow/accepted-answers@1",
         "average": 76
       },
       {
-        "number": "Q3",
+        "question_key": "Q3",
         "method": "gradeflow/key-points@1",
         "average": 64
       },
       {
-        "number": "Q4",
+        "question_key": "Q4",
         "method": "gradeflow/code-tests@1",
         "average": 71
       },
       {
-        "number": "Q5",
+        "question_key": "Q5",
         "method": "gradeflow/combination@1",
         "average": 80
       },
       {
-        "number": "Q6",
+        "question_key": "Q6",
         "method": "gradeflow/custom-code@1",
         "average": 49
       },
       {
-        "number": "Q7",
+        "question_key": "Q7",
         "method": "gradeflow/conditional@1",
         "average": 66,
         "grouped": true
       },
       {
-        "number": "Q8"
+        "question_key": "Q8"
       }
     ],
     "marking": {
@@ -88,11 +88,11 @@
         ]
       }
     },
-    "setting": "combine",
+    "setting_name": "combine",
     "checks": [
       {
         "name": "sum_digits(7)",
-        "check": {
+        "marking": {
           "question": "Q5",
           "uses": "gradeflow/code-tests@1",
           "with": {
@@ -107,7 +107,7 @@
       },
       {
         "name": "sum_digits(1234)",
-        "check": {
+        "marking": {
           "question": "Q5",
           "uses": "gradeflow/code-tests@1",
           "with": {
@@ -122,7 +122,7 @@
       },
       {
         "name": "Recursive",
-        "check": {
+        "marking": {
           "question": "Q5",
           "uses": "gradeflow/code-uses@1",
           "with": {
@@ -131,70 +131,70 @@
         }
       }
     ],
-    "answers": [
+    "answer_groups": [
       {
-        "code": "def sum_digits(n):\n    if n == 0:\n        return 0\n    return n % 10 + sum_digits(n // 10)",
-        "others": 37,
-        "students": 214
+        "answer": "def sum_digits(n):\n    if n == 0:\n        return 0\n    return n % 10 + sum_digits(n // 10)",
+        "other_answer_count": 37,
+        "student_count": 214
       },
       {
-        "code": "def sum_digits(n):\n    return sum(int(d) for d in str(n))",
-        "others": 18,
-        "students": 96
+        "answer": "def sum_digits(n):\n    return sum(int(d) for d in str(n))",
+        "other_answer_count": 18,
+        "student_count": 96
       },
       {
-        "code": "def sum_digits(n):\n    if n < 10:\n        return 0\n    return n % 10 + sum_digits(n // 10)",
-        "others": 6,
-        "students": 41
+        "answer": "def sum_digits(n):\n    if n < 10:\n        return 0\n    return n % 10 + sum_digits(n // 10)",
+        "other_answer_count": 6,
+        "student_count": 41
       },
       {
-        "code": "def sum_digits(n):\n    return n % 10 + sum_digits(n // 10)",
-        "others": 3,
-        "students": 23
+        "answer": "def sum_digits(n):\n    return n % 10 + sum_digits(n // 10)",
+        "other_answer_count": 3,
+        "student_count": 23
       }
     ]
   },
   "grouping": {
-    "number": "Q1",
-    "question": "What do mitochondria do in a cell?",
+    "question_key": "Q1",
+    "question_text": "What do mitochondria do in a cell?",
     "question_set": {
       "Q1": {
         "type": "text",
         "max_marks": 1
       }
     },
-    "accepted": [
+    "accepted_answers": [
       "Release energy"
     ],
     "answers": [
       {
         "text": "Release energy",
-        "students": 286,
-        "meaning": "energy"
+        "student_count": 286,
+        "meaning_group": "energy"
       },
       {
         "text": "Releases energy for the cell",
-        "students": 117,
-        "meaning": "energy for the cell"
+        "student_count": 117,
+        "meaning_group": "energy for the cell"
       },
       {
         "text": "Produce energy for the cell",
-        "students": 74,
-        "meaning": "energy for the cell"
+        "student_count": 74,
+        "meaning_group": "energy for the cell"
       },
       {
         "text": "Store genetic information",
-        "students": 41,
-        "meaning": "genetics"
+        "student_count": 41,
+        "meaning_group": "genetics"
       },
       {
         "text": "Make proteins",
-        "students": 33,
-        "meaning": "proteins"
+        "student_count": 33,
+        "meaning_group": "proteins"
       }
     ],
     "markings": {
-      "before": [
+      "before_accepting": [
         {
           "question": "Q1",
           "uses": "gradeflow/accepted-answers@1",
@@ -205,7 +205,7 @@
           }
         }
       ],
-      "after": [
+      "after_accepting": [
         {
           "question": "Q1",
           "uses": "gradeflow/accepted-answers@1",
@@ -223,11 +223,11 @@
     }
   },
   "examples": {
-    "assumption": {
+    "combination": {
       "method": "gradeflow/combination@1",
-      "number": "Q2",
-      "question": "A stone is dropped from 20 m. Take g = 9.8 m/s². How long does it take to land, in seconds?",
-      "marked": "Q2",
+      "question_key": "Q2",
+      "question_text": "A stone is dropped from 20 m. Take g = 9.8 m/s². How long does it take to land, in seconds?",
+      "marked_question": "Q2",
       "question_set": {
         "Q2": {
           "type": "number",
@@ -239,19 +239,19 @@
           "answers": {
             "Q2": "2.02"
           },
-          "students": 211
+          "student_count": 211
         },
         {
           "answers": {
             "Q2": "2"
           },
-          "students": 74
+          "student_count": 74
         },
         {
           "answers": {
             "Q2": "4.08"
           },
-          "students": 26
+          "student_count": 26
         }
       ],
       "choices": {
@@ -359,9 +359,9 @@
     },
     "conditional": {
       "method": "gradeflow/conditional@1",
-      "number": "Q4",
-      "question": "a) Artery or vein? b) Does it carry blood towards or away from the heart?",
-      "marked": "Q4b",
+      "question_key": "Q4",
+      "question_text": "a) Artery or vein? b) Does it carry blood towards or away from the heart?",
+      "marked_question": "Q4b",
       "question_set": {
         "Q4a": {
           "type": "choice",
@@ -385,28 +385,28 @@
             "Q4a": "artery",
             "Q4b": "away"
           },
-          "students": 182
+          "student_count": 182
         },
         {
           "answers": {
             "Q4a": "vein",
             "Q4b": "towards"
           },
-          "students": 141
+          "student_count": 141
         },
         {
           "answers": {
             "Q4a": "artery",
             "Q4b": "towards"
           },
-          "students": 23
+          "student_count": 23
         },
         {
           "answers": {
             "Q4a": "vein",
             "Q4b": "away"
           },
-          "students": 17
+          "student_count": 17
         }
       ],
       "markings": {
@@ -463,11 +463,11 @@
         ]
       }
     },
-    "custom": {
+    "custom_code": {
       "method": "gradeflow/custom-code@1",
-      "number": "Q6",
-      "question": "A car travels 150 km in 2.5 h. What is its average speed? Give the unit.",
-      "marked": "Q6",
+      "question_key": "Q6",
+      "question_text": "A car travels 150 km in 2.5 h. What is its average speed? Give the unit.",
+      "marked_question": "Q6",
       "question_set": {
         "Q6": {
           "type": "text",
@@ -479,25 +479,25 @@
           "answers": {
             "Q6": "60 km/h"
           },
-          "students": 146
+          "student_count": 146
         },
         {
           "answers": {
             "Q6": "60"
           },
-          "students": 41
+          "student_count": 41
         },
         {
           "answers": {
             "Q6": "16.7 m/s"
           },
-          "students": 23
+          "student_count": 23
         },
         {
           "answers": {
             "Q6": "375 km/h"
           },
-          "students": 12
+          "student_count": 12
         }
       ],
       "choices": {
@@ -511,7 +511,7 @@
             "question": "Q6",
             "uses": "gradeflow/custom-code@1",
             "with": {
-              "code": "import re\nm = re.match(r\"([\\d.]+) *(km/h|m/s)?$\", answer)\nkmh = m and float(m[1])\nif m and m[2] == \"m/s\":\n    kmh *= 3.6\nif not kmh or abs(kmh - 60) > 0.5:\n    proportion, feedback = 0, \"Expected 60 km/h.\"\nelif m[2]:\n    proportion, feedback = 1, \"Correct.\"\nelse:\n    proportion = 1 - unit_penalty\n    feedback = \"Right speed, but no unit.\"",
+              "code": "import re\nmatch = re.match(r\"([\\d.]+) *(km/h|m/s)?$\", answer)\nspeed_kmh = match and float(match[1])\nif match and match[2] == \"m/s\":\n    speed_kmh *= 3.6\nif not speed_kmh or abs(speed_kmh - 60) > 0.5:\n    proportion, feedback = 0, \"Expected 60 km/h.\"\nelif match[2]:\n    proportion, feedback = 1, \"Correct.\"\nelse:\n    proportion = 1 - unit_penalty\n    feedback = \"Right speed, but no unit.\"",
               "parameters": {
                 "unit_penalty": {
                   "type": "number",
@@ -526,7 +526,7 @@
             "question": "Q6",
             "uses": "gradeflow/custom-code@1",
             "with": {
-              "code": "import re\nm = re.match(r\"([\\d.]+) *(km/h|m/s)?$\", answer)\nkmh = m and float(m[1])\nif m and m[2] == \"m/s\":\n    kmh *= 3.6\nif not kmh or abs(kmh - 60) > 0.5:\n    proportion, feedback = 0, \"Expected 60 km/h.\"\nelif m[2]:\n    proportion, feedback = 1, \"Correct.\"\nelse:\n    proportion = 1 - unit_penalty\n    feedback = \"Right speed, but no unit.\"",
+              "code": "import re\nmatch = re.match(r\"([\\d.]+) *(km/h|m/s)?$\", answer)\nspeed_kmh = match and float(match[1])\nif match and match[2] == \"m/s\":\n    speed_kmh *= 3.6\nif not speed_kmh or abs(speed_kmh - 60) > 0.5:\n    proportion, feedback = 0, \"Expected 60 km/h.\"\nelif match[2]:\n    proportion, feedback = 1, \"Correct.\"\nelse:\n    proportion = 1 - unit_penalty\n    feedback = \"Right speed, but no unit.\"",
               "parameters": {
                 "unit_penalty": {
                   "type": "number",
@@ -541,7 +541,7 @@
             "question": "Q6",
             "uses": "gradeflow/custom-code@1",
             "with": {
-              "code": "import re\nm = re.match(r\"([\\d.]+) *(km/h|m/s)?$\", answer)\nkmh = m and float(m[1])\nif m and m[2] == \"m/s\":\n    kmh *= 3.6\nif not kmh or abs(kmh - 60) > 0.5:\n    proportion, feedback = 0, \"Expected 60 km/h.\"\nelif m[2]:\n    proportion, feedback = 1, \"Correct.\"\nelse:\n    proportion = 1 - unit_penalty\n    feedback = \"Right speed, but no unit.\"",
+              "code": "import re\nmatch = re.match(r\"([\\d.]+) *(km/h|m/s)?$\", answer)\nspeed_kmh = match and float(match[1])\nif match and match[2] == \"m/s\":\n    speed_kmh *= 3.6\nif not speed_kmh or abs(speed_kmh - 60) > 0.5:\n    proportion, feedback = 0, \"Expected 60 km/h.\"\nelif match[2]:\n    proportion, feedback = 1, \"Correct.\"\nelse:\n    proportion = 1 - unit_penalty\n    feedback = \"Right speed, but no unit.\"",
               "parameters": {
                 "unit_penalty": {
                   "type": "number",
@@ -553,11 +553,11 @@
         ]
       }
     },
-    "tests": {
+    "code_tests": {
       "method": "gradeflow/code-tests@1",
-      "number": "Q7",
-      "question": "Write is_even(n), which returns True when n is even.",
-      "marked": "Q7",
+      "question_key": "Q7",
+      "question_text": "Write is_even(n), which returns True when n is even.",
+      "marked_question": "Q7",
       "question_set": {
         "Q7": {
           "type": "code",
@@ -569,19 +569,19 @@
           "answers": {
             "Q7": "def is_even(n):\n    return n % 2 == 0"
           },
-          "students": 131
+          "student_count": 131
         },
         {
           "answers": {
             "Q7": "def is_even(n):\n    return n % 2 == 0 and n > 0"
           },
-          "students": 33
+          "student_count": 33
         },
         {
           "answers": {
             "Q7": "def is_even(n):\n    print(n % 2 == 0)"
           },
-          "students": 18
+          "student_count": 18
         }
       ],
       "choices": {
@@ -888,7 +888,7 @@
       }
     }
   },
-  "students": [
+  "privacy_students": [
     [
       "24081537",
       41

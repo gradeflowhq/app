@@ -1,5 +1,5 @@
 {# An activity entry: who did what, and `when`; it opens the question it changed. #}
 <{% if event.url %}a href="{{ event.url }}"{% else %}div{% endif %} class="flex gap-3 rounded-field p-3{% if event.url %} transition-colors hover:bg-base-200{% endif %}">
-  <c-avatar :user="event.who" size="size-7" />
-  <p class="min-w-0 flex-1 text-sm"><span class="font-medium">{{ event.who|default:"A former member" }}</span> {{ event.what }}<br><time class="text-muted" datetime="{{ event.at|date:'c' }}">{{ when }}</time></p>
+  <c-avatar :user="event.user" size="size-7" />
+  <p class="min-w-0 flex-1 text-sm"><span class="font-medium">{{ event.user|default:"A former member" }}</span> {{ event.description }}<br><time class="text-muted" datetime="{{ event.occurred_at|date:'c' }}">{{ when }}</time></p>
 </{% if event.url %}a{% else %}div{% endif %}>

@@ -3,12 +3,12 @@
 {% with course=member.course %}
 <c-page title="Assessments">
   {% if member.can_edit %}<c-slot name="actions"><button class="btn btn-primary" data-dialog="new-assessment">{% icon "plus" %}New assessment</button></c-slot>{% endif %}
-  {% if rows %}
-  <div class="surface overflow-x-auto">
+  {% if assessment_progress %}
+  <div class="card-box overflow-x-auto">
     <table class="table">
       <thead><tr><th>Assessment</th><th class="text-right max-sm:hidden">Students</th><th>Progress</th><th class="max-sm:hidden">Last change</th></tr></thead>
       <tbody>
-        {% for assessment, progress in rows %}
+        {% for assessment, progress in assessment_progress %}
         <tr data-href="{% url 'overview' assessment.pk %}">
           <td><a class="font-medium hover:underline" href="{% url 'overview' assessment.pk %}">{{ assessment.name }}</a>{% if assessment.description %}<p class="max-w-md truncate text-sm text-muted">{{ assessment.description }}</p>{% endif %}</td>
           <td class="tabular-nums text-right max-sm:hidden">{{ assessment.student_count|default:"—" }}</td>
@@ -20,7 +20,7 @@
     </table>
   </div>
   {% else %}
-  <c-empty class="surface" icon="document-plus" title="No assessments yet">{% if member.can_edit %}<c-slot name="action"><button class="btn btn-primary" data-dialog="new-assessment">{% icon "plus" %}New assessment</button></c-slot>{% endif %}</c-empty>
+  <c-empty-state class="card-box" icon="document-plus" title="No assessments yet">{% if member.can_edit %}<c-slot name="action"><button class="btn btn-primary" data-dialog="new-assessment">{% icon "plus" %}New assessment</button></c-slot>{% endif %}</c-empty-state>
   {% endif %}
 </c-page>
 {% if member.can_edit %}

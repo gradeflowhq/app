@@ -1,12 +1,12 @@
 // htmx on every page: the headers its requests carry, what their responses say, and how pages swap in.
 
-import { keepModelState, modelHeaders, modelState } from "./models.js";
-import { report } from "./toasts.js";
+import { storeModelState, modelHeaders, modelState } from "./models.js";
+import { showToast } from "./toasts.js";
 
-// The server shows times in this browser's time zone.
-const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-if (!document.cookie.split("; ").includes(`tz=${zone}`)) {
-  document.cookie = `tz=${zone}; path=/; max-age=31536000; samesite=lax`;
+// The server shows times in this browser's time timeZone.
+const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+if (!document.cookie.split("; ").includes(`tz=${timeZone}`)) {
+  document.cookie = `tz=${timeZone}; path=/; max-age=31536000; samesite=lax`;
 }
 
 // Signing in rotates the CSRF token, and boosted pages keep the first page's <body>, so each request reads the
@@ -21,7 +21,7 @@ document.addEventListener("htmx:config:request", (event) => {
   if (request.method !== "GET" && sourceElement?.closest("[data-model-service]")) request.body.set("model_state", modelState());
   if (sourceEvent?.type?.startsWith("live-")) request.headers["X-Live-Refresh"] = "true";
 });
-document.addEventListener("htmx:finally:request", (event) => keepModelState(event.detail.ctx.response));
+document.addEventListener("htmx:finally:request", (event) => storeModelState(event.detail.ctx.response));
 
 // Messages from in-page requests arrive in a header (ui/middleware.py). A failed change that shows nothing, such
 // as a form's errors (`hx-status:422`), says so plainly.
@@ -29,14 +29,14 @@ const messagesOf = (ctx) => JSON.parse(ctx.response?.headers.get("X-Messages") ?
 document.addEventListener("htmx:finally:request", (event) => {
   const { ctx } = event.detail;
   const messages = messagesOf(ctx);
-  for (const { text, level } of messages) report(text, level);
-  const unshown = ctx.response?.status >= 400 && ctx.swap === "none";
-  if (unshown && ctx.request.method !== "GET" && !messages.length) report("That didn't work. Try again in a moment.");
+  for (const { text, level } of messages) showToast(text, level);
+  const nothingSwapped = ctx.response?.status >= 400 && ctx.swap === "none";
+  if (nothingSwapped && ctx.request.method !== "GET" && !messages.length) showToast("That didn't work. Try again in a moment.");
 });
 document.addEventListener("htmx:error", (event) => {
   const { ctx, error } = event.detail;
   if (error?.name === "AbortError") return; // a newer request replaced it
-  if (ctx?.request.method !== "GET" && !ctx?.response) report("GradeFlow can't be reached. Check your connection.");
+  if (ctx?.request.method !== "GET" && !ctx?.response) showToast("GradeFlow can't be reached. Check your connection.");
 });
 // htmx 4.0.0's SSE extension aborts its stream on navigation without handling the rejection. Remove once htmx
 // fixes it.
@@ -66,37 +66,37 @@ htmx.registerExtension("morph-event", {
 // A page someone opens answers the click before it arrives, as an app's would: a loading bar starts, the link
 // becomes current in its nav, and what the page replaces is busy, which styles.css dims if it takes a moment. Live
 // refreshes don't count. The bar sits outside body, which boosted swaps replace.
-document.documentElement.insertAdjacentHTML("beforeend", '<div id="progress" aria-hidden="true"></div>');
-const progress = document.getElementById("progress");
-const opened = ({ sourceEvent, request }) => sourceEvent?.isTrusted && request.headers["HX-Request-Type"] === "full";
-const replaced = ({ target }) => (target === document.body ? document.getElementById("main") : target);
+document.documentElement.insertAdjacentHTML("beforeend", '<div id="page-loading-bar" aria-hidden="true"></div>');
+const loadingBar = document.getElementById("page-loading-bar");
+const isPageOpen = ({ sourceEvent, request }) => sourceEvent?.isTrusted && request.headers["HX-Request-Type"] === "full";
+const replacedRegion = ({ target }) => (target === document.body ? document.getElementById("main") : target);
 // Kept from the start, since a swap can change the request's elements.
-const opening = new WeakMap(); // a page's request → what it replaces, and the link it made current
-let latest; // the latest page's request, whose link goes back to not current if the page never arrives
+const openingPages = new WeakMap(); // a page's request → what it replaces, and the link it made current
+let latestPageRequest; // the latest page's request, whose link goes back to not current if the page never arrives
 document.addEventListener("htmx:before:request", (event) => {
   const { ctx } = event.detail;
-  if (event.defaultPrevented || !opened(ctx)) return;
-  delete progress.dataset.state;
-  progress.offsetWidth; // restart from empty, even mid-fade
-  progress.dataset.state = "loading";
+  if (event.defaultPrevented || !isPageOpen(ctx)) return;
+  delete loadingBar.dataset.state;
+  loadingBar.offsetWidth; // restart from empty, even mid-fade
+  loadingBar.dataset.state = "loading";
   const link = ctx.sourceElement;
   const current = link.closest("nav")?.querySelector('[aria-current="page"]');
   if (current && current !== link) {
     current.removeAttribute("aria-current");
     link.setAttribute("aria-current", "page");
   }
-  const region = replaced(ctx);
+  const region = replacedRegion(ctx);
   region?.setAttribute("aria-busy", "true");
-  opening.set(ctx, { region, link, current });
-  latest = ctx;
+  openingPages.set(ctx, { region, link, current });
+  latestPageRequest = ctx;
 });
 document.addEventListener("htmx:finally:request", (event) => {
   const { ctx } = event.detail;
-  const page = opening.get(ctx);
+  const page = openingPages.get(ctx);
   if (!page) return;
-  if (progress.dataset.state === "loading") progress.dataset.state = "done";
+  if (loadingBar.dataset.state === "loading") loadingBar.dataset.state = "done";
   page.region?.removeAttribute("aria-busy");
-  if (ctx !== latest || ctx.response || !page.current?.isConnected) return;
+  if (ctx !== latestPageRequest || ctx.response || !page.current?.isConnected) return;
   page.link.removeAttribute("aria-current");
   page.current.setAttribute("aria-current", "page");
 });
@@ -107,13 +107,13 @@ document.addEventListener("htmx:finally:request", (event) => {
 const SPINNER_DELAY_MS = 300;
 const SPINNER_SHOWN_MS = 200;
 const spinners = new WeakMap(); // a pressed button's request → the button, its spinner's timer, and when it showed
-const pressed = ({ sourceEvent, sourceElement }) => {
+const pressedButton = ({ sourceEvent, sourceElement }) => {
   const button = sourceEvent?.submitter ?? sourceElement;
-  return ["click", "submit"].includes(sourceEvent?.type) && button.matches("button:is(.btn, .choice)") ? button : null;
+  return ["click", "submit"].includes(sourceEvent?.type) && button.matches("button:is(.btn, .method-choice)") ? button : null;
 };
 document.addEventListener("htmx:before:request", (event) => {
   const { ctx } = event.detail;
-  const button = event.defaultPrevented ? null : pressed(ctx);
+  const button = event.defaultPrevented ? null : pressedButton(ctx);
   if (!button) return;
   button.setAttribute("aria-busy", "true");
   const spinner = { button };
@@ -131,14 +131,14 @@ document.addEventListener("htmx:finally:request", (event) => {
     spinner.button.removeAttribute("aria-busy");
     delete spinner.button.dataset.spinner;
   };
-  const left = spinner.shown + SPINNER_SHOWN_MS - performance.now(); // NaN if it never showed
-  if (left > 0) setTimeout(stop, left);
+  const remainingMs = spinner.shown + SPINNER_SHOWN_MS - performance.now(); // NaN if it never showed
+  if (remainingMs > 0) setTimeout(stop, remainingMs);
   else stop();
 });
 addEventListener(
   "click",
   (event) => {
-    if (!event.target.closest?.('.btn[aria-busy="true"], form:has(.choice[aria-busy="true"]) .choice')) return;
+    if (!event.target.closest?.('.btn[aria-busy="true"], form:has(.method-choice[aria-busy="true"]) .method-choice')) return;
     event.preventDefault();
     event.stopImmediatePropagation();
   },

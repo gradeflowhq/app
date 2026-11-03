@@ -5,7 +5,7 @@ const rows = (root) => [...root.querySelectorAll("[data-row]")];
 
 function renumber(root) {
   rows(root).forEach((row, index) => {
-    const name = `${root.dataset.item} ${index + 1}`;
+    const name = `${root.dataset.itemLabel} ${index + 1}`;
     row.querySelector("[data-number]").textContent = name;
     row.querySelector("select").setAttribute("aria-label", name);
   });

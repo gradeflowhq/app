@@ -10,28 +10,35 @@ from django.urls import reverse
 
 from gradeflow_app.assessments.models import Assessment
 from gradeflow_app.live.topics import topic
-from gradeflow_app.results.marks import Stats, awards, histogram, results
+from gradeflow_app.results.marks import TotalStatistics, assessment_results, awards, histogram
 from gradeflow_app.results.models import Adjustment, Result
 from gradeflow_app.ui.templatetags.ui import percent
-from tests.conftest import HTMX, create_assessment, envelope, start_marking
+from tests.conftest import HTMX_HEADERS, create_assessment, encrypted_id, start_marking
 
 
 def test_stats_describe_the_spread_of_totals() -> None:
-    stats = Stats.of([4, 0, 3, 1, 2])
-    assert stats is not None
-    assert (stats.students, stats.mean, stats.minimum, stats.maximum) == (5, 2, 0, 4)
-    assert (stats.q1, stats.median, stats.q3) == (1, 2, 3), "quartiles as spreadsheets count them"
-    assert math.isclose(stats.stdev, math.sqrt(2)), "the whole class, not a sample of it"
+    statistics = TotalStatistics.of([4, 0, 3, 1, 2])
+    assert statistics is not None
+    assert (statistics.student_count, statistics.mean, statistics.minimum, statistics.maximum) == (5, 2, 0, 4)
+    assert (statistics.lower_quartile, statistics.median, statistics.upper_quartile) == (1, 2, 3), (
+        "quartiles as spreadsheets count them"
+    )
+    assert math.isclose(statistics.standard_deviation, math.sqrt(2)), "the whole class, not a sample of it"
 
 
 def test_one_student_is_their_own_quartiles_and_none_have_no_stats() -> None:
-    stats = Stats.of([7])
-    assert stats is not None
-    assert (stats.q1, stats.median, stats.q3, stats.stdev) == (7, 7, 7, 0)
-    assert Stats.of([]) is None
+    statistics = TotalStatistics.of([7])
+    assert statistics is not None
+    assert (statistics.lower_quartile, statistics.median, statistics.upper_quartile, statistics.standard_deviation) == (
+        7,
+        7,
+        7,
+        0,
+    )
+    assert TotalStatistics.of([]) is None
 
 
-def test_a_short_test_has_a_bar_per_mark() -> None:
+def test_a_low_maximum_has_a_bar_per_mark() -> None:
     assert histogram([0.0, 1.0, 1.0, 2.0], 2) == [(0, 0, 1), (1, 1, 2), (2, 2, 1)]
 
 
@@ -44,11 +51,11 @@ def test_bands_widen_as_the_class_shrinks(students: int, max_marks: int, bands: 
 
 def test_bands_may_be_a_round_width_finer_or_coarser() -> None:
     totals = [float(i % 23) for i in range(320)]
-    assert {finer: len(histogram(totals, 22, finer)) for finer in (-1, 0, 1)} == {-1: 5, 0: 11, 1: 23}
+    assert {steps: len(histogram(totals, 22, steps)) for steps in (-1, 0, 1)} == {-1: 5, 0: 11, 1: 23}
 
 
 def test_whole_totals_go_no_finer_than_a_bar_per_mark() -> None:
-    assert histogram([0.0, 1.0, 2.0], 2, finer=1) == histogram([0.0, 1.0, 2.0], 2)
+    assert histogram([0.0, 1.0, 2.0], 2, narrower_steps=1) == histogram([0.0, 1.0, 2.0], 2)
 
 
 def test_totals_with_half_marks_may_fall_in_half_mark_bands() -> None:
@@ -92,18 +99,17 @@ def test_a_download_needs_a_student_id_column(client: Client, assessment: Assess
 
 
 @pytest.fixture
-def adjusted(assessment: Assessment) -> Assessment:
+def adjusted_assessment(assessment: Assessment) -> Assessment:
     """`assessment`, where only Q1's marking has marked, with adjustments to marks, to feedback, and to questions
     without marks."""
-    students = {student.key: student for student in assessment.students.all()}
+    students = {student.encrypted_id: student for student in assessment.students.all()}
     questions = {question.key: question for question in assessment.questions.all()}
     for student in students.values():
-        feedback = "Good." if student.key == envelope("S006") else ""
         Result.objects.create(
             student=student,
             question=questions["Q1"],
-            proportion=student.file_marks["Q1"],
-            feedback=feedback,
+            proportion=student.imported_marks["Q1"],
+            feedback="Good." if student.encrypted_id == encrypted_id("S006") else "",
             method="Key Points",
             revision=0,
         )
@@ -113,53 +119,69 @@ def adjusted(assessment: Assessment) -> Assessment:
         ("S002", "Q2", 1, "Rounded."),
         ("S004", "Q3", None, "See me."),
     ]
-    for who, key, marks, note in adjustments:
-        Adjustment.objects.create(student=students[envelope(who)], question=questions[key], marks=marks, feedback=note)
+    for student_id, key, marks, feedback in adjustments:
+        Adjustment.objects.create(
+            student=students[encrypted_id(student_id)], question=questions[key], marks=marks, feedback=feedback
+        )
     return assessment
 
 
-def downloaded(client: Client, assessment: Assessment) -> dict[str, dict[str, str]]:
-    """Each student's row of the downloaded CSV, by their ID's envelope."""
-    ticked = dict.fromkeys(("include_answers", "include_marks", "include_feedback", "include_total"), "on")
-    response = client.post(reverse("download", args=[assessment.pk]), {"student_id_column": "id", **ticked})
+def downloaded_rows(client: Client, assessment: Assessment) -> dict[str, dict[str, str]]:
+    """Each student's row of the downloaded CSV, by their encrypted ID."""
+    all_columns = dict.fromkeys(("include_answers", "include_marks", "include_feedback", "include_totals"), "on")
+    response = client.post(reverse("download", args=[assessment.pk]), {"student_id_column": "id", **all_columns})
     return {row["id"]: row for row in csv.DictReader(io.StringIO(response.content.decode("utf-8-sig")))}
 
 
-def test_adjustments_replace_the_marks_and_feedback_they_set(client: Client, adjusted: Assessment) -> None:
-    rows = downloaded(client, adjusted)
+def test_adjustments_replace_the_marks_and_feedback_they_set(client: Client, adjusted_assessment: Assessment) -> None:
+    rows = downloaded_rows(client, adjusted_assessment)
 
-    def given(student: str, key: str) -> tuple[str, str]:
-        row = rows[envelope(student)]
+    def marks_and_feedback(student: str, key: str) -> tuple[str, str]:
+        row = rows[encrypted_id(student)]
         return row[f"{key} marks"], row[f"{key} feedback"]
 
-    assert given("S001", "Q1") == ("0.5", "")
-    assert (given("S002", "Q1"), given("S002", "Q2")) == (("1", ""), ("1", "Rounded."))
-    assert given("S003", "Q1") == ("0", "Mentions chlorophyll.")
-    assert (given("S004", "Q1"), given("S004", "Q3")) == (("0", ""), ("", "")), "feedback alone gives no marks"
-    assert given("S006", "Q1") == ("1", "Good.")
-    assert rows[envelope("S002")]["total marks"] == "2"
+    assert marks_and_feedback("S001", "Q1") == ("0.5", "")
+    assert (marks_and_feedback("S002", "Q1"), marks_and_feedback("S002", "Q2")) == (("1", ""), ("1", "Rounded."))
+    assert marks_and_feedback("S003", "Q1") == ("0", "Mentions chlorophyll.")
+    assert (marks_and_feedback("S004", "Q1"), marks_and_feedback("S004", "Q3")) == (("0", ""), ("", "")), (
+        "feedback alone gives no marks"
+    )
+    assert marks_and_feedback("S006", "Q1") == ("1", "Good.")
+    assert rows[encrypted_id("S002")]["total marks"] == "2"
 
 
-def test_totals_count_adjusted_marks_and_every_adjustment(adjusted: Assessment) -> None:
-    assessment_results = results(adjusted)
-    rows = {row.student.key: (row.total, sorted(row.adjusted)) for row in assessment_results.rows}
-    assert rows[envelope("S001")] == (0.5, ["Q1"])
-    assert rows[envelope("S002")] == (2, ["Q2"])
-    assert rows[envelope("S004")] == (0, ["Q3"])
+def test_totals_count_adjusted_marks_and_every_adjustment(adjusted_assessment: Assessment) -> None:
+    results = assessment_results(adjusted_assessment)
+    rows = {row.student.encrypted_id: (row.total, sorted(row.adjusted_keys)) for row in results.rows}
+    assert rows[encrypted_id("S001")] == (0.5, ["Q1"])
+    assert rows[encrypted_id("S002")] == (2, ["Q2"])
+    assert rows[encrypted_id("S004")] == (0, ["Q3"])
     summaries = [
-        (s.question.key, s.marked, s.average, s.full, s.zero, s.blank, s.adjusted)
-        for s in assessment_results.summaries()
+        (
+            summary.question.key,
+            summary.marked_count,
+            summary.average,
+            summary.full_marks_count,
+            summary.zero_marks_count,
+            summary.blank_count,
+            summary.adjusted_count,
+        )
+        for summary in results.summaries()
     ]
     assert summaries == [("Q1", 10, 0.35, 3, 6, 1, 2), ("Q2", 1, 1, 1, 0, 1, 1), ("Q3", 0, None, 0, 0, 0, 1)]
 
 
-def test_a_students_page_shows_their_adjustments(client: Client, adjusted: Assessment) -> None:
-    student = adjusted.students.get(key=envelope("S001"))
-    page = client.get(reverse("student", args=[adjusted.pk, student.pk]), headers=HTMX).content.decode()
+def test_a_students_page_shows_their_adjustments(client: Client, adjusted_assessment: Assessment) -> None:
+    student = adjusted_assessment.students.get(encrypted_id=encrypted_id("S001"))
+    page = client.get(
+        reverse("student", args=[adjusted_assessment.pk, student.pk]), headers=HTMX_HEADERS
+    ).content.decode()
     assert "The marking gives 1." in page
     assert 'value="0.5"' in page
-    student = adjusted.students.get(key=envelope("S002"))
-    page = client.get(reverse("student", args=[adjusted.pk, student.pk]), headers=HTMX).content.decode()
+    student = adjusted_assessment.students.get(encrypted_id=encrypted_id("S002"))
+    page = client.get(
+        reverse("student", args=[adjusted_assessment.pk, student.pk]), headers=HTMX_HEADERS
+    ).content.decode()
     assert "The marking gives" not in page
     assert page.count("Rounded.") == 2, "as the feedback and in the form"
     assert "· </span>" not in page, "Q3 has no marking to name"
@@ -170,59 +192,65 @@ def test_the_students_list_refreshes_as_marks_change(client: Client, assessment:
     page = client.get(url).content.decode()
     assert f'hx-get="{url}" hx-trigger="{topic("marks", assessment.pk)} from:body' in page
     assert "average 0.4 / 3" in page
-    student = assessment.students.get(key=envelope("S001"))
+    student = assessment.students.get(encrypted_id=encrypted_id("S001"))
     question = assessment.questions.get(key="Q2")
     Adjustment.objects.create(student=student, question=question, marks=1)
-    refreshed = client.get(url, headers=HTMX).content.decode()
+    refreshed = client.get(url, headers=HTMX_HEADERS).content.decode()
     assert "<html" not in refreshed
     assert "average 0.5 / 3" in refreshed
 
 
-def test_the_questions_list_averages_the_marks_the_overview_does(client: Client, adjusted: Assessment) -> None:
-    listed = client.get(reverse("question_list", args=[adjusted.pk]), headers=HTMX).content.decode()
-    averages = re.findall(r'title="Average mark">([^<]+)<', listed)
-    overview = [percent(s.average_proportion) for s in results(adjusted).summaries() if s.average is not None]
-    assert averages == overview == ["35%", "100%"], "adjustments count, as in the overview"
+def test_the_questions_list_averages_the_marks_the_overview_does(
+    client: Client, adjusted_assessment: Assessment
+) -> None:
+    page = client.get(reverse("question_list", args=[adjusted_assessment.pk]), headers=HTMX_HEADERS).content.decode()
+    averages = re.findall(r'title="Average mark">([^<]+)<', page)
+    overview_averages = [
+        percent(summary.average_proportion)
+        for summary in assessment_results(adjusted_assessment).summaries()
+        if summary.average is not None
+    ]
+    assert averages == overview_averages == ["35%", "100%"], "adjustments count, as in the overview"
 
 
 def test_without_marking_a_student_has_the_exams_marks(client: Client, assessment: Assessment) -> None:
-    rows = downloaded(client, assessment)
-    assert [rows[envelope(student)]["Q1 marks"] for student in ("S001", "S003")] == ["1", "0"]
-    assert rows[envelope("S001")]["Q2 marks"] == "", "nothing for a question without marks"
+    rows = downloaded_rows(client, assessment)
+    assert [rows[encrypted_id(student)]["Q1 marks"] for student in ("S001", "S003")] == ["1", "0"]
+    assert rows[encrypted_id("S001")]["Q2 marks"] == "", "nothing for a question without marks"
 
 
-def test_activity_tells_clearing_adjustments_from_making_them(client: Client, adjusted: Assessment) -> None:
-    adjusted.students.get(key=envelope("S001")).adjustments.get().delete()
-    page = client.get(reverse("activity", args=[adjusted.pk]), headers=HTMX).content.decode()
+def test_activity_tells_clearing_adjustments_from_making_them(client: Client, adjusted_assessment: Assessment) -> None:
+    adjusted_assessment.students.get(encrypted_id=encrypted_id("S001")).adjustments.get().delete()
+    page = client.get(reverse("activity", args=[adjusted_assessment.pk]), headers=HTMX_HEADERS).content.decode()
     assert "cleared adjustments to Q1 for 1 student" in page
     assert "adjusted Q1 for 2 students" in page
 
 
-@pytest.mark.parametrize("target", ["student", "answers"])
+@pytest.mark.parametrize("return_to", ["student", "answers"])
 def test_adjustment_request_can_clear_feedback_without_changing_zero_marks(
-    client: Client, assessment: Assessment, target: str
+    client: Client, assessment: Assessment, return_to: str
 ) -> None:
     question = assessment.questions.get(key="Q1")
-    student = assessment.students.get(key=envelope("S001"))
+    student = assessment.students.get(encrypted_id=encrypted_id("S001"))
     Result.objects.create(
         student=student, question=question, proportion=1, feedback="Generated feedback", method="Saved", revision=0
     )
     page_url = (
         reverse("student", args=[assessment.pk, student.pk])
-        if target == "student"
+        if return_to == "student"
         else reverse("answers", args=[assessment.pk, question.pk])
     )
-    assert b'name="clear_feedback"' in client.get(page_url, headers=HTMX).content
+    assert b'name="clear_feedback"' in client.get(page_url, headers=HTMX_HEADERS).content
     url = reverse("adjust", args=[assessment.pk, question.pk])
-    fields = {"student": str(student.pk), "marks": "0", "feedback": "", "then": target, "action": "apply"}
-    cleared = client.post(url, fields | {"clear_feedback": "on"}, headers=HTMX)
+    fields = {"student": str(student.pk), "marks": "0", "feedback": "", "return_to": return_to, "action": "apply"}
+    cleared = client.post(url, fields | {"clear_feedback": "on"}, headers=HTMX_HEADERS)
     assert cleared.status_code == 200
     adjustment = Adjustment.objects.get(student=student, question=question)
     assert (adjustment.marks, adjustment.feedback) == (0, "")
-    awarded = awards([question], [student])[student.pk, question.pk]
-    assert (awarded.marks, awarded.feedback) == (0, "")
+    award = awards([question], [student])[student.pk, question.pk]
+    assert (award.marks, award.feedback) == (0, "")
 
-    assert client.post(url, fields, headers=HTMX).status_code == 200
+    assert client.post(url, fields, headers=HTMX_HEADERS).status_code == 200
     adjustment.refresh_from_db()
     assert (adjustment.marks, adjustment.feedback) == (0, None)
     awarded = awards([question], [student])[student.pk, question.pk]
@@ -230,14 +258,14 @@ def test_adjustment_request_can_clear_feedback_without_changing_zero_marks(
 
 
 def test_an_answer_the_question_reads_as_blank_is_blank_everywhere(client: Client, assessment: Assessment) -> None:
-    student = assessment.students.get(key=envelope("S003"))
+    student = assessment.students.get(encrypted_id=encrypted_id("S003"))
     student.answers["Q1"] = "N/A"
     student.save()
     question = assessment.questions.get(key="Q1")
 
-    assert results(assessment).summaries()[0].blank == 2
+    assert assessment_results(assessment).summaries()[0].blank_count == 2
     url = reverse("answers", args=[assessment.pk, question.pk])
-    page = client.get(url, {"filter": "blank"}, headers=HTMX).content.decode()
+    page = client.get(url, {"filter": "blank"}, headers=HTMX_HEADERS).content.decode()
     assert "2 students" in page
 
 
@@ -248,11 +276,11 @@ def test_marks_that_round_to_the_maximum_are_full(client: Client, assessment: As
             student=student, question=question, proportion=0.7 + 0.2 + 0.1, method="Weighted", revision=0
         )
 
-    summary = results(assessment).summaries()[0]
-    assert (summary.full, summary.zero) == (10, 0)
+    summary = assessment_results(assessment).summaries()[0]
+    assert (summary.full_marks_count, summary.zero_marks_count) == (10, 0)
     url = reverse("answers", args=[assessment.pk, question.pk])
-    assert "1 student" in client.get(url, {"filter": "full"}, headers=HTMX).content.decode()
-    assert "1 student" not in client.get(url, {"filter": "part"}, headers=HTMX).content.decode()
+    assert "1 student" in client.get(url, {"filter": "full"}, headers=HTMX_HEADERS).content.decode()
+    assert "1 student" not in client.get(url, {"filter": "partial"}, headers=HTMX_HEADERS).content.decode()
     first = assessment.students.first()
     assert first is not None
     assert awards([question], [first])[first.pk, question.pk].level == "full"
@@ -273,18 +301,18 @@ def test_a_draft_doesnt_mark_a_question_on_the_overview(client: Client, assessme
     assert "Accepted Answers" not in page
 
 
-def test_the_adjusted_column_shows_once_someone_is_adjusted(client: Client, adjusted: Assessment) -> None:
+def test_the_adjusted_column_shows_once_someone_is_adjusted(client: Client, adjusted_assessment: Assessment) -> None:
     for name in ("overview", "students"):
-        assert "Adjusted</th>" in client.get(reverse(name, args=[adjusted.pk])).content.decode(), name
+        assert "Adjusted</th>" in client.get(reverse(name, args=[adjusted_assessment.pk])).content.decode(), name
 
 
 def test_a_run_of_changes_to_a_questions_adjustments_shows_once(client: Client, assessment: Assessment) -> None:
     question = assessment.questions.get(key="Q1")
-    student = assessment.students.get(key=envelope("S001"))
+    student = assessment.students.get(encrypted_id=encrypted_id("S001"))
     for action in ("apply", "clear", "apply"):
         fields = {"student": str(student.pk), "marks": "1", "action": action}
-        client.post(reverse("adjust", args=[assessment.pk, question.pk]), fields, headers=HTMX)
-    page = client.get(reverse("activity", args=[assessment.pk]), headers=HTMX).content.decode()
+        client.post(reverse("adjust", args=[assessment.pk, question.pk]), fields, headers=HTMX_HEADERS)
+    page = client.get(reverse("activity", args=[assessment.pk]), headers=HTMX_HEADERS).content.decode()
     assert page.count("adjusted marks for Q1") == 1
     assert "cleared adjustments" not in page
     assert f'href="{reverse("question", args=[assessment.pk, question.pk])}"' in page

@@ -1,0 +1,8 @@
+<c-vars course="" assessment="" class="" />
+{# The app as the landing page shows it: a window whose title bar says where in GradeFlow it is, or holds `title_bar`. #}
+<div class="landing-app-frame {{ class }}" {{ attrs }}>
+  <div class="flex min-h-12 flex-wrap items-center gap-2 border-b border-base-300 bg-base-200/60 px-4 py-2 text-sm text-muted">
+    {% if course %}<c-logo class="size-5" /><span class="min-w-0 truncate">{{ course }}</span><span aria-hidden="true">/</span><span class="shrink-0 font-medium text-base-content">{{ assessment }}</span>{% else %}{{ title_bar }}{% endif %}
+  </div>
+  {{ slot }}
+</div>

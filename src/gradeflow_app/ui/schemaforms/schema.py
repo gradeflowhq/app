@@ -7,7 +7,7 @@ from gradeflow_core.editing import HINT_KEY
 
 type Schema = dict[str, Any]
 
-SUGGESTIONS = "x-suggestions"
+SUGGESTIONS_KEY = "x-suggestions"
 """Where a field's schema holds the answers it suggests, with how many gave each: the app's, not the core's."""
 
 
@@ -18,19 +18,22 @@ def title_of(schema: Schema, name: object) -> str:
 
 def resolve(schema: Schema, defs: Mapping[str, Schema]) -> Schema:
     while "$ref" in schema:
-        schema = {**defs[schema["$ref"].rsplit("/", 1)[-1]], **{k: v for k, v in schema.items() if k != "$ref"}}
+        schema = {
+            **defs[schema["$ref"].rsplit("/", 1)[-1]],
+            **{keyword: value for keyword, value in schema.items() if keyword != "$ref"},
+        }
     return schema
 
 
 def unwrap_nullable(schema: Schema) -> tuple[Schema, bool]:
     kind = schema.get("type")
     if isinstance(kind, list) and "null" in kind:
-        rest = [t for t in kind if t != "null"]
-        return {**schema, "type": rest[0] if len(rest) == 1 else rest}, True
+        non_null_types = [type_name for type_name in kind if type_name != "null"]
+        return {**schema, "type": non_null_types[0] if len(non_null_types) == 1 else non_null_types}, True
     options = schema.get("anyOf")
     if options and any(option.get("type") == "null" for option in options):
         inner = next(option for option in options if option.get("type") != "null")
-        return {**{k: v for k, v in schema.items() if k != "anyOf"}, **inner}, True
+        return {**{keyword: value for keyword, value in schema.items() if keyword != "anyOf"}, **inner}, True
     return schema, False
 
 
@@ -50,5 +53,5 @@ def holds_checks(schema: Schema) -> bool:
     return "check" in (hint(schema).get("kind"), hint(schema.get("items", {})).get("kind"))
 
 
-def editable(schema: Schema) -> bool:
+def is_editable(schema: Schema) -> bool:
     return not schema.get("readOnly") and "const" not in schema

@@ -23,28 +23,28 @@ from gradeflow_app.accounts.models import User
 from gradeflow_app.assessments.models import Assessment
 from gradeflow_app.courses.models import Course, Member, Role
 from gradeflow_app.jobs import queue
-from gradeflow_app.jobs.callbacks import _receive as receive
-from gradeflow_app.jobs.executors import Unavailable
+from gradeflow_app.jobs.callbacks import _apply_event as receive
+from gradeflow_app.jobs.executors import ExecutorUnavailable
 from gradeflow_app.jobs.handlers import handler
 from gradeflow_app.jobs.models import Job
-from gradeflow_app.jobs.payloads import Payload
+from gradeflow_app.jobs.payloads import MarkingRun
 from gradeflow_app.libraries import services
 from gradeflow_app.libraries.designer.workspace import MethodWorkspace
-from gradeflow_app.libraries.models import Library, Method, MethodDraft, MethodVersion, VersionTests
-from gradeflow_app.libraries.workbench import new_tests
-from gradeflow_app.marking.models import Draft, Marking
+from gradeflow_app.libraries.method_tests import new_tests
+from gradeflow_app.libraries.models import Library, Method, MethodDraftRecord, MethodVersion, VersionTests
+from gradeflow_app.marking.models import Marking, MarkingDraftRecord
 
 if TYPE_CHECKING:
     from django.test.client import _MonkeyPatchedWSGIResponse as Response
 
 
-def envelope(student_id: str) -> str:
-    """A stand-in for an encrypted student ID: the server only checks the envelope's shape."""
+def encrypted_id(student_id: str) -> str:
+    """A stand-in for an encrypted student ID: the server only checks its shape."""
     digest = base64.b64encode(hashlib.sha256(student_id.encode()).digest()).decode()
     return f"enc:v2:{digest[:24]}:{digest[24:40]}:{digest[:20]}"
 
 
-RESULTS = [
+EXPORT_ROWS = [
     # student, Q1 (text), Q1 marks, Q2 (number), Q3 (choice)
     ("S001", "photosynthesis uses light", "1", "42", "A"),
     ("S002", "Photosynthesis uses light.", "1", "42.0", "B"),
@@ -59,35 +59,35 @@ RESULTS = [
 ]
 
 
-RESULTS_CSV = "StudentID,Q1,Q1 Pts,Q2,Q3\n" + "".join(
-    f'{envelope(student)},"{q1}",{q1_marks},{q2},{q3}\n' for student, q1, q1_marks, q2, q3 in RESULTS
+EXPORT_CSV = "StudentID,Q1,Q1 Pts,Q2,Q3\n" + "".join(
+    f'{encrypted_id(student)},"{q1}",{q1_marks},{q2},{q3}\n' for student, q1, q1_marks, q2, q3 in EXPORT_ROWS
 )
 
-HTMX = {"HX-Request": "true"}
+HTMX_HEADERS = {"HX-Request": "true"}
 
 
-SANDBOX = Path(__file__).parents[1] / "sandbox" / "sandbox.py"
+SANDBOX_SCRIPT = Path(__file__).parents[1] / "sandbox" / "sandbox.py"
 
 type Event = dict[str, Any]
 type Task = Callable[[dict[str, Any]], None]
 
 
-def sandbox(call_back: Callable[[Event], None]) -> dict[str, Task]:
+def sandbox_tasks(call_back: Callable[[Event], None]) -> dict[str, Task]:
     """The sandbox's tasks, by name, run in the test's process and sending their events to `call_back`."""
     with patch.dict(os.environ, {"GRADEFLOW_JOB_URL": "http://sandbox.invalid/", "GRADEFLOW_JOB_SECRET": "test"}):
-        tasks: dict[str, Task] = runpy.run_path(str(SANDBOX))["TASKS"]
+        tasks: dict[str, Task] = runpy.run_path(str(SANDBOX_SCRIPT))["TASKS"]
     tasks["mark"].__globals__["call_back"] = call_back
     return tasks
 
 
-def marked_by_sandbox(payload: Payload) -> list[MarkedSubmission]:
+def marked_by_sandbox(payload: MarkingRun) -> list[MarkedSubmission]:
     """``payload`` marked by the sandbox."""
     events: list[Event] = []
-    sandbox(events.append)["mark"](payload.model_dump(mode="json"))
+    sandbox_tasks(events.append)["mark"](payload.model_dump(mode="json"))
     return [MarkedSubmission.model_validate(item) for event in events for item in event["submissions"]]
 
 
-class Synchronous:
+class InProcessExecutor:
     """Runs jobs in the sandbox's tasks, in the test's process, its events received as the callback receives them.
     Grouping jobs stay queued for tests to drive through their callbacks: the app has no embedding model."""
 
@@ -95,7 +95,7 @@ class Synchronous:
         if job.kind == Job.Kind.GROUPING:
             return
         assert job.input is not None
-        task = sandbox(partial(receive, job))[handler(job).task]
+        task = sandbox_tasks(partial(receive, job))[handler(job).task]
         receive(job, {"event": "started"})
         try:
             task(job.input)
@@ -109,10 +109,10 @@ class Synchronous:
 
 
 @pytest.fixture(autouse=True)
-def _in_process(settings: Settings, monkeypatch: pytest.MonkeyPatch) -> None:
+def _run_tasks_in_process(settings: Settings, monkeypatch: pytest.MonkeyPatch) -> None:
     """Tasks and jobs, in the test's process."""
     settings.TASKS = {"default": {"BACKEND": "django.tasks.backends.immediate.ImmediateBackend"}}
-    monkeypatch.setattr(queue, "executor", Synchronous)
+    monkeypatch.setattr(queue, "executor", InProcessExecutor)
 
 
 @pytest.fixture
@@ -120,7 +120,7 @@ def user(db: None) -> User:
     return User.objects.create_user("ana@example.edu", "a-long-password", name="Ana Tan")
 
 
-def signed_in(user: User) -> Client:
+def signed_in_client(user: User) -> Client:
     client = Client()
     client.force_login(user)
     return client
@@ -128,7 +128,7 @@ def signed_in(user: User) -> Client:
 
 @pytest.fixture
 def client(user: User) -> Client:
-    return signed_in(user)
+    return signed_in_client(user)
 
 
 def create_assessment(client: Client, name: str = "Midterm") -> Assessment:
@@ -141,14 +141,14 @@ def create_assessment(client: Client, name: str = "Midterm") -> Assessment:
     return assessment
 
 
-def upload(client: Client, assessment: Assessment, data: str = RESULTS_CSV, **fields: object) -> Response:
-    """Imports `data`, with `fields` overriding the form's, and runs the marking that follows as the commit would."""
+def upload(client: Client, assessment: Assessment, csv: str = EXPORT_CSV, **fields: object) -> Response:
+    """Imports `csv`, with `fields` overriding the form's, and runs the marking that follows as the commit would."""
     with TestCase.captureOnCommitCallbacks(execute=True):
         return client.post(
-            reverse("upload", args=[assessment.pk]),
+            reverse("import_upload", args=[assessment.pk]),
             {
                 "name": "results.csv",
-                "results": SimpleUploadedFile("results", data.encode(), "text/csv"),
+                "answers_csv": SimpleUploadedFile("answers.csv", csv.encode(), "text/csv"),
                 "student_id_column": "StudentID",
                 "answer_columns": json.dumps(["Q1", "Q2", "Q3"]),
                 "marks_columns": json.dumps({"Q1": "Q1 Pts"}),
@@ -159,35 +159,35 @@ def upload(client: Client, assessment: Assessment, data: str = RESULTS_CSV, **fi
 
 @pytest.fixture
 def assessment(client: Client) -> Assessment:
-    """An assessment with `RESULTS` imported."""
+    """An assessment with `EXPORT_ROWS` imported."""
     created = create_assessment(client)
     response = upload(client, created)
     assert response.status_code == 200, response.content
     return created
 
 
-def start_marking(client: Client, assessment: Assessment, key: str, method: str) -> tuple[str, Draft]:
+def start_marking(client: Client, assessment: Assessment, key: str, method: str) -> tuple[str, MarkingDraftRecord]:
     """The URL of a new draft marking question `key` with `method`, and the draft."""
     question = assessment.questions.get(key=key)
     client.post(reverse("marking_start", args=[assessment.pk, question.pk]), {"method": method})
-    draft = Draft.objects.get(question=question)
+    draft = MarkingDraftRecord.objects.get(question=question)
     return reverse("draft", args=[assessment.pk, draft.pk]), draft
 
 
 def code_draft(client: Client, assessment: Assessment) -> tuple[str, dict[str, str]]:
     """The URL of a draft marking Q1 with code, and its fields as the editor posts them."""
     url, _ = start_marking(client, assessment, "Q1", "gradeflow/custom-code@1")
-    return url, {"path": "", "fields": "1", "code": "correct = False\n"}
+    return url, {"path": "", "fields_posted": "1", "code": "correct = False\n"}
 
 
-def member(assessment: Assessment, role: Role, email: str = "bo@example.edu") -> Client:
+def member_client(assessment: Assessment, role: Role, email: str = "bo@example.edu") -> Client:
     """A client signed in as a new member of the assessment's course, in `role`."""
     user = User.objects.create_user(email, "another-password")
     Member.objects.create(course=assessment.course, user=user, role=role)
-    return signed_in(user)
+    return signed_in_client(user)
 
 
-def full_marks(assessment: Assessment) -> Assessment:
+def save_full_marks_markings(assessment: Assessment) -> Assessment:
     """The assessment with every question's marking saved as Full Marks, without marking anyone yet."""
     for question in assessment.questions.all():
         definition = dump_yaml({"question": question.key, "uses": "gradeflow/full-marks@1"})
@@ -195,15 +195,16 @@ def full_marks(assessment: Assessment) -> Assessment:
     return assessment
 
 
-def marked(client: Client, course: Course, name: str, keys: list[str]) -> Assessment:
-    """A new assessment in `course` with the answers to `keys` imported, each question marked."""
+def assessment_with_full_marks(client: Client, course: Course, name: str, question_keys: list[str]) -> Assessment:
+    """A new assessment in `course` with the answers to `question_keys` imported, each question's marking saved as
+    Full Marks."""
     client.post(reverse("course", args=[course.pk]), {"name": name, "description": ""})
     assessment = course.assessments.get(name=name)
-    upload(client, assessment, answer_columns=json.dumps(keys), marks_columns="{}")
-    return full_marks(assessment)
+    upload(client, assessment, answer_columns=json.dumps(question_keys), marks_columns="{}")
+    return save_full_marks_markings(assessment)
 
 
-def call_back(job: Job, event: dict[str, Any], secret: str | None = None) -> int:
+def post_callback(job: Job, event: dict[str, Any], secret: str | None = None) -> int:
     body = json.dumps(event).encode()
     signature = hmac.new((secret or job.secret).encode(), body, hashlib.sha256).hexdigest()
     response = Client().post(
@@ -215,7 +216,7 @@ def call_back(job: Job, event: dict[str, Any], secret: str | None = None) -> int
     return response.status_code
 
 
-class Idle:
+class IdleExecutor:
     """An executor that leaves jobs queued, as Nomad does until a job calls back."""
 
     def submit(self, job: Job) -> None:
@@ -225,29 +226,29 @@ class Idle:
         pass
 
 
-class Waiting:
+class FakeNomad:
     """Nomad, receiving jobs without running them until a test ends them or takes it down."""
 
     submitted: ClassVar[list[UUID]] = []
     cancelled: ClassVar[list[UUID]] = []
     ended: ClassVar[set[UUID]] = set()
-    down: ClassVar[bool] = False
+    is_down: ClassVar[bool] = False
 
     def submit(self, job: Job) -> None:
-        if self.down:
-            raise Unavailable
+        if self.is_down:
+            raise ExecutorUnavailable
         self.submitted.append(job.pk)
 
     def cancel(self, job: Job) -> None:
         self.cancelled.append(job.pk)
 
-    def received(self) -> dict[UUID, bool]:
-        if self.down:
-            raise Unavailable
+    def submitted_jobs(self) -> dict[UUID, bool]:
+        if self.is_down:
+            raise ExecutorUnavailable
         return {pk: pk in self.ended for pk in self.submitted}
 
 
-class Sandbox:
+class NotifyingExecutor:
     """Takes jobs and leaves them running, calling `submitted` with each as the sandbox gets it."""
 
     def __init__(self, submitted: Callable[[Job], None]) -> None:
@@ -263,58 +264,62 @@ class Sandbox:
 QUESTIONS = QuestionSet.model_validate({"Q1": {"type": "text"}})
 
 
-def definition(label: str = "Light", answer: str = "light", uses: str = "") -> str:
+def method_definition(label: str = "Light", answer: str = "light", uses: str = "") -> str:
     check = {"uses": uses} if uses else {"uses": "gradeflow/key-points@1", "with": {"points": [answer]}}
     return dump_yaml({"label": label, "summary": f"Says {answer}.", "question_types": ["text"], "checks": [check]})
 
 
-def drafted(method: Method, user: User, text: str) -> MethodDraft:
-    """The user's draft of `method` with `text`, started from its latest version."""
-    return MethodDraft.objects.create(
+def create_method_draft(method: Method, user: User, definition: str) -> MethodDraftRecord:
+    """The user's draft of `method` with `definition`, started from its latest version."""
+    return MethodDraftRecord.objects.create(
         method=method,
         user=user,
         based_on=method.latest_version,
-        definition=text,
+        definition=definition,
         tests=dict(new_tests(QUESTIONS)),
     )
 
 
-def published(method: Method, user: User, text: str) -> MethodVersion:
-    draft = drafted(method, user, text)
-    return services.publish(draft, user, MethodWorkspace(method, draft).core)
+def publish_version(method: Method, user: User, definition: str) -> MethodVersion:
+    draft = create_method_draft(method, user, definition)
+    return services.publish(draft, user, MethodWorkspace(method, draft).draft)
 
 
-def light(library: Library, user: User, name: str = "light", label: str = "Light") -> MethodVersion:
-    return published(Method.objects.create(library=library, name=name), user, definition(label))
+def publish_light_method(library: Library, user: User, name: str = "light", label: str = "Light") -> MethodVersion:
+    return publish_version(Method.objects.create(library=library, name=name), user, method_definition(label))
 
 
-def course_of(owner: User, name: str = "Chemistry") -> Course:
+def create_course(owner: User, name: str = "Chemistry") -> Course:
     course = Course.objects.create(name=name)
-    Library.objects.create(namespace=services.free_namespace(name), course=course)
+    Library.objects.create(namespace=services.available_namespace(name), course=course)
     Member.objects.create(course=course, user=owner, role=Role.OWNER)
     return course
 
 
-def session(method: Method, number: int | None) -> MethodDraft | VersionTests:
+def designer_record(method: Method, number: int | None) -> MethodDraftRecord | VersionTests:
     if number is None:
-        return MethodDraft.objects.get(method=method)
+        return MethodDraftRecord.objects.get(method=method)
     return VersionTests.objects.get(version__method=method, version__number=number)
 
 
-def url(method: Method, name: str, number: int | None = None) -> str:
+def designer_url(method: Method, name: str, number: int | None = None) -> str:
     args = [method.pk, *([number] if number is not None else [])]
     return reverse(name, args=args)
 
 
-def edit(client: Client, method: Method, view: str, number: int | None = None, **data: object) -> Response:
+def post_to_designer(
+    client: Client, method: Method, view: str, number: int | None = None, /, **data: object
+) -> Response:
     """Post `data` to the workspace's `view`, from a page showing the workspace as it is."""
-    return posted(client, method, view, number, data)
+    return post_with_revision(client, method, view, number, data)
 
 
-def posted(client: Client, method: Method, view: str, number: int | None, data: dict[str, object]) -> Response:
-    revision = session(method, number).revision
-    return client.post(url(method, view, number), {"revision": revision, **data}, headers=HTMX)
+def post_with_revision(
+    client: Client, method: Method, view: str, number: int | None, data: dict[str, object]
+) -> Response:
+    revision = designer_record(method, number).revision
+    return client.post(designer_url(method, view, number), {"revision": revision, **data}, headers=HTMX_HEADERS)
 
 
-def publish(client: Client, method: Method) -> Response:
-    return edit(client, method, "method_publish")
+def post_publish(client: Client, method: Method) -> Response:
+    return post_to_designer(client, method, "method_publish")

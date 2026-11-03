@@ -4,28 +4,28 @@
 {% partialdef students inline %}
 {% with assessment=membership.assessment %}
 <div id="students" hx-get="{% url 'students' assessment.pk %}" hx-trigger="{% listen 'marks' assessment.pk %}" hx-swap="outerHTML">
-<c-page title="Students" meta="{% if results.rows %}{{ results.rows|length }} student{{ results.rows|length|pluralize }} · average {{ results.stats.mean|marks }} / {{ results.max_marks|marks }}{% endif %}">
+<c-page title="Students" subtitle="{% if results.rows %}{{ results.rows|length }} student{{ results.rows|length|pluralize }} · average {{ results.statistics.mean|marks }} / {{ results.max_marks|marks }}{% endif %}">
   <c-slot name="actions">{% if results.rows %}
-    <button type="button" id="locked-ids" class="btn" data-unlock hidden>{% icon "lock-closed" "size-4" %}Show student IDs</button>
+    <button type="button" id="show-student-ids" class="btn" data-ask-passphrase hidden>{% icon "lock-closed" "size-4" %}Show student IDs</button>
     <button type="button" class="btn" data-dialog="download">{% icon "arrow-down-tray" "size-4" %}Download</button>
   {% endif %}</c-slot>
   {% if results.rows %}
-  <div class="surface overflow-hidden" x-data="studentTable">
+  <div class="card-box overflow-hidden" x-data="studentTable">
     <table class="table" data-students>
-      <thead><tr><th>Student ID</th><th class="text-right">Total marks</th>{% if adjusted %}<th class="text-right max-sm:hidden">Adjusted</th>{% endif %}</tr></thead>
+      <thead><tr><th>Student ID</th><th class="text-right">Total marks</th>{% if has_adjustments %}<th class="text-right max-sm:hidden">Adjusted</th>{% endif %}</tr></thead>
       <tbody>
         {% for row in results.rows %}
-        <tr hx-get="{% url 'student' assessment.pk row.student.pk %}" hx-target="#sheet-body" data-dialog="sheet">
-          <td><c-sid value="{{ row.student.key }}" /></td>
+        <tr hx-get="{% url 'student' assessment.pk row.student.pk %}" hx-target="#drawer-body" data-dialog="drawer">
+          <td><c-student-id value="{{ row.student.encrypted_id }}" /></td>
           <td class="tabular-nums whitespace-nowrap text-right" data-order="{{ row.total }}">{{ row.total|marks }} <span class="text-muted">/ {{ results.max_marks|marks }}<span class="ml-3 inline-block w-11">{{ row.total|percent:results.max_marks }}</span></span></td>
-          {% if adjusted %}<td class="tabular-nums text-right max-sm:hidden" data-order="{{ row.adjusted|length }}">{% if row.adjusted %}{{ row.adjusted|length }}{% else %}<span class="text-subtle">—</span>{% endif %}</td>{% endif %}
+          {% if has_adjustments %}<td class="tabular-nums text-right max-sm:hidden" data-order="{{ row.adjusted_keys|length }}">{% if row.adjusted_keys %}{{ row.adjusted_keys|length }}{% else %}<span class="text-subtle">—</span>{% endif %}</td>{% endif %}
         </tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
   {% else %}
-  <c-empty class="surface" icon="users" title="No students yet">Import the exam export to see its students.{% if membership.can_edit %}<c-slot name="action"><a class="btn btn-primary" href="{% url 'import' assessment.pk %}">{% icon "arrow-up-tray" %}Import results</a></c-slot>{% endif %}</c-empty>
+  <c-empty-state class="card-box" icon="users" title="No students yet">Import the exam export to see its students.{% if membership.can_edit %}<c-slot name="action"><a class="btn btn-primary" href="{% url 'import' assessment.pk %}">{% icon "arrow-up-tray" %}Import exam export</a></c-slot>{% endif %}</c-empty-state>
   {% endif %}
 </c-page>
 </div>

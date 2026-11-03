@@ -3,31 +3,31 @@
 
 import Alpine from "../vendor/alpinejs-csp-3.17.4/module.esm.min.js";
 
-const SHOWN_MS = 6000;
+const VISIBLE_MS = 6000;
 
 Alpine.store("toasts", {
-  shown: [],
+  visible: [],
   count: 0,
-  report(message, level = "error") {
-    const toast = { id: ++this.count, message, ok: level !== "error", style: level === "error" ? "alert-error" : "alert-neutral" };
-    this.shown = [toast];
-    setTimeout(() => (this.shown = this.shown.filter((shown) => shown.id !== toast.id)), SHOWN_MS);
+  show(message, level = "error") {
+    const toast = { id: ++this.count, message, isSuccess: level !== "error", alertClass: level === "error" ? "alert-error" : "alert-neutral" };
+    this.visible = [toast];
+    setTimeout(() => (this.visible = this.visible.filter((other) => other.id !== toast.id)), VISIBLE_MS);
   },
   clear() {
-    this.shown = [];
+    this.visible = [];
   },
 });
 
 /** Shows `message` as a toast; `level` is "success" or the default, "error". */
-export const report = (message, level) => Alpine.store("toasts").report(message, level);
+export const showToast = (message, level) => Alpine.store("toasts").show(message, level);
 
-function reportPageMessages() {
+function showPageMessages() {
   const messages = document.getElementById("messages");
   messages?.remove();
-  for (const { text, level } of JSON.parse(messages?.textContent ?? "[]")) report(text, level);
+  for (const { text, level } of JSON.parse(messages?.textContent ?? "[]")) showToast(text, level);
 }
-reportPageMessages();
-document.addEventListener("htmx:after:settle", reportPageMessages);
+showPageMessages();
+document.addEventListener("htmx:after:settle", showPageMessages);
 // Toasts belong to the page that raised them: going to another page clears them before its own arrive.
 for (const name of ["htmx:after:history:push", "htmx:before:history:restore"]) {
   document.addEventListener(name, () => Alpine.store("toasts").clear());

@@ -21,7 +21,7 @@ def member_of(request: Request, course_id: UUID, role: Role = Role.VIEWER) -> Me
     return member
 
 
-def course_of(request: Request) -> Course | None:
+def course_from_query(request: Request) -> Course | None:
     """The course the query's `course` names, if the user is in it."""
     try:
         return Course.objects.filter(pk=UUID(request.GET["course"]), members__user=request.user).first()
@@ -32,17 +32,19 @@ def course_of(request: Request) -> Course | None:
 def course_member(role: Role = Role.VIEWER) -> Callable[[View], View]:
     """Calls the view with the user's `Member` of the course in place of the URL's `course` ID, once their role is
     at least `role`."""
-    return passing("course", member_of, role)
+    return with_access_for("course", member_of, role)
 
 
-def passing(argument: str, find: Callable[[Request, UUID, Role], object], role: Role) -> Callable[[View], View]:
-    """Calls the view with the user's access to what the URL's `argument` ID names, as `find` gives it for `role`, in
-    place of the ID."""
+def with_access_for(
+    argument: str, access_of: Callable[[Request, UUID, Role], object], role: Role
+) -> Callable[[View], View]:
+    """Calls the view with the user's access to what the URL's `argument` ID names, as `access_of` gives it for
+    `role`, in place of the ID."""
 
     def decorate(view: View) -> View:
         @wraps(view)
         def wrapped(request: Request, *args: object, **kwargs: Any) -> HttpResponse:
-            return view(request, find(request, kwargs.pop(argument), role), *args, **kwargs)
+            return view(request, access_of(request, kwargs.pop(argument), role), *args, **kwargs)
 
         return wrapped
 

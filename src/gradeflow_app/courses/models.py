@@ -14,13 +14,13 @@ class Role(models.TextChoices):
     EDITOR = "editor", "Editor"
     OWNER = "owner", "Owner"
 
-    def at_least(self) -> list[Role]:
+    def and_above(self) -> list[Role]:
         """This role and those above it."""
         order = list(Role)
         return order[order.index(self) :]
 
     def allows(self, needed: Role) -> bool:
-        return self in needed.at_least()
+        return self in needed.and_above()
 
 
 class Course(models.Model):
@@ -49,7 +49,7 @@ class Member(models.Model):
     history = HistoricalRecords()
 
     class Meta:
-        constraints = (models.UniqueConstraint(fields=("course", "user"), name="one_member_per_user"),)
+        constraints = (models.UniqueConstraint(fields=("course", "user"), name="one_member_per_course_user"),)
         ordering = ("created_at",)
 
     def __str__(self) -> str:
@@ -80,5 +80,5 @@ class Invitation(models.Model):
         return self.email
 
     @property
-    def expired(self) -> bool:
+    def is_expired(self) -> bool:
         return timezone.now() > self.sent_at + INVITATION_LIFETIME

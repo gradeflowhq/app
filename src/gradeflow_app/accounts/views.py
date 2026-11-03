@@ -35,11 +35,11 @@ def integrations(request: Request) -> HttpResponse:
 
 
 @require_POST
-def sign_out_device(request: Request, session: int) -> HttpResponse:
+def sign_out_device(request: Request, session_id: int) -> HttpResponse:
     """Signs one of the person's other devices out; this one signs out from the account menu."""
-    device = get_object_or_404(UserSession, pk=session, user=request.user)
-    if device.is_current():
+    user_session = get_object_or_404(UserSession, pk=session_id, user=request.user)
+    if user_session.is_current():
         raise Http404
-    get_adapter().end_sessions([device])
-    messages.success(request, f"Signed out {browser(device.user_agent)}.")
+    get_adapter().end_sessions([user_session])
+    messages.success(request, f"Signed out {browser(user_session.user_agent)}.")
     return redirect("usersessions_list")

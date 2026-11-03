@@ -9,10 +9,10 @@ from gradeflow_core import Check, Methods
 
 from gradeflow_app.assessments.models import Assessment
 from gradeflow_app.imports.models import ResultsFile
-from gradeflow_app.libraries.collection import in_use
-from gradeflow_app.marking.checks import accepted, marked_keys
+from gradeflow_app.libraries.collection import course_methods
+from gradeflow_app.marking.checks import accepted_checks, keys_marked_by
 from gradeflow_app.marking.models import Marking
-from gradeflow_app.publish.models import Publication
+from gradeflow_app.publish.models import SentMarks
 
 
 class Stage(StrEnum):
@@ -24,40 +24,43 @@ class Stage(StrEnum):
 
 @dataclass(frozen=True)
 class Progress:
-    imported: ResultsFile | None
-    questions: int
-    marked: int
-    sent: Publication | None
+    latest_import: ResultsFile | None
+    question_count: int
+    marked_count: int
+    latest_sent_marks: SentMarks | None
 
     @property
-    def marking_done(self) -> bool:
-        return self.marked >= self.questions
+    def all_marked(self) -> bool:
+        return self.marked_count >= self.question_count
 
     @property
     def stage(self) -> Stage:
         """What the assessment needs next."""
-        if self.imported is None:
+        if self.latest_import is None:
             return Stage.IMPORT
-        if not self.marking_done:
+        if not self.all_marked:
             return Stage.MARK
-        return Stage.SEND if self.sent is None else Stage.SENT
+        return Stage.SEND if self.latest_sent_marks is None else Stage.SENT
 
 
 def progress(assessment: Assessment, accepted: Mapping[Marking, Check]) -> Progress:
     """The assessment's progress, with `accepted`, its markings the core accepts."""
     return Progress(
-        imported=assessment.results_files.first(),
-        questions=assessment.questions.count(),
-        marked=len(marked_keys(accepted)),
-        sent=assessment.publications.first(),
+        latest_import=assessment.results_files.first(),
+        question_count=assessment.questions.count(),
+        marked_count=len(keys_marked_by(accepted)),
+        latest_sent_marks=assessment.sent_marks.first(),
     )
 
 
 def progress_of(assessments: QuerySet[Assessment]) -> list[tuple[Assessment, Progress]]:
     """Each of the assessments, all of one course, with its progress, read in as many queries for any number."""
-    rows = list(assessments.prefetch_related("questions", "markings", "results_files", "publications"))
-    methods = in_use(rows[0].course) if rows else Methods()
+    assessment_list = list(assessments.prefetch_related("questions", "markings", "results_files", "sent_marks"))
+    methods = course_methods(assessment_list[0].course) if assessment_list else Methods()
     return [
-        (assessment, progress(assessment, accepted(assessment.markings.all(), methods, assessment.question_set())))
-        for assessment in rows
+        (
+            assessment,
+            progress(assessment, accepted_checks(assessment.markings.all(), methods, assessment.question_set())),
+        )
+        for assessment in assessment_list
     ]
