@@ -832,42 +832,17 @@ def test_choosing_group_questions_updates_the_answers_column(client: Client, ass
     assert "No questions yet" not in page
 
 
-def test_code_answers_show_their_likeliest_layout_and_original(client: Client, assessment: Assessment) -> None:
+def test_code_answers_show_as_typed_and_highlighted(client: Client, assessment: Assessment) -> None:
     question = assessment.questions.get(key="Q1")
-    question.core = Question.load(
-        {"type": "code", "reading": {"guess_indentation": True}, "max_marks": question.core.max_marks}
-    )
+    question.core = Question.load({"type": "code", "max_marks": question.core.max_marks})
     question.save()
     flat = "def first_positive(xs):\nfor x in xs:\nif x > 0:\nreturn x\nreturn None"
-    assessment.students.update(answers={"Q1": flat})
+    assessment.students.update(answers={"Q1": flat + "  \r\n"})
     page = client.get(reverse("answers", args=[assessment.pk, question.pk])).content.decode()
     assert '<span class="code-k">def</span>' in page
     text = html.unescape(re.sub(r"<span[^>]*>|</span>", "", page))
-    assert "def first_positive(xs):\n    for x in xs:\n        if x > 0:" in text
-    assert "Original" in text
     assert flat in text
-
-
-def test_code_answers_list_only_the_originals_their_layout_changed(client: Client, assessment: Assessment) -> None:
-    question = assessment.questions.get(key="Q1")
-    question.core = Question.load(
-        {"type": "code", "reading": {"guess_indentation": True}, "max_marks": question.core.max_marks}
-    )
-    question.save()
-    indented = "def first_positive(xs):\n    for x in xs:\n        if x > 0:\n            return x\n    return None"
-    assessment.students.update(answers={"Q1": "\n" + indented.replace("\n", "  \r\n") + "\n\n"})
-    url = reverse("answers", args=[assessment.pk, question.pk])
-    assert "Original" not in client.get(url).content.decode()
-
-    flat = "\n".join(line.strip() for line in indented.splitlines())
-    first = assessment.students.order_by("pk").first()
-    assert first is not None
-    first.answers = {"Q1": flat}
-    first.save()
-    text = html.unescape(re.sub(r"<span[^>]*>|</span>", "", client.get(url).content.decode()))
-    assert text.count(indented) == 1
-    assert f'{flat}</pre><p class="tabular-nums mt-1 text-sm text-muted">1 student</p>' in text
-    assert "data-answers" not in text
+    assert "Original" not in text
 
 
 def test_a_problem_with_a_checks_settings_as_a_whole_names_only_the_check() -> None:

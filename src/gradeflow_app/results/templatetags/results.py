@@ -31,3 +31,8 @@ def signed_marks(value: float) -> str:
     """Marks a check gave or took off: +1, -0.5 or 0."""
     shown = marks(abs(value))
     return "0" if shown == "0" else f"+{shown}" if value > 0 else f"-{shown}"
+
+
+@register.filter
+def multiline(text: str) -> bool:
+    return "\n" in text

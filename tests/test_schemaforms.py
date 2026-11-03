@@ -43,6 +43,16 @@ def test_rarely_changed_options_wait_under_more_options() -> None:
     assert ObjectForm(CHOICE, {"whole": True}).more_changed == 1
 
 
+def test_groups_keep_their_place_among_the_fields() -> None:
+    setup = hinted(obj(code={"type": "string", "default": ""}), advanced=True)
+    schema = obj(
+        setup=setup,
+        expected=hinted({"type": "boolean", "default": True}, advanced=True),
+        name=hinted({"type": "string"}, advanced=True),
+    )
+    assert [label for label, _ in ObjectForm(schema, {}).more] == ["Setup", ""]
+
+
 def test_a_field_following_a_rarely_changed_choice_waits_with_it() -> None:
     schema = obj(
         decide=hinted({"type": "string", "enum": ["fast", "careful"], "default": "fast"}, advanced=True),

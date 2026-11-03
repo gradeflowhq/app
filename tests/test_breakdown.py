@@ -1,6 +1,9 @@
+import html
+import re
+
 from django.test import Client, TestCase
 from django.urls import reverse
-from gradeflow_core import CheckResult, Detail, QuestionResult
+from gradeflow_core import CheckResult, Detail, Question, QuestionResult
 from gradeflow_core.editing import dump_yaml
 
 from gradeflow_app.accounts.models import User
@@ -44,6 +47,28 @@ def test_a_marking_of_several_checks_shows_how_each_marked_an_answer(
     assert "All of these" in page
     assert "Has at most <code>3</code> words." in page
     assert "Lost marks" in page
+
+
+def test_the_breakdown_shows_the_fixed_code(client: Client, assessment: Assessment, user: User) -> None:
+    question = assessment.questions.get(key="Q1")
+    question.core = Question.load({"type": "code"})
+    question.save()
+    assessment.students.update(answers={"Q1": "def f():\nreturn 1"})
+    tests = [{"expression": "f()", "expected": "1"}, {"expression": "f() + 1", "expected": "2"}]
+    check = {
+        "question": "Q1",
+        "uses": "gradeflow/code-tests@1",
+        "with": {"tests": tests, "fixes": {"indentation": True}},
+    }
+    marking = Marking.objects.create(assessment=assessment, question=question, definition=dump_yaml(check))
+    with TestCase.captureOnCommitCallbacks(execute=True):
+        job = schedule_marking(marking, user)
+    assert job is not None
+    job.refresh_from_db()
+    assert (job.status, job.error) == ("completed", "")
+    page = client.get(reverse("question", args=[assessment.pk, question.pk])).content.decode()
+    text = html.unescape(re.sub(r"<span[^>]*>|</span>", "", page))
+    assert re.search(r"Marked as\s*<code[^>]*>def f\(\):\n    return 1", text)
 
 
 def test_runs_of_checks_with_the_same_facts_line_up_in_a_table() -> None:

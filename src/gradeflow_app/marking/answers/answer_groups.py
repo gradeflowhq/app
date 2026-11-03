@@ -110,7 +110,7 @@ class AnswerGroup:
 
     @property
     def shown(self) -> list[tuple[str, int]]:
-        """Its answers as the question reads them, such as code with its indentation rebuilt."""
+        """Its answers as the question reads them, such as `42` for `42.0`."""
         return Counter(entry.canonical for entry in self.entries).most_common()
 
     @property

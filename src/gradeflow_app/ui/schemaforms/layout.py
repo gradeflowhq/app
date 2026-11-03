@@ -118,9 +118,8 @@ class Layout:
 
 
 def _follows_a_choice(prop: Schema, properties: Mapping[str, Schema], defs: Mapping[str, Schema]) -> bool:
-    """Whether a field applies only once another field is changed from its default, as Code Tests' fix penalty does
-    once small errors are fixed: it then shows beside that choice rather than under More options, unless the choice
-    is there too."""
+    """Whether a field applies only once another field leaves its default. If so, it shows next to that field instead
+    of under More options, unless that field is there too."""
     wanted = hint(prop).get("applies_when") or {}
     choices = [(resolve(properties.get(name, {}), defs), values) for name, values in wanted.items()]
     return bool(wanted) and all(

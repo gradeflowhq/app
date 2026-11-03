@@ -8,11 +8,15 @@
 {% elif detail.kind == "error" %}<span class="whitespace-pre-wrap break-words font-mono text-[0.9em] text-error">{{ detail.value }}</span>
 {% else %}<span class="whitespace-pre-wrap break-words">{{ detail.value }}</span>{% endif %}
 {% endpartialdef %}
+{% partialdef details %}
+{% for detail in check.details %}{% if detail.value|multiline %}<span class="mt-1 grid gap-1"><span class="text-muted">{{ detail.title }}</span>{% if detail.kind == "code" %}<code class="code-block">{{ detail.value|highlight:language }}</code>{% else %}{% partial value %}{% endif %}</span>
+{% else %}<span class="ml-2 inline-flex gap-1"><span class="text-muted">{{ detail.title }}</span> {% partial value %}</span>{% endif %}{% endfor %}
+{% endpartialdef %}
 {% partialdef line %}
 <span class="mt-0.5 flex w-8 shrink-0 justify-center">{% partial effect %}</span>
 <span class="min-w-0 flex-1">
   <span class="prose-core text-sm{% if check.effect == "uncounted" %} text-muted{% endif %}">{{ check.title|inline_markdown }}</span>{% if check.children %}{% icon "chevron-right" "ml-1 inline size-4 align-text-bottom text-muted transition-transform [details[open]>summary_&]:rotate-90" %}{% endif %}
-  {% for detail in check.details %}<span class="ml-2 inline-flex gap-1"><span class="text-muted">{{ detail.title }}</span> {% partial value %}</span>{% endfor %}
+  {% partial details %}
 </span>
 {% if check.marks is not None %}<span class="tabular-nums shrink-0 text-muted">{{ check.marks|signed_marks }}</span>{% endif %}
 {% endpartialdef %}

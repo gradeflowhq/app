@@ -296,17 +296,17 @@ class ObjectForm(forms.Form):
         return [name for name in self.fields if name in self.layout.advanced]
 
     def _sections(self, advanced: bool) -> list[tuple[str, list[HintedField]]]:
-        def in_section(name: str) -> bool:
-            return (name in self.layout.advanced) == advanced
-
-        in_groups = {name for _, names in self.layout.groups for name in names}
-
-        def shown(name: str) -> bool:
-            return in_section(name) and self[name].shown
-
-        loose = [self[name] for name in self.fields if name not in in_groups and shown(name)]
-        groups = [(label, [self[name] for name in names if shown(name)]) for label, names in self.layout.groups]
-        return [(label, fields) for label, fields in [("", loose), *groups] if fields]
+        """The fields shown, in the schema's order: each group under its label, other fields under none."""
+        group_of = {name: label for label, names in self.layout.groups for name in names}
+        sections: list[tuple[str, list[HintedField]]] = []
+        for name in self.fields:
+            if (name in self.layout.advanced) != advanced or not self[name].shown:
+                continue
+            label = group_of.get(name, "")
+            if not sections or sections[-1][0] != label:
+                sections.append((label, []))
+            sections[-1][1].append(self[name])
+        return sections
 
     def values(self) -> dict[str, Any]:
         """The object with what was posted in place. A field posted empty goes to the core empty, never quietly
