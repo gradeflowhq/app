@@ -6,6 +6,19 @@
 {% partialdef others %}
 {% if variants|length > 1 %}{% with others=variants|length|add:"-1" %}<p class="text-sm text-muted">and {{ others }} {% if grouping == "spelling" %}other spelling{{ others|pluralize }}{% else %}other{{ others|pluralize }}{% endif %}</p>{% endwith %}{% endif %}
 {% endpartialdef %}
+{% partialdef variants %}
+{% if total > 1 %}
+<details class="group/variants">
+  <summary class="inline-flex cursor-pointer list-none items-center gap-1.5 text-sm font-medium text-muted hover:text-base-content">{% icon "chevron-right" "size-4 transition-transform group-open/variants:rotate-90" %}Answers <span class="tabular-nums font-normal">{{ total }}</span></summary>
+  <ul class="mt-2 grid gap-2">
+    {% for answer, count in variants %}
+    <li>{% include "results/answer_text.html" with expanded=True %}<p class="tabular-nums mt-1 text-sm text-muted">{{ count }} student{{ count|pluralize }}</p></li>
+    {% endfor %}
+  </ul>
+  {% if more > 0 %}<p class="tabular-nums mt-1.5 text-sm text-muted">and {{ more }} more</p>{% endif %}
+</details>
+{% endif %}
+{% endpartialdef %}
 {% with low=answer_group.marks.0 high=answer_group.marks.1 max_marks=question.core.max_marks feedback=answer_group.preview.feedback|default:answer_group.feedback code=question.core|code_language %}
 <li>
 <details class="group/answer{% if answer_group.preview.changed %} changed{% endif %}">
@@ -46,17 +59,7 @@
     </form>
     {% endif %}
     {% if code %}
-      {% if answer_group.shown|length > 1 %}
-      <div>
-        <p class="text-sm font-medium">Answers</p>
-        <ul class="mt-1.5 grid gap-2">
-          {% for answer, count in answer_group.shown|slice:":3" %}
-          <li>{% include "results/answer_text.html" with expanded=True %}<p class="tabular-nums mt-1 text-sm text-muted">{{ count }} student{{ count|pluralize }}</p></li>
-          {% endfor %}
-        </ul>
-        {% if answer_group.shown|length > 3 %}<p class="tabular-nums mt-1.5 text-sm text-muted">and {{ answer_group.shown|length|add:"-3" }} more</p>{% endif %}
-      </div>
-      {% endif %}
+      {% with variants=answer_group.shown|slice:":3" total=answer_group.shown|length more=answer_group.shown|length|add:"-3" %}{% partial variants %}{% endwith %}
       {% if answer_group.originals %}
       <details class="group/exported">
         <summary class="inline-flex cursor-pointer list-none items-center gap-1.5 text-sm font-medium text-muted hover:text-base-content">{% icon "chevron-right" "size-4 transition-transform group-open/exported:rotate-90" %}Original{% if answer_group.originals|length > 1 %} <span class="tabular-nums font-normal">{{ answer_group.originals|length }}</span>{% endif %}</summary>
@@ -68,15 +71,8 @@
         {% if answer_group.originals|length > 3 %}<p class="tabular-nums mt-1.5 text-sm text-muted">and {{ answer_group.originals|length|add:"-3" }} more</p>{% endif %}
       </details>
       {% endif %}
-    {% elif answer_group.answers|length > 1 %}
-      <div>
-        <p class="text-sm font-medium">Answers</p>
-        <ul class="mt-1.5 flex flex-wrap gap-1.5">
-          {% for answer, count in answer_group.answers %}
-          <li class="badge badge-ghost h-auto gap-1.5 py-1 text-left">{% if answer %}{{ answer }}{% else %}<span class="italic text-muted">Blank</span>{% endif %} <span class="tabular-nums text-muted">{{ count }}</span></li>
-          {% endfor %}
-        </ul>
-      </div>
+    {% else %}
+      {% with variants=answer_group.answers total=answer_group.answers|length %}{% partial variants %}{% endwith %}
     {% endif %}
     <div class="flex flex-wrap gap-2">
       {% if membership.can_edit and not draft and not answer_group.approximate %}<label class="btn btn-sm has-checked:btn-active">{% icon "pencil-square" "size-4" %}Adjust marks<input type="checkbox" class="sr-only" data-adjust></label>{% endif %}

@@ -867,7 +867,7 @@ def test_code_answers_list_only_the_originals_their_layout_changed(client: Clien
     text = html.unescape(re.sub(r"<span[^>]*>|</span>", "", client.get(url).content.decode()))
     assert text.count(indented) == 1
     assert f'{flat}</pre><p class="tabular-nums mt-1 text-sm text-muted">1 student</p>' in text
-    assert ">Answers<" not in text
+    assert ">Answers <" not in text
 
 
 def test_a_problem_with_a_checks_settings_as_a_whole_names_only_the_check() -> None:
@@ -877,3 +877,15 @@ def test_a_problem_with_a_checks_settings_as_a_whole_names_only_the_check() -> N
     draft = MarkingDraft(data, questions, "Q1")
     (problem,) = draft.problems
     assert located(draft, problem) == f"Length: {problem.message}"
+
+
+def test_text_answers_in_a_group_are_listed_under_answers(client: Client, assessment: Assessment) -> None:
+    first, second = assessment.students.order_by("pk")[:2]
+    first.answers, second.answers = {"Q1": "Paris"}, {"Q1": "paris "}
+    first.save()
+    second.save()
+    page = client.get(reverse("answers", args=[assessment.pk, assessment.questions.get(key="Q1").pk])).content.decode()
+    listed = page.split('<details class="group/variants">', 1)[1].split("</details>", 1)[0]
+    assert '>Answers <span class="tabular-nums font-normal">2</span>' in listed
+    assert ">Paris</p>" in listed
+    assert ">paris </p>" in listed
