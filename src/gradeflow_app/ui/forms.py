@@ -3,28 +3,14 @@ from typing import Any
 
 from django import forms
 from django.forms.renderers import TemplatesSetting
-from django.forms.widgets import Input
 
 
 def first_error(form: forms.BaseForm) -> str:
     return str(next(iter(form.errors.values()))[0])
 
 
-def _error_class(widget: forms.Widget) -> str | None:
-    if isinstance(widget, forms.Select):
-        return "select-error"
-    if isinstance(widget, forms.Textarea):
-        return "textarea-error"
-    if isinstance(widget, forms.FileInput):
-        return "file-input-error"
-    if isinstance(widget, Input) and not isinstance(widget, forms.CheckboxInput):
-        return "input-error"
-    return None
-
-
 class BoundField(forms.BoundField):
-    """Marks a control whose value has errors with daisyUI's error colour. Leaves out `required`, so an empty field
-    gets the server's error beside it rather than the browser's bubble."""
+    """Leaves out `required`, so an empty field gets the server's error beside it rather than the browser's bubble."""
 
     @property
     def is_optional(self) -> bool:
@@ -33,10 +19,6 @@ class BoundField(forms.BoundField):
     def build_widget_attrs(self, attrs: dict[str, Any], widget: forms.Widget | None = None) -> dict[str, Any]:
         attrs = super().build_widget_attrs(attrs, widget)
         attrs.pop("required", None)
-        widget = widget or self.field.widget
-        error = self.errors and _error_class(widget)
-        if error:
-            attrs["class"] = f"{widget.attrs['class']} {error}" if "class" in widget.attrs else error
         return attrs
 
 

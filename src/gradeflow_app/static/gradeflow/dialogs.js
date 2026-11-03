@@ -25,10 +25,7 @@ export const openOnLoad = () => ({
   clearErrors() {
     for (const alert of this.$el.querySelectorAll("form [role=alert]")) alert.remove();
     for (const errors of this.$el.querySelectorAll('[id$="_error"]')) errors.replaceChildren();
-    for (const field of this.$el.querySelectorAll("[aria-invalid]")) {
-      field.removeAttribute("aria-invalid");
-      field.classList.remove("input-error", "select-error", "textarea-error", "file-input-error");
-    }
+    for (const field of this.$el.querySelectorAll("[aria-invalid]")) field.removeAttribute("aria-invalid");
   },
 });
 // Choosing an item of a menu closes it, though its page may keep focus there after a swap; one that opens a dialog
@@ -39,8 +36,8 @@ document.addEventListener("click", (event) => {
   if (item && !item.matches("[data-dialog]")) document.activeElement?.blur();
 });
 
-// A `data-close` button closes the dialog around it.
-document.addEventListener("click", (event) => event.target.closest("[data-close]")?.closest("dialog")?.close());
+// A `data-close` button closes the dialog around it, as Esc does: a `cancel` listener can keep it open.
+document.addEventListener("click", (event) => event.target.closest("[data-close]")?.closest("dialog")?.requestClose());
 // A `data-close-on-success` form closes its dialog once it is sent: its fields' own requests, such as a select
 // that reloads the dialog, leave it open.
 document.addEventListener("htmx:after:request", (event) => {

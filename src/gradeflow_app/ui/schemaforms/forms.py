@@ -64,7 +64,7 @@ class HintedField(BoundField):
         return json.dumps({self.form.add_prefix(key): value for key, value in conditions.items()}) if conditions else ""
 
     @property
-    def is_hidden(self) -> bool:
+    def starts_hidden(self) -> bool:
         return not all(_matches(self.form[key].value(), value) for key, value in self._conditions.items())
 
     @property

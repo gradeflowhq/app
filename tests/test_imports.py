@@ -164,7 +164,7 @@ def test_a_replace_says_which_students_it_added_and_removed(client: Client, asse
     rows = [("S011", "light", "1", "42", "A"), ("S002", "changed", "1", "42.0", "B"), *EXPORT_ROWS[2:]]
     csv = "StudentID,Q1,Q1 Pts,Q2,Q3\n" + "".join(f"{encrypted_id(row[0])},{','.join(row[1:])}\n" for row in rows)
     response = upload(client, assessment, csv)
-    page = client.get(response.headers["HX-Redirect"], follow=True).content.decode()
+    page = client.get(response.headers["HX-Redirect"], follow=True).text
     assert "Results replaced: 10 students (1 new, 1 removed); 1 with changed answers." in page
 
 
@@ -175,14 +175,14 @@ def test_a_replace_counts_changed_answers_only_in_questions_both_files_have(
     client: Client, assessment: Assessment
 ) -> None:
     response = upload(client, assessment, EXPORT_WITHOUT_Q3, answer_columns=json.dumps(["Q1", "Q2"]))
-    page = client.get(response.headers["HX-Redirect"], follow=True).content.decode()
+    page = client.get(response.headers["HX-Redirect"], follow=True).text
     assert "Results replaced: 10 students; removed question Q3." in page
 
 
 def test_activity_names_the_question_of_a_marking_removed_with_it(client: Client, assessment: Assessment) -> None:
     full_marks_marking(assessment, "Q3")
     upload(client, assessment, EXPORT_WITHOUT_Q3, answer_columns=json.dumps(["Q1", "Q2"]))
-    page = client.get(reverse("activity", args=[assessment.pk]), headers=HTMX_HEADERS).content.decode()
+    page = client.get(reverse("activity", args=[assessment.pk]), headers=HTMX_HEADERS).text
     assert "removed marking for Q3" in page
     assert "question group" not in page
 
@@ -200,7 +200,7 @@ def test_a_failed_import_says_why_in_plain_text(client: Client) -> None:
     response = upload(client, assessment, "StudentID,Q1,Marks A,Marks B\nS001,yes,1,2\n", **Q1_COLUMNS)
     assert response.status_code == 400
     assert response.headers["Content-Type"].startswith("text/plain")
-    assert response.content.decode() == "Student IDs must be encrypted in the browser before they're uploaded."
+    assert response.text == "Student IDs must be encrypted in the browser before they're uploaded."
     assert not assessment.students.exists()
 
 
@@ -216,14 +216,14 @@ def test_a_failed_import_says_why_in_plain_text(client: Client) -> None:
 def test_malformed_choices_are_refused_plainly(client: Client, fields: dict[str, str], error: str) -> None:
     assessment = create_assessment(client)
     response = upload(client, assessment, **fields)
-    assert (response.status_code, response.content.decode()) == (400, error)
+    assert (response.status_code, response.text) == (400, error)
     assert not assessment.students.exists()
 
 
 def test_a_file_that_isnt_text_is_refused(client: Client) -> None:
     assessment = create_assessment(client)
     response = upload(client, assessment, answers_csv=SimpleUploadedFile("answers.csv", b"\xff\xfe\x00binary"))
-    assert (response.status_code, response.content.decode()) == (400, "The file couldn't be read.")
+    assert (response.status_code, response.text) == (400, "The file couldn't be read.")
 
 
 def test_a_large_class_uploads(client: Client) -> None:
@@ -290,7 +290,7 @@ def test_a_malformed_answer_key_is_refused(client: Client, key: object) -> None:
     response = upload(
         client, assessment, q1_answers_csv("A"), answer_columns=json.dumps(["Q1"]), answer_key=json.dumps(key)
     )
-    assert (response.status_code, response.content.decode()) == (
+    assert (response.status_code, response.text) == (
         400,
         "The answer key must give a cell for answer columns only.",
     )
@@ -315,7 +315,7 @@ def test_the_import_page_offers_the_question_document_once_there_are_questions(c
     assessment = create_assessment(client)
     assert b"Question document" not in client.get(reverse("import", args=[assessment.pk])).content
     upload(client, assessment)
-    page = client.get(reverse("import", args=[assessment.pk])).content.decode()
+    page = client.get(reverse("import", args=[assessment.pk])).text
     assert 'data-confirm="Replace question settings?"' in page
 
 
@@ -346,7 +346,7 @@ def test_a_question_document_without_the_exams_questions_says_so(client: Client,
     file = question_document((9, "Unasked", "1.0"))
     response = client.post(reverse("question_document", args=[assessment.pk]), {"file": file}, headers=HTMX_HEADERS)
     assert response.status_code == 422
-    assert "The question document has none of the exam export&#x27;s questions." in response.content.decode()
+    assert "The question document has none of the exam export&#x27;s questions." in response.text
     assert not any(question.core_question.description for question in assessment.questions.all())
 
 
@@ -356,14 +356,14 @@ def test_a_file_the_core_cant_read_says_why(client: Client, assessment: Assessme
         read_by_the_core(file, assessment)
     response = client.post(reverse("question_document", args=[assessment.pk]), {"file": file}, headers=HTMX_HEADERS)
     assert response.status_code == 422
-    assert escape(str(refused.value)) in response.content.decode()
+    assert escape(str(refused.value)) in response.text
     assert not any(question.core_question.description for question in assessment.questions.all())
 
 
 def test_a_question_document_is_required(client: Client, assessment: Assessment) -> None:
     response = client.post(reverse("question_document", args=[assessment.pk]), headers=HTMX_HEADERS)
     assert response.status_code == 422
-    assert "Choose the question document." in response.content.decode()
+    assert "Choose the question document." in response.text
 
 
 def test_the_questions_with_marks_in_the_file_are_read_in_one_query(

@@ -52,7 +52,7 @@
               <input id="import-first-row" type="number" class="input input-sm w-20 tabular-nums" min="1" :max="rows.length" :value="firstRow + 1" x-on:change="setFirstRow">
               <label for="import-last-row">to</label>
               <input id="import-last-row" type="number" class="input input-sm w-20 tabular-nums" min="1" :max="rows.length" :value="lastRow + 1" x-on:change="setLastRow">
-              <span class="line-clamp-2 min-w-0 flex-1 break-words text-sm text-muted" x-text="rowsPreview"></span>
+              <span class="line-clamp-2 min-w-0 flex-1 wrap-break-word text-sm text-muted" x-text="rowsPreview"></span>
             </div>
           </div>
           <div class="overflow-x-auto rounded-box border border-base-300">

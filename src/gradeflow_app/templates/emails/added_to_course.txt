@@ -1,6 +1,7 @@
-{{ inviter }} shared “{{ course }}” with you
+{% autoescape off %}{{ inviter }} shared “{{ course }}” with you
 {{ inviter }} added you to “{{ course }}” on GradeFlow as {{ role|lower }}.
 
 Open it: {{ url }}
 
 Ask {{ inviter }} for the student ID passphrase to see student IDs.
+{% endautoescape %}

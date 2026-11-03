@@ -1,4 +1,4 @@
-<div class="grid gap-1.5"{% if field.visible_when %} data-visible-when="{{ field.visible_when }}"{% if field.is_hidden %} hidden{% endif %}{% endif %}>
+<div class="grid gap-1.5"{% if field.visible_when %} data-visible-when="{{ field.visible_when }}"{% if field.starts_hidden %} hidden{% endif %}{% endif %}>
   {% if field.replaced_control %}
     <div class="flex items-center gap-2"><span class="font-medium">{{ field.label }}</span>{{ field.label_controls }}</div>
     {{ field.replaced_control }}
@@ -11,7 +11,7 @@
       </div>
     </div>
   {% elif field.use_fieldset %}
-    <fieldset class="grid gap-1.5"{% if field.help_text %} aria-describedby="{{ field.auto_id }}_helptext"{% endif %}>
+    <fieldset class="grid gap-1.5"{% if field.aria_describedby %} aria-describedby="{{ field.aria_describedby }}"{% endif %}>
       <legend class="mb-1.5 flex items-center gap-2 font-medium">{{ field.label }}{{ field.label_controls }}</legend>
       {% if field.help_text %}<p class="-mt-1 mb-1 text-sm text-muted" id="{{ field.auto_id }}_helptext">{{ field.help_text }}</p>{% endif %}
       {{ field }}

@@ -31,7 +31,7 @@ def test_decisions_lock_until_cancelled(client: Client, assessment: Assessment, 
     url = reverse("mark_example", args=[assessment.pk, draft.question_id])
     response = client.post(url, {"answer": ["42", "42.0"], "decision": decision}, headers=HTMX_HEADERS)
     assert response.status_code == 200
-    card = answer_card(response.content.decode(), "42")
+    card = answer_card(response.text, "42")
     assert f"badge-{color}" in card
     label = DECISIONS[decision]
     assert f">{label}</span>" in card
@@ -46,18 +46,18 @@ def test_decisions_lock_until_cancelled(client: Client, assessment: Assessment, 
     for second_decision in ("full_marks", "part_marks", "not_allowed"):
         again = client.post(url, {"answer": ["42.0"], "decision": second_decision}, headers=HTMX_HEADERS)
         assert again.status_code == 200
-        assert 'value="cancel"' in answer_card(again.content.decode(), "42")
+        assert 'value="cancel"' in answer_card(again.text, "42")
         assert ("X-Messages" in again.headers) == (second_decision != decision)
         if second_decision != decision:
             assert json.loads(again.headers["X-Messages"])[0]["level"] == "error"
         assert definition_tree(draft) == before
-    refreshed = client.get(reverse("answers", args=[assessment.pk, draft.question_id])).content.decode()
+    refreshed = client.get(reverse("answers", args=[assessment.pk, draft.question_id])).text
     assert 'value="cancel"' in answer_card(refreshed, "42")
 
     cancelled = client.post(url, {"answer": ["42.0"], "decision": "cancel"}, headers=HTMX_HEADERS)
     assert cancelled.status_code == 200
     assert answer_decisions(definition_tree(draft), methods=course_methods(assessment.course)) == {}
-    card = answer_card(cancelled.content.decode(), "42")
+    card = answer_card(cancelled.text, "42")
     assert 'name="decision" value="full_marks"' in card
     assert 'value="cancel"' not in card
     assert client.post(url, {"answer": ["42"], "decision": "part_marks"}).status_code == 200
@@ -66,9 +66,9 @@ def test_decisions_lock_until_cancelled(client: Client, assessment: Assessment, 
 def test_direct_form_edits_refresh_decisions(client: Client, assessment: Assessment) -> None:
     url, _ = start_marking(client, assessment, "Q2", "gradeflow/accepted-answers@1")
     added = client.post(url, {"path": "", "fields_posted": "1", "answers": ["42"]}, headers=HTMX_HEADERS)
-    assert 'value="cancel"' in answer_card(added.content.decode(), "42")
+    assert 'value="cancel"' in answer_card(added.text, "42")
     removed = client.post(url, {"path": "", "fields_posted": "1", "answers": []}, headers=HTMX_HEADERS)
-    assert 'value="full_marks"' in answer_card(removed.content.decode(), "42")
+    assert 'value="full_marks"' in answer_card(removed.text, "42")
 
 
 def test_saved_decisions_are_shown_and_survive_reopening(client: Client, assessment: Assessment) -> None:
@@ -76,11 +76,11 @@ def test_saved_decisions_are_shown_and_survive_reopening(client: Client, assessm
     url = reverse("mark_example", args=[assessment.pk, draft.question_id])
     client.post(url, {"answer": ["41"], "decision": "not_allowed"})
     client.post(reverse("draft_save", args=[assessment.pk, draft.pk]), {})
-    page = client.get(reverse("question", args=[assessment.pk, draft.question_id])).content.decode()
+    page = client.get(reverse("question", args=[assessment.pk, draft.question_id])).text
     assert f">{DECISIONS['not_allowed']}</span>" in answer_card(page, "41")
     assert 'value="cancel"' not in page
     client.post(reverse("marking_start", args=[assessment.pk, draft.question_id]), {})
-    page = client.get(reverse("answers", args=[assessment.pk, draft.question_id])).content.decode()
+    page = client.get(reverse("answers", args=[assessment.pk, draft.question_id])).text
     assert 'value="cancel"' in answer_card(page, "41")
 
 
@@ -110,6 +110,6 @@ def test_yaml_decisions_are_derived_after_refresh(client: Client, assessment: As
     )
     saved = client.post(reverse("draft_yaml", args=[assessment.pk, draft.pk]), {"definition": definition})
     assert saved.headers["HX-Refresh"] == "true"
-    page = client.get(reverse("answers", args=[assessment.pk, draft.question_id])).content.decode()
+    page = client.get(reverse("answers", args=[assessment.pk, draft.question_id])).text
     assert f">{DECISIONS['not_allowed']}</span>" in answer_card(page, "41")
     assert MarkingDraftRecord.objects.get(pk=draft.pk).definition == definition

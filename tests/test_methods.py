@@ -76,13 +76,13 @@ def test_a_marking_saved_as_a_method_marks_like_it_with_what_others_fill_in(
 ) -> None:
     save_key_points_marking(client, assessment, ["light"])
     question = assessment.questions.get(key="Q1")
-    save_dialog = client.get(reverse("method_save", args=[assessment.pk, question.pk])).content.decode()
+    save_dialog = client.get(reverse("method_save", args=[assessment.pk, question.pk])).text
     assert "Save as a method" in save_dialog
     saved = publish_marking_as_method(client, assessment, "Key word", with_points_input=True)
     assert saved.name == "key-word"
     version = saved.versions.get()
 
-    picker = client.get(reverse("question_methods", args=[assessment.pk, question.pk])).content.decode()
+    picker = client.get(reverse("question_methods", args=[assessment.pk, question.pk])).text
     assert "BIO1010</p>" in picker, "the course's own methods under its name"
     assert "Key word" in picker
     Marking.objects.all().delete()
@@ -109,7 +109,7 @@ def test_a_method_in_use_says_what_uses_it_and_isnt_deleted(client: Client, asse
     Marking.objects.all().delete()
     _, draft = start_marking(client, assessment, "Q1", "bio1010/key-word@1")
     save_draft(client, draft)
-    methods_page = client.get(reverse("course_methods", args=[assessment.course_id])).content.decode()
+    methods_page = client.get(reverse("course_methods", args=[assessment.course_id])).text
     assert "Key word" in methods_page
     assert "1 marking</td>" in methods_page
     response = client.post(reverse("method_delete", args=[saved.pk]))
@@ -125,8 +125,8 @@ def test_viewers_cant_save_edit_or_delete_methods(client: Client, assessment: As
     course_id = assessment.course_id
     for name in ("method_delete", "method_archive", "method_share", "method_edit"):
         assert viewer.post(reverse(name, args=[saved.pk])).status_code == 403, name
-    assert viewer.post(f"{reverse('method_new')}?course={course_id}", {"label": "Mine"}).status_code == 403
-    assert "New method" not in viewer.get(reverse("course_methods", args=[course_id])).content.decode()
+    assert viewer.post(reverse("method_new"), {"label": "Mine"}, query_params={"course": course_id}).status_code == 403
+    assert "New method" not in viewer.get(reverse("course_methods", args=[course_id])).text
     assert viewer.get(reverse("course_methods", args=[course_id])).status_code == 200
     assert not MethodDraftRecord.objects.exists()
     assert not saved.archived
@@ -165,7 +165,7 @@ def test_a_method_isnt_saved_under_a_name_its_library_has(client: Client, assess
         reverse("method_save", args=[assessment.pk, question.pk]), {"label": "key word"}, headers=HTMX_HEADERS
     )
     assert again.status_code == 422
-    assert "This library already has a method called “Key word”." in again.content.decode(), "with no summary yet"
+    assert "This library already has a method called “Key word”." in again.text, "with no summary yet"
     assert Method.objects.count() == 1
     other = publish_marking_as_method(client, assessment, "Other word")
     renamed = other.versions.get().definition.replace("label: Other word", "label: Key word")
@@ -177,7 +177,7 @@ def test_a_method_isnt_saved_under_a_name_its_library_has(client: Client, assess
 def test_the_methods_page_says_what_each_method_marks(client: Client, assessment: Assessment) -> None:
     save_key_points_marking(client, assessment, ["light"])
     publish_marking_as_method(client, assessment, "Key word")
-    methods_page = client.get(reverse("course_methods", args=[assessment.course_id])).content.decode()
+    methods_page = client.get(reverse("course_methods", args=[assessment.course_id])).text
     text = QUESTION_TYPE_LABELS["text"]
     assert f"{text}</td>" in methods_page
     assert "Not used" in methods_page
@@ -189,14 +189,14 @@ def test_the_marking_panel_lists_the_courses_methods_on_their_own(client: Client
     save_key_points_marking(client, assessment, ["light"])
     publish_marking_as_method(client, assessment, "Key word")
     question = assessment.questions.get(key="Q1")
-    picker = client.get(reverse("question_methods", args=[assessment.pk, question.pk])).content.decode()
+    picker = client.get(reverse("question_methods", args=[assessment.pk, question.pk])).text
     assert picker.index("BIO1010</p>") < picker.index("Key word")
 
 
 def test_the_picker_has_built_in_yours_and_public_tabs(client: Client, assessment: Assessment, bo: User) -> None:
     question = assessment.questions.get(key="Q1")
     url = reverse("question_methods", args=[assessment.pk, question.pk])
-    empty = client.get(url).content.decode()
+    empty = client.get(url).text
     assert 'data-tab="yours"' in empty, "the tabs stay when nothing fits"
     assert re.search(r"Public</button>", empty), "an empty tab shows no count"
     assert "None for this question" in empty
@@ -204,7 +204,7 @@ def test_the_picker_has_built_in_yours_and_public_tabs(client: Client, assessmen
     version = publish_marking_as_method(client, assessment, "Key word").versions.get()
     shared = publish_light_method(bo.library, bo, label="Bright")
     Method.objects.filter(pk=shared.method_id).update(public=True)
-    picker = client.get(url).content.decode()
+    picker = client.get(url).text
     assert 'data-tab="builtin" aria-selected="true"' in picker
     assert 'data-tab="yours" aria-selected="false"' in picker
     assert re.search(r"Yours<span[^>]*>1</span>", picker)
@@ -212,7 +212,7 @@ def test_the_picker_has_built_in_yours_and_public_tabs(client: Client, assessmen
     assert '<div data-section data-tab="yours" hidden>' in picker
     assert '<div data-section data-tab="public" hidden>' in picker
     assert "by Bo Lim" in picker
-    chosen = client.get(url, {"selected": version.ref}).content.decode()
+    chosen = client.get(url, {"selected": version.ref}).text
     assert 'data-tab="yours" aria-selected="true"' in chosen, "opens where the chosen method is"
     assert '<div data-section data-tab="builtin" hidden>' in chosen
 
@@ -277,14 +277,14 @@ def test_the_methods_pages_list_a_librarys_methods_and_what_a_course_uses_from_e
     )
     publish_version(version.method, bo, method_definition("Bright", answer="sun"))
     Method.objects.filter(pk=version.method_id).update(public=True)
-    methods_page = client.get(reverse("course_methods", args=[assessment.course_id])).content.decode()
+    methods_page = client.get(reverse("course_methods", args=[assessment.course_id])).text
     assert "From other libraries" in methods_page
     assert "by Bo Lim" in methods_page
     assert "1 marking</td>" in methods_page
     assert "2 available" in methods_page
-    assert "No methods yet" in client.get(reverse("your_methods")).content.decode()
+    assert "No methods yet" in client.get(reverse("your_methods")).text
     publish_light_method(user.library, user, label="Mine")
-    yours = client.get(reverse("your_methods")).content.decode()
+    yours = client.get(reverse("your_methods")).text
     assert "Mine" in yours
     assert "Only you</td>" in yours
     assert "Bright" not in yours
@@ -294,11 +294,11 @@ def test_your_methods_are_a_page_of_their_own_not_the_accounts(client: Client, u
     mine = publish_light_method(user.library, user, label="Mine")
     theirs = publish_light_method(bo.library, bo, label="Bright")
     Method.objects.filter(pk=theirs.method_id).update(public=True)
-    methods_page = client.get(reverse("your_methods")).content.decode()
+    methods_page = client.get(reverse("your_methods")).text
     assert "Signed-in devices" not in methods_page
     breadcrumb = f'<a href="{reverse("your_methods")}">Your methods</a>'
-    assert breadcrumb in client.get(reverse("method_page", args=[mine.method_id, mine.number])).content.decode()
-    assert breadcrumb not in client.get(reverse("method_page", args=[theirs.method_id, theirs.number])).content.decode()
+    assert breadcrumb in client.get(reverse("method_page", args=[mine.method_id, mine.number])).text
+    assert breadcrumb not in client.get(reverse("method_page", args=[theirs.method_id, theirs.number])).text
 
 
 def test_a_method_counts_the_markings_that_use_any_of_its_versions(
@@ -310,7 +310,7 @@ def test_a_method_counts_the_markings_that_use_any_of_its_versions(
     quiz = Assessment.objects.create(course=create_course(bo), name="Quiz")
     for version, where in [(first, assessment), (second, assessment), (second, quiz), *[(mine, assessment)] * 3]:
         Marking.objects.create(assessment=where, definition=dump_yaml({"uses": version.ref}))
-    methods_page = client.get(reverse("course_methods", args=[assessment.course_id])).content.decode()
+    methods_page = client.get(reverse("course_methods", args=[assessment.course_id])).text
     assert "2 markings</td>" in methods_page, "Bright, by this course's markings alone"
     assert "3 markings</td>" in methods_page
-    assert "3 markings</td>" in client.get(reverse("your_methods")).content.decode(), "Mine, in the person's courses"
+    assert "3 markings</td>" in client.get(reverse("your_methods")).text, "Mine, in the person's courses"

@@ -84,16 +84,16 @@ def criteria_marking(assessment: Assessment) -> Marking:
 
 
 def test_the_ai_service_is_among_the_accounts_integrations(client: Client) -> None:
-    page = client.get(reverse("integrations")).content.decode()
+    page = client.get(reverse("integrations")).text
     assert "<h1>Integrations</h1>" in page
     assert f"<option>{PROVIDER}</option>" in page
     assert 'id="ai-service-guide"' in page
-    assert 'id="model-service"' not in client.get(reverse("settings")).content.decode()
+    assert 'id="model-service"' not in client.get(reverse("settings")).text
 
 
 def test_a_server_without_ai_services_says_so(client: Client, settings: Settings) -> None:
     settings.GRADEFLOW_MODEL_PROVIDERS = {}
-    assert "This server offers no AI service." in client.get(reverse("integrations")).content.decode()
+    assert "This server offers no AI service." in client.get(reverse("integrations")).text
 
 
 def test_connecting_offers_both_ways_to_choose(
@@ -102,7 +102,7 @@ def test_connecting_offers_both_ways_to_choose(
     monkeypatch.setattr(views, "list_models", lambda endpoint: ["decider"])
     response = post_model_service(client, "model_service_connect")
     assert not Job.objects.exists()
-    page = response.content.decode()
+    page = response.text
     assert "Not chosen yet." in page
     assert "Choose models" in page
     assert 'id="model-chooser"' not in page
@@ -122,18 +122,18 @@ def test_choosing_automatically_runs_a_job_with_the_token(client: Client, idle_e
         }
     }
     assert "secret-token" not in str(job.marked_with)
-    assert "Choosing automatically, about 10 minutes" in response.content.decode()
+    assert "Choosing automatically, about 10 minutes" in response.text
 
 
 def test_choosing_myself_offers_the_endpoints_models_and_keeps_those_picked(
     client: Client, idle_executor: None, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(views, "list_models", lambda endpoint: ["decider", "reasoner"])
-    offered = post_model_service(client, "model_service_dialog").content.decode()
+    offered = post_model_service(client, "model_service_dialog").text
     assert "<option>decider</option>" in offered
     response = post_model_service(client, "model_service_choose", {"chosen_by": "myself", "fast_model": "decider"})
     assert returned_state(response) == ModelServiceState(provider=PROVIDER, fast_model="decider", chosen_by="myself")
-    assert "Fast <code>decider</code>" in response.content.decode()
+    assert "Fast <code>decider</code>" in response.text
     assert not Job.objects.exists()
 
 
@@ -144,7 +144,7 @@ def test_choosing_myself_says_why_the_service_lists_no_models(
         raise GradeFlowError("No models were found at this address. Check it: it often ends in /v1.")
 
     monkeypatch.setattr(views, "list_models", no_models)
-    offered = post_model_service(client, "model_service_dialog").content.decode()
+    offered = post_model_service(client, "model_service_dialog").text
     assert "No models were found at this address" in offered
 
 
@@ -192,7 +192,7 @@ def test_the_device_collects_the_models_chosen_and_how_each_did(
     assert (collected.fast_model, collected.chosen_by, collected.trials) == ("decider", "automatically", MODEL_TRIALS)
     assert returned_state(post_model_service(client, "model_service", state=collected)) == collected
     monkeypatch.setattr(views, "list_models", lambda endpoint: ["decider", "tiny"])
-    dialog = post_model_service(client, "model_service_dialog", state=collected).content.decode()
+    dialog = post_model_service(client, "model_service_dialog", state=collected).text
     assert dialog.index("decider") < dialog.index("tiny")
     assert "In use" in dialog
     assert 'title="Missed 6 of 6 example answers."' in dialog
@@ -200,14 +200,14 @@ def test_the_device_collects_the_models_chosen_and_how_each_did(
 
 def test_testing_the_models_picked_shows_how_they_did(client: Client, idle_executor: None) -> None:
     picked = {"fast_model": "decider", "careful_model": ""}
-    assert "Testing…" in post_model_service(client, "model_service_test", picked).content.decode()
+    assert "Testing…" in post_model_service(client, "model_service_test", picked).text
     job = Job.objects.get(kind=Job.Kind.MODEL_TRIAL)
     assert job.input is not None
     assert job.input["trials"] == [{"model": "decider", "role": "fast"}]
     for event in ({"event": "started"}, {"event": "trials", "trials": TRIALS[:1]}, {"event": "finished"}):
         assert post_callback(job, event) == 204
     response = post_model_service(client, "model_service_status", picked)
-    assert "6 of 6 examples right" in response.content.decode()
+    assert "6 of 6 examples right" in response.text
     assert returned_state(response).trials == MODEL_TRIALS[:1]
 
 
@@ -216,7 +216,7 @@ def test_an_automatic_choice_that_failed_says_why(client: Client, idle_executor:
     job = Job.objects.get(kind=Job.Kind.MODEL_CHOICE)
     post_callback(job, {"event": "started"})
     post_callback(job, {"event": "failed", "error": "No model got every example right."})
-    page = post_model_service(client, "model_service").content.decode()
+    page = post_model_service(client, "model_service").text
     assert "Couldn't choose automatically: No model got every example right." in page
 
 
@@ -224,7 +224,7 @@ def test_answers_per_request_are_kept_on_the_device_and_sent_with_jobs(client: C
     response = post_model_service(client, "model_service_answers_per_request", {"answers_per_request": "6"})
     assert returned_state(response).answers_per_request == 6
     refused = post_model_service(client, "model_service_answers_per_request", {"answers_per_request": "41"})
-    assert "Enter a number from 1 to 40." in refused.content.decode()
+    assert "Enter a number from 1 to 40." in refused.text
     assert returned_state(refused).answers_per_request == 12
     post_model_service(client, "model_service_choose", {"chosen_by": "automatically"}, state=returned_state(response))
     job = Job.objects.get(kind=Job.Kind.MODEL_CHOICE)
@@ -234,7 +234,7 @@ def test_answers_per_request_are_kept_on_the_device_and_sent_with_jobs(client: C
 
 def test_stopping_ends_the_running_choice_without_calling_it_a_failure(client: Client, idle_executor: None) -> None:
     post_model_service(client, "model_service_choose", {"chosen_by": "automatically"})
-    page = post_model_service(client, "model_service_stop").content.decode()
+    page = post_model_service(client, "model_service_stop").text
     assert not Job.objects.filter(kind=Job.Kind.MODEL_CHOICE, status__in=Job.ACTIVE).exists()
     assert "Couldn't choose automatically" not in page
     assert "Not chosen yet." in page
@@ -287,7 +287,7 @@ def test_marking_says_what_it_waits_on(client: Client, user: User, assessment: A
     assert post_callback(job, {"event": "progress", **asdict(progress)}) == 204
     assert out_of_date_notices(assessment_checks(assessment), ["Q3"]) == []
     question = assessment.questions.get(key="Q3")
-    column = client.get(reverse("answers", args=[assessment.pk, question.pk])).content.decode()
+    column = client.get(reverse("answers", args=[assessment.pk, question.pk])).text
     assert "Deciding criteria: 12 of 30" in column
     assert "from before" not in column
 
@@ -297,7 +297,7 @@ def test_the_answers_column_asks_to_connect_when_marking_asks_a_model(
 ) -> None:
     criteria_marking(assessment)
     question = assessment.questions.get(key="Q3")
-    page = client.get(reverse("question", args=[assessment.pk, question.pk])).content.decode()
+    page = client.get(reverse("question", args=[assessment.pk, question.pk])).text
     assert "This marking uses AI" in page
 
 
@@ -321,5 +321,5 @@ def test_a_job_is_lost_past_its_own_time_limit(user: User, idle_executor: None) 
 
 def test_choosing_without_a_connected_device_says_so(client: Client, idle_executor: None) -> None:
     response = client.post(reverse("model_service_choose"), {"chosen_by": "myself", "fast_model": "decider"})
-    assert "connected to an AI service." in response.content.decode()
+    assert "connected to an AI service." in response.text
     assert STATE_HEADER not in response

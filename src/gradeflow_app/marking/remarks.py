@@ -42,41 +42,34 @@ def schedule_marking(
     """Mark every student with the saved marking, replacing the results of earlier runs, asking language models at
     `model_endpoint`. A marking the core can't use marks nothing until it is fixed; its column says why."""
     marking.assessment.lock()
-    current = (
-        Marking.objects.select_for_update(of=("self",))
-        .select_related("question", "assessment__course")
-        .get(pk=marking.pk)
+    marking.refresh_from_db(
+        from_queryset=Marking.objects.select_for_update(of=("self",)).select_related("question", "assessment__course")
     )
-    queue.cancel_jobs(current.jobs.filter(status__in=Job.ACTIVE))
-    current.revision += 1
-    check = check_for(current)
+    queue.cancel_jobs(marking.jobs.filter(status__in=Job.ACTIVE))
+    marking.revision += 1
+    check = check_for(marking)
     if check is not None:
-        removed = set(current.questions_marked) - check.questions_marked()
-        Result.objects.filter(question__assessment=current.assessment, question__key__in=removed).delete()
-        current.questions_marked = sorted(check.questions_marked())
-        current.questions_read = sorted(check.questions_read())
-    Marking.objects.filter(pk=current.pk).update(
-        revision=current.revision, questions_marked=current.questions_marked, questions_read=current.questions_read
+        removed = set(marking.questions_marked) - check.questions_marked()
+        Result.objects.filter(question__assessment=marking.assessment, question__key__in=removed).delete()
+        marking.questions_marked = sorted(check.questions_marked())
+        marking.questions_read = sorted(check.questions_read())
+    Marking.objects.filter(pk=marking.pk).update(
+        revision=marking.revision, questions_marked=marking.questions_marked, questions_read=marking.questions_read
     )
-    marking.revision, marking.questions_marked, marking.questions_read = (
-        current.revision,
-        current.questions_marked,
-        current.questions_read,
-    )
-    if check is None or not current.questions_marked:
+    if check is None or not marking.questions_marked:
         return None
     endpoint = endpoint_if_needed([check], model_endpoint)
     if endpoint is None and asks_models([check]):
         return None  # keeps the results it has; the column says it wasn't marked again
     return mark_students(
-        current.assessment,
+        marking.assessment,
         check,
-        method_files(current.used_versions.all()),
+        method_files(marking.used_versions.all()),
         endpoint,
         kind=Job.Kind.REMARK,
         user=user,
-        marking=current,
-        revision=current.revision,
+        marking=marking,
+        revision=marking.revision,
     )
 
 

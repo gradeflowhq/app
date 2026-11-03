@@ -18,7 +18,7 @@ pytestmark = pytest.mark.django_db
 def test_visitors_see_what_gradeflow_does() -> None:
     response = Client().get(reverse("landing"))
     assert response.status_code == 200
-    page = response.content.decode()
+    page = response.text
     for section in SECTIONS:
         assert f'id="{section}"' in page
     assert escape(landing_content().workspace.question_text) in page

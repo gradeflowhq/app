@@ -9,7 +9,7 @@
       <c-question-subtitle :question="question.core_question" />
       {% if membership.can_edit %}<button class="btn btn-ghost btn-sm ml-auto" hx-get="{% url 'question_settings' question.assessment_id question.pk %}" hx-target="#drawer-body" hx-swap="innerHTML" data-dialog="drawer">{% icon "adjustments-horizontal" "size-4" %}Settings</button>{% endif %}
     </div>
-    {% if question.definition.description %}<details class="group/about -mt-2 px-4 pb-3 text-muted"><summary class="cursor-pointer list-none"><div class="prose-core preview-two-lines break-words text-sm group-open/about:max-h-[40vh] group-open/about:overflow-y-auto" x-data="math">{{ question.definition.description|math_markdown }}</div></summary></details>{% endif %}
+    {% if question.definition.description %}<details class="group/about -mt-2 px-4 pb-3 text-muted"><summary class="cursor-pointer list-none"><div class="prose-core preview-two-lines wrap-break-word text-sm group-open/about:max-h-[40vh] group-open/about:overflow-y-auto" x-data="math">{{ question.definition.description|math_markdown }}</div></summary></details>{% endif %}
     <form class="flex items-center gap-2 px-4 pb-3" hx-get="{% url 'answers' question.assessment_id question.pk %}" hx-target="#answers" hx-swap="outerMorph" hx-trigger="change delay:150ms" hx-sync="this:replace">
       <label class="select select-sm min-w-0 max-w-52 flex-1" title="Answer groups">
         {% icon "rectangle-stack" "size-4 text-muted" %}
@@ -89,7 +89,7 @@
       {% if preview_summary.unmarked_count %}
       <div class="flex items-start gap-2 border-t border-warning/30 bg-warning/10 px-4 py-2 text-sm" role="alert">
         {% icon "exclamation-triangle" "size-4 mt-0.5 shrink-0 text-warning" %}
-        <p class="min-w-0"><span class="font-medium">Couldn't mark {{ preview_summary.unmarked_count }} student{{ preview_summary.unmarked_count|pluralize }}</span>{% if preview_summary.problem %}<span class="block break-words text-muted">{{ preview_summary.problem|truncatechars:300 }}</span>{% endif %}</p>
+        <p class="min-w-0"><span class="font-medium">Couldn't mark {{ preview_summary.unmarked_count }} student{{ preview_summary.unmarked_count|pluralize }}</span>{% if preview_summary.problem %}<span class="block wrap-break-word text-muted">{{ preview_summary.problem|truncatechars:300 }}</span>{% endif %}</p>
       </div>
       {% endif %}
     {% endif %}

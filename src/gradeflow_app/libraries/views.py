@@ -142,7 +142,7 @@ def your_methods(request: Request) -> HttpResponse:
 def course_methods(request: Request, member: Member) -> HttpResponse:
     course = member.course
     library = course.library
-    action = f"{reverse('method_new')}?course={course.pk}"
+    action = reverse("method_new", query={"course": course.pk})
     context = _library_context(
         request,
         library,

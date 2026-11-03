@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator, AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import datetime
 from weakref import WeakKeyDictionary
@@ -80,7 +80,7 @@ class _Listener:
         self._listening = asyncio.Event()
 
     @asynccontextmanager
-    async def subscribe(self, names: frozenset[str]) -> AsyncIterator[ChangeQueue]:
+    async def subscribe(self, names: frozenset[str]) -> AsyncGenerator[ChangeQueue]:
         """Yields once the listener is connected, so no change saved after the stream catches up is missed."""
         changes: ChangeQueue = asyncio.Queue()
         for name in names:

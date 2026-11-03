@@ -44,7 +44,7 @@ class Member(models.Model):
 
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name="members")
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="memberships")
-    role = models.CharField(max_length=10, choices=Role.choices, default=Role.VIEWER)
+    role = models.CharField(max_length=10, choices=Role, default=Role.VIEWER)
     created_at = models.DateTimeField(auto_now_add=True)
     history = HistoricalRecords()
 
@@ -68,7 +68,7 @@ class Invitation(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name="invitations")
     email = models.EmailField()
-    role = models.CharField(max_length=10, choices=Role.choices, default=Role.VIEWER)
+    role = models.CharField(max_length=10, choices=Role, default=Role.VIEWER)
     sent_at = models.DateTimeField(default=timezone.now)
     accepted_at = models.DateTimeField(null=True, blank=True)
 

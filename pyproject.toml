@@ -9,7 +9,7 @@ requires-python = ">=3.14"
 dependencies = [
     "dj-database-url>=3.1",
     "django>=6.1",
-    "django-allauth[mfa]>=65.20.1",
+    "django-allauth[mfa]>=65.21.1",
     "django-anymail>=15.2",
     "django-cotton>=2.8",
     "django-htmx>=1.29",
@@ -58,7 +58,7 @@ line-length = 120
 extend-exclude = ["*/migrations/*"]
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "UP", "B", "C4", "SIM", "RUF", "PT", "C90", "FURB", "PERF", "PIE", "RET", "DJ", "TID"]
+select = ["E", "F", "W", "I", "UP", "B", "C4", "SIM", "RUF", "PT", "C90", "FURB", "PERF", "PIE", "RET", "DJ", "TID", "ASYNC"]
 allowed-confusables = ["›"]  # paths such as Checks #2 › Not
 
 [tool.ruff.lint.flake8-tidy-imports.banned-api]  # the core is used only through gradeflow_core and gradeflow_core.editing
@@ -86,6 +86,8 @@ files = ["src", "tests", "sandbox"]
 mypy_path = ["src", "."]
 explicit_package_bases = true
 plugins = ["mypy_django_plugin.main"]
+enable_error_code = ["deprecated", "truthy-bool", "truthy-iterable", "ignore-without-code"]
+warn_unreachable = true
 
 [[tool.mypy.overrides]]
 module = ["allauth.*", "simple_history.*"]
@@ -107,6 +109,8 @@ DJANGO_SETTINGS_MODULE = "gradeflow_app.settings"
 testpaths = ["tests"]
 pythonpath = ["."]
 addopts = "--reuse-db"
+strict = true
+max_warnings = 0
 
 [tool.coverage.run]
 source = ["src/gradeflow_app"]

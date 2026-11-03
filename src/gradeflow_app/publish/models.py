@@ -21,7 +21,7 @@ class CourseCanvas(models.Model):
     canvas_assignment_group = models.CharField(max_length=50, blank=True)
     """The Canvas assignment group new assignments go in; "new" makes one called GradeFlow."""
     canvas_assignment_group_name = models.CharField(max_length=255, blank=True)
-    marks_mode = models.CharField(max_length=10, choices=MarksMode.choices, default=MarksMode.MARKS)
+    marks_mode = models.CharField(max_length=10, choices=MarksMode, default=MarksMode.MARKS)
     rounding = models.FloatField(null=True, blank=True)
     """Round marks sent to Canvas to the nearest multiple of this, if set."""
     include_feedback = models.BooleanField(default=False)
@@ -41,7 +41,7 @@ class AssessmentCanvas(models.Model):
 
     assessment = models.OneToOneField(Assessment, primary_key=True, on_delete=models.CASCADE, related_name="canvas")
     canvas_assignment = models.CharField(max_length=50, blank=True)
-    marks_mode = models.CharField(max_length=10, choices=MarksMode.choices, blank=True)
+    marks_mode = models.CharField(max_length=10, choices=MarksMode, blank=True)
     rounding = models.FloatField(null=True, blank=True)
     include_feedback = models.BooleanField(null=True, blank=True)
 

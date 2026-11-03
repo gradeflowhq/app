@@ -4,7 +4,6 @@ from collections.abc import Sequence
 from typing import Any, Self
 
 from django.db import transaction
-from django.db.models import F
 from django.utils import timezone
 from gradeflow_core import AnswerComparison, MarkedSubmission, Progress
 from gradeflow_core.editing import ModelTrial, RowResult
@@ -83,7 +82,8 @@ def add_marked_batch(job: Job, submissions: Sequence[dict[str, Any]]) -> None:
     if not job.batches.filter(submissions=marked).exists():
         SubmissionBatch.objects.create(job=job, submissions=marked)
         total = len(job.input["submissions"])
-        Job.objects.filter(pk=job.pk).update(progress=F("progress") + len(marked) / max(total, 1))
+        job.progress += len(marked) / max(total, 1)
+        job.save(update_fields=["progress"])
         notify_job_change(job)
 
 

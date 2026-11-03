@@ -82,6 +82,7 @@ Each job records the sandbox image and the core version it ran with, and meaning
 | `GRADEFLOW_DEBUG` | off | `true` in development |
 | `GRADEFLOW_LOG_LEVEL` | `INFO` | Ignored when debugging |
 | `GRADEFLOW_ALLOWED_HOSTS` | `localhost,127.0.0.1` | |
+| `GRADEFLOW_CLIENT_IP_HEADER` | | The header in which the proxy passes the client's address, such as `X-Real-IP`, for sign-in rate limits and signed-in devices. Without it, the address comes from `X-Forwarded-For`; if the proxy appends to that header, set `FORWARDED_ALLOW_IPS` to the proxy's addresses |
 | `GRADEFLOW_DATABASE_URL` | `postgres://gradeflow:gradeflow@localhost:5434/gradeflow` | |
 | `GRADEFLOW_TEST_DATABASE` | `test_gradeflow` | |
 | `GRADEFLOW_STATIC_ROOT` | | Where `collectstatic` writes compressed files for WhiteNoise |

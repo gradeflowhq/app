@@ -8,5 +8,5 @@
       <button class="btn btn-square btn-sm join-item" hx-get="{{ comment_url }}?page={{ page.number|add:1 }}" hx-target="#comment-body" aria-label="Next student"{% if not page.has_next %} disabled{% endif %}>{% icon "chevron-right" "size-4" %}</button>
     </div>
   </div>
-  {% if comment %}<p class="whitespace-pre-wrap break-words rounded-box bg-base-200 p-4 text-sm">{{ comment|safe }}</p>{% else %}<p class="text-sm text-muted">Nothing marked yet.</p>{% endif %}
+  {% if comment %}<p class="whitespace-pre-wrap wrap-break-word rounded-box bg-base-200 p-4 text-sm">{{ comment|safe }}</p>{% else %}<p class="text-sm text-muted">Nothing marked yet.</p>{% endif %}
 </div>

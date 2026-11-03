@@ -383,7 +383,7 @@ def test_an_archived_method_isnt_offered_but_its_markings_still_mark(
     version.method.refresh_from_db()
     assert version.method.archived
     question = assessment.questions.get(key="Q1")
-    picker = client.get(reverse("question_methods", args=[assessment.pk, question.pk])).content.decode()
+    picker = client.get(reverse("question_methods", args=[assessment.pk, question.pk])).text
     assert "Says light." not in picker
     marking = save_marking(assessment, version.ref)
     job = marking.jobs.get()
@@ -392,7 +392,7 @@ def test_an_archived_method_isnt_offered_but_its_markings_still_mark(
     draft = MarkingDraftRecord(assessment=assessment, question=question, definition=marking.definition, user=user)
     assert MarkingWorkspace(draft).valid
     client.post(reverse("method_archive", args=[version.method_id]), {"unarchive": "1"})
-    assert "Says light." in client.get(reverse("question_methods", args=[assessment.pk, question.pk])).content.decode()
+    assert "Says light." in client.get(reverse("question_methods", args=[assessment.pk, question.pk])).text
 
 
 def test_a_method_in_use_isnt_deleted(
@@ -467,7 +467,7 @@ def test_copy_offers_your_methods_then_the_courses_you_edit_newest_first(
     newer = create_course(user, "Physics")
     Member.objects.create(course=create_course(bo, "Botany"), user=user, role=Role.VIEWER)
     url = reverse("method_copy", args=[version.method_id])
-    dialog = client.get(url, {"number": 1}).content.decode()
+    dialog = client.get(url, {"number": 1}).text
     assert "Copy Light to…" in dialog
     assert 'name="label" value="Light"' in dialog, "named as the method is"
     positions = [dialog.index(f'value="{item.pk}"') for item in (user.library, newer.library, older.library)]
@@ -489,8 +489,8 @@ def test_copying_to_a_library_goes_to_the_copy(client: Client, library: Library,
     assert copied.full_name == f"{target.namespace}/light"
     again = client.post(url, fields, headers=HTMX_HEADERS)
     assert again.status_code == 422
-    assert "This library already has a method called “Light”." in again.content.decode()
-    assert f'value="{target.pk}" class="sr-only" checked' in again.content.decode(), "still chosen"
+    assert "This library already has a method called “Light”." in again.text
+    assert f'value="{target.pk}" class="sr-only" checked' in again.text, "still chosen"
     assert client.post(url, fields | {"label": ""}, headers=HTMX_HEADERS).status_code == 422
     assert client.post(url, fields | {"library": str(library.pk)}, headers=HTMX_HEADERS).status_code == 422
     assert Method.objects.filter(library=target).count() == 1
@@ -504,7 +504,7 @@ def test_save_as_a_method_goes_to_the_markings_course(
     save_marking(assessment, "gradeflow/full-marks@1")
     question = assessment.questions.get(key="Q1")
     url = reverse("method_save", args=[assessment.pk, question.pk])
-    form = client.get(url).content.decode()
+    form = client.get(url).text
     assert "Save to" not in form
     assert "bio1010" not in form
     response = client.post(url, {"label": "Full", "summary": "Full marks."}, headers=HTMX_HEADERS)
@@ -513,8 +513,8 @@ def test_save_as_a_method_goes_to_the_markings_course(
     assert method.full_name == "bio1010/full"
     again = client.post(url, {"label": "Full", "summary": "Again."}, headers=HTMX_HEADERS)
     assert again.status_code == 422
-    assert "This library already has a method called “Full”." in again.content.decode(), "a draft's name is taken too"
-    assert re.search(r'name="label"[^>]*aria-invalid="true"', again.content.decode()), "on the name field"
+    assert "This library already has a method called “Full”." in again.text, "a draft's name is taken too"
+    assert re.search(r'name="label"[^>]*aria-invalid="true"', again.text), "on the name field"
     assert Method.objects.count() == 1
 
 
@@ -596,5 +596,5 @@ def test_a_method_another_method_uses_says_which_where_it_cant_be_deleted(
 ) -> None:
     version = publish_light_method(library, user)
     publish_parent(library, user, version)
-    page = client.get(reverse("method_latest", args=[version.method_id]), follow=True).content.decode()
+    page = client.get(reverse("method_latest", args=[version.method_id]), follow=True).text
     assert 'title="Used by Parent, so archive it instead"' in page

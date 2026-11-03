@@ -16,7 +16,7 @@
           {% for choice, owner in section.methods %}
           <li data-search="{{ choice.label|lower }} {{ choice.summary|lower }} {{ owner|lower }}">
             <button type="button" data-method="{{ choice.ref }}" data-label="{{ choice.label }}" hx-get="{% url 'method_guide' choice.ref %}{{ query_string }}" hx-target="#picker-guide" hx-swap="innerHTML" aria-current="{% if choice.ref == method.ref %}true{% else %}false{% endif %}"
-               class="grid w-full gap-0.5 rounded-field px-2.5 py-2 text-left hover:bg-base-200 aria-[current=true]:bg-base-300/60">
+               class="grid w-full gap-0.5 rounded-field px-2.5 py-2 text-left hover:bg-base-200 aria-current:bg-base-300/60">
               <span class="flex flex-wrap items-center gap-2 font-medium">{{ choice.label }}{% if choice.ref == picker_form.current_method %}<span class="badge badge-ghost badge-sm font-normal">Current</span>{% endif %}</span>
               <span class="text-sm text-muted">{{ choice.summary }}</span>
               {% if owner and owner != section.label and owner != own_name %}<span class="text-sm text-subtle">by {{ owner }}</span>{% endif %}

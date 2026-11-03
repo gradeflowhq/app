@@ -68,10 +68,10 @@ class Job(models.Model):
     image = models.CharField(max_length=512, blank=True)
     marked_with = models.JSONField(default=dict)
     """What it marked with, kept after its input is let go: the markings and methods, or a comparison's key."""
-    kind = models.CharField(max_length=20, choices=Kind.choices)
+    kind = models.CharField(max_length=20, choices=Kind)
     question_keys = models.JSONField(default=list)
     """Keys of the questions the job marks."""
-    status = models.CharField(max_length=10, choices=Status.choices, default=Status.QUEUED)
+    status = models.CharField(max_length=10, choices=Status, default=Status.QUEUED)
     progress = models.FloatField(default=0)
     time_limit = models.PositiveIntegerField(default=_time_limit)
     """Seconds the sandbox may run it."""

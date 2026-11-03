@@ -22,8 +22,8 @@
     <c-more-options label="Tested models · {{ trial_rows|length }}">
       <div class="grid gap-2">
         <div class="max-h-64 overflow-y-auto rounded-box border border-base-300">
-          <table class="table table-sm">
-            <thead class="sticky top-0 bg-base-100"><tr><th>Model</th><th>Fast</th><th>Careful</th></tr></thead>
+          <table class="table table-sm table-pin-rows">
+            <thead><tr><th>Model</th><th>Fast</th><th>Careful</th></tr></thead>
             <tbody>
               {% for model, test_results in trial_rows %}
               <tr>

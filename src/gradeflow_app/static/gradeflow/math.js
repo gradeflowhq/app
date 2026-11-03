@@ -16,6 +16,7 @@ export const math = () => ({
       katex.render(formula.textContent, formula, {
         displayMode: formula.classList.contains("block"),
         throwOnError: false,
+        maxSize: 10,
       });
     }
   },

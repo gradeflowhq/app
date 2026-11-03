@@ -259,16 +259,16 @@ def test_grouping_by_meaning_starts_from_the_page_and_not_on_reading_it(client: 
     question = assessment.questions.get(key="Q1")
     answers_url = reverse("answers", args=[assessment.pk, question.pk])
     start = reverse("answer_grouping", args=[assessment.pk, question.pk])
-    due = client.get(answers_url, {"group": "meaning"}, headers=HTMX_HEADERS).content.decode()
+    due = client.get(answers_url, {"group": "meaning"}, headers=HTMX_HEADERS).text
     assert not Job.objects.filter(kind=Job.Kind.GROUPING).exists()
     assert f'hx-post="{start}" hx-trigger="load"' in due
-    grouping_page = client.post(start, headers=HTMX_HEADERS).content.decode()
+    grouping_page = client.post(start, headers=HTMX_HEADERS).text
     assert "Grouping by meaning." in grouping_page
     assert 'hx-trigger="load"' not in grouping_page
     client.post(start, headers=HTMX_HEADERS)
     job = Job.objects.get(kind=Job.Kind.GROUPING)
     assert post_callback(job, {"event": "failed", "error": "Lost"}) == 204
-    failed = client.get(answers_url, headers=HTMX_HEADERS).content.decode()
+    failed = client.get(answers_url, headers=HTMX_HEADERS).text
     assert "Couldn't group by meaning" in failed
     assert f'hx-post="{start}" hx-target="#answers"' in failed, "trying again"
     assert 'hx-trigger="load"' not in failed
@@ -290,7 +290,7 @@ def test_failed_grouping_of_older_answers_does_not_block_current_answers(
     assert student is not None
     student.answers = student.answers | {"Q1": "A newly imported answer"}
     student.save(update_fields=["answers"])
-    due = client.get(answers_url, headers=HTMX_HEADERS).content.decode()
+    due = client.get(answers_url, headers=HTMX_HEADERS).text
     assert "Couldn't group by meaning" not in due
     assert f'hx-post="{start}" hx-trigger="load"' in due
     client.post(start, headers=HTMX_HEADERS)
@@ -370,10 +370,10 @@ def test_results_arrive_in_batches_which_show_progress(
     assert post_callback(job, {"event": "marked", "submissions": submissions[:half]}) == 204
     job.refresh_from_db()
     assert job.progress == half / len(submissions)
-    listed = client.get(reverse("question_list", args=[assessment.pk]), {"question": ""}).content.decode()
+    listed = client.get(reverse("question_list", args=[assessment.pk]), {"question": ""}).text
     assert f'value="{job.progress:.2f}" max="1"' in listed
     question = assessment.questions.get(key="Q1")
-    answers_column = client.get(reverse("answers", args=[assessment.pk, question.pk])).content.decode()
+    answers_column = client.get(reverse("answers", args=[assessment.pk, question.pk])).text
     assert "Marking…" in answers_column
     assert f'value="{job.progress:.2f}" max="1"' in answers_column
     assert post_callback(job, {"event": "marked", "submissions": submissions[half:]}) == 204
@@ -437,7 +437,7 @@ def test_a_preview_counts_the_students_whose_marks_change(client: Client, assess
             method="Q",
             revision=0,
         )
-    page = client.get(reverse("answers", args=[assessment.pk, question.pk])).content.decode()
+    page = client.get(reverse("answers", args=[assessment.pk, question.pk])).text
     preview_bar = page[page.index("preview-bar") :][:1500]
     assert "1 changed" in preview_bar, preview_bar
 
@@ -447,8 +447,8 @@ def test_editing_back_to_the_previewed_marking_shows_its_preview_again(client: C
     previewed_fields = {"path": "", "fields_posted": "1", "points": ["light"], "combine": "all"}
     client.post(url, previewed_fields)
     preview_draft(client, draft)
-    assert "Marking changed" in client.post(url, previewed_fields | {"combine": "any"}).content.decode()
-    page = client.post(url, previewed_fields).content.decode()
+    assert "Marking changed" in client.post(url, previewed_fields | {"combine": "any"}).text
+    page = client.post(url, previewed_fields).text
     preview_bar = page[page.index('id="preview-bar"') :][:1500]
     assert "Marking changed" not in preview_bar
     assert " full · " in preview_bar, preview_bar
@@ -465,7 +465,7 @@ def test_a_preview_says_when_answers_could_not_be_marked(client: Client, assessm
     ]
     unmarked_count = sum(not submission.results["Q1"].is_marked for submission in preview_results)
     assert unmarked_count
-    page = client.get(reverse("answers", args=[assessment.pk, question.pk])).content.decode()
+    page = client.get(reverse("answers", args=[assessment.pk, question.pk])).text
     preview_bar = page[page.index("preview-bar") :][:3000]
     assert f"Couldn't mark {unmarked_count} students" in preview_bar
     assert "no such thing as results" in preview_bar

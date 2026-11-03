@@ -16,27 +16,24 @@ def as_submitted(value: object) -> str:
     return str(value)
 
 
-def example_choices(key: str) -> list[tuple[str, str]]:
-    return list(landing_content().examples[key].choices.items())
-
-
-def example_tabs() -> list[tuple[str, str]]:
-    return [(key, BUILTINS.by_ref[example.method].label) for key, example in landing_content().examples.items()]
+_EXAMPLES = landing_content().examples
 
 
 class ExampleSettingsForm(forms.Form):
     """Which example shows, and each example's setting, by the example's name."""
 
     example = forms.ChoiceField(
-        widget=Segmented, initial=next(iter(landing_content().examples)), choices=example_tabs()
+        widget=Segmented,
+        initial=next(iter(_EXAMPLES)),
+        choices={key: BUILTINS.by_ref[example.method].label for key, example in _EXAMPLES.items()},
     )
-    combination = forms.ChoiceField(widget=Segmented, initial="0.5", choices=example_choices("combination"))
+    combination = forms.ChoiceField(widget=Segmented, initial="0.5", choices=_EXAMPLES["combination"].choices)
     conditional = forms.BooleanField(initial=True, widget=forms.CheckboxInput(attrs={"class": "toggle toggle-primary"}))
-    custom_code = forms.ChoiceField(widget=Segmented, initial="0.5", choices=example_choices("custom_code"))
+    custom_code = forms.ChoiceField(widget=Segmented, initial="0.5", choices=_EXAMPLES["custom_code"].choices)
     code_tests = forms.MultipleChoiceField(
         widget=forms.CheckboxSelectMultiple,
-        initial=list(landing_content().examples["code_tests"].choices),
-        choices=example_choices("code_tests"),
+        initial=list(_EXAMPLES["code_tests"].choices),
+        choices=_EXAMPLES["code_tests"].choices,
     )
 
     def initial_values(self) -> dict[str, str]:

@@ -16,8 +16,8 @@ class CourseForm(forms.ModelForm[Course]):
 
 class InviteForm(forms.Form):
     email = forms.EmailField(label="Email address", widget=forms.EmailInput(attrs={"placeholder": "name@example.edu"}))
-    role = forms.TypedChoiceField(choices=Role.choices, coerce=Role, initial=Role.EDITOR)
+    role = forms.TypedChoiceField(choices=Role, coerce=Role, initial=Role.EDITOR)
 
 
 class RoleForm(forms.Form):
-    role = forms.TypedChoiceField(choices=Role.choices, coerce=Role)
+    role = forms.TypedChoiceField(choices=Role, coerce=Role)

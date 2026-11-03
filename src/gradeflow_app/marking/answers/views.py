@@ -6,6 +6,7 @@ from django.http import HttpResponse
 from django.shortcuts import render
 from django.template.defaultfilters import pluralize
 from django.views.decorators.http import require_POST
+from simple_history.utils import bulk_create_with_history, bulk_update_with_history
 
 from gradeflow_app.assessments.access import assessment_member
 from gradeflow_app.assessments.models import AssessmentAccess
@@ -46,13 +47,20 @@ def adjust(request: Request, membership: AssessmentAccess, question_id: UUID) ->
         if not form.is_valid():
             messages.error(request, str(form.errors["marks"][0]))
             return HttpResponse(status=422)
+        marks, feedback = form.cleaned_data["marks"], form.cleaned_data["feedback"]
         with transaction.atomic():
-            for student in students:
-                Adjustment.objects.update_or_create(
-                    student=student,
-                    question=question,
-                    defaults={"marks": form.cleaned_data["marks"], "feedback": form.cleaned_data["feedback"]},
-                )
+            membership.assessment.lock()
+            existing = list(Adjustment.objects.select_for_update().filter(question=question, student__in=students))
+            for adjustment in existing:
+                adjustment.marks, adjustment.feedback = marks, feedback
+            bulk_update_with_history(existing, Adjustment, ["marks", "feedback"])
+            adjusted = {adjustment.student_id for adjustment in existing}
+            new = [
+                Adjustment(student=student, question=question, marks=marks, feedback=feedback)
+                for student in students
+                if student.pk not in adjusted
+            ]
+            bulk_create_with_history(new, Adjustment)
         messages.success(request, f"Adjusted {len(students)} student{pluralize(len(students))}.")
     notify_change(topic("marks", membership.assessment.pk))
     if request.POST.get("return_to") == "student" and students:

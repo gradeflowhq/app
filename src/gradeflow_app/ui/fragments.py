@@ -26,7 +26,7 @@ def fragment_of(page: str) -> Callable[[View], View]:
 
 def is_fragment(request: Request) -> bool:
     """Whether htmx asks for part of a page, rather than a whole one, as a boosted link does."""
-    return bool(request.htmx) and not request.htmx.boosted
+    return request.htmx.request_type == "partial"
 
 
 def redirect_page(request: Request, url: str) -> HttpResponse:

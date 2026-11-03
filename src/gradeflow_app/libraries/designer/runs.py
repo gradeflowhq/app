@@ -39,7 +39,7 @@ def run_tests(tests: MethodDraftRecord | VersionTests, test_run: TestRun, course
 
 
 def _handler(
-    model: type[MethodDraftRecord] | type[VersionTests], tests_of: Callable[[Job], UUID | None], about: str
+    model: type[MethodDraftRecord | VersionTests], tests_of: Callable[[Job], UUID | None], about: str
 ) -> Handler[None]:
     """Jobs of `model`'s runs: `tests_of` is the ID of the tests a job ran, `about` the topic their page listens to."""
 

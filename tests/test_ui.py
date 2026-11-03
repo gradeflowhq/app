@@ -60,13 +60,10 @@ def test_question_text_leaves_formulas_to_the_browser() -> None:
 
 def test_markdown_previews_as_its_pages_show_it(client: Client) -> None:
     text = "Is $x^2$ **big**?\n<b>No</b>"
-    preview = client.post(reverse("markdown_preview"), {"text": text}, headers=HTMX_HEADERS).content.decode()
+    preview = client.post(reverse("markdown_preview"), {"text": text}, headers=HTMX_HEADERS).text
     assert 'x-data="math"' in preview
     assert str(math_markdown(text)) in preview
-    assert (
-        "Nothing to preview"
-        in client.post(reverse("markdown_preview"), {"text": " \n"}, headers=HTMX_HEADERS).content.decode()
-    )
+    assert "Nothing to preview" in client.post(reverse("markdown_preview"), {"text": " \n"}, headers=HTMX_HEADERS).text
 
 
 def test_read_only_markdown_shows_as_its_pages_show_it() -> None:
@@ -94,7 +91,7 @@ def test_pages_take_their_width_and_button_sizes_from_the_design_system() -> Non
 
 
 def test_a_settings_card_posts_its_form_from_its_footer(client: Client) -> None:
-    page = client.get(reverse("settings")).content.decode()
+    page = client.get(reverse("settings")).text
     form = re.search(r'<form id="profile" method="post" class="grid gap-5">(.*?)</form>', page, re.DOTALL)
     assert form is not None
     assert 'name="csrfmiddlewaretoken"' in form[1]
@@ -104,7 +101,7 @@ def test_a_settings_card_posts_its_form_from_its_footer(client: Client) -> None:
 
 
 def test_an_alert_shown_by_alpine_is_hidden_until_shown(client: Client) -> None:
-    page = client.get(reverse("import", args=[create_assessment(client).pk])).content.decode()
+    page = client.get(reverse("import", args=[create_assessment(client).pk])).text
     assert re.search(r'<div role="alert" class="alert alert-error alert-soft *" x-show="error" x-cloak>', page)
 
 
@@ -124,25 +121,20 @@ def test_marks_and_percentages_round_halves_up_alike() -> None:
     assert marks(2.2, 2) == "2.20"
 
 
-def test_fields_with_errors_are_highlighted() -> None:
+def test_empty_required_fields_are_left_to_the_server_to_flag() -> None:
     class Sample(forms.Form):
         name = forms.CharField()
-        kind = forms.ChoiceField(choices=[("a", "A")])
-        notes = forms.CharField(widget=forms.Textarea(attrs={"class": "font-mono"}))
-        agreed = forms.BooleanField()
+        notes = forms.CharField(widget=forms.Textarea)
 
-    invalid, valid = Sample({"kind": "b"}), Sample({"name": "Ana", "kind": "a", "notes": "Hi", "agreed": "on"})
-    assert 'class="input w-full input-error"' in str(invalid["name"])
-    assert 'class="select w-full select-error"' in str(invalid["kind"])
-    assert 'class="textarea w-full font-mono textarea-error"' in str(invalid["notes"])
-    assert "-error" not in str(invalid["agreed"])
-    assert "-error" not in "".join(str(field) for field in valid)
+    invalid, valid = Sample({}), Sample({"name": "Ana", "notes": "Hi"})
+    assert all('aria-invalid="true"' in str(field) and "required" not in str(field) for field in invalid)
+    assert "aria-invalid" not in "".join(str(field) for field in valid)
 
 
 def test_times_show_in_the_browsers_time_zone(client: Client, assessment: Assessment) -> None:
     uploaded_at = assessment.results_files.get().uploaded_at
     client.cookies["tz"] = "Asia/Singapore"
-    page = client.get(reverse("activity", args=[assessment.pk]), headers=HTMX_HEADERS).content.decode()
+    page = client.get(reverse("activity", args=[assessment.pk]), headers=HTMX_HEADERS).text
     assert uploaded_at.astimezone(ZoneInfo("Asia/Singapore")).strftime("%H:%M") in page
     client.cookies["tz"] = "Not/A_Zone"
     assert client.get(reverse("activity", args=[assessment.pk]), headers=HTMX_HEADERS).status_code == 200
@@ -150,7 +142,7 @@ def test_times_show_in_the_browsers_time_zone(client: Client, assessment: Assess
 
 def test_pages_are_compressed_but_live_streams_are_not(client: Client, assessment: Assessment) -> None:
     url = reverse("questions", args=[assessment.pk])
-    stream_url_match = re.search(r'hx-sse:connect="([^"]+)"', client.get(url, follow=True).content.decode())
+    stream_url_match = re.search(r'hx-sse:connect="([^"]+)"', client.get(url, follow=True).text)
     assert stream_url_match is not None
     gzip_headers = {"Accept-Encoding": "gzip"}
     assert client.get(url, follow=True, headers=gzip_headers).headers["Content-Encoding"] == "gzip"
@@ -221,3 +213,10 @@ def test_code_is_coloured_by_its_language_and_other_text_only_escaped() -> None:
     assert html.unescape(re.sub(r"<[^>]+>", "", coloured)) == code
     assert highlight("<b>", None) == "&lt;b&gt;"
     assert highlight("<b>", "no-such-language") == "&lt;b&gt;"
+
+
+def test_the_inline_script_carries_the_pages_nonce(client: Client) -> None:
+    response = client.get(reverse("courses"))
+    match = re.search(r'<script nonce="([^"]+)">', response.text)
+    assert match
+    assert f"'nonce-{match[1]}'" in response.headers["Content-Security-Policy"]

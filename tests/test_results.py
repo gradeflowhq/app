@@ -86,7 +86,7 @@ def test_downloads_open_as_utf8_in_spreadsheets(client: Client, assessment: Asse
 def test_there_is_nothing_to_download_before_an_import(client: Client) -> None:
     assessment = create_assessment(client)
     for name in ("students", "publish"):
-        page = client.get(reverse(name, args=[assessment.pk])).content.decode()
+        page = client.get(reverse(name, args=[assessment.pk])).text
         assert 'data-dialog="download"' not in page
         assert "data-decrypt" not in page
 
@@ -94,8 +94,8 @@ def test_there_is_nothing_to_download_before_an_import(client: Client) -> None:
 def test_a_download_needs_a_student_id_column(client: Client, assessment: Assessment) -> None:
     response = client.post(reverse("download", args=[assessment.pk]), {"student_id_column": ""})
     assert response.status_code == 422
-    assert "Required." in response.content.decode()
-    assert '<details class="group/more" open' in response.content.decode()
+    assert "Required." in response.text
+    assert '<details class="group/more" open' in response.text
 
 
 @pytest.fixture
@@ -173,15 +173,11 @@ def test_totals_count_adjusted_marks_and_every_adjustment(adjusted_assessment: A
 
 def test_a_students_page_shows_their_adjustments(client: Client, adjusted_assessment: Assessment) -> None:
     student = adjusted_assessment.students.get(encrypted_id=encrypted_id("S001"))
-    page = client.get(
-        reverse("student", args=[adjusted_assessment.pk, student.pk]), headers=HTMX_HEADERS
-    ).content.decode()
+    page = client.get(reverse("student", args=[adjusted_assessment.pk, student.pk]), headers=HTMX_HEADERS).text
     assert "The marking gives 1." in page
     assert 'value="0.5"' in page
     student = adjusted_assessment.students.get(encrypted_id=encrypted_id("S002"))
-    page = client.get(
-        reverse("student", args=[adjusted_assessment.pk, student.pk]), headers=HTMX_HEADERS
-    ).content.decode()
+    page = client.get(reverse("student", args=[adjusted_assessment.pk, student.pk]), headers=HTMX_HEADERS).text
     assert "The marking gives" not in page
     assert page.count("Rounded.") == 2, "as the feedback and in the form"
     assert "· </span>" not in page, "Q3 has no marking to name"
@@ -189,13 +185,13 @@ def test_a_students_page_shows_their_adjustments(client: Client, adjusted_assess
 
 def test_the_students_list_refreshes_as_marks_change(client: Client, assessment: Assessment) -> None:
     url = reverse("students", args=[assessment.pk])
-    page = client.get(url).content.decode()
+    page = client.get(url).text
     assert f'hx-get="{url}" hx-trigger="{topic("marks", assessment.pk)} from:body' in page
     assert "average 0.4 / 3" in page
     student = assessment.students.get(encrypted_id=encrypted_id("S001"))
     question = assessment.questions.get(key="Q2")
     Adjustment.objects.create(student=student, question=question, marks=1)
-    refreshed = client.get(url, headers=HTMX_HEADERS).content.decode()
+    refreshed = client.get(url, headers=HTMX_HEADERS).text
     assert "<html" not in refreshed
     assert "average 0.5 / 3" in refreshed
 
@@ -203,7 +199,7 @@ def test_the_students_list_refreshes_as_marks_change(client: Client, assessment:
 def test_the_questions_list_averages_the_marks_the_overview_does(
     client: Client, adjusted_assessment: Assessment
 ) -> None:
-    page = client.get(reverse("question_list", args=[adjusted_assessment.pk]), headers=HTMX_HEADERS).content.decode()
+    page = client.get(reverse("question_list", args=[adjusted_assessment.pk]), headers=HTMX_HEADERS).text
     averages = re.findall(r'title="Average mark">([^<]+)<', page)
     overview_averages = [
         percent(summary.average_proportion)
@@ -221,7 +217,7 @@ def test_without_marking_a_student_has_the_exams_marks(client: Client, assessmen
 
 def test_activity_tells_clearing_adjustments_from_making_them(client: Client, adjusted_assessment: Assessment) -> None:
     adjusted_assessment.students.get(encrypted_id=encrypted_id("S001")).adjustments.get().delete()
-    page = client.get(reverse("activity", args=[adjusted_assessment.pk]), headers=HTMX_HEADERS).content.decode()
+    page = client.get(reverse("activity", args=[adjusted_assessment.pk]), headers=HTMX_HEADERS).text
     assert "cleared adjustments to Q1 for 1 student" in page
     assert "adjusted Q1 for 2 students" in page
 
@@ -265,7 +261,7 @@ def test_an_answer_the_question_reads_as_blank_is_blank_everywhere(client: Clien
 
     assert assessment_results(assessment).summaries()[0].blank_count == 2
     url = reverse("answers", args=[assessment.pk, question.pk])
-    page = client.get(url, {"filter": "blank"}, headers=HTMX_HEADERS).content.decode()
+    page = client.get(url, {"filter": "blank"}, headers=HTMX_HEADERS).text
     assert "2 students" in page
 
 
@@ -279,15 +275,15 @@ def test_marks_that_round_to_the_maximum_are_full(client: Client, assessment: As
     summary = assessment_results(assessment).summaries()[0]
     assert (summary.full_marks_count, summary.zero_marks_count) == (10, 0)
     url = reverse("answers", args=[assessment.pk, question.pk])
-    assert "1 student" in client.get(url, {"filter": "full"}, headers=HTMX_HEADERS).content.decode()
-    assert "1 student" not in client.get(url, {"filter": "partial"}, headers=HTMX_HEADERS).content.decode()
+    assert "1 student" in client.get(url, {"filter": "full"}, headers=HTMX_HEADERS).text
+    assert "1 student" not in client.get(url, {"filter": "partial"}, headers=HTMX_HEADERS).text
     first = assessment.students.first()
     assert first is not None
     assert awards([question], [first])[first.pk, question.pk].level == "full"
 
 
 def test_the_overview_says_how_each_question_is_marked(client: Client, assessment: Assessment) -> None:
-    page = client.get(reverse("overview", args=[assessment.pk])).content.decode()
+    page = client.get(reverse("overview", args=[assessment.pk])).text
     assert "From the exam export" in page, "nothing is marked yet"
     assert page.count("Imported marks") == 1
     assert page.count("Not marked") == 2
@@ -296,14 +292,14 @@ def test_the_overview_says_how_each_question_is_marked(client: Client, assessmen
 
 def test_a_draft_doesnt_mark_a_question_on_the_overview(client: Client, assessment: Assessment) -> None:
     start_marking(client, assessment, "Q2", "gradeflow/accepted-answers@1")
-    page = client.get(reverse("overview", args=[assessment.pk])).content.decode()
+    page = client.get(reverse("overview", args=[assessment.pk])).text
     assert page.count("Not marked") == 2, "only saved marking counts"
     assert "Accepted Answers" not in page
 
 
 def test_the_adjusted_column_shows_once_someone_is_adjusted(client: Client, adjusted_assessment: Assessment) -> None:
     for name in ("overview", "students"):
-        assert "Adjusted</th>" in client.get(reverse(name, args=[adjusted_assessment.pk])).content.decode(), name
+        assert "Adjusted</th>" in client.get(reverse(name, args=[adjusted_assessment.pk])).text, name
 
 
 def test_a_run_of_changes_to_a_questions_adjustments_shows_once(client: Client, assessment: Assessment) -> None:
@@ -312,7 +308,7 @@ def test_a_run_of_changes_to_a_questions_adjustments_shows_once(client: Client, 
     for action in ("apply", "clear", "apply"):
         fields = {"student": str(student.pk), "marks": "1", "action": action}
         client.post(reverse("adjust", args=[assessment.pk, question.pk]), fields, headers=HTMX_HEADERS)
-    page = client.get(reverse("activity", args=[assessment.pk]), headers=HTMX_HEADERS).content.decode()
+    page = client.get(reverse("activity", args=[assessment.pk]), headers=HTMX_HEADERS).text
     assert page.count("adjusted marks for Q1") == 1
     assert "cleared adjustments" not in page
     assert f'href="{reverse("question", args=[assessment.pk, question.pk])}"' in page
@@ -321,4 +317,4 @@ def test_a_run_of_changes_to_a_questions_adjustments_shows_once(client: Client, 
 def test_downloads_are_only_posted_from_the_dialog(client: Client, assessment: Assessment) -> None:
     assert client.get(reverse("download", args=[assessment.pk])).status_code == 405
     for name in ("students", "publish"):
-        assert 'data-dialog="download"' in client.get(reverse(name, args=[assessment.pk])).content.decode(), name
+        assert 'data-dialog="download"' in client.get(reverse(name, args=[assessment.pk])).text, name

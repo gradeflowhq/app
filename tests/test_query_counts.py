@@ -106,3 +106,16 @@ def test_question_list_of_drafts_query_count_does_not_grow(
     assert_query_count_stays(
         client, reverse("question_list", args=[assessment.pk]), add_two_more, django_assert_num_queries
     )
+
+
+def test_adjusting_an_answer_group_query_count_does_not_grow(
+    client: Client, assessment: Assessment, django_assert_num_queries: DjangoAssertNumQueries
+) -> None:
+    question = assessment.questions.get(key="Q2")
+    url = reverse("adjust", args=[assessment.pk, question.pk])
+    students = [str(pk) for pk in assessment.students.values_list("pk", flat=True)]
+    client.post(url, {"student": students[:1], "marks": "0.5"})
+    with CaptureQueriesContext(connection) as one_of_each:
+        client.post(url, {"student": students[:2], "marks": "1"})
+    with django_assert_num_queries(len(one_of_each)):
+        assert client.post(url, {"student": students[:4], "marks": "1"}).status_code == 200

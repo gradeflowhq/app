@@ -51,7 +51,7 @@ def stream_url(request: HttpRequest) -> str | None:
     if not (names := _topics_by_request.get(request)):
         return None
     token = signing.dumps([sorted(names), to_milliseconds(timezone.now())], salt=_SALT, compress=True)
-    return f"{reverse('live')}?topics={token}"
+    return reverse("live", query={"topics": token})
 
 
 def read_stream_token(token: str) -> tuple[frozenset[str], int]:

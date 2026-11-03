@@ -4,7 +4,7 @@
   <div class="mt-2 hidden items-center gap-2.5 px-2.5 xl:flex">
     {% if shows_avatar %}<c-avatar :user="title" />{% else %}<span class="initial-badge size-8 text-xs" aria-hidden="true">{{ title|initials }}</span>{% endif %}
     <div class="min-w-0">
-      <p class="line-clamp-2 break-words font-semibold leading-snug" title="{{ title }}">{{ title }}</p>
+      <p class="line-clamp-2 wrap-break-word font-semibold leading-snug" title="{{ title }}">{{ title }}</p>
       {% if subtitle %}<p class="truncate text-xs text-muted" title="{{ subtitle }}">{{ subtitle }}</p>{% endif %}
     </div>
   </div>

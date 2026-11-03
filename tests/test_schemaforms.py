@@ -67,19 +67,36 @@ def test_a_field_shows_only_while_its_condition_holds() -> None:
     shown = ObjectForm(CHECK_SCHEMA, {"combine": "sum"}, prefix="check")
     hidden = ObjectForm(CHECK_SCHEMA, {"combine": "all"})
     assert json.loads(shown["max_marks"].visible_when) == {"check-combine": "sum"}
-    assert not shown["max_marks"].is_hidden
-    assert hidden["max_marks"].is_hidden
+    assert not shown["max_marks"].starts_hidden
+    assert hidden["max_marks"].starts_hidden
 
 
-@pytest.mark.parametrize(("match", "is_hidden"), [("exact", True), ("spelling", False), ("meaning", False)])
-def test_a_condition_listing_values_holds_for_any_of_them(match: str, is_hidden: bool) -> None:
+@pytest.mark.parametrize(("match", "starts_hidden"), [("exact", True), ("spelling", False), ("meaning", False)])
+def test_a_condition_listing_values_holds_for_any_of_them(match: str, starts_hidden: bool) -> None:
     schema = object_schema(
         match={"type": "string", "enum": ["exact", "spelling", "meaning"]},
         threshold=hinted({"type": "number"}, applies_when={"match": ["spelling", "meaning"]}),
     )
     form = ObjectForm(schema, {"match": match}, prefix="check")
     assert json.loads(form["threshold"].visible_when) == {"check-match": ["spelling", "meaning"]}
-    assert form["threshold"].is_hidden is is_hidden
+    assert form["threshold"].starts_hidden is starts_hidden
+
+
+def test_a_field_hidden_until_its_condition_holds_still_points_at_its_help_and_errors() -> None:
+    schema = object_schema(
+        combine={"type": "string", "enum": ["all", "sum"]},
+        max_marks=hinted({"type": "number", "description": "At most this many."}, applies_when={"combine": "sum"}),
+    )
+    form = ObjectForm(schema, {"combine": "all"})
+    form.add_error("max_marks", "Must be 0 or more.")
+    assert form["max_marks"].starts_hidden
+    assert 'aria-describedby="id_max_marks_helptext id_max_marks_error"' in str(form["max_marks"])
+
+
+def test_a_group_of_choices_points_at_its_errors() -> None:
+    form = ObjectForm(CHECK_SCHEMA, {})
+    form.add_error("combine", "Choose one.")
+    assert '<fieldset class="grid gap-1.5" aria-describedby="id_combine_error">' in form["combine"].as_field_group()
 
 
 def test_choices_read_as_the_core_labels_them_or_as_written() -> None:
@@ -234,7 +251,7 @@ def test_what_fills_a_field_shows_in_its_place_and_the_post_leaves_it_alone() ->
 def test_a_field_shown_for_a_value_filled_elsewhere_always_shows() -> None:
     form = ObjectForm(CHECK_SCHEMA, {"combine": "all"})
     form.replace_control("combine", "<p></p>")
-    assert (form["max_marks"].visible_when, form["max_marks"].is_hidden) == ("", False)
+    assert (form["max_marks"].visible_when, form["max_marks"].starts_hidden) == ("", False)
 
 
 def test_a_whole_number_stays_whole() -> None:

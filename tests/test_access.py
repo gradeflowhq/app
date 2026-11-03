@@ -12,7 +12,7 @@ from gradeflow_app.accounts.models import User
 from gradeflow_app.assessments.models import Assessment
 from gradeflow_app.courses import views
 from gradeflow_app.courses.invitations import accept_invitations, invitation_token
-from gradeflow_app.courses.models import INVITATION_LIFETIME, Invitation, Member, Role
+from gradeflow_app.courses.models import INVITATION_LIFETIME, Course, Invitation, Member, Role
 from gradeflow_app.live.topics import topic
 from gradeflow_app.marking.models import MarkingDraftRecord
 from tests.conftest import HTMX_HEADERS, create_assessment, member_client, signed_in_client, start_marking
@@ -53,9 +53,9 @@ def test_viewers_change_nothing(client: Client, assessment: Assessment) -> None:
 def test_assessment_pages_offer_only_what_the_role_may_do(client: Client, assessment: Assessment) -> None:
     overview = reverse("overview", args=[assessment.pk])
     settings_url = reverse("assessment_settings", args=[assessment.pk])
-    viewer_page = member_client(assessment, Role.VIEWER).get(overview).content.decode()
-    editor_page = member_client(assessment, Role.EDITOR, "cy@example.edu").get(overview).content.decode()
-    owner_page = client.get(overview).content.decode()
+    viewer_page = member_client(assessment, Role.VIEWER).get(overview).text
+    editor_page = member_client(assessment, Role.EDITOR, "cy@example.edu").get(overview).text
+    owner_page = client.get(overview).text
     assert settings_url not in viewer_page
     assert settings_url not in editor_page
     assert settings_url in owner_page
@@ -107,12 +107,12 @@ def test_a_course_keeps_an_owner(client: Client, user: User) -> None:
 def test_the_only_owner_is_offered_no_role_change_or_leaving(client: Client, user: User) -> None:
     assessment = create_assessment(client)
     url = reverse("members", args=[assessment.course_id])
-    page = client.get(url).content.decode()
+    page = client.get(url).text
     assert "Leave course" not in page
     assert f'aria-label="Role of {user}"' not in page
 
     member_client(assessment, Role.OWNER)
-    page = client.get(url).content.decode()
+    page = client.get(url).text
     assert "Leave course" in page
     assert f'aria-label="Role of {user}"' in page
 
@@ -179,6 +179,19 @@ def test_invitations_say_when_they_expire(client: Client, mailoutbox: list[Email
     assert "expires" not in added.body
 
 
+def test_invitation_emails_are_plain_text(client: Client, user: User, mailoutbox: list[EmailMessage]) -> None:
+    User.objects.filter(pk=user.pk).update(name="Ana O'Brien")
+    client.post(reverse("courses"), {"name": "R&D"})
+    course = Course.objects.get(name="R&D")
+    User.objects.create_user("cy@example.edu", "another-password")
+    for email in ("bo@example.edu", "cy@example.edu"):
+        client.post(reverse("members", args=[course.pk]), {"email": email, "role": Role.VIEWER})
+    for sent in mailoutbox:
+        assert sent.subject == "Ana O'Brien shared “R&D” with you"
+        assert "Ana O'Brien" in sent.body
+        assert "“R&D”" in sent.body
+
+
 def test_accepting_an_invitation(client: Client) -> None:
     assessment = create_assessment(client)
     invitation = invite(client, assessment, "bo@example.edu", Role.EDITOR)
@@ -205,20 +218,20 @@ def test_invitation_pages_lead_somewhere(client: Client) -> None:
     invitation = invite(client, assessment, "bo@example.edu")
     url = reverse("invitation", args=[invitation_token(invitation)])
     stranger = signed_in_client(User.objects.create_user("cy@example.edu", "another-password"))
-    page = stranger.get(url).content.decode()
+    page = stranger.get(url).text
     assert "<title>This invitation is for bo@example.edu · GradeFlow</title>" in page
     assert f'<input type="hidden" name="next" value="{url}">' in page, "signing out comes back to the invitation"
     unknown_invitation_url = reverse("invitation", args=["nope"])
-    assert f'href="{reverse("courses")}"' in stranger.get(unknown_invitation_url).content.decode()
-    assert f'href="{reverse("account_login")}"' in Client().get(unknown_invitation_url).content.decode()
+    assert f'href="{reverse("courses")}"' in stranger.get(unknown_invitation_url).text
+    assert f'href="{reverse("account_login")}"' in Client().get(unknown_invitation_url).text
 
 
 def test_signing_up_from_an_invitation_names_its_course(client: Client) -> None:
     assessment = create_assessment(client)
     url = reverse("invitation", args=[invitation_token(invite(client, assessment, "bo@example.edu"))])
-    signup = Client().get(Client().get(url)["Location"]).content.decode()
+    signup = Client().get(Client().get(url)["Location"]).text
     assert f"You're invited to <strong>{assessment.course.name}</strong>." in signup
-    assert "You're invited" not in Client().get(reverse("account_signup")).content.decode()
+    assert "You're invited" not in Client().get(reverse("account_signup")).text
 
 
 def test_expired_invitations_are_refused_and_stay_open(client: Client) -> None:

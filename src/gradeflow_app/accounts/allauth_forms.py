@@ -1,10 +1,13 @@
-"""allauth's forms in plain words, apart from forms.py, which allauth itself imports for sign-up."""
+"""allauth's forms in plain words."""
 
 from typing import Any, ClassVar
 
 from allauth.account import forms as allauth
 from django import forms
 from django.contrib.auth.password_validation import MinimumLengthValidator, get_default_password_validators
+from django.http import HttpRequest
+
+from gradeflow_app.accounts.models import User
 
 
 def _password_help() -> str:
@@ -39,6 +42,14 @@ class LoginForm(PlainLabelsMixin, allauth.LoginForm):
 
 class SignupForm(PlainLabelsMixin, allauth.SignupForm):
     LABELS: ClassVar[dict[str, str]] = {"password1": "Password"}
+
+    name = forms.CharField(max_length=150, label="Your name")
+
+    field_order = ("name",)
+
+    def signup(self, request: HttpRequest, user: User) -> None:
+        user.name = self.cleaned_data["name"]
+        user.save(update_fields=["name"])
 
 
 class AddEmailForm(PlainLabelsMixin, allauth.AddEmailForm):

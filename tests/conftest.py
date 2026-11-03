@@ -69,7 +69,7 @@ EXPORT_CSV = "StudentID,Q1,Q1 Pts,Q2,Q3\n" + "".join(
     f'{encrypted_id(student)},"{q1}",{q1_marks},{q2},{q3}\n' for student, q1, q1_marks, q2, q3 in EXPORT_ROWS
 )
 
-HTMX_HEADERS = {"HX-Request": "true"}
+HTMX_HEADERS = {"HX-Request": "true", "HX-Request-Type": "partial"}
 
 
 SANDBOX_SCRIPT = Path(__file__).parents[1] / "sandbox" / "sandbox.py"

@@ -76,7 +76,7 @@ def test_this_device_connects_to_canvas_among_its_integrations(
 
 def test_editors_get_the_rows_to_send_and_the_sending_form(client: Client, canvas_assessment: Assessment) -> None:
     response = client.get(reverse("publish", args=[canvas_assessment.pk]))
-    page, rows = response.content.decode(), response.context["canvas_rows"]
+    page, rows = response.text, response.context["canvas_rows"]
     assert '<script id="publish-rows-data" type="application/json">' in page
     assert len(rows) == 10
     assert {"studentId", "marks", "maxMarks", "comment"} == rows[0].keys()
@@ -95,7 +95,7 @@ def test_editors_get_the_rows_to_send_and_the_sending_form(client: Client, canva
 def test_viewers_see_how_marks_are_sent_but_not_the_rows_or_controls(
     viewer: Client, canvas_assessment: Assessment
 ) -> None:
-    page = viewer.get(reverse("publish", args=[canvas_assessment.pk])).content.decode()
+    page = viewer.get(reverse("publish", args=[canvas_assessment.pk])).text
     assert "Percentages, rounded to 0.5, with feedback" in page
     assert "Editors send the marks." in page
     assert "publish-rows" not in page
@@ -115,7 +115,7 @@ def test_viewers_cant_change_how_marks_are_sent_or_get_the_rows(viewer: Client, 
 
 
 def test_the_rows_refresh_when_marks_change(client: Client, assessment: Assessment) -> None:
-    rows = client.get(reverse("publish_rows", args=[assessment.pk]), headers=HTMX_HEADERS).content.decode()
+    rows = client.get(reverse("publish_rows", args=[assessment.pk]), headers=HTMX_HEADERS).text
     assert rows.startswith('<div id="publish-rows"')
     assert 'hx-trigger="live-' in rows
     assert encrypted_id("S001") in rows
@@ -124,12 +124,12 @@ def test_the_rows_refresh_when_marks_change(client: Client, assessment: Assessme
 def test_overriding_how_marks_are_sent_answers_with_the_summary(client: Client, canvas_assessment: Assessment) -> None:
     url = reverse("publish_sending", args=[canvas_assessment.pk])
     unchanged = client.post(url, {"assignment": "12", "marks_mode": "", "rounding": "", "include_feedback": "unknown"})
-    assert 'data-mode="percent" data-rounding="0.5" data-feedback="true"' in unchanged.content.decode()
-    assert "Custom" not in unchanged.content.decode()
+    assert 'data-mode="percent" data-rounding="0.5" data-feedback="true"' in unchanged.text
+    assert "Custom" not in unchanged.text
 
     changed = client.post(
         url, {"assignment": "12", "marks_mode": "marks", "rounding": "0", "include_feedback": "false"}
-    ).content.decode()
+    ).text
     assert 'data-mode="marks" data-rounding="0.0" data-feedback="false"' in changed
     assert "Marks, not rounded, without feedback" in changed
     assert re.search(r'<button type="button" id="comment-preview" [^>]* hx-swap-oob="true" hidden>', changed)
@@ -157,7 +157,7 @@ def test_a_send_is_recorded_with_its_assignment_and_count(
     assert b'<td class="tabular-nums text-right">9</td>' in response.content
     publication = SentMarks.objects.get()
     assert (publication.assignment_name, publication.student_count, publication.sent_by) == ("Midterm", 9, user)
-    activity = client.get(reverse("activity", args=[canvas_assessment.pk]), headers=HTMX_HEADERS).content.decode()
+    activity = client.get(reverse("activity", args=[canvas_assessment.pk]), headers=HTMX_HEADERS).text
     assert "sent marks to “Midterm” (9 students)" in activity
 
 
@@ -197,19 +197,19 @@ def test_the_comment_preview_pages_through_the_students(client: Client, canvas_a
         feedback="Show <working>.",
     )
     url = reverse("publish_comment", args=[canvas_assessment.pk])
-    first = client.get(url, headers=HTMX_HEADERS).content.decode()
+    first = client.get(url, headers=HTMX_HEADERS).text
     assert encrypted_id("S001") in first
     assert EXPECTED_COMMENT in first
     assert "1 of 10" in first
     assert 'aria-label="Previous student" disabled' in first
-    last = client.get(f"{url}?page=99", headers=HTMX_HEADERS).content.decode()
+    last = client.get(url, query_params={"page": 99}, headers=HTMX_HEADERS).text
     assert "10 of 10" in last
     assert 'aria-label="Next student" disabled' in last
 
 
 def test_the_comment_preview_says_when_nothing_is_marked(client: Client, canvas_assessment: Assessment) -> None:
     upload(client, canvas_assessment, marks_columns="{}")
-    preview = client.get(reverse("publish_comment", args=[canvas_assessment.pk]), headers=HTMX_HEADERS).content.decode()
+    preview = client.get(reverse("publish_comment", args=[canvas_assessment.pk]), headers=HTMX_HEADERS).text
     assert "Nothing marked yet." in preview
     assert "bg-base-200" not in preview
 
@@ -221,7 +221,7 @@ def test_viewers_may_preview_comments(viewer: Client, canvas_assessment: Assessm
 @pytest.mark.parametrize("page", ["canvas_settings", "publish"])
 def test_only_the_group_picker_names_a_new_group(client: Client, canvas_assessment: Assessment, page: str) -> None:
     pk = canvas_assessment.course_id if page == "canvas_settings" else canvas_assessment.pk
-    rendered = client.get(reverse(page, args=[pk])).content.decode()
+    rendered = client.get(reverse(page, args=[pk])).text
     group_picker = between(rendered, '<dialog id="group-picker"', "</dialog>")
     assert 'id="new-group-name"' in group_picker
     assert rendered.count('id="new-group-name"') == 1
@@ -232,6 +232,6 @@ def test_a_course_refuses_a_negative_rounding_step(client: Client, canvas_assess
         reverse("canvas_settings", args=[canvas_assessment.course_id]), {"marks_mode": "marks", "rounding": "-1"}
     )
     assert page.status_code == 200
-    assert "Round to 0 or more." in page.content.decode()
-    assert '<details class="group/more" open' in page.content.decode()
+    assert "Round to 0 or more." in page.text
+    assert '<details class="group/more" open' in page.text
     assert CourseCanvas.objects.get(course=canvas_assessment.course).rounding == 0.5

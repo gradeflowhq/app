@@ -46,7 +46,7 @@ def test_a_marking_of_several_checks_shows_how_each_marked_an_answer(
     job.refresh_from_db()
     assert (job.status, job.error) == ("completed", "")
     assert Result.objects.filter(question=question).filter(breakdown__isnull=False).exists()
-    page = client.get(reverse("question", args=[assessment.pk, question.pk])).content.decode()
+    page = client.get(reverse("question", args=[assessment.pk, question.pk])).text
     assert "All of these" in page
     assert "Has at most <code>3</code> words." in page
     assert "No marks" in page
@@ -67,7 +67,7 @@ def test_the_breakdown_shows_the_fixed_code(client: Client, assessment: Assessme
     assert job is not None
     job.refresh_from_db()
     assert (job.status, job.error) == ("completed", "")
-    page = client.get(reverse("question", args=[assessment.pk, question.pk])).content.decode()
+    page = client.get(reverse("question", args=[assessment.pk, question.pk])).text
     text = html.unescape(re.sub(r"<span[^>]*>|</span>", "", page))
     assert re.search(r"Marked as\s*<code[^>]*>def f\(\):\n    return 1", text)
 

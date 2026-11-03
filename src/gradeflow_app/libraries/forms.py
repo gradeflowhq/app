@@ -16,7 +16,7 @@ class NewMethodForm(forms.Form):
     summary = summary_field(
         required=False, widget=forms.TextInput(attrs={"placeholder": "Full marks for mentioning photosynthesis."})
     )
-    question_type = forms.ChoiceField(label="Question type", choices=QUESTION_TYPE_LABELS.items())
+    question_type = forms.ChoiceField(label="Question type", choices=QUESTION_TYPE_LABELS)
 
 
 class SaveMethodForm(forms.Form):

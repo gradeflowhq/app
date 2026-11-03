@@ -57,7 +57,7 @@ _CODE_FORMATTER = HtmlFormatter(nowrap=True, classprefix="code-")
 def icon(name: str, classes: str = "size-5", *, mini: bool = False) -> SafeString:
     """A Heroicon, hidden from assistive technology: the element holding it carries the label."""
     render_icon = heroicon_mini if mini else heroicon_outline
-    return mark_safe(render_icon(name, size=None, **{"class": f"shrink-0 {classes}", "aria-hidden": "true"}))
+    return mark_safe(render_icon(name, size=None, **{"class": f"shrink-0 {classes}"}))
 
 
 @register.simple_tag

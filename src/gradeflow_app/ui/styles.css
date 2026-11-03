@@ -94,6 +94,13 @@
   font-display: swap;
   src: url("../vendor/inter-4.1/InterVariable.woff2") format("woff2");
 }
+@font-face {
+  font-family: "Inter";
+  font-style: italic;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("../vendor/inter-4.1/InterVariable-Italic.woff2") format("woff2");
+}
 
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
@@ -155,7 +162,7 @@
    column is `relative`, so absolutely positioned content, screen-reader text included, scrolls inside it instead of
    lengthening the page. */
 @utility workspace {
-  @apply md:h-[calc(100vh-3.5rem)];
+  @apply md:h-[calc(100dvh-3.5rem)];
 }
 @utility workspace-columns {
   @apply grid md:grid-cols-[minmax(0,1fr)_20rem] lg:grid-cols-[14rem_minmax(0,1fr)_22rem] xl:grid-cols-[15rem_minmax(0,1fr)_24rem] 2xl:grid-cols-[16rem_minmax(0,1fr)_27rem];
@@ -163,7 +170,7 @@
 /* The questions column, over the page below lg while the questions toggle is on, beside the narrowed sidebar if
    there is one. */
 @utility workspace-questions {
-  @apply relative flex min-h-0 flex-col overflow-y-auto border-r border-base-300 bg-base-100 max-lg:fixed max-lg:bottom-0 max-lg:left-[var(--sidebar,0px)] max-lg:top-14 max-lg:z-30 max-lg:w-72 max-lg:shadow-xl max-lg:not-group-has-[#questions-shown:checked]/workspace:hidden;
+  @apply relative flex min-h-0 flex-col overflow-y-auto border-r border-base-300 bg-base-100 max-lg:fixed max-lg:bottom-0 max-lg:left-(--sidebar,0px) max-lg:top-14 max-lg:z-30 max-lg:w-72 max-lg:shadow-xl max-lg:not-group-has-[#questions-shown:checked]/workspace:hidden;
 }
 @utility workspace-answers {
   @apply relative min-w-0 overflow-y-auto bg-base-200;
@@ -216,7 +223,7 @@
 @utility edit-in-place {
   @apply -mx-2 -my-1 rounded-field border border-transparent px-[7px] py-[3px] leading-normal;
   &:is(textarea, input) {
-    @apply border-base-300 bg-base-100 shadow-none focus:border-primary focus:outline-none focus:ring-3 focus:ring-primary/15;
+    @apply border-base-300 bg-base-100 shadow-none focus:border-primary focus:outline-hidden focus:ring-3 focus:ring-primary/15;
   }
 }
 
@@ -224,7 +231,7 @@
 @utility code-block {
   @apply block w-full overflow-x-auto whitespace-pre rounded-box border border-base-300 bg-base-200/50 px-3 py-2 font-mono text-[13px]/relaxed;
   &:is(textarea) {
-    @apply resize-none focus:border-primary focus:outline-none focus:ring-3 focus:ring-primary/15;
+    @apply resize-none focus:border-primary focus:outline-hidden focus:ring-3 focus:ring-primary/15;
   }
 }
 
@@ -304,9 +311,20 @@
       --btn-bg: var(--color-base-200);
     }
   }
-  /* Focus is shown in the primary colour, except on a field with an error. */
-  :is(.input, .select, .textarea):not(.input-error, .select-error, .textarea-error):is(:focus, :focus-within) {
+  /* Focus is shown in the primary colour; a field Django marks invalid keeps the error colour, focused or not. Tom
+     Select's box follows the select it hides. */
+  :is(.input, .select, .textarea):is(:focus, :focus-within) {
     --input-color: var(--color-primary);
+  }
+  :is(.input, .select, .textarea, .file-input)[aria-invalid="true"],
+  [aria-invalid="true"] + .ts-wrapper {
+    --input-color: var(--color-error);
+  }
+  .file-input[aria-invalid="true"] {
+    --btn-color: var(--color-error);
+    &::file-selector-button {
+      color: var(--color-error-content);
+    }
   }
   /* Small controls stay at the 14 px text minimum; only their height shrinks. */
   :is(.btn-sm, .select-sm, .input-sm) {
@@ -371,7 +389,7 @@
     @apply text-muted italic;
   }
   .prose-core {
-    @apply text-[15px] leading-relaxed break-words;
+    @apply text-[15px] leading-relaxed wrap-break-word;
     & code {
       @apply rounded bg-base-content/8 px-1 py-0.5 font-mono text-[0.9em];
     }
@@ -458,7 +476,7 @@
    on arrival the rest of the way before it fades. Transitions, unlike animations, carry on from where they stop.
    Tailwind's scale-x-* set `scale`, which would multiply with this `transform`. */
 #page-loading-bar {
-  @apply pointer-events-none fixed inset-x-0 top-0 z-[60] h-0.5 origin-left bg-primary opacity-0;
+  @apply pointer-events-none fixed inset-x-0 top-0 z-60 h-0.5 origin-left bg-primary opacity-0;
   transform: scaleX(0);
   &[data-state="loading"] {
     @apply opacity-100;
@@ -492,7 +510,7 @@
 
 /* Tom Select, in the theme's look. */
 .ts-wrapper.input {
-  @apply h-auto min-h-[var(--size)] flex-wrap gap-1 py-1.5 whitespace-normal;
+  @apply h-auto min-h-(--size) flex-wrap gap-1 py-1.5 whitespace-normal;
 }
 .ts-wrapper .ts-control {
   @apply flex flex-wrap items-center gap-1 border-0 bg-transparent p-0 shadow-none;
@@ -503,7 +521,7 @@
 /* Values as long as a sentence, such as key points, wrap rather than run out of the field. */
 /* Tom Select's stylesheet isn't layered, so its colours win without `!`. */
 .ts-wrapper.multi .ts-control > .item {
-  @apply inline-flex max-w-full items-center gap-1 rounded-selector bg-base-200! px-2 py-0.5 text-sm break-words text-base-content! ring-1 ring-base-300;
+  @apply inline-flex max-w-full items-center gap-1 rounded-selector bg-base-200! px-2 py-0.5 text-sm wrap-break-word text-base-content! ring-1 ring-base-300;
 }
 .ts-wrapper .item .remove {
   @apply shrink-0 border-base-300! text-muted! hover:text-error!;

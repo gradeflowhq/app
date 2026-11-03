@@ -144,14 +144,14 @@ def test_a_removed_marking_can_be_restored_from_its_history(
     assert question is not None
     save_draft(client, draft)
     history = reverse("marking_history", args=[assessment.pk, question.pk])
-    assert "Current" in client.get(history).content.decode()
+    assert "Current" in client.get(history).text
     with django_capture_on_commit_callbacks(execute=True):
         client.post(reverse("marking_remove", args=[assessment.pk, question.pk]))
     assert not Marking.objects.exists()
-    versions = client.get(history).content.decode()
+    versions = client.get(history).text
     assert "Current" not in versions
     assert "Restore" in versions
-    assert history in client.get(reverse("question", args=[assessment.pk, question.pk])).content.decode()
+    assert history in client.get(reverse("question", args=[assessment.pk, question.pk])).text
 
 
 def test_restoring_a_version_drops_the_preview_of_the_draft_it_replaces(client: Client, assessment: Assessment) -> None:
@@ -165,10 +165,10 @@ def test_restoring_a_version_drops_the_preview_of_the_draft_it_replaces(client: 
     preview_draft(client, draft)
     answers_url = reverse("answers", args=[assessment.pk, question.pk])
     changed_option = '<option value="changed"'
-    assert changed_option in client.get(answers_url).content.decode()
+    assert changed_option in client.get(answers_url).text
     version = Marking.history.get().history_id
     client.post(reverse("marking_restore", args=[assessment.pk, question.pk, version]))
-    assert changed_option not in client.get(answers_url).content.decode()
+    assert changed_option not in client.get(answers_url).text
 
 
 def test_while_previewing_the_marks_filters_follow_the_previewed_marks(client: Client, assessment: Assessment) -> None:
@@ -181,10 +181,10 @@ def test_while_previewing_the_marks_filters_follow_the_previewed_marks(client: C
     client.post(reverse("draft", args=[assessment.pk, draft.pk]), {"path": "", "fields_posted": "1", "answers": ["41"]})
     preview_draft(client, draft)
     answers_url = reverse("answers", args=[assessment.pk, question.pk])
-    full = client.get(answers_url, {"filter": "full", "group": "answer"}, headers=HTMX_HEADERS).content.decode()
+    full = client.get(answers_url, {"filter": "full", "group": "answer"}, headers=HTMX_HEADERS).text
     assert "1 student<" in full, "41, given full marks by the preview"
     assert "5 students" not in full, "42, full marks only in the saved marking"
-    zero = client.get(answers_url, {"filter": "zero", "group": "answer"}, headers=HTMX_HEADERS).content.decode()
+    zero = client.get(answers_url, {"filter": "zero", "group": "answer"}, headers=HTMX_HEADERS).text
     assert "5 students" in zero
 
 
@@ -212,7 +212,7 @@ def test_a_new_question_group_asks_for_what_it_needs(client: Client, assessment:
     assert b"Required." not in page.content, "an empty new list isn't a mistake yet"
     draft = MarkingDraftRecord.objects.get()
     saving = client.post(reverse("draft_save", args=[assessment.pk, draft.pk]), {"path": "", "operation": "save"})
-    saved = saving.content.decode()
+    saved = saving.text
     assert 'role="alert"' not in saved
     assert "Add at least one check." in between(saved, 'id="checks-setting-1"', "</section>"), "on the empty list"
 
@@ -220,7 +220,7 @@ def test_a_new_question_group_asks_for_what_it_needs(client: Client, assessment:
 def test_a_problem_with_the_assessment_shows_on_the_field_at_fault(client: Client, assessment: Assessment) -> None:
     _, draft = start_marking(client, assessment, "Q3", "gradeflow/multiple-choice@1")
     save_definition(draft, {"question": "Q3", "uses": "gradeflow/multiple-choice@1", "with": {"correct": ["a", "e"]}})
-    page = client.get(reverse("question", args=[assessment.pk, draft.question_id])).content.decode()
+    page = client.get(reverse("question", args=[assessment.pk, draft.question_id])).text
     errors = between(page, 'id="id_correct_error"', "</div>")
     assert problem_message(draft, "correct") in errors
 
@@ -233,13 +233,13 @@ def post_parameter_rows(url: str, client: Client, fields: dict[str, str], rows: 
             f"parameters-{index}-tag": tag,
             f"parameters-{index}-value": value,
         }
-    return client.post(url, fields | row_fields).content.decode()
+    return client.post(url, fields | row_fields).text
 
 
 def test_parameters_are_named_and_checked_as_the_core_says(client: Client, assessment: Assessment) -> None:
     url, fields = code_draft(client, assessment)
     client.post(url, fields | {"operation": "add_row", "target": "parameters"})
-    page = client.post(url, fields | {"operation": "add_row", "target": "parameters"}).content.decode()
+    page = client.post(url, fields | {"operation": "add_row", "target": "parameters"}).text
     draft = MarkingDraftRecord.objects.get()
     assert list(definition_tree(draft)["with"]["parameters"]) == ["parameter_1", "parameter_2"]
     assert "Add parameter" in page
@@ -270,7 +270,7 @@ def test_parameters_the_editor_cant_edit_are_kept_as_they_are(client: Client, as
     definition = definition_tree(draft)
     definition["with"]["parameters"] = {"sizes": listed, "n": {"type": "integer", "value": 1}}
     save_definition(draft, definition)
-    page = client.get(reverse("question", args=[assessment.pk, draft.question_id])).content.decode()
+    page = client.get(reverse("question", args=[assessment.pk, draft.question_id])).text
     assert "Can't be edited here" in page
     row_fields = {"parameters-posted": "1", "parameters-0-key": "sizes", "parameters-1-key": "n"}
     row_fields |= {"parameters-1-tag": "integer", "parameters-1-value": "2"}
@@ -284,7 +284,7 @@ def test_a_parameter_is_removed_by_the_name_its_row_has_now(client: Client, asse
     definition = definition_tree(draft)
     definition["with"]["parameters"] = {"n": {"type": "integer", "value": 1}}
     save_definition(draft, definition)
-    page = client.get(reverse("question", args=[assessment.pk, draft.question_id])).content.decode()
+    page = client.get(reverse("question", args=[assessment.pk, draft.question_id])).text
     (remove_values,) = re.findall(r'hx-vals="([^"]*remove_row[^"]*)"', page)
     row = {
         "parameters-posted": "1",
@@ -310,13 +310,13 @@ def test_a_saved_marking_the_core_now_rejects_opens_and_says_so(
     marking.save()
     question = marking.question
     assert question is not None
-    page = client.get(reverse("question", args=[assessment.pk, question.pk])).content.decode()
+    page = client.get(reverse("question", args=[assessment.pk, question.pk])).text
     assert "This marking can't mark until it's fixed" in page
     settings_url = reverse("question_settings", args=[assessment.pk, question.pk])
     with django_capture_on_commit_callbacks(execute=True):
         saved = client.post(settings_url, {"question_type": "text", "save": "1", "max_marks": "2"})
     assert saved.status_code == 200, "marking the question again skips what can't mark"
-    started = client.post(reverse("marking_start", args=[assessment.pk, question.pk])).content.decode()
+    started = client.post(reverse("marking_start", args=[assessment.pk, question.pk])).text
     assert problem_message(MarkingDraftRecord.objects.get(), "answer") in started
     assert Marking.objects.filter(pk=marking.pk).exists(), "kept until it's fixed"
 
@@ -343,7 +343,7 @@ def test_a_check_inside_a_groups_check_marks_that_checks_question(client: Client
     picker = client.get(
         reverse("draft_methods", args=[assessment.pk, draft.pk]), {"operation": "add", "target": "with.then.0"}
     )
-    assert 'name="question"' in picker.content.decode(), "its methods depend on the question"
+    assert 'name="question"' in picker.text, "its methods depend on the question"
     added = {
         "path": "",
         "operation": "add",
@@ -361,13 +361,13 @@ def test_a_check_inside_a_groups_check_marks_that_checks_question(client: Client
     client.post(url, inner)
     opened = client.post(url, {"path": "", "operation": "open", "target": "with.then.0.with.checks.0"})
     assert opened.status_code == 200
-    assert 'name="correct"' in opened.content.decode(), "Q3's options to choose from"
+    assert 'name="correct"' in opened.text, "Q3's options to choose from"
 
 
 def test_a_question_in_a_group_names_the_others(client: Client, assessment: Assessment) -> None:
     question_group_marking(assessment)
     question = assessment.questions.get(key="Q2")
-    page = client.get(reverse("question", args=[assessment.pk, question.pk])).content.decode()
+    page = client.get(reverse("question", args=[assessment.pk, question.pk])).text
     assert "Question group Q1, Q2" in page
 
 
@@ -380,9 +380,7 @@ def test_checks_are_moved_and_removed(client: Client, assessment: Assessment) ->
         "gradeflow/accepted-answers@1",
         "gradeflow/key-points@1",
     ]
-    page = client.post(
-        url, {"path": "with.checks.1", "operation": "remove", "target": "with.checks.1"}
-    ).content.decode()
+    page = client.post(url, {"path": "with.checks.1", "operation": "remove", "target": "with.checks.1"}).text
     assert [check["uses"] for check in definition_tree(draft)["with"]["checks"]] == ["gradeflow/accepted-answers@1"]
     assert 'name="path" value=""' in page, "removing the check shown goes back to what holds it"
 
@@ -407,7 +405,7 @@ def test_problems_with_rows_show_on_the_row_at_fault(client: Client, assessment:
     url, draft = start_marking(client, assessment, "Q1", "gradeflow/code-tests@1")
     client.post(url, {"path": "", "operation": "add_row", "target": "tests"})
     saving = client.post(reverse("draft_save", args=[assessment.pk, draft.pk]), {"path": "", "operation": "save"})
-    errors = between(saving.content.decode(), 'id="id_tests-0-expression_error"', "</div>")
+    errors = between(saving.text, 'id="id_tests-0-expression_error"', "</div>")
     assert "text-error" in errors
 
 
@@ -422,14 +420,14 @@ def test_numbers_the_core_rejects_say_why_on_their_field(client: Client, assessm
     make_code_question(assessment, "Q1")
     url, draft = start_marking(client, assessment, "Q1", "gradeflow/code-tests@1")
     for typed in ("0", "soon"):
-        page = client.post(url, {"path": "", "fields_posted": "1", "setup__time_limit": typed}).content.decode()
+        page = client.post(url, {"path": "", "fields_posted": "1", "setup__time_limit": typed}).text
         errors = between(page, 'id="id_setup__time_limit_error"', "</div>")
         assert "text-error" in errors, typed
         assert definition_tree(draft)["with"]["setup"]["time_limit"] == (0 if typed == "0" else typed), "kept as typed"
 
 
 def htmx_page(client: Client, url: str) -> str:
-    return client.get(url, headers=HTMX_HEADERS).content.decode()
+    return client.get(url, headers=HTMX_HEADERS).text
 
 
 def test_a_question_groups_answers_show_by_combination(client: Client, assessment: Assessment) -> None:
@@ -467,17 +465,17 @@ def test_a_draft_says_when_someone_saved_the_marking_since_it_started(client: Cl
     page_url = reverse("question", args=[assessment.pk, question.pk])
     client.post(reverse("marking_start", args=[assessment.pk, question.pk]))
     notice = "Someone saved this marking after you started."
-    assert notice not in client.get(page_url).content.decode()
+    assert notice not in client.get(page_url).text
     Marking.objects.get().save()
-    assert notice in client.get(page_url).content.decode()
+    assert notice in client.get(page_url).text
 
 
 def current_links(client: Client, page_url: str) -> list[str]:
     """What the question list, refreshed in place on `page_url`, shows as current, by link."""
-    rendered = client.get(page_url).content.decode()
+    rendered = client.get(page_url).text
     refresh = re.search(r'<nav id="question-list"[^>]*hx-get="([^"]*)"', rendered)
     assert refresh is not None
-    listed = client.get(html.unescape(refresh.group(1)), headers=HTMX_HEADERS).content.decode()
+    listed = client.get(html.unescape(refresh.group(1)), headers=HTMX_HEADERS).text
     return re.findall(r'href="([^"]*)" class="question-link[^"]*" aria-current="page"', listed)
 
 
@@ -507,7 +505,7 @@ def test_the_question_list_validates_each_marking_once(client: Client, assessmen
 def test_marking_an_answer_redraws_the_editor_and_the_answers(client: Client, assessment: Assessment) -> None:
     _, draft = start_marking(client, assessment, "Q2", "gradeflow/accepted-answers@1")
     url = reverse("mark_example", args=[assessment.pk, draft.question_id])
-    page = client.post(url, {"decision": "full_marks", "answer": "42"}, headers=HTMX_HEADERS).content.decode()
+    page = client.post(url, {"decision": "full_marks", "answer": "42"}, headers=HTMX_HEADERS).text
     assert 'id="marking-panel"' in page
     assert 'id="answers"' in page.split('id="marking-panel"', 1)[0]
     assert 'hx-swap-oob="outerMorph"' in page
@@ -516,7 +514,7 @@ def test_marking_an_answer_redraws_the_editor_and_the_answers(client: Client, as
 def test_the_way_back_opens_what_holds_the_check(client: Client, assessment: Assessment) -> None:
     url, _ = start_marking(client, assessment, "Q1", "gradeflow/combination@1")
     client.post(url, {"path": "", "operation": "add", "target": "with.checks.0", "method": "gradeflow/key-points@1"})
-    page = client.post(url, {"path": "with.checks.0", "operation": "open", "target": ""}).content.decode()
+    page = client.post(url, {"path": "with.checks.0", "operation": "open", "target": ""}).text
     assert 'name="path" value=""' in page
 
 
@@ -526,10 +524,10 @@ def test_too_many_answers_to_compare_are_grouped_when_equal(
     monkeypatch.setattr(answer_groups, "MAX_COMPARED", 2)
     url = reverse("answers", args=[assessment.pk, assessment.questions.get(key="Q1").pk])
     for grouping in ("spelling", "meaning"):
-        page = client.get(url, {"group": grouping}, headers=HTMX_HEADERS).content.decode()
+        page = client.get(url, {"group": grouping}, headers=HTMX_HEADERS).text
         assert "Too many answers to compare. Showing the same answers only." in page, grouping
     assert not Job.objects.filter(kind=Job.Kind.GROUPING).exists(), "nothing to compare"
-    assert "Too many answers" not in client.get(url, {"group": "answers"}, headers=HTMX_HEADERS).content.decode()
+    assert "Too many answers" not in client.get(url, {"group": "answers"}, headers=HTMX_HEADERS).text
 
 
 def test_more_answer_groups_show_on_request_until_the_list_changes(
@@ -539,7 +537,7 @@ def test_more_answer_groups_show_on_request_until_the_list_changes(
     url = reverse("answers", args=[assessment.pk, assessment.questions.get(key="Q1").pk])
 
     def shown(**query: str) -> tuple[int, bool]:
-        page = client.get(url, query, headers=HTMX_HEADERS).content.decode()
+        page = client.get(url, query, headers=HTMX_HEADERS).text
         return page.count('<details class="group/answer'), "Show more" in page
 
     assert shown() == (4, True)
@@ -567,7 +565,7 @@ def test_the_marking_opens_from_its_breadcrumb_whose_path_is_empty(client: Clien
     client.post(url, {"path": "", "operation": "add", "target": "with.checks.0", "method": "gradeflow/key-points@1"})
     page = client.post(url, {"path": "with.checks.0", "operation": "open"})
     assert page.status_code == 200
-    assert 'name="path" value=""' in page.content.decode()
+    assert 'name="path" value=""' in page.text
 
 
 def test_choosing_another_question_in_the_picker_keeps_where_the_check_goes(
@@ -576,9 +574,9 @@ def test_choosing_another_question_in_the_picker_keeps_where_the_check_goes(
     client.post(reverse("question_group_new", args=[assessment.pk]), {"method": "gradeflow/conditional@1"})
     draft = MarkingDraftRecord.objects.get()
     methods = reverse("draft_methods", args=[assessment.pk, draft.pk])
-    picker = client.get(methods, {"operation": "add", "target": "with.condition.0", "path": ""}).content.decode()
+    picker = client.get(methods, {"operation": "add", "target": "with.condition.0", "path": ""}).text
     reload = html.unescape(re.findall(r'hx-get="([^"]*)" hx-include="this"', picker)[0])
-    again = client.get(f"{reload}&question=Q3").content.decode()
+    again = client.get(f"{reload}&question=Q3").text
     assert '<input type="hidden" name="target" value="with.condition.0">' in again
     assert '<input type="hidden" name="path" value="">' in again
     assert 'data-method="gradeflow/multiple-choice@1"' in again, "Q3's methods"
@@ -588,12 +586,10 @@ def test_a_question_groups_check_may_be_a_method_of_several_questions(client: Cl
     client.post(reverse("question_group_new", args=[assessment.pk]), {"method": "gradeflow/combination@1"})
     draft = MarkingDraftRecord.objects.get()
     methods = reverse("draft_methods", args=[assessment.pk, draft.pk])
-    first = client.get(methods, {"operation": "add", "target": "with.checks.0", "path": ""}).content.decode()
+    first = client.get(methods, {"operation": "add", "target": "with.checks.0", "path": ""}).text
     assert '<option value="">Several questions</option>' in first
     assert 'data-method="gradeflow/answer-sets@1"' not in first, "the first question's methods"
-    several = client.get(
-        methods, {"operation": "add", "target": "with.checks.0", "path": "", "question": ""}
-    ).content.decode()
+    several = client.get(methods, {"operation": "add", "target": "with.checks.0", "path": "", "question": ""}).text
     assert '<option value="" selected>Several questions</option>' in several
     assert 'data-method="gradeflow/answer-sets@1"' in several
     added = {
@@ -622,11 +618,8 @@ def test_a_question_has_one_marking_but_a_draft_marking_it_again_previews(
     draft.definition = dump_yaml({**definition_data(draft.definition), "name": "Edited group"})
     draft.save(update_fields=["definition"])
     saving = client.post(reverse("draft_save", args=[assessment.pk, draft.pk]), {"path": "", "operation": "save"})
-    assert "Q2 has another marking. A question has one marking." in saving.content.decode()
-    assert (
-        f'href="{reverse("question", args=[assessment.pk, assessment.questions.get(key="Q2").pk])}"'
-        in saving.content.decode()
-    )
+    assert "Q2 has another marking. A question has one marking." in saving.text
+    assert f'href="{reverse("question", args=[assessment.pk, assessment.questions.get(key="Q2").pk])}"' in saving.text
     assert MarkingDraftRecord.objects.filter(pk=draft.pk).exists()
     assert "Edited group" not in Marking.objects.get(pk=marking.pk).definition
     preview_draft(client, draft)
@@ -646,22 +639,22 @@ def test_question_group_validation_refreshes_when_another_marking_releases_its_q
     draft = MarkingDraftRecord.objects.get()
     draft.definition = dump_yaml({**definition_data(draft.definition), "name": "Edited group"})
     draft.save(update_fields=["definition"])
-    page = client.get(reverse("question_group", args=[assessment.pk, marking.pk])).content.decode()
-    status_url = reverse("draft", args=[assessment.pk, draft.pk]) + "?status_only=1"
+    page = client.get(reverse("question_group", args=[assessment.pk, marking.pk])).text
+    status_url = reverse("draft", args=[assessment.pk, draft.pk], query={"status_only": 1})
     assert status_url in page
     assert 'hx-include="#marking-form [name=path]"' in page
-    before = client.get(status_url).content.decode()
+    before = client.get(status_url).text
     assert "Q2 has another marking" in before
     original = draft.definition
     client.post(reverse("marking_remove", args=[assessment.pk, question.pk]))
-    after = client.get(status_url).content.decode()
+    after = client.get(status_url).text
     assert "Q2 has another marking" not in after
     assert 'id="preview-bar"' in after
     assert 'id="marking-form"' not in after
     draft.refresh_from_db()
     assert draft.definition == original
     preview_draft(client, draft)
-    page = client.get(status_url).content.decode()
+    page = client.get(status_url).text
     assert "students&#x27; results change" in page or "students' results change" in page
     assert 'id="marking-form"' not in page
     client.post(reverse("draft_save", args=[assessment.pk, draft.pk]), {"path": "", "operation": "save"})
@@ -671,9 +664,9 @@ def test_question_group_validation_refreshes_when_another_marking_releases_its_q
 
 def test_a_draft_is_edited_as_yaml_with_problems_on_their_lines(client: Client, assessment: Assessment) -> None:
     url, draft = start_marking(client, assessment, "Q1", "gradeflow/key-points@1")
-    assert "Edit as YAML" in client.get(url).content.decode()
+    assert "Edit as YAML" in client.get(url).text
     yaml_url = reverse("draft_yaml", args=[assessment.pk, draft.pk])
-    assert "uses: gradeflow/key-points@1" in client.get(yaml_url).content.decode()
+    assert "uses: gradeflow/key-points@1" in client.get(yaml_url).text
     workspace = MarkingWorkspace(draft)
 
     def shows_what_the_core_says(response: Any, text: str) -> None:
@@ -687,19 +680,19 @@ def test_a_draft_is_edited_as_yaml_with_problems_on_their_lines(client: Client, 
         except InvalidError as error:
             said = [str(problem) for problem in error.problems]
         assert said
-        assert all(escape(problem) in response.content.decode() for problem in said)
+        assert all(escape(problem) in response.text for problem in said)
 
     typed = "question: Q1\nuses: gradeflow/key-points@1\nwith:\n  points: []\n"
     wrong = client.post(yaml_url, {"definition": typed}, headers=HTMX_HEADERS)
     assert wrong.status_code == 422
     shows_what_the_core_says(wrong, typed)
     assert definition_tree(draft)["with"] == {"points": []}, "kept as typed, to fix in either editor"
-    assert "Saved to your draft" in wrong.content.decode()
-    assert 'id="marking-panel" class="flex min-h-full flex-col" hx-swap-oob' in wrong.content.decode()
+    assert "Saved to your draft" in wrong.text
+    assert 'id="marking-panel" class="flex min-h-full flex-col" hx-swap-oob' in wrong.text
     unparsable = client.post(yaml_url, {"definition": "uses: [\n"}, headers=HTMX_HEADERS)
     shows_what_the_core_says(unparsable, "uses: [\n")
-    assert "Not saved" in unparsable.content.decode()
-    assert "marking-panel" not in unparsable.content.decode()
+    assert "Not saved" in unparsable.text
+    assert "marking-panel" not in unparsable.text
     unnamed = "uses: gradeflow/key-points@1\nwith:\n  points: [light]\n"
     fixed = client.post(yaml_url, {"definition": unnamed}, headers=HTMX_HEADERS)
     assert fixed.headers["HX-Refresh"] == "true"
@@ -730,15 +723,15 @@ def test_an_answer_group_is_marked_by_example(client: Client, assessment: Assess
     client.post(url, {"path": "", "fields_posted": "1", "answers": ["42"]})
     question = assessment.questions.get(key="Q2")
     answers_url = reverse("answers", args=[assessment.pk, question.pk])
-    answers = client.get(answers_url).content.decode()
+    answers = client.get(answers_url).text
     assert all(f'value="{given}">{label}</button>' in answers for given, label in DECISIONS.items())
     assert answers.count('value="cancel">') == decision_count(draft)
     example = reverse("mark_example", args=[assessment.pk, question.pk])
     expected_tree = marked_by_example(draft, "41", "part_marks")
     page = client.post(example, {"answer": ["41"], "decision": "part_marks"}, headers=HTMX_HEADERS)
-    assert 'id="marking-panel"' in page.content.decode()
+    assert 'id="marking-panel"' in page.text
     assert definition_tree(draft) == expected_tree
-    assert client.get(answers_url).content.decode().count('value="cancel">') == decision_count(draft)
+    assert client.get(answers_url).text.count('value="cancel">') == decision_count(draft)
     with pytest.raises(GradeFlowError) as refusal:
         marked_by_example(draft, "41", "full_marks")
     refused = client.post(example, {"answer": ["41"], "decision": "full_marks"}, headers=HTMX_HEADERS)
@@ -756,7 +749,7 @@ def test_each_answer_marked_by_example_redraws_the_editor(client: Client, assess
         assert definition_tree(draft) == expected_tree
         workspace = MarkingWorkspace(draft)
         assert workspace.valid
-        cards = page.content.decode().split('id="editor-notices"', 1)[1]
+        cards = page.text.split('id="editor-notices"', 1)[1]
         checks = definition_tree(draft)["with"]["checks"]
         described = [workspace.checks.describe(f"with.checks.{index}") for index in range(len(checks))]
         assert all(markdown(description) in cards for description in described)
@@ -774,11 +767,11 @@ def test_a_problem_shows_on_its_checks_card_and_on_its_form_where_no_field_holds
         return escape(single_problem.message)
 
     misplaced = problem({**light, "if": "{{ checks.later.correct }}"}, {**dark, "id": "later"})
-    assert misplaced in client.get(url).content.decode()
+    assert misplaced in client.get(url).text
     unknown = problem(light, {**dark, "with": {"answers": ["dark"], "colour": 1}})
-    assert f"colour: {unknown}" in client.get(url).content.decode()
+    assert f"colour: {unknown}" in client.get(url).text
     opened = client.post(url, {"path": "", "operation": "open", "target": "with.checks.1"}, headers=HTMX_HEADERS)
-    assert f"colour: {unknown}" in opened.content.decode()
+    assert f"colour: {unknown}" in opened.text
 
 
 def test_starting_and_discarding_a_draft_refreshes_the_users_question_list(
@@ -814,7 +807,7 @@ def test_discarding_says_what_stays(client: Client, assessment: Assessment) -> N
     drafts["Q3"], _ = start_marking(client, assessment, "Q3", "gradeflow/multiple-choice@1")
     stays = {"Q1": "Students keep their imported marks.", "Q2": "The saved marking stays as it was.", "Q3": ""}
     for key, said in stays.items():
-        assert f'data-confirm-detail="{said}"' in client.get(drafts[key]).content.decode()
+        assert f'data-confirm-detail="{said}"' in client.get(drafts[key]).text
 
 
 def test_discarding_a_new_question_group_returns_to_starting_one(client: Client, assessment: Assessment) -> None:
@@ -839,7 +832,7 @@ def test_an_empty_list_of_questions_asks_for_one_instead_of_showing_the_first(
     started = client.post(
         reverse("question_group_new", args=[assessment.pk]), {"method": "gradeflow/custom-code-for-a-group@1"}
     )
-    page = client.get(started.headers["Location"]).content.decode()
+    page = client.get(started.headers["Location"]).text
     assert '<option value="" disabled selected>Choose question</option>' in page
 
 
@@ -851,7 +844,7 @@ def test_choosing_group_questions_updates_the_answers_column(client: Client, ass
         {"path": "", "fields_posted": "1", "questions": ["Q1"], "code": 'results = {"Q1": {"correct": True}}'},
         headers=HTMX_HEADERS,
     )
-    page = response.content.decode()
+    page = response.text
     assert 'id="answers"' in page
     assert "No questions yet" not in page
 
@@ -860,7 +853,7 @@ def test_code_answers_show_as_typed_and_highlighted(client: Client, assessment: 
     question = make_code_question(assessment, "Q1")
     unindented_code = "def first_positive(xs):\nfor x in xs:\nif x > 0:\nreturn x\nreturn None"
     assessment.students.update(answers={"Q1": unindented_code + "  \r\n"})
-    page = client.get(reverse("answers", args=[assessment.pk, question.pk])).content.decode()
+    page = client.get(reverse("answers", args=[assessment.pk, question.pk])).text
     assert '<span class="code-k">def</span>' in page
     text = html.unescape(re.sub(r"<span[^>]*>|</span>", "", page))
     assert unindented_code in text
@@ -881,7 +874,7 @@ def test_text_answers_in_an_answer_group_are_listed_under_answers(client: Client
     first.answers, second.answers = {"Q1": "Paris"}, {"Q1": "paris "}
     first.save()
     second.save()
-    page = client.get(reverse("answers", args=[assessment.pk, assessment.questions.get(key="Q1").pk])).content.decode()
+    page = client.get(reverse("answers", args=[assessment.pk, assessment.questions.get(key="Q1").pk])).text
     assert '>Answers<span class="badge badge-sm badge-soft tabular-nums">2</span>' in page
     listed = between(page, 'aria-label="Answers">', "</ul>")
     assert ">Paris</p>" in listed

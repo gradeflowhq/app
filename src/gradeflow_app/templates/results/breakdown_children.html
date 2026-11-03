@@ -4,9 +4,9 @@
 {% else %}{% with effect_display=check.effect|effect_icon %}<span class="{{ effect_display.color_class }}" title="{{ effect_display.label }}">{% icon effect_display.icon "size-4" %}<span class="sr-only">{{ effect_display.label }}</span></span>{% endwith %}{% endif %}
 {% endpartialdef %}
 {% partialdef value %}
-{% if detail.kind == "code" %}<code class="whitespace-pre-wrap break-words font-mono text-[0.9em]">{{ detail.value|highlight:language }}</code>
-{% elif detail.kind == "error" %}<span class="whitespace-pre-wrap break-words font-mono text-[0.9em] text-error">{{ detail.value }}</span>
-{% else %}<span class="whitespace-pre-wrap break-words">{{ detail.value }}</span>{% endif %}
+{% if detail.kind == "code" %}<code class="whitespace-pre-wrap wrap-break-word font-mono text-[0.9em]">{{ detail.value|highlight:language }}</code>
+{% elif detail.kind == "error" %}<span class="whitespace-pre-wrap wrap-break-word font-mono text-[0.9em] text-error">{{ detail.value }}</span>
+{% else %}<span class="whitespace-pre-wrap wrap-break-word">{{ detail.value }}</span>{% endif %}
 {% endpartialdef %}
 {% partialdef details %}
 {% for detail in check.details %}{% if detail.value|is_multiline %}<span class="mt-1 grid gap-1"><span class="text-muted">{{ detail.title }}</span>{% if detail.kind == "code" %}<code class="code-block">{{ detail.value|highlight:language }}</code>{% else %}{% partial value %}{% endif %}</span>

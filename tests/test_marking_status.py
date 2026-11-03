@@ -62,14 +62,14 @@ def test_a_marking_that_stops_validating_schedules_nothing_and_says_so(
     )
     response = client.get(page_url)
     assert response.status_code == 200
-    assert "This marking can't mark until it's fixed" in response.content.decode()
+    assert "This marking can't mark until it's fixed" in response.text
     if grouped:
         shown = client.get(reverse("question", args=[assessment.pk, assessment.questions.get(key="Q3").pk]))
-        assert "This marking can't mark until it's fixed" in shown.content.decode(), "on each question it marked"
+        assert "This marking can't mark until it's fixed" in shown.text, "on each question it marked"
     if grouped:
-        assert "No questions yet" not in response.content.decode()
-        assert 'title="photosynthesis uses light"' in response.content.decode()
-        assert "Read only" in response.content.decode()
+        assert "No questions yet" not in response.text
+        assert 'title="photosynthesis uses light"' in response.text
+        assert "Read only" in response.text
     assert list(Result.objects.values("student_id", "question_id", "proportion", "revision")) == previous
 
 

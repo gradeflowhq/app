@@ -1,4 +1,4 @@
-{% if widget.attrs.disabled %}<div class="prose-core break-words" id="{{ widget.attrs.id }}" x-data="math">{{ widget.value|default_if_none:""|math_markdown }}</div>{% else %}
+{% if widget.attrs.disabled %}<div class="prose-core" id="{{ widget.attrs.id }}" x-data="math">{{ widget.value|default_if_none:""|math_markdown }}</div>{% else %}
 <div class="grid gap-1.5" x-data="markdownEditor" data-preview="{% url 'markdown_preview' %}">
   <div class="flex flex-wrap items-center justify-between gap-2">
     <div class="segmented" role="tablist">

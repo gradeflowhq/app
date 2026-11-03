@@ -16,7 +16,7 @@ def test_a_check_with_nothing_before_it_has_no_condition(client: Client, assessm
     path = "with.checks.0" if nested else ""
     if nested:
         client.post(url, {"path": "", "operation": "add", "target": path, "method": "gradeflow/length@1"})
-    page = client.post(url, {"path": "", "operation": "open", "target": path}).content.decode()
+    page = client.post(url, {"path": "", "operation": "open", "target": path}).text
     assert 'name="if-' not in page
 
 
@@ -27,13 +27,13 @@ def test_a_condition_on_an_earlier_check_names_that_check(client: Client, assess
         client.post(url, {"path": "", "operation": "add", "target": f"with.checks.{index}", "method": method})
     draft.refresh_from_db()
     earlier = escape(MarkingWorkspace(draft).checks.label("with.checks.0"))
-    page = client.post(url, {"path": "", "operation": "open", "target": "with.checks.1"}).content.decode()
+    page = client.post(url, {"path": "", "operation": "open", "target": "with.checks.1"}).text
     assert f'<option value="with.checks.0">{earlier}</option>' in page
     tests = [(test, escape(label)) for test, label in Condition.test_labels.items()]
     assert all(f'<option value="{test}"' in page and f">{label}</option>" in page for test, label in tests)
     client.post(
         url, {"path": "with.checks.1", "fields_posted": "1", "if-check-0": "with.checks.0", "if-test-0": "incorrect"}
     )
-    reloaded_page = client.post(url, {"path": "", "operation": "open", "target": "with.checks.1"}).content.decode()
+    reloaded_page = client.post(url, {"path": "", "operation": "open", "target": "with.checks.1"}).text
     assert f'<option value="with.checks.0" selected>{earlier}</option>' in reloaded_page
     assert '<option value="incorrect" selected>' in reloaded_page

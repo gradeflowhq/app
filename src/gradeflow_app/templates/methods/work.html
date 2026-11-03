@@ -18,7 +18,7 @@
         <h1 class="truncate">{{ name }}</h1>
         <button type="button" class="btn btn-ghost btn-square text-muted" hx-get="{{ urls.details }}" hx-target="#drawer-body" hx-swap="innerHTML" data-dialog="drawer" aria-label="{% if draft %}Edit details{% else %}Details{% endif %}" title="{% if draft %}Edit details{% else %}Details{% endif %}">{% if draft %}{% icon "pencil-square" %}{% else %}{% icon "information-circle" %}{% endif %}</button>
       </div>
-      {% if metadata.summary %}<p class="min-w-0 shrink-[4] truncate text-sm text-muted max-md:hidden" title="{{ metadata.summary }}">{{ metadata.summary }}</p>{% endif %}
+      {% if metadata.summary %}<p class="min-w-0 shrink-4 truncate text-sm text-muted max-md:hidden" title="{{ metadata.summary }}">{{ metadata.summary }}</p>{% endif %}
     </div>
     <div class="ml-auto flex items-center gap-2">
       {% if not access.can_edit %}<span class="text-sm text-muted max-sm:hidden">by {{ method.library.owner_name }}</span>{% endif %}
@@ -134,7 +134,7 @@
               <div class="min-w-0 flex-1">
                 {% if can_edit_tests %}
                 <div x-show="!editing">
-                  <div class="{% if selected_question|code_language %}rounded-box outline-none hover:*:border-base-content/25 focus-visible:*:border-primary focus-visible:*:ring-3 focus-visible:*:ring-primary/15{% else %}edit-in-place hover:bg-base-200/70{% endif %} cursor-text" tabindex="0" x-ref="focusReturn" x-on:click="edit" x-on:keydown.enter.prevent="edit">{% include "methods/work.html#answer_shown" %}</div>
+                  <div class="{% if selected_question|code_language %}rounded-box outline-hidden hover:*:border-base-content/25 focus-visible:*:border-primary focus-visible:*:ring-3 focus-visible:*:ring-primary/15{% else %}edit-in-place hover:bg-base-200/70{% endif %} cursor-text" tabindex="0" x-ref="focusReturn" x-on:click="edit" x-on:keydown.enter.prevent="edit">{% include "methods/work.html#answer_shown" %}</div>
                   <div{% if run_out_of_date %} class="opacity-50"{% endif %}>{% include "results/answer_feedback.html" with feedback=row.result.feedback %}{% if row.result.breakdown %}{% with code=selected_question|code_language %}<c-more-options label="Breakdown" class="mt-2"><c-breakdown :check="row.result.breakdown" :language="code" /></c-more-options>{% endwith %}{% endif %}</div>
                 </div>
                 {% include "methods/work.html#answer_editor" with operation="save" answer=row.answer %}

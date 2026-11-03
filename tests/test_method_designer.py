@@ -60,7 +60,7 @@ def method(client: Client, course: Course) -> Method:
 
 
 def new_method_url(course: Course) -> str:
-    return f"{reverse('method_new')}?course={course.pk}"
+    return reverse("method_new", query={"course": course.pk})
 
 
 def new_method_fields(name: str) -> dict[str, str]:
@@ -125,18 +125,18 @@ class MarkingControls(HTMLParser):
 
 
 def test_a_new_method_starts_as_a_draft(client: Client, course: Course, method: Method) -> None:
-    listing = client.get(reverse("course_methods", args=[course.pk])).content.decode()
+    listing = client.get(reverse("course_methods", args=[course.pk])).text
     assert f'hx-post="{escape(new_method_url(course))}"' in listing, "New method is a dialog on the Methods page"
     assert "Save to" not in listing
     assert method.library == course.library
-    page = client.get(designer_url(method, "method_page")).content.decode()
+    page = client.get(designer_url(method, "method_page")).text
     assert "Light" in page
     assert "Draft" in page
     assert "read-only-fields" not in page
     assert ">Methods</a></span>" not in page
     assert ">Publish</button>" in page
     assert not method.versions.exists()
-    listing = client.get(reverse("course_methods", args=[course.pk])).content.decode()
+    listing = client.get(reverse("course_methods", args=[course.pk])).text
     assert "Says light." in listing, "a draft says what it does too"
     assert reverse("method_latest", args=[method.pk]).endswith("/")
     assert client.get(reverse("method_latest", args=[method.pk])).headers["Location"] == designer_url(
@@ -148,7 +148,7 @@ def test_test_answers_are_added_changed_and_removed_whole(client: Client, method
     post_to_designer(client, method, "method_answers", operation="add", answer="light")
     post_to_designer(client, method, "method_answers", operation="add", answer="dark")
     assert answer_rows(method) == [("light", False), ("dark", False)]
-    page = client.get(designer_url(method, "method_page")).content.decode()
+    page = client.get(designer_url(method, "method_page")).text
     assert re.search(r'aria-label="Answer of submission 2"[^>]*>dark</textarea>', page)
     post_to_designer(client, method, "method_answers", operation="save", row="1", answer="sunlight")
     post_to_designer(client, method, "method_answers", operation="example", row="0")
@@ -158,7 +158,7 @@ def test_test_answers_are_added_changed_and_removed_whole(client: Client, method
     post_to_designer(client, method, "method_answers", operation="delete", row="0")
     assert answer_rows(method) == [("", False)]
     response = post_to_designer(client, method, "method_answers", operation="delete", row="5")
-    assert "This answer is no longer there." in response.content.decode()
+    assert "This answer is no longer there." in response.text
 
 
 def test_chosen_answers_become_the_methods_example(client: Client, method: Method) -> None:
@@ -176,19 +176,17 @@ def test_running_the_tests_shows_the_marks_until_the_answers_change(
     post_to_designer(client, method, "method_answers", operation="add", answer="dark")
     with django_capture_on_commit_callbacks(execute=True):
         post_to_designer(client, method, "method_run")
-    page = client.get(designer_url(method, "method_page")).content.decode()
+    page = client.get(designer_url(method, "method_page")).text
     job = Job.objects.get(kind=Job.Kind.DRAFT_TESTS)
     assert job.status == Job.Status.COMPLETED, job.error
     assert [row["answers"] for row in job.result or []] == [{"Q1": "light"}, {"Q1": "dark"}], "a result per answer"
     assert "Results are up to date" in page
-    results = client.get(designer_url(method, "method_results")).content.decode()
+    results = client.get(designer_url(method, "method_results")).text
     assert "Results are up to date" in results
     post_to_designer(client, method, "method_check", operation="open", target="with.checks.0")
-    assert "Results are up to date" in client.get(designer_url(method, "method_results")).content.decode(), (
-        "only looked"
-    )
+    assert "Results are up to date" in client.get(designer_url(method, "method_results")).text, "only looked"
     post_to_designer(client, method, "method_answers", operation="add", answer="lights")
-    assert "Changed since the last run" in client.get(designer_url(method, "method_results")).content.decode()
+    assert "Changed since the last run" in client.get(designer_url(method, "method_results")).text
 
 
 def test_test_answers_show_how_each_check_marked_them(
@@ -197,7 +195,7 @@ def test_test_answers_show_how_each_check_marked_them(
     post_to_designer(client, method_with_length_check, "method_answers", operation="add", answer="dark")
     with django_capture_on_commit_callbacks(execute=True):
         post_to_designer(client, method_with_length_check, "method_run")
-    results = client.get(designer_url(method_with_length_check, "method_results")).content.decode()
+    results = client.get(designer_url(method_with_length_check, "method_results")).text
     assert "Breakdown" in results
     assert "Includes <code>light</code>." in results
     assert "Any length." in results
@@ -259,10 +257,10 @@ def menu_items(page: str) -> list[tuple[str, bool]]:
 
 def test_a_settings_menu_marks_what_fills_it(client: Client, method: Method) -> None:
     first_check_query = {"path": "with.checks.0"}
-    page = client.get(designer_url(method, "method_page"), first_check_query).content.decode()
+    page = client.get(designer_url(method, "method_page"), first_check_query).text
     assert menu_items(page)[0] == ("Fixed value", True)
     post_to_designer(client, method, "method_field", operation="new_input", field=FIRST_POINTS_PATH)
-    page_with_input = client.get(designer_url(method, "method_page"), first_check_query).content.decode()
+    page_with_input = client.get(designer_url(method, "method_page"), first_check_query).text
     [declaration] = core_draft(method).inputs.values()
     assert menu_items(page_with_input)[:2] == [("Fixed value", False), (declaration["title"], True)]
     assert page_with_input.count("New input") == page.count("New input") - 1
@@ -296,7 +294,7 @@ def test_an_inputs_label_help_and_default_are_saved(client: Client, method: Meth
     name = input_name_at(core_draft(method), FIRST_POINTS_PATH)
     assert name is not None
     tab = client.get(designer_url(method, "method_inputs"), {"input": name, "tab": "inputs"})
-    assert 'name="input-default"' in tab.content.decode()
+    assert 'name="input-default"' in tab.text
     details = {"input": name, "input-title": "Words", "input-description": "What answers must say."}
     post_with_revision(client, method, "method_inputs", None, details | {"input-default": ["sun"]})
     assert core_draft(method).inputs[name] == {
@@ -315,7 +313,7 @@ def test_every_part_of_an_inputs_declaration_is_edited(client: Client, method: M
     post_to_designer(client, method, "method_field", operation="new_input", field=combine_path)
     name = input_name_at(core_draft(method), combine_path)
     assert name is not None
-    tab = client.get(designer_url(method, "method_inputs"), {"input": name, "tab": "inputs"}).content.decode()
+    tab = client.get(designer_url(method, "method_inputs"), {"input": name, "tab": "inputs"}).text
     assert 'name="input-advanced"' in tab
     assert 'name="input-choices"' in tab
     fields = {"input": name, "input-title": "Combine", "input-default": "any", "input-advanced": "True"}
@@ -357,7 +355,7 @@ def new_input(client: Client, method: Method, field: str) -> str:
 
 
 def input_form(client: Client, method: Method, name: str) -> str:
-    return client.get(designer_url(method, "method_inputs"), {"input": name, "tab": "inputs"}).content.decode()
+    return client.get(designer_url(method, "method_inputs"), {"input": name, "tab": "inputs"}).text
 
 
 def input_settings_form(page: str) -> str:
@@ -407,7 +405,7 @@ def test_an_inputs_choices_are_the_options_of_the_setting_it_fills(client: Clien
     }
     page = input_form(client, method, name)
     assert [value for value, _ in options_of(page, "default")] == ["", "exact", "spelling"]
-    listing = client.get(designer_url(method, "method_inputs"), {"tab": "inputs"}).content.decode()
+    listing = client.get(designer_url(method, "method_inputs"), {"tab": "inputs"}).text
     assert "Default: Similar spelling" in listing
 
 
@@ -433,7 +431,7 @@ def test_a_default_outside_the_choices_shows_on_the_default_with_what_was_typed(
         "input-choices": ["exact"],
         "input-default": "spelling",
     }
-    page = post_with_revision(client, method, "method_inputs", None, fields).content.decode()
+    page = post_with_revision(client, method, "method_inputs", None, fields).text
     assert core_draft(method).inputs[name] == before
     assert field_error(page, "default") == "Similar spelling isn't one of the choices."
     assert 'value="How to match"' in page
@@ -479,7 +477,7 @@ def test_an_edit_of_a_check_leaves_what_inputs_fill(client: Client, method: Meth
     post_with_revision(client, method, "method_inputs", None, fields)
     post_with_revision(client, method, "method_inputs", None, {"input": whole_words_input, "input-default": "True"})
     before = core_draft(method).inputs
-    page = client.get(designer_url(method, "method_page"), {"path": "with.checks.0"}).content.decode()
+    page = client.get(designer_url(method, "method_page"), {"path": "with.checks.0"}).text
     for key in ("points", "match", "whole_words"):
         assert f'id="input-fill-with.checks.0.with.{key}"' in page
         assert f'name="{key}"' not in page
@@ -497,7 +495,7 @@ def test_examples_are_typed_like_the_setting(client: Client, method_with_length_
         client, method_with_length_check, "method_inputs", None, {"input": name, "input-examples": ["2", "abc"]}
     )
     assert "examples" not in core_draft(method_with_length_check).inputs[name]
-    text = page.content.decode()
+    text = page.text
     assert field_error(text, "examples") == "Must be a whole number."
     assert '<option value="abc" selected>' in text
 
@@ -510,7 +508,7 @@ def test_the_default_offers_the_settings_examples_not_the_inputs(
         client, method_with_length_check, "method_inputs", None, {"input": name, "input-examples": ["7"]}
     )
     assert 'data-preset="7"' not in input_settings_form(input_form(client, method_with_length_check, name))
-    assert 'data-preset="7"' in client.get(designer_url(method_with_length_check, "method_page")).content.decode(), (
+    assert 'data-preset="7"' in client.get(designer_url(method_with_length_check, "method_page")).text, (
         "where it's filled in"
     )
 
@@ -538,7 +536,7 @@ def test_a_check_named_by_an_input_shows_the_name_it_gets(client: Client, method
     name = new_input(client, method, "with.checks.0.name")
 
     def shown(path: str) -> str:
-        page = client.get(designer_url(method, "method_page"), {"path": path}).content.decode()
+        page = client.get(designer_url(method, "method_page"), {"path": path}).text
         assert "{{ inputs." not in page
         return page
 
@@ -568,11 +566,11 @@ def test_an_inputs_rows_are_added_and_removed_before_saving(client: Client, meth
     page = post_with_revision(
         client, method, "method_inputs", None, row | {"operation": "add_row", "target": "default"}
     )
-    assert 'name="default-1-expression"' in page.content.decode()
+    assert 'name="default-1-expression"' in page.text
     page = post_with_revision(
         client, method, "method_inputs", None, row | {"operation": "remove_row", "target": "default", "value": "0"}
     )
-    assert 'name="default-0-expression"' not in page.content.decode()
+    assert 'name="default-0-expression"' not in page.text
     assert core_draft(method).inputs[name]["default"] == [{"expression": "f(1)", "expected": "2"}], "saved only on Save"
 
 
@@ -615,7 +613,7 @@ def test_an_answer_of_several_values_is_written_value_by_value(client: Client, m
     question = question_in_tests(method)
     schema = question.answer_schema()
     titles = {name: escape(property_schema["title"]) for name, property_schema in schema["properties"].items()}
-    page = client.get(designer_url(method, "method_page"), headers=HTMX_HEADERS).content.decode()
+    page = client.get(designer_url(method, "method_page"), headers=HTMX_HEADERS).text
     assert all(f'placeholder="{title}"' in page for title in titles.values())
     typed = [dict(zip(titles, values, strict=True)) for values in (("2", " -3 "), ("", " "))]
     for values in typed:
@@ -628,7 +626,7 @@ def test_an_answer_of_several_values_is_written_value_by_value(client: Client, m
         )
     written = [question.answer_from(values) for values in typed]
     assert answer_rows(method) == [(answer, False) for answer in written]
-    page = client.get(designer_url(method, "method_page"), headers=HTMX_HEADERS).content.decode()
+    page = client.get(designer_url(method, "method_page"), headers=HTMX_HEADERS).text
     for name, value in question.answer_values(written[0]).items():
         assert f'title="{titles[name]}">{escape(value)}</span>' in page
         assert f'name="value-{name}" value="{escape(value)}"' in page
@@ -649,13 +647,13 @@ def test_a_choice_answer_is_ticked_from_the_options(client: Client, method: Meth
 def test_an_answer_of_several_options_shows_each_option(client: Client, method: Method) -> None:
     set_question_in_tests(method, {"type": "choice", "options": ["a", "b", "c"], "allow_multiple": True})
     post_with_revision(client, method, "method_answers", None, {"operation": "add", "value-options": ["c", "a"]})
-    page = client.get(designer_url(method, "method_page"), headers=HTMX_HEADERS).content.decode()
+    page = client.get(designer_url(method, "method_page"), headers=HTMX_HEADERS).text
     shown = re.findall(r'<span class="badge[^"]*" title="[^"]+">([^<]*)</span>', page)
     assert shown == ["a", "c"]
 
 
 def test_a_text_answer_is_written_whole(client: Client, method: Method) -> None:
-    page = client.get(designer_url(method, "method_page"), headers=HTMX_HEADERS).content.decode()
+    page = client.get(designer_url(method, "method_page"), headers=HTMX_HEADERS).text
     assert 'name="value-' not in page
     post_to_designer(client, method, "method_answers", operation="add", answer="light\nand heat")
     assert answer_rows(method) == [("light\nand heat", False)]
@@ -663,13 +661,13 @@ def test_a_text_answer_is_written_whole(client: Client, method: Method) -> None:
 
 def test_a_draft_is_listed_as_it_says_it_is_so_far(client: Client, method: Method, course: Course) -> None:
     post_to_designer(client, method, "method_yaml", definition="label: Half done\nsummary: Not yet.\nchecks: []\n")
-    listed = client.get(reverse("course_methods", args=[course.pk])).content.decode()
+    listed = client.get(reverse("course_methods", args=[course.pk])).text
     text = QUESTION_TYPE_LABELS["text"]
     assert re.search(rf">Half done</a>.*Not yet\.</p></td>\s*<td[^>]*>{re.escape(text)}</td>", listed, re.DOTALL)
 
 
 def test_details_are_saved(client: Client, method: Method) -> None:
-    details_dialog = client.get(designer_url(method, "method_details")).content.decode()
+    details_dialog = client.get(designer_url(method, "method_details")).text
     assert 'name="summary"' in details_dialog
     assert "<markdown-toolbar" in details_dialog, "the guide is written as Markdown"
     post_to_designer(client, method, "method_details", label="Bright", summary="Says bright.", question_types=["text"])
@@ -682,7 +680,7 @@ def test_details_saved_as_shown_leave_the_definition_as_it_was(client: Client, m
         client, method, "method_yaml", definition="label: All\nsummary: Any.\nquestion_types: all\nchecks: []\n"
     )
     before = draft(method).definition
-    details_dialog = client.get(designer_url(method, "method_details")).content.decode()
+    details_dialog = client.get(designer_url(method, "method_details")).text
     shown = {name: value for name, value in core_draft(method).metadata.items() if value}
     assert all(re.search(f'value="{kind}"[^>]* checked', details_dialog) for kind in shown["question_types"])
     post_to_designer(client, method, "method_details", **shown)
@@ -693,7 +691,7 @@ def test_yaml_the_core_cant_read_leaves_the_draft_as_it_was(client: Client, meth
     before = draft(method).definition
     response = post_to_designer(client, method, "method_yaml", definition="checks: [")
     assert response.status_code == 422
-    assert 'role="alert"' in response.content.decode()
+    assert 'role="alert"' in response.text
     assert draft(method).definition == before
     assert (
         post_to_designer(client, method, "method_yaml", definition=method_definition(answer="sun")).status_code == 200
@@ -709,7 +707,7 @@ def test_an_edit_from_an_older_page_changes_nothing(client: Client, method: Meth
         headers=HTMX_HEADERS,
     )
     assert response.status_code == 409
-    assert "This method changed in another tab." in response.content.decode()
+    assert "This method changed in another tab." in response.text
     publish_response = client.post(designer_url(method, "method_publish"), {"revision": method_draft.revision - 1})
     assert publish_response.status_code == 409
     assert answer_rows(method) == []
@@ -738,15 +736,15 @@ def test_publishing_records_what_the_tests_gave_the_examples(
     post_to_designer(client, method, "method_answers", operation="add", answer="light")
     post_to_designer(client, method, "method_answers", operation="add", answer="dark")
     post_to_designer(client, method, "method_answers", operation="example", row="1")
-    assert "Run the tests to publish" in client.get(designer_url(method, "method_page")).content.decode()
-    assert "Run the tests first" in post_publish(client, method).content.decode()
+    assert "Run the tests to publish" in client.get(designer_url(method, "method_page")).text
+    assert "Run the tests first" in post_publish(client, method).text
     with django_capture_on_commit_callbacks(execute=True):
         post_to_designer(client, method, "method_run")
-    results = client.get(designer_url(method, "method_results")).content.decode()
+    results = client.get(designer_url(method, "method_results")).text
     assert re.search(r'id="method-publish" hx-swap-oob="outerMorph".*?>Publish</button>', results, re.DOTALL)
     assert "Run the tests to publish" not in results
     post_publish(client, method)
-    assert "Results are up to date" in client.get(designer_url(method, "method_page", 1)).content.decode(), "as tested"
+    assert "Results are up to date" in client.get(designer_url(method, "method_page", 1)).text, "as tested"
     dark_result = Job.objects.get(kind=Job.Kind.DRAFT_TESTS).result[1]  # type: ignore[index]
     version = method.versions.get()
     published_method = BUILTINS.with_files([(method.full_name, version.definition)]).find(version.ref)
@@ -756,25 +754,23 @@ def test_publishing_records_what_the_tests_gave_the_examples(
     assert {key: expected.model_dump() for key, expected in row.expected.items()} == {
         "Q1": {"marks": dark_q1_result["marks"], "feedback": dark_q1_result["feedback"]}
     }
-    guide = client.get(
-        reverse("method_guide", args=["method-laboratory/light@1"]), headers=HTMX_HEADERS
-    ).content.decode()
+    guide = client.get(reverse("method_guide", args=["method-laboratory/light@1"]), headers=HTMX_HEADERS).text
     assert escape(dark_q1_result["feedback"]) in guide
     client.post(reverse("method_edit", args=[method.pk]))
     post_to_designer(client, method, "method_answers", operation="add", answer="sun")
-    assert "No changes to publish" in client.get(designer_url(method, "method_page")).content.decode()
+    assert "No changes to publish" in client.get(designer_url(method, "method_page")).text
 
 
 def test_a_draft_that_changes_nothing_isnt_published(client: Client, method: Method) -> None:
     post_publish(client, method)
     client.post(reverse("method_edit", args=[method.pk]))
     post_to_designer(client, method, "method_answers", operation="add", answer="light")
-    page = client.get(designer_url(method, "method_page")).content.decode()
+    page = client.get(designer_url(method, "method_page")).text
     assert "No changes to publish" in page
-    assert "Nothing changed since version 1." in post_publish(client, method).content.decode()
+    assert "Nothing changed since version 1." in post_publish(client, method).text
     assert method.versions.count() == 1
     post_to_designer(client, method, "method_yaml", definition=method_definition(answer="sun"))
-    assert "No changes to publish" not in client.get(designer_url(method, "method_page")).content.decode()
+    assert "No changes to publish" not in client.get(designer_url(method, "method_page")).text
 
 
 def test_a_publish_that_fails_keeps_the_test_run_and_the_draft(
@@ -790,7 +786,7 @@ def test_a_publish_that_fails_keeps_the_test_run_and_the_draft(
         raise ValidationError("A newer version was published since you started.")
 
     monkeypatch.setattr(designer_views, "publish", refused)
-    assert "A newer version was published" in post_publish(client, method).content.decode()
+    assert "A newer version was published" in post_publish(client, method).text
     test_run.refresh_from_db()
     assert test_run.is_active
     assert draft(method).definition == before
@@ -798,7 +794,7 @@ def test_a_publish_that_fails_keeps_the_test_run_and_the_draft(
 
 def test_a_draft_with_problems_isnt_published(client: Client, method: Method) -> None:
     post_to_designer(client, method, "method_yaml", definition=method_definition(uses="gradeflow/nope@1"))
-    page = post_publish(client, method).content.decode()
+    page = post_publish(client, method).text
     assert 'role="alert"' in page
     assert "gradeflow/nope@1" in page
     assert not method.versions.exists()
@@ -835,7 +831,7 @@ def test_a_version_is_tried_on_ones_own_answers_and_reset(
 ) -> None:
     post_to_designer(client, method, "method_answers", operation="add", answer="light")
     post_publish(client, method)
-    page = client.get(designer_url(method, "method_page", 1)).content.decode()
+    page = client.get(designer_url(method, "method_page", 1)).text
     assert "Version 1" in page
     assert ">Edit</button>" in page
     post_to_designer(client, method, "method_answers", 1, operation="add", answer="dark")
@@ -860,8 +856,8 @@ def test_viewers_try_versions_but_change_no_method(client: Client, course: Cours
     viewer = signed_in_client(bo)
     page = viewer.get(designer_url(method, "method_page", 1))
     assert page.status_code == 200
-    assert ">Edit</button>" not in page.content.decode()
-    assert "Add answer" in page.content.decode()
+    assert ">Edit</button>" not in page.text
+    assert "Add answer" in page.text
     revision = VersionTests.objects.get(user=bo).revision
     response = viewer.post(
         designer_url(method, "method_answers", 1), {"revision": revision, "operation": "add", "answer": "x"}
@@ -890,7 +886,7 @@ def test_a_version_is_read_only_and_lists_the_others(client: Client, method: Met
     post_to_designer(client, method, "method_yaml", definition=method_definition(answer="sun"))
     post_publish(client, method)
     client.post(reverse("method_edit", args=[method.pk]))
-    page = client.get(designer_url(method, "method_page", 1)).content.decode()
+    page = client.get(designer_url(method, "method_page", 1)).text
     for target in (
         designer_url(method, "method_page"),
         designer_url(method, "method_page", 2),
@@ -900,7 +896,7 @@ def test_a_version_is_read_only_and_lists_the_others(client: Client, method: Met
     assert ">Open draft</button>" in page
     assert MarkingControls(page).enabled == []
     assert 'class="flex flex-1 flex-col read-only-fields"' in page
-    draft_page = client.get(designer_url(method, "method_page"), {"path": "with.checks.0"}).content.decode()
+    draft_page = client.get(designer_url(method, "method_page"), {"path": "with.checks.0"}).text
     assert "points" in MarkingControls(draft_page).enabled
 
 
@@ -927,23 +923,21 @@ def test_editing_needs_a_published_version(client: Client, method: Method) -> No
 def test_a_row_that_isnt_a_number_is_a_missing_row(client: Client, method: Method) -> None:
     response = post_to_designer(client, method, "method_answers", operation="delete", row="first")
     assert response.status_code == 200
-    assert "This answer is no longer there." in response.content.decode()
+    assert "This answer is no longer there." in response.text
 
 
 def test_a_checks_method_is_chosen_from_the_picker(client: Client, method: Method) -> None:
     first_check_query = {"path": "with.checks.0"}
     assert (
         'operation=change_method&amp;target=with.checks.0"'
-        in client.get(designer_url(method, "method_page"), first_check_query).content.decode()
+        in client.get(designer_url(method, "method_page"), first_check_query).text
     )
-    assert (
-        'operation=change_method&amp;target="' not in client.get(designer_url(method, "method_page")).content.decode()
-    )
+    assert 'operation=change_method&amp;target="' not in client.get(designer_url(method, "method_page")).text
     picker = client.get(
         designer_url(method, "method_choices"), {"operation": "change_method", "target": "with.checks.0"}
     )
     accepted = BUILTINS.find("gradeflow/accepted-answers@1")
-    assert escape(accepted.label) in picker.content.decode()
+    assert escape(accepted.label) in picker.text
     post_to_designer(
         client,
         method,
@@ -987,7 +981,7 @@ def test_test_runs_are_forgotten_after_a_day(
 
 
 def test_a_new_method_from_your_methods_is_yours(client: Client, user: User) -> None:
-    listing = client.get(reverse("your_methods")).content.decode()
+    listing = client.get(reverse("your_methods")).text
     assert f'hx-post="{reverse("method_new")}"' in listing
     response = client.post(reverse("method_new"), new_method_fields("Mine"), headers=HTMX_HEADERS)
     method = Method.objects.get()
@@ -1000,8 +994,8 @@ def test_a_new_method_isnt_called_what_another_is(client: Client, course: Course
     post_publish(client, method)
     response = client.post(new_method_url(course), new_method_fields("light"), headers=HTMX_HEADERS)
     assert response.status_code == 422
-    assert "This library already has a method called “Light”." in response.content.decode()
-    assert re.search(r'name="label"[^>]*aria-invalid="true"', response.content.decode()), "on the name field"
+    assert "This library already has a method called “Light”." in response.text
+    assert re.search(r'name="label"[^>]*aria-invalid="true"', response.text), "on the name field"
     assert Method.objects.count() == 1
 
 
