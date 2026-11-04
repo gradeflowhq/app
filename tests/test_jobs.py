@@ -1,40 +1,35 @@
+import json
 import logging
 import uuid
-from datetime import timedelta
+from collections.abc import Callable
 from types import SimpleNamespace
-from typing import Any, ClassVar
+from typing import Any
 
-import httpx
 import pytest
-from django.db import connection
 from django.template.loader import render_to_string
 from django.test import Client
-from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
-from django.utils import timezone
-from gradeflow_core import AnswerComparison, MarkedSubmission, compare_answers
+from gradeflow_core import AnswerComparison, MarkedSubmission, ModelEndpoint, compare_answers
 from gradeflow_core.editing import dump_yaml
+from pydantic import SecretStr
 from pytest_django import DjangoCaptureOnCommitCallbacks, Settings
 
 from gradeflow_app.accounts.models import User
 from gradeflow_app.assessments.models import Assessment
-from gradeflow_app.core_version import CORE_VERSION
-from gradeflow_app.jobs import events, queue
-from gradeflow_app.jobs.executors import ExecutorUnavailable, Nomad
-from gradeflow_app.jobs.models import Job
+from gradeflow_app.jobs import runs
 from gradeflow_app.jobs.payloads import MarkingRun
+from gradeflow_app.jobs.runner import Ending, Launch, Run, State, Task
 from gradeflow_app.live.topics import topic
-from gradeflow_app.marking.answers import comparisons
+from gradeflow_app.marking import previews
 from gradeflow_app.marking.answers.column import PreviewSummary
-from gradeflow_app.marking.answers.comparisons import cached_comparison, start_grouping
+from gradeflow_app.marking.answers.comparisons import cached_comparison, grouping_state, start_grouping
 from gradeflow_app.marking.checks import definition_data
-from gradeflow_app.marking.models import MarkingDraftRecord
+from gradeflow_app.marking.models import Marking, MarkingDraftRecord
 from gradeflow_app.marking.remarks import remark, running_remarks
 from gradeflow_app.results.models import Result
 from tests.conftest import (
     HTMX_HEADERS,
-    FakeNomad,
-    IdleExecutor,
+    FakeRunner,
     code_draft,
     marked_by_sandbox,
     post_callback,
@@ -45,119 +40,314 @@ from tests.conftest import (
 )
 
 pytestmark = pytest.mark.django_db
+type Start = Callable[[str, Callable[[], object]], str]
 
 
 @pytest.fixture
 def fully_marked(assessment: Assessment) -> Assessment:
-    """The assessment with every question's marking saved, so marking them again runs a job."""
+    """The assessment with every question's marking saved, so marking them again starts a run."""
     return save_full_marks_markings(assessment)
 
 
-def test_drafts_preview_on_request(
-    client: Client, assessment: Assessment, django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks
-) -> None:
+@pytest.fixture
+def start(fake_runner: FakeRunner, django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks) -> Start:
+    """Do what starts a run of a kind, and give the ID of the run it started."""
+
+    def start_run(kind: str, action: Callable[[], object]) -> str:
+        with django_capture_on_commit_callbacks(execute=True):
+            action()
+        return fake_runner.run_ids(kind)[-1]
+
+    return start_run
+
+
+def start_remark(start: Start, assessment: Assessment, key: str, user: User) -> str:
+    return start("remark", lambda: remark(assessment, [key], user))
+
+
+def marked_outcome(run_id: str) -> list[dict[str, Any]]:
+    """What the sandbox gives the run with `run_id`, worked out in the test's process."""
+    payload = run_input(run_id)
+    return [submission.model_dump(mode="json") for submission in marked_by_sandbox(MarkingRun.model_validate(payload))]
+
+
+def run_input(run_id: str) -> Any:
+    run = Run.parse(run_id)
+    assert run is not None
+    response = Client().get(
+        reverse("job_input", args=[run_id]), headers={"X-GradeFlow-Signature": signature(runs.secret(run), b"input")}
+    )
+    return response.json() if response.status_code == 200 else response.status_code
+
+
+def test_drafts_preview_on_request(client: Client, assessment: Assessment, fake_runner: FakeRunner) -> None:
     url, fields = code_draft(client, assessment)
     response = client.post(url, fields)
-    assert not Job.objects.filter(kind=Job.Kind.PREVIEW).exists(), "changes don't preview by themselves"
+    assert not fake_runner.run_ids("preview"), "changes don't preview by themselves"
     assert b'id="preview-bar"' in response.content
-    preview_url = reverse("draft_preview", args=[assessment.pk, MarkingDraftRecord.objects.get().pk])
-    with django_capture_on_commit_callbacks(execute=True):
-        client.post(preview_url)
-    client.post(preview_url)
-    assert Job.objects.filter(kind=Job.Kind.PREVIEW).count() == 1, "previewing an unchanged draft again adds none"
-    job = Job.objects.get(kind=Job.Kind.PREVIEW)
+    draft = MarkingDraftRecord.objects.get()
+    preview_draft(client, draft)
+    preview_draft(client, draft)
+    assert len(fake_runner.run_ids("preview")) == 1, "previewing an unchanged draft again starts none"
+    draft.refresh_from_db()
+    assert previews.preview_state(draft) == runs.COMPLETED
     answers = {student.encrypted_id for student in assessment.students.all()}
-    assert job.status == Job.Status.COMPLETED
-    assert {item["student_id"] for item in job.result or []} == answers
+    assert {item["student_id"] for item in draft.preview_results or []} == answers
+    assert not fake_runner.held, "the runner forgets a run once its outcome is in"
     client.post(url, fields | {"code": fields["code"] + "\n# changed"})
-    client.post(preview_url)
-    assert Job.objects.filter(kind=Job.Kind.PREVIEW).count() == 2
+    preview_draft(client, draft)
+    assert len(fake_runner.run_ids("preview")) == 2
 
 
-def test_a_preview_another_build_of_the_core_ran_is_run_again(
-    client: Client, assessment: Assessment, django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks
-) -> None:
-    url, fields = code_draft(client, assessment)
-    client.post(url, fields)
-    preview_url = reverse("draft_preview", args=[assessment.pk, MarkingDraftRecord.objects.get().pk])
-    with django_capture_on_commit_callbacks(execute=True):
-        client.post(preview_url)
-    Job.objects.filter(kind=Job.Kind.PREVIEW).update(core_version="an earlier build", result=[{"old": "shape"}])
-    assert client.get(url).status_code == 200, "its results aren't read"
-    client.post(preview_url)
-    assert Job.objects.filter(kind=Job.Kind.PREVIEW).count() == 2
-
-
-@pytest.mark.parametrize("view_name", ["draft_save", "draft_discard"])
-def test_saving_or_discarding_a_draft_stops_its_preview(
-    client: Client, assessment: Assessment, idle_executor: None, view_name: str
+def test_a_preview_by_another_build_of_the_core_is_run_again(
+    client: Client, assessment: Assessment, fake_runner: FakeRunner, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     url, fields = code_draft(client, assessment)
     client.post(url, fields)
     draft = MarkingDraftRecord.objects.get()
-    client.post(reverse("draft_preview", args=[assessment.pk, draft.pk]))
-    preview = Job.objects.get(kind=Job.Kind.PREVIEW)
-    assert preview.is_active
-    client.post(reverse(view_name, args=[assessment.pk, draft.pk]), {"path": "", "operation": "save"})
-    preview.refresh_from_db()
-    assert not preview.is_active
+    preview_draft(client, draft)
+    MarkingDraftRecord.objects.update(preview_results=[{"old": "shape"}])
+    monkeypatch.setattr(previews, "CORE_VERSION", "a later build")
+    page = client.get(reverse("answers", args=[assessment.pk, draft.question_id]))
+    assert page.status_code == 200, "its results aren't read"
+    assert "Marking changed" in page.text
+    preview_draft(client, draft)
+    assert len(fake_runner.run_ids("preview")) == 2
 
 
-def test_pages_follow_jobs_as_they_run(
+@pytest.mark.parametrize("view_name", ["draft_save", "draft_discard"])
+def test_saving_or_discarding_a_draft_stops_its_preview(
+    client: Client,
+    assessment: Assessment,
+    idle_runner: FakeRunner,
+    django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks,
+    view_name: str,
+) -> None:
+    url, fields = code_draft(client, assessment)
+    client.post(url, fields)
+    draft = MarkingDraftRecord.objects.get()
+    preview_draft(client, draft)
+    [preview] = idle_runner.run_ids("preview")
+    with django_capture_on_commit_callbacks(execute=True):
+        client.post(reverse(view_name, args=[assessment.pk, draft.pk]), {"path": "", "operation": "save"})
+    assert preview not in idle_runner.held
+
+
+def test_pages_hear_of_the_runs_they_show(
     client: Client,
     assessment: Assessment,
     fully_marked: Assessment,
     user: User,
+    idle_runner: FakeRunner,
+    start: Start,
     monkeypatch: pytest.MonkeyPatch,
-    idle_executor: None,
 ) -> None:
     url, fields = code_draft(client, assessment)
     client.post(url, fields)
-    published_topics: list[str] = []
-    monkeypatch.setattr(events, "notify_change", lambda *names: published_topics.extend(names))
-    client.post(reverse("draft_preview", args=[assessment.pk, MarkingDraftRecord.objects.get().pk]))
-    job = Job.objects.get(kind=Job.Kind.PREVIEW)
-    post_callback(job, {"event": "started"})
-    post_callback(job, {"event": "finished"})
-    assert published_topics == [topic("preview", assessment.pk, user.pk)] * 3, (
-        "a preview concerns only whoever asked for it"
-    )
-    published_topics.clear()
-    remark_job = start_remark(assessment, "Q1", user)
-    post_callback(remark_job, {"event": "failed", "error": "Lost"})
-    assert published_topics == [topic("jobs", assessment.pk)] * 2, "marks change only once a remark completes"
+    draft = MarkingDraftRecord.objects.get()
+    preview_draft(client, draft)
+    [preview] = idle_runner.run_ids("preview")
+    published: list[str] = []
+    monkeypatch.setattr(runs, "notify_change", lambda *names: published.extend(names))
+    post_callback(preview, {"event": "marked", "count": 1, "total": 10})
+    post_callback(preview, {"event": "finished", "outcome": marked_outcome(preview)})
+    assert published == [topic("preview", assessment.pk, user.pk)] * 2, "a preview concerns only whoever asked"
+    published.clear()
+    remark_run = start_remark(start, assessment, "Q1", user)
+    post_callback(remark_run, {"event": "failed", "error": "Lost"})
+    assert published == [topic("jobs", assessment.pk)]
 
 
-def test_a_user_may_run_only_so_many_jobs_at_once(
-    assessment: Assessment, fully_marked: Assessment, user: User, settings: Settings
+@pytest.mark.parametrize(
+    ("kind", "task", "priority"),
+    [("grouping", "compare", 70), ("remark", "mark", 50), ("preview", "mark", 70), ("draft-tests", "test", 70)],
+)
+def test_each_kind_of_run_starts_with_its_task_the_apps_url_and_its_secret(
+    settings: Settings,
+    idle_runner: FakeRunner,
+    django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks,
+    kind: str,
+    task: Task,
+    priority: int,
 ) -> None:
-    settings.GRADEFLOW_RUNNING_JOBS_PER_USER = 1
-    start_grouping(assessment, assessment.questions.get(key="Q1"), ["light"], user)
-    queued = start_remark(assessment, "Q1", user)
-    queued.refresh_from_db()
-    assert queued.status == Job.Status.QUEUED
-    assert queued.error == ""
+    settings.GRADEFLOW_APP_URL_FOR_JOBS = "http://172.17.0.2:8001"
+    settings.GRADEFLOW_JOB_TIME_LIMIT = 60
+    run = Run(kind, str(uuid.uuid7()), "1")
+    with django_capture_on_commit_callbacks(execute=True):
+        runs.start(run)
+    assert idle_runner.launches[run.id] == Launch(
+        task=task,
+        priority=priority,
+        time_limit=60,
+        job_url=f"http://172.17.0.2:8001/jobs/{run.id}/",
+        secret=runs.secret(run),
+    )
 
 
-def start_remark(assessment: Assessment, key: str, user: User) -> Job:
-    """The job marking `key` again."""
-    remark(assessment, [key], user)
-    return assessment.jobs.filter(kind=Job.Kind.REMARK).latest("created_at")
+def test_a_run_asking_language_models_gets_the_endpoint_and_more_time(
+    settings: Settings, idle_runner: FakeRunner, django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks
+) -> None:
+    endpoint = ModelEndpoint(url="https://models.example.com/v1", token=SecretStr("device-token"))
+    run = Run("preview", str(uuid.uuid7()), "1")
+    with django_capture_on_commit_callbacks(execute=True):
+        runs.start(run, endpoint)
+    launch = idle_runner.launches[run.id]
+    assert launch.time_limit == settings.GRADEFLOW_MODEL_JOB_TIME_LIMIT
+    endpoint_json = json.loads(launch.environment()["GRADEFLOW_MODEL_ENDPOINT"])
+    assert (endpoint_json["url"], endpoint_json["token"]) == ("https://models.example.com/v1", "device-token")
+
+
+def test_a_run_reads_its_input_only_while_what_it_is_for_is_unchanged(
+    assessment: Assessment, fully_marked: Assessment, user: User, idle_runner: FakeRunner, start: Start
+) -> None:
+    run_id = start_remark(start, assessment, "Q1", user)
+    payload = run_input(run_id)
+    assert {key for submission in payload["submissions"] for key in submission["answers"]} == {"Q1"}, (
+        "only the answers its marking reads"
+    )
+    Marking.objects.filter(question__key="Q1").update(revision=99)
+    assert run_input(run_id) == 410
+
+
+def test_callbacks_are_signed_and_fit_their_run(
+    assessment: Assessment, fully_marked: Assessment, user: User, idle_runner: FakeRunner, start: Start
+) -> None:
+    run_id = start_remark(start, assessment, "Q1", user)
+    assert post_callback(run_id, {"event": "finished", "outcome": []}, secret="forged") == 403
+    assert post_callback(run_id, {"event": "tried", "trial": {}}) == 400
+    assert (
+        Client().post(reverse("job_callback", args=["gf.unknown.1.1.1"]), "{}", "application/json").status_code == 404
+    )
+
+
+def test_a_remark_shows_its_progress_then_its_results(
+    client: Client, assessment: Assessment, fully_marked: Assessment, user: User, idle_runner: FakeRunner, start: Start
+) -> None:
+    run_id = start_remark(start, assessment, "Q1", user)
+    idle_runner.held[run_id] = State.RUNNING
+    assert post_callback(run_id, {"event": "progress", "step": "Deciding criteria", "completed": 3, "total": 4}) == 204
+    assert post_callback(run_id, {"event": "marked", "count": 5, "total": 10}) == 204
+    [(marking, state)] = running_remarks(assessment)
+    assert (marking.question_id, state) == (
+        assessment.questions.get(key="Q1").pk,
+        runs.RunState("running", progress=0.5, progress_text="Deciding criteria: 3 of 4"),
+    )
+    listed = client.get(reverse("question_list", args=[assessment.pk]), {"question": ""}).text
+    assert 'value="0.50" max="1"' in listed
+    answers_column = client.get(reverse("answers", args=[assessment.pk, marking.question_id])).text
+    assert "Marking…" in answers_column
+    assert "Deciding criteria: 3 of 4" in answers_column
+    assert post_callback(run_id, {"event": "finished", "outcome": marked_outcome(run_id)}) == 204
+    assert run_id not in idle_runner.held
+    assert Result.objects.filter(question__key="Q1").count() == assessment.students.count()
+    assert running_remarks(assessment) == []
+
+
+@pytest.mark.parametrize(
+    ("outcome", "failure"),
+    [
+        ([{"student_id": "S1"}], runs.UNREADABLE_REASON),
+        (None, runs.UNREADABLE_REASON),
+        ([], "The marking service returned an incomplete set of student results."),
+    ],
+)
+def test_a_remark_whose_outcome_doesnt_fit_fails(
+    assessment: Assessment,
+    fully_marked: Assessment,
+    user: User,
+    idle_runner: FakeRunner,
+    start: Start,
+    outcome: Any,
+    failure: str,
+) -> None:
+    run_id = start_remark(start, assessment, "Q1", user)
+    assert post_callback(run_id, {"event": "finished", "outcome": outcome}) == 204
+    assert Marking.objects.get(question__key="Q1").failure == failure
+    assert not Result.objects.filter(question__key="Q1").exists()
+
+
+def test_a_failed_remark_says_why_until_marked_again(
+    client: Client, assessment: Assessment, fully_marked: Assessment, user: User, idle_runner: FakeRunner, start: Start
+) -> None:
+    run_id = start_remark(start, assessment, "Q1", user)
+    post_callback(run_id, {"event": "failed", "error": "Out of time."})
+    question = assessment.questions.get(key="Q1")
+    column = client.get(reverse("answers", args=[assessment.pk, question.pk])).text
+    assert "Marking failed: Out of time. The marks shown are from before." in column
+    assert run_id not in idle_runner.held
+    start_remark(start, assessment, "Q1", user)
+    assert Marking.objects.get(question=question).failure == ""
+
+
+def test_a_newer_remark_stops_the_one_it_replaces(
+    assessment: Assessment, fully_marked: Assessment, user: User, idle_runner: FakeRunner, start: Start
+) -> None:
+    first = start_remark(start, assessment, "Q1", user)
+    second = start_remark(start, assessment, "Q1", user)
+    assert first in idle_runner.stopped
+    assert list(idle_runner.held) == [second]
+    post_callback(first, {"event": "finished", "outcome": []})
+    assert Marking.objects.get(question__key="Q1").failure == "", "a replaced run's outcome no longer applies"
+
+
+def test_a_run_started_while_the_runner_is_down_fails_saying_so(
+    assessment: Assessment,
+    fully_marked: Assessment,
+    user: User,
+    idle_runner: FakeRunner,
+    django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks,
+) -> None:
+    idle_runner.is_down = True
+    with django_capture_on_commit_callbacks(execute=True):
+        remark(assessment, ["Q1"], user)
+    assert Marking.objects.get(question__key="Q1").failure == runs.UNAVAILABLE_REASON
+    assert running_remarks(assessment) == [], "pages show nothing running"
+
+
+@pytest.mark.parametrize(
+    ("ending", "failure"),
+    [
+        (Ending.TIMED_OUT, "Ran past its time limit."),
+        (Ending.OUT_OF_MEMORY, "Ran out of memory."),
+        (Ending.FAILED, "The marking service stopped before finishing."),
+        (Ending.EXITED, ""),
+    ],
+)
+def test_a_run_that_ended_without_calling_back_fails_with_the_runners_reason(
+    assessment: Assessment,
+    fully_marked: Assessment,
+    user: User,
+    idle_runner: FakeRunner,
+    start: Start,
+    ending: Ending,
+    failure: str,
+) -> None:
+    run_id = start_remark(start, assessment, "Q1", user)
+    idle_runner.end(run_id, ending)
+    assert Marking.objects.get(question__key="Q1").failure == failure
+    assert run_id not in idle_runner.held
+
+
+def test_pages_hear_as_the_runner_tells_of_a_change(
+    assessment: Assessment,
+    fully_marked: Assessment,
+    user: User,
+    idle_runner: FakeRunner,
+    start: Start,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    run_id = start_remark(start, assessment, "Q1", user)
+    published: list[str] = []
+    monkeypatch.setattr(runs, "notify_change", lambda *names: published.extend(names))
+    run = Run.parse(run_id)
+    assert run is not None
+    runs.listener.changed(run)
+    runs.listener.changed(Run("retired-kind", "1", "1"))
+    assert published == [topic("jobs", assessment.pk)]
 
 
 def comparison_for(texts: list[str]) -> AnswerComparison:
     return compare_answers(texts, similarity="exact").model_copy(update={"similarity": "meaning"})
-
-
-def compared_event(
-    comparison: AnswerComparison, *, index: int = 0, total: int = 1, part: str | None = None
-) -> dict[str, Any]:
-    return {
-        "event": "compared",
-        "index": index,
-        "total": total,
-        "text": comparison.model_dump_json() if part is None else part,
-    }
 
 
 @pytest.fixture
@@ -165,240 +355,112 @@ def locmem_cache(settings: Settings) -> None:
     settings.CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
 
 
-def test_grouping_caches_a_complete_comparison_only_after_success(
-    assessment: Assessment, user: User, locmem_cache: None
+def test_grouping_caches_a_comparison_once_its_run_finishes(
+    assessment: Assessment, locmem_cache: None, fake_runner: FakeRunner, start: Start
 ) -> None:
     texts = ["dark", "light"]
+    question = assessment.questions.get(key="Q1")
+    run_id = start("grouping", lambda: start_grouping(question, texts))
+    assert run_input(run_id) == {"texts": texts}
+    assert grouping_state(question, texts) == runs.RunState("queued")
+    assert cached_comparison(texts) is None
     comparison = comparison_for(texts)
-    job = start_grouping(assessment, assessment.questions.get(key="Q1"), texts, user)
-    headers = {"X-GradeFlow-Signature": signature(job.secret, b"input")}
-    input_response = Client().get(reverse("job_input", args=[job.pk]), headers=headers)
-    assert input_response.json() == {"texts": texts}
-    assert job.core_version == CORE_VERSION
-    comparison_json = comparison.model_dump_json()
-    first = compared_event(comparison, total=2, part=comparison_json[:10])
-    assert post_callback(job, first) == 204
-    assert post_callback(job, first) == 204, "retries do not append the same part twice"
-    job.refresh_from_db()
-    assert job.progress == 0.5
-    assert cached_comparison(texts) is None
-    assert post_callback(job, compared_event(comparison, index=1, total=2, part=comparison_json[10:])) == 204
-    assert cached_comparison(texts) is None
-    assert post_callback(job, {"event": "finished"}) == 204
-    job.refresh_from_db()
-    assert (job.status, job.input, job.result) == (Job.Status.COMPLETED, None, None)
+    assert post_callback(run_id, {"event": "finished", "outcome": comparison.model_dump(mode="json")}) == 204
     assert cached_comparison(texts) == comparison
-    assert post_callback(job, first) == 204, "late callbacks leave a completed job alone"
-    job.refresh_from_db()
-    assert job.result is None
+    assert grouping_state(question, texts) is None
 
 
-def test_a_comparison_is_cached_under_its_captured_build(
-    assessment: Assessment, user: User, locmem_cache: None, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setattr(queue, "CORE_VERSION", "captured-grouping-build")
-    texts = ["captured grouping answer"]
-    comparison = comparison_for(texts)
-    job = start_grouping(assessment, assessment.questions.get(key="Q1"), texts, user)
-    assert post_callback(job, compared_event(comparison)) == 204
-    assert post_callback(job, {"event": "finished"}) == 204
-    assert cached_comparison(texts) is None
-    monkeypatch.setattr(comparisons, "CORE_VERSION", job.core_version)
-    assert cached_comparison(texts) == comparison
-
-
-@pytest.mark.parametrize("outcome", ["failed", "absent", "missing", "invalid", "wrong_texts", "wrong_mode"])
+@pytest.mark.parametrize("outcome", ["failed", "absent", "invalid", "wrong_texts", "wrong_mode"])
 def test_unsuccessful_comparisons_never_enter_the_cache(
-    assessment: Assessment, user: User, locmem_cache: None, outcome: str
+    assessment: Assessment, locmem_cache: None, start: Start, outcome: str
 ) -> None:
     texts = [f"uncached {outcome}"]
-    comparison = comparison_for(texts)
-    job = start_grouping(assessment, assessment.questions.get(key="Q1"), texts, user)
+    question = assessment.questions.get(key="Q1")
+    run_id = start("grouping", lambda: start_grouping(question, texts))
+    comparison: Any = comparison_for(texts).model_dump(mode="json")
     if outcome == "wrong_texts":
-        comparison = comparison_for(["different answer"])
+        comparison = comparison_for(["different answer"]).model_dump(mode="json")
     elif outcome == "wrong_mode":
-        comparison = compare_answers(texts, similarity="exact")
-    event = compared_event(comparison, total=2 if outcome == "missing" else 1)
-    if outcome == "invalid":
-        event["text"] = "not JSON"
-    if outcome != "absent":
-        assert post_callback(job, event) == 204
-    assert post_callback(job, {"event": "failed" if outcome == "failed" else "finished", "error": "Lost"}) == 204
-    job.refresh_from_db()
-    assert job.status == Job.Status.FAILED
-    assert job.result is None
+        comparison = compare_answers(texts, similarity="exact").model_dump(mode="json")
+    elif outcome == "invalid":
+        comparison = {"texts": "not a comparison"}
+    elif outcome == "absent":
+        comparison = None
+    event = (
+        {"event": "failed", "error": "Lost"} if outcome == "failed" else {"event": "finished", "outcome": comparison}
+    )
+    assert post_callback(run_id, event) == 204
+    state = grouping_state(question, texts)
+    assert state is not None
+    assert state.status == "failed"
     assert cached_comparison(texts) is None
 
 
-def test_comparison_parts_must_arrive_in_order_and_duplicates_must_match(assessment: Assessment, user: User) -> None:
-    texts = ["part validation"]
-    comparison = comparison_for(texts)
-    job = start_grouping(assessment, assessment.questions.get(key="Q1"), texts, user)
-    assert post_callback(job, compared_event(comparison, index=1, total=2)) == 400
-    assert post_callback(job, compared_event(comparison, total=0)) == 400
-    assert post_callback(job, {"event": "compared"}) == 400
-    assert post_callback(job, compared_event(comparison, total=2, part="first")) == 204
-    assert post_callback(job, compared_event(comparison, total=2, part="different")) == 400
-    assert post_callback(job, compared_event(comparison, index=1, total=3, part="next")) == 400
-
-
-def test_changed_grouping_inputs_replace_the_pending_job(assessment: Assessment, user: User) -> None:
+def test_changed_answers_replace_the_grouping_under_way(
+    assessment: Assessment, idle_runner: FakeRunner, start: Start
+) -> None:
     question = assessment.questions.get(key="Q1")
-    first = start_grouping(assessment, question, ["old"], user)
-    assert start_grouping(assessment, question, ["old"], user) == first
-    assert post_callback(first, compared_event(comparison_for(["old"]), total=2, part="{")) == 204
-    second = start_grouping(assessment, question, ["new"], user)
-    assert second != first
-    first.refresh_from_db()
-    assert first.status == Job.Status.FAILED
-    assert post_callback(first, compared_event(comparison_for(["old"]))) == 204
-    first.refresh_from_db()
-    assert first.result is None
-    assert second.input == {"texts": ["new"]}
+    first = start("grouping", lambda: start_grouping(question, ["old"]))
+    assert start("grouping", lambda: start_grouping(question, ["old"])) == first, "the same answers start none"
+    second = start("grouping", lambda: start_grouping(question, ["new"]))
+    assert first in idle_runner.stopped
+    assert run_input(second) == {"texts": ["new"]}
 
 
-def test_grouping_by_meaning_starts_from_the_page_and_not_on_reading_it(client: Client, assessment: Assessment) -> None:
+def test_grouping_by_meaning_starts_from_the_page_and_not_on_reading_it(
+    client: Client,
+    assessment: Assessment,
+    fake_runner: FakeRunner,
+    django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks,
+) -> None:
     question = assessment.questions.get(key="Q1")
     answers_url = reverse("answers", args=[assessment.pk, question.pk])
-    start = reverse("answer_grouping", args=[assessment.pk, question.pk])
+    grouping_url = reverse("answer_grouping", args=[assessment.pk, question.pk])
     due = client.get(answers_url, {"group": "meaning"}, headers=HTMX_HEADERS).text
-    assert not Job.objects.filter(kind=Job.Kind.GROUPING).exists()
-    assert f'hx-post="{start}" hx-trigger="load"' in due
-    grouping_page = client.post(start, headers=HTMX_HEADERS).text
+    assert not fake_runner.run_ids("grouping")
+    assert f'hx-post="{grouping_url}" hx-trigger="load"' in due
+    with django_capture_on_commit_callbacks(execute=True):
+        client.post(grouping_url, headers=HTMX_HEADERS)
+    grouping_page = client.get(answers_url, headers=HTMX_HEADERS).text
     assert "Grouping by meaning." in grouping_page
     assert 'hx-trigger="load"' not in grouping_page
-    client.post(start, headers=HTMX_HEADERS)
-    job = Job.objects.get(kind=Job.Kind.GROUPING)
-    assert post_callback(job, {"event": "failed", "error": "Lost"}) == 204
+    with django_capture_on_commit_callbacks(execute=True):
+        client.post(grouping_url, headers=HTMX_HEADERS)
+    [run_id] = fake_runner.run_ids("grouping")
+    assert post_callback(run_id, {"event": "failed", "error": "Lost"}) == 204
     failed = client.get(answers_url, headers=HTMX_HEADERS).text
     assert "Couldn't group by meaning" in failed
-    assert f'hx-post="{start}" hx-target="#answers"' in failed, "trying again"
+    assert f'hx-post="{grouping_url}" hx-target="#answers"' in failed, "trying again"
     assert 'hx-trigger="load"' not in failed
-    client.post(start, headers=HTMX_HEADERS)
-    assert Job.objects.filter(kind=Job.Kind.GROUPING, status=Job.Status.QUEUED).count() == 1
+    with django_capture_on_commit_callbacks(execute=True):
+        client.post(grouping_url, headers=HTMX_HEADERS)
+    assert len(fake_runner.held) == 1
 
 
 def test_failed_grouping_of_older_answers_does_not_block_current_answers(
-    client: Client, assessment: Assessment
+    client: Client,
+    assessment: Assessment,
+    fake_runner: FakeRunner,
+    django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks,
 ) -> None:
     question = assessment.questions.get(key="Q1")
     answers_url = reverse("answers", args=[assessment.pk, question.pk])
-    start = reverse("answer_grouping", args=[assessment.pk, question.pk])
+    grouping_url = reverse("answer_grouping", args=[assessment.pk, question.pk])
     client.get(answers_url, {"group": "meaning"}, headers=HTMX_HEADERS)
-    client.post(start, headers=HTMX_HEADERS)
-    job = Job.objects.get(kind=Job.Kind.GROUPING)
-    assert post_callback(job, {"event": "failed", "error": "Lost"}) == 204
+    with django_capture_on_commit_callbacks(execute=True):
+        client.post(grouping_url, headers=HTMX_HEADERS)
+    [run_id] = fake_runner.run_ids("grouping")
+    assert post_callback(run_id, {"event": "failed", "error": "Lost"}) == 204
     student = assessment.students.first()
     assert student is not None
     student.answers = student.answers | {"Q1": "A newly imported answer"}
     student.save(update_fields=["answers"])
     due = client.get(answers_url, headers=HTMX_HEADERS).text
     assert "Couldn't group by meaning" not in due
-    assert f'hx-post="{start}" hx-trigger="load"' in due
-    client.post(start, headers=HTMX_HEADERS)
-    assert Job.objects.filter(kind=Job.Kind.GROUPING, status=Job.Status.QUEUED).count() == 1
-
-
-def test_callbacks_are_signed_and_fit_their_job(assessment: Assessment, fully_marked: Assessment, user: User) -> None:
-    job = start_grouping(assessment, assessment.questions.get(key="Q1"), ["light"], user)
-    assert post_callback(job, {"event": "finished"}, secret="forged") == 403
-    remark_job = start_remark(assessment, "Q1", user)
-    assert post_callback(remark_job, {"event": "compared", "index": 0, "total": 1, "text": "{}"}) == 400
-
-
-@pytest.mark.parametrize(
-    ("kind", "task", "priority"),
-    [
-        (Job.Kind.GROUPING, "compare", 70),
-        (Job.Kind.REMARK, "mark", 50),
-        (Job.Kind.PREVIEW, "mark", 70),
-        (Job.Kind.DRAFT_TESTS, "test", 70),
-        (Job.Kind.VERSION_TESTS, "test", 70),
-    ],
-)
-def test_nomad_runs_each_kind_of_job_in_the_image_it_recorded(
-    settings: Settings, kind: Job.Kind, task: str, priority: int
-) -> None:
-    settings.GRADEFLOW_APP_URL_FOR_JOBS = "http://172.17.0.2:8001"
-    nomad = Nomad(url="http://nomad", token="", datacenter="dc1", namespace="gradeflow")
-    job = Job(pk=uuid.uuid7(), kind=kind, image="localhost:5055/sandbox@sha256:" + "a" * 64, time_limit=60)
-    spec: Any = nomad.nomad_spec(job)
-    sandbox_task = spec["TaskGroups"][0]["Tasks"][0]
-    assert sandbox_task["Config"]["image"] == job.image
-    assert [sandbox_task["Config"]["command"], *sandbox_task["Config"]["args"]] == [
-        "python",
-        "/app/sandbox.py",
-        task,
-        "60",
-    ]
-    assert sandbox_task["Env"]["GRADEFLOW_JOB_URL"] == f"http://172.17.0.2:8001/jobs/{job.pk}/"
-    assert spec["Priority"] == priority
-    assert spec["Namespace"] == "gradeflow"
-
-
-def test_nomad_tells_which_of_the_jobs_it_received_have_ended() -> None:
-    ended, running = uuid.uuid7(), uuid.uuid7()
-    listed = [
-        {"ID": f"gradeflow-{ended}", "Status": "dead"},
-        {"ID": f"gradeflow-{running}", "Status": "running"},
-        {"ID": "gradeflow-registry", "Status": "running"},
-    ]
-    nomad = Nomad(url="http://nomad", token="", datacenter="dc1", namespace="gradeflow")
-
-    def respond(request: httpx.Request) -> httpx.Response:
-        assert request.url.params["prefix"] == "gradeflow-"
-        assert request.url.params["namespace"] == "gradeflow"
-        return httpx.Response(200, json=listed)
-
-    nomad.client = httpx.Client(base_url="http://nomad", transport=httpx.MockTransport(respond))
-    assert nomad.submitted_jobs() == {ended: True, running: False}
-    nomad.client = httpx.Client(base_url="http://nomad", transport=httpx.MockTransport(lambda _: httpx.Response(503)))
-    with pytest.raises(ExecutorUnavailable):
-        nomad.submitted_jobs()
-    with pytest.raises(ExecutorUnavailable):
-        nomad.submit(Job(pk=ended, kind=Job.Kind.REMARK))
-
-
-def test_results_arrive_in_batches_which_show_progress(
-    client: Client, assessment: Assessment, fully_marked: Assessment, user: User, idle_executor: None
-) -> None:
-    job = start_remark(assessment, "Q1", user)
-    job.refresh_from_db()
-    submissions = [
-        submission.model_dump(mode="json") for submission in marked_by_sandbox(MarkingRun.model_validate(job.input))
-    ]
-    half = len(submissions) // 2
-    assert post_callback(job, {"event": "started"}) == 204
-    assert post_callback(job, {"event": "marked", "submissions": submissions[:half]}) == 204
-    job.refresh_from_db()
-    assert job.progress == half / len(submissions)
-    listed = client.get(reverse("question_list", args=[assessment.pk]), {"question": ""}).text
-    assert f'value="{job.progress:.2f}" max="1"' in listed
-    question = assessment.questions.get(key="Q1")
-    answers_column = client.get(reverse("answers", args=[assessment.pk, question.pk])).text
-    assert "Marking…" in answers_column
-    assert f'value="{job.progress:.2f}" max="1"' in answers_column
-    assert post_callback(job, {"event": "marked", "submissions": submissions[half:]}) == 204
-    assert job.batches.count() == 2
-    assert post_callback(job, {"event": "finished"}) == 204
-    job.refresh_from_db()
-    assert (job.status, job.result) == (Job.Status.COMPLETED, None)
-    assert not job.batches.exists()
-    assert Result.objects.filter(question__key="Q1").count() == assessment.students.count()
-
-
-def test_a_failed_job_forgets_the_results_it_sent(
-    assessment: Assessment, fully_marked: Assessment, user: User, idle_executor: None
-) -> None:
-    job = start_remark(assessment, "Q1", user)
-    job.refresh_from_db()
-    submissions = [
-        submission.model_dump(mode="json") for submission in marked_by_sandbox(MarkingRun.model_validate(job.input))
-    ]
-    post_callback(job, {"event": "marked", "submissions": submissions[:1]})
-    assert job.batches.exists()
-    post_callback(job, {"event": "failed", "error": "Lost"})
-    assert not job.batches.exists()
+    assert f'hx-post="{grouping_url}" hx-trigger="load"' in due
+    with django_capture_on_commit_callbacks(execute=True):
+        client.post(grouping_url, headers=HTMX_HEADERS)
+    assert len(fake_runner.held) == 1
 
 
 def test_marking_questions_together_previews_on_request(client: Client, assessment: Assessment) -> None:
@@ -415,8 +477,8 @@ def test_marking_questions_together_previews_on_request(client: Client, assessme
     assert b'id="preview-bar"' in column
     assert b"Q1, Q3" in column, "the answers column covers both questions"
     preview_draft(client, draft)
-    job = Job.objects.get(kind=Job.Kind.PREVIEW)
-    assert (job.status, job.question_keys) == (Job.Status.COMPLETED, ["Q1", "Q3"])
+    draft.refresh_from_db()
+    assert {key for item in draft.preview_results or [] for key in item["results"]} == {"Q1", "Q3"}
     answers = client.get(reverse("question_group_draft_answers", args=[assessment.pk, draft.pk])).content
     assert b"results change" in answers
 
@@ -426,9 +488,9 @@ def test_a_preview_counts_the_students_whose_marks_change(client: Client, assess
     url, draft = start_marking(client, assessment, "Q2", "gradeflow/accepted-answers@1")
     client.post(url, {"path": "", "fields_posted": "1", "answers": ["42"]})
     preview_draft(client, draft)
-    preview_results = Job.objects.get(kind=Job.Kind.PREVIEW).result or []
+    draft.refresh_from_db()
     students = {student.encrypted_id: student for student in assessment.students.all()}
-    for index, submission in enumerate(preview_results):
+    for index, submission in enumerate(draft.preview_results or []):
         result = MarkedSubmission.model_validate(submission).results["Q2"]
         proportion = 1 - result.proportion if index == 0 else result.proportion
         Result.objects.create(
@@ -456,15 +518,27 @@ def test_editing_back_to_the_previewed_marking_shows_its_preview_again(client: C
     assert " full · " in preview_bar, preview_bar
 
 
+def test_a_preview_the_runner_forgot_can_be_run_again(
+    client: Client, assessment: Assessment, idle_runner: FakeRunner
+) -> None:
+    url, fields = code_draft(client, assessment)
+    client.post(url, fields)
+    draft = MarkingDraftRecord.objects.get()
+    preview_draft(client, draft)
+    answers_url = reverse("answers", args=[assessment.pk, draft.question_id])
+    assert "Waiting to start…" in client.get(answers_url).text
+    idle_runner.held.clear()
+    assert "Marking changed" in client.get(answers_url).text
+
+
 def test_a_preview_says_when_answers_could_not_be_marked(client: Client, assessment: Assessment) -> None:
     url, fields = code_draft(client, assessment)
     client.post(url, fields | {"code": "raise ValueError('no such thing as results')"})
     draft = MarkingDraftRecord.objects.get()
     preview_draft(client, draft)
+    draft.refresh_from_db()
     question = assessment.questions.get(key="Q1")
-    preview_results = [
-        MarkedSubmission.model_validate(item) for item in Job.objects.get(kind=Job.Kind.PREVIEW).result or []
-    ]
+    preview_results = [MarkedSubmission.model_validate(item) for item in draft.preview_results or []]
     unmarked_count = sum(not submission.results["Q1"].is_marked for submission in preview_results)
     assert unmarked_count
     page = client.get(reverse("answers", args=[assessment.pk, question.pk])).text
@@ -476,162 +550,23 @@ def test_a_preview_says_when_answers_could_not_be_marked(client: Client, assessm
     assert not any("line-through" in card[: card.index("</summary>")] for card in unmarked)
 
 
-class CancellingExecutor(IdleExecutor):
-    cancelled: ClassVar[list[uuid.UUID]] = []
-
-    def cancel(self, job: Job) -> None:
-        self.cancelled.append(job.pk)
-
-
-def test_replaced_jobs_stop_once_their_replacement_is_saved(
+def test_failed_runs_and_refused_callbacks_are_logged(
     assessment: Assessment,
     fully_marked: Assessment,
     user: User,
-    monkeypatch: pytest.MonkeyPatch,
-    django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks,
+    idle_runner: FakeRunner,
+    start: Start,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
-    monkeypatch.setattr(queue, "executor", CancellingExecutor)
-    CancellingExecutor.cancelled = []
-    first = start_remark(assessment, "Q1", user)
-    with django_capture_on_commit_callbacks(execute=True):
-        remark(assessment, ["Q1"], user)
-        assert CancellingExecutor.cancelled == []
-    assert CancellingExecutor.cancelled == [first.pk]
-    first.refresh_from_db()
-    assert first.error == "Replaced by a newer run."
-
-
-def backdate_as_running(*jobs: Job | None, days: float = 1) -> None:
-    Job.objects.filter(pk__in=[job.pk for job in jobs if job]).update(
-        status=Job.Status.RUNNING, started_at=timezone.now() - timedelta(days=days)
-    )
-
-
-def test_lost_jobs_are_not_running(
-    assessment: Assessment, fully_marked: Assessment, user: User, monkeypatch: pytest.MonkeyPatch, idle_executor: None
-) -> None:
-    lost, running = start_remark(assessment, "Q1", user), start_remark(assessment, "Q2", user)
-    backdate_as_running(lost)
-    published: list[tuple[str, ...]] = []
-    monkeypatch.setattr(events, "notify_change", lambda *names: published.append(names))
-    with CaptureQueriesContext(connection) as queries:
-        assert running_remarks(assessment) == [running]
-    assert all(query["sql"].startswith("SELECT") for query in queries.captured_queries), "showing jobs changes none"
-    assert published == []
-    lost.refresh_from_db()
-    assert lost.is_active
-
-
-def test_the_worker_fails_lost_jobs_together(
-    assessment: Assessment, fully_marked: Assessment, user: User, monkeypatch: pytest.MonkeyPatch, idle_executor: None
-) -> None:
-    lost = [
-        start_remark(assessment, "Q1", user),
-        start_grouping(assessment, assessment.questions.get(key="Q1"), ["a"], user),
-    ]
-    backdate_as_running(*lost)
-    published: list[tuple[str, ...]] = []
-    monkeypatch.setattr(events, "notify_change", lambda *names: published.append(names))
-    queue.dispatch()
-    failed = Job.objects.filter(error="Ran past its time limit.")
-    assert sorted(failed.values_list("kind", "input")) == [("grouping", None), ("remark", None)]
-    assert published[0] == tuple(sorted([topic("grouping", assessment.pk), topic("jobs", assessment.pk)])), "together"
-
-
-def test_a_lost_job_counts_against_no_limit_and_holds_up_no_grouping(
-    assessment: Assessment, fully_marked: Assessment, user: User, settings: Settings, idle_executor: None
-) -> None:
-    settings.GRADEFLOW_RUNNING_JOBS_PER_USER = 1
-    question = assessment.questions.get(key="Q1")
-    lost = start_grouping(assessment, question, ["a"], user)
-    backdate_as_running(lost)
-    grouping = start_grouping(assessment, question, ["a"], user)
-    assert grouping != lost
-    backdate_as_running(grouping)
-    started = start_remark(assessment, "Q1", user)
-    started.refresh_from_db()
-    assert started.error == ""
-
-
-def test_a_job_dispatched_but_never_started_times_out_after_the_limit(
-    assessment: Assessment, fully_marked: Assessment, user: User, idle_executor: None
-) -> None:
-    stuck_job, recent = start_remark(assessment, "Q1", user), start_remark(assessment, "Q2", user)
-    Job.objects.filter(pk=stuck_job.pk).update(dispatched_at=timezone.now() - timedelta(days=1))
-    assert list(Job.objects.timed_out()) == [stuck_job]
-    assert running_remarks(assessment) == [recent]
-    queue.dispatch()
-    stuck_job.refresh_from_db()
-    assert (stuck_job.status, stuck_job.error) == (Job.Status.FAILED, "Ran past its time limit.")
-
-
-def test_unreadable_marked_results_fail_the_job(
-    assessment: Assessment, fully_marked: Assessment, user: User, idle_executor: None
-) -> None:
-    job = start_remark(assessment, "Q1", user)
-    assert post_callback(job, {"event": "marked", "submissions": [{"student_id": "S1"}]}) == 204
-    job.refresh_from_db()
-    assert (job.status, job.error) == (Job.Status.FAILED, events.UNREADABLE_RESULTS_ERROR)
-    assert not job.batches.exists()
-    assert not Result.objects.filter(question__key="Q1").exists()
-
-
-def test_after_a_day_only_the_remarks_of_current_results_are_kept(
-    assessment: Assessment,
-    fully_marked: Assessment,
-    user: User,
-    monkeypatch: pytest.MonkeyPatch,
-    django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks,
-) -> None:
-    with django_capture_on_commit_callbacks(execute=True):
-        start_remark(assessment, "Q1", user)
-    with django_capture_on_commit_callbacks(execute=True):
-        latest = start_remark(assessment, "Q1", user)
-    queue.end(start_remark(assessment, "Q2", user), "Lost")
-    unfinished = start_remark(assessment, "Q3", user)
-    Job.objects.exclude(finished_at=None).update(finished_at=timezone.now() - queue.FINISHED_JOB_LIFETIME)
-    monkeypatch.setattr(queue, "executor", FakeNomad)
-    queue.recover_queue()
-    assert set(Job.objects.values_list("pk", flat=True)) == {latest.pk, unfinished.pk}
-
-
-def test_starting_work_hands_over_only_its_users_jobs(
-    assessment: Assessment,
-    fully_marked: Assessment,
-    user: User,
-    bo: User,
-    nomad: FakeNomad,
-    django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks,
-) -> None:
-    waiting = Job.objects.create(kind=Job.Kind.REMARK, assessment=assessment, created_by=bo, input={})
-    with django_capture_on_commit_callbacks(execute=True):
-        started = start_remark(assessment, "Q1", user)
-    assert nomad.submitted == [started.pk]
-    with django_capture_on_commit_callbacks(execute=True):
-        queue.dispatch()
-    assert nomad.submitted == [started.pk, waiting.pk]
-
-
-def test_a_marking_job_gets_only_the_answers_its_marking_reads(
-    assessment: Assessment, fully_marked: Assessment, user: User
-) -> None:
-    job = start_remark(assessment, "Q1", user)
-    assert job.input is not None
-    assert {key for submission in job.input["submissions"] for key in submission["answers"]} == {"Q1"}
-
-
-def test_failed_jobs_and_refused_callbacks_are_logged(
-    assessment: Assessment, fully_marked: Assessment, user: User, caplog: pytest.LogCaptureFixture
-) -> None:
-    job = start_remark(assessment, "Q1", user)
+    run_id = start_remark(start, assessment, "Q1", user)
     with caplog.at_level(logging.WARNING, "gradeflow_app"):
-        post_callback(job, {"event": "finished"}, secret="forged")
-        post_callback(job, {"event": "unknown"})
-        post_callback(job, {"event": "failed", "error": "Out of memory."})
+        post_callback(run_id, {"event": "finished"}, secret="forged")
+        post_callback(run_id, {"event": "unknown"})
+        post_callback(run_id, {"event": "failed", "error": "Out of memory."})
     assert [record.getMessage() for record in caplog.records if record.name.startswith("gradeflow_app")] == [
-        f"Refused a callback for job {job.pk}: its signature doesn't match",
-        f"Refused a callback for job {job.pk}",
-        f"Job {job.pk} (remark) failed: Out of memory.",
+        f"Refused a callback for {run_id}: its signature doesn't match",
+        f"Refused a callback for {run_id}",
+        f"{run_id} failed: Out of memory.",
     ]
 
 

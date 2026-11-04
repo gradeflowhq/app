@@ -13,7 +13,7 @@ from gradeflow_app.editor.editing import problem_text
 from gradeflow_app.editor.presenters import editor
 from gradeflow_app.libraries import method_tests
 from gradeflow_app.libraries.access import MethodAccess
-from gradeflow_app.libraries.designer.runs import tests_topic
+from gradeflow_app.libraries.designer.runs import run_state, tests_topic
 from gradeflow_app.libraries.designer.workspace import MethodWorkspace
 from gradeflow_app.libraries.services import dependents
 from gradeflow_app.requests import Request
@@ -53,7 +53,7 @@ def workspace_context(
         key: extra.pop(key) for key in ("question", "path", "tab", "input") if key in extra
     }
     draft, tests_record, problems = workspace.draft, workspace.tests_record, workspace.checks.problems
-    job = tests_record.last_run
+    run, run_out_of_date = run_state(tests_record)
     context: dict[str, Any] = {
         "access": access,
         "member": access.member,
@@ -72,8 +72,8 @@ def workspace_context(
         "first_problem_label": workspace.checks.label(problems[0].check) if problems else "",
         "first_problem_unfilled": problems[0].is_incomplete if problems else False,
         "rows": _rows(workspace, state["question"]),
-        "run": job,
-        "run_out_of_date": job is not None and job.revision != tests_record.revision,
+        "run": run,
+        "run_out_of_date": run_out_of_date,
         "urls": _urls(workspace),
         "can_edit_tests": access.can_edit or not workspace.editable,
         "topic": tests_topic(tests_record),

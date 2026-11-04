@@ -12,7 +12,6 @@ from pathlib import Path
 from queue import Queue
 from typing import TYPE_CHECKING, Any
 from unittest.mock import patch
-from uuid import UUID
 
 import httpx
 import pytest
@@ -29,11 +28,9 @@ from pytest_django import Settings
 from gradeflow_app.accounts.models import User
 from gradeflow_app.assessments.models import Assessment
 from gradeflow_app.courses.models import Course, Member, Role
-from gradeflow_app.jobs import queue
-from gradeflow_app.jobs.executors import ExecutorUnavailable
-from gradeflow_app.jobs.handlers import handler
-from gradeflow_app.jobs.models import Job
+from gradeflow_app.jobs import runs
 from gradeflow_app.jobs.payloads import MarkingRun
+from gradeflow_app.jobs.runner import Ending, Launch, Listener, Run, RunnerUnavailable, State, id_prefix
 from gradeflow_app.libraries.designer.workspace import MethodWorkspace
 from gradeflow_app.libraries.method_tests import new_tests
 from gradeflow_app.libraries.models import Library, Method, MethodDraftRecord, MethodVersion, VersionTests
@@ -75,15 +72,17 @@ HTMX_HEADERS = {"HX-Request": "true", "HX-Request-Type": "partial"}
 SANDBOX_SCRIPT = Path(__file__).parents[1] / "sandbox" / "sandbox.py"
 
 type Event = dict[str, Any]
-type Task = Callable[[dict[str, Any]], None]
+type Task = Callable[[dict[str, Any]], Any]
 
 
-def sandbox(url: str = "http://testserver/", secret: str = "test") -> dict[str, Any]:
-    """The globals of the sandbox script, run in the test's process for the job at `url` with `secret`. Its requests
-    go to the app's views."""
-    with patch.dict(os.environ, {"GRADEFLOW_JOB_URL": url, "GRADEFLOW_JOB_SECRET": secret}):
+def sandbox(env: dict[str, str] | None = None) -> dict[str, Any]:
+    """The globals of the sandbox script, run in the test's process with the job's `env`. Its requests go to the
+    app's views."""
+    env = env or {"GRADEFLOW_JOB_URL": "http://testserver/", "GRADEFLOW_JOB_SECRET": "test"}
+    with patch.dict(os.environ, env):
         namespace: dict[str, Any] = runpy.run_path(str(SANDBOX_SCRIPT))["main"].__globals__
     namespace["CLIENT"] = httpx.Client(transport=_ViewTransport())
+    namespace["hide_secret_from_job_code"] = lambda: None  # the test's own process
     return namespace
 
 
@@ -109,38 +108,86 @@ def sandbox_tasks(call_back: Callable[[Event], None]) -> dict[str, Task]:
 
 def marked_by_sandbox(payload: MarkingRun) -> list[MarkedSubmission]:
     """``payload`` marked by the sandbox."""
-    events: list[Event] = []
-    sandbox_tasks(events.append)["mark"](payload.model_dump(mode="json"))
-    return [MarkedSubmission.model_validate(item) for event in events for item in event["submissions"]]
+    outcome = sandbox_tasks(lambda event: None)["mark"](payload.model_dump(mode="json"))
+    return [MarkedSubmission.model_validate(item) for item in outcome]
 
 
-class InProcessExecutor:
-    """Runs jobs in the sandbox's tasks, in the test's process, its callbacks sent to the callback view. Grouping
-    jobs stay queued for tests to drive through their callbacks: the app has no embedding model."""
+@dataclass
+class FakeRunner:
+    """A runner holding the runs started with it. While `runs_jobs`, it runs each as it starts with the sandbox
+    script in the test's process; comparisons wait for tests to drive them, as the app has no embedding model."""
 
-    def submit(self, job: Job) -> None:
-        if job.kind == Job.Kind.GROUPING:
-            return
-        assert job.input is not None
-        namespace = sandbox("http://testserver" + reverse("job_input", args=[job.pk]).removesuffix("input"), job.secret)
-        call_back = namespace["call_back"]
-        call_back({"event": "started"})
-        try:
-            namespace["TASKS"][handler(job).task](job.input)
-        except Exception as error:
-            call_back({"event": "failed", "error": str(error) or type(error).__name__})
-        else:
-            call_back({"event": "finished"})
+    held: dict[str, State] = field(default_factory=dict)
+    launches: dict[str, Launch] = field(default_factory=dict)
+    stopped: list[str] = field(default_factory=list)
+    runs_jobs: bool = True
+    is_down: bool = False
 
-    def cancel(self, job: Job) -> None:
+    def start(self, run: Run, launch: Launch) -> None:
+        self._check_up()
+        self.held[run.id] = State.QUEUED
+        self.launches[run.id] = launch
+        if self.runs_jobs and launch.task != "compare":
+            self.run(run.id)
+
+    def stop(self, kind: str, owner: object) -> None:
+        self._check_up()
+        for run_id in [run_id for run_id in self.held if run_id.startswith(id_prefix(kind, owner))]:
+            self.stopped.append(run_id)
+            del self.held[run_id]
+
+    def forget(self, run: Run) -> None:
+        self._check_up()
+        self.stopped.append(run.id)
+        self.held.pop(run.id, None)
+
+    def active(self, kind: str, owner: object = "") -> list[tuple[Run, State]]:
+        self._check_up()
+        return [
+            (run, state)
+            for run_id, state in self.held.items()
+            if run_id.startswith(id_prefix(kind, owner)) and state is not State.ENDED and (run := Run.parse(run_id))
+        ]
+
+    def follow(self, listener: Listener) -> None:
         pass
+
+    def run(self, run_id: str) -> None:
+        """Run it as a runner would: the sandbox fetches its input and calls back."""
+        self.held[run_id] = State.RUNNING
+        launch = self.launches[run_id]
+        sandbox(launch.environment())["main"](launch.task)
+
+    def end(self, run_id: str, ending: Ending = Ending.FAILED) -> None:
+        """End the run without its calling back, telling the app as the worker would."""
+        self.held[run_id] = State.ENDED
+        run = Run.parse(run_id)
+        assert run is not None
+        runs.listener.ended(run, ending)
+
+    def run_ids(self, kind: str) -> list[str]:
+        """The IDs of the runs of `kind` started, oldest first."""
+        return [run_id for run_id in self.launches if run_id.startswith(id_prefix(kind))]
+
+    def _check_up(self) -> None:
+        if self.is_down:
+            raise RunnerUnavailable
 
 
 @pytest.fixture(autouse=True)
-def _run_tasks_in_process(settings: Settings, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Tasks and jobs, in the test's process."""
+def fake_runner(settings: Settings, monkeypatch: pytest.MonkeyPatch) -> FakeRunner:
+    """Tasks in the test's process, and the runner's runs there too."""
     settings.TASKS = {"default": {"BACKEND": "django.tasks.backends.immediate.ImmediateBackend"}}
-    monkeypatch.setattr(queue, "executor", InProcessExecutor)
+    fake = FakeRunner()
+    monkeypatch.setattr(runs, "runner", lambda: fake)
+    return fake
+
+
+@pytest.fixture
+def idle_runner(fake_runner: FakeRunner) -> FakeRunner:
+    """The runner, holding runs without running them until a test does."""
+    fake_runner.runs_jobs = False
+    return fake_runner
 
 
 @pytest.fixture
@@ -345,79 +392,23 @@ def race(first: Callable[[], Any], second: Callable[[], Any]) -> tuple[Any, Any]
 
 
 def signature(secret: str, body: bytes) -> str:
-    """What the sandbox signs `body` with, by the job's `secret`."""
-    sign: Callable[[bytes], str] = sandbox(secret=secret)["signature"]
+    """What the sandbox signs `body` with, by the run's `secret`."""
+    sign: Callable[[bytes], str] = sandbox({"GRADEFLOW_JOB_URL": "", "GRADEFLOW_JOB_SECRET": secret})["signature"]
     return sign(body)
 
 
-def post_callback(job: Job, event: dict[str, Any], secret: str | None = None) -> int:
+def post_callback(run_id: str, event: dict[str, Any], secret: str | None = None) -> int:
+    """Send `event` as the run with `run_id` would."""
+    run = Run.parse(run_id)
+    assert run is not None
     body = json.dumps(event).encode()
     response = Client().post(
-        reverse("job_callback", args=[job.pk]),
+        reverse("job_callback", args=[run_id]),
         body,
         content_type="application/json",
-        headers={"X-GradeFlow-Signature": signature(secret or job.secret, body)},
+        headers={"X-GradeFlow-Signature": signature(secret or runs.secret(run), body)},
     )
     return response.status_code
-
-
-class IdleExecutor:
-    """An executor that leaves jobs queued, as Nomad does until a job calls back."""
-
-    def submit(self, job: Job) -> None:
-        pass
-
-    def cancel(self, job: Job) -> None:
-        pass
-
-
-@pytest.fixture
-def idle_executor(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(queue, "executor", IdleExecutor)
-
-
-@dataclass
-class FakeNomad:
-    """Nomad, receiving jobs without running them until a test ends them or takes it down."""
-
-    submitted: list[UUID] = field(default_factory=list)
-    cancelled: list[UUID] = field(default_factory=list)
-    ended: set[UUID] = field(default_factory=set)
-    is_down: bool = False
-
-    def submit(self, job: Job) -> None:
-        if self.is_down:
-            raise ExecutorUnavailable
-        self.submitted.append(job.pk)
-
-    def cancel(self, job: Job) -> None:
-        self.cancelled.append(job.pk)
-
-    def submitted_jobs(self) -> dict[UUID, bool]:
-        if self.is_down:
-            raise ExecutorUnavailable
-        return {pk: pk in self.ended for pk in self.submitted}
-
-
-@pytest.fixture
-def nomad(monkeypatch: pytest.MonkeyPatch) -> FakeNomad:
-    """A `FakeNomad` that runs this test's jobs."""
-    nomad = FakeNomad()
-    monkeypatch.setattr(queue, "executor", lambda: nomad)
-    return nomad
-
-
-class NotifyingExecutor:
-    """Takes jobs and leaves them running, calling `submitted` with each as the sandbox gets it."""
-
-    def __init__(self, submitted: Callable[[Job], None]) -> None:
-        self.submitted = submitted
-
-    def submit(self, job: Job) -> None:
-        self.submitted(job)
-
-    def cancel(self, job: Job) -> None:
-        pass
 
 
 QUESTIONS = QuestionSet.model_validate({"Q1": {"type": "text"}})

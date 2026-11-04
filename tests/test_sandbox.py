@@ -1,3 +1,4 @@
+import json
 import os
 import subprocess
 import sys
@@ -6,15 +7,14 @@ from typing import Any
 
 import httpx
 import pytest
-from django.urls import reverse
+from pytest_django import Settings
 from pytest_django.live_server_helper import LiveServer
 
 from gradeflow_app.accounts.models import User
 from gradeflow_app.assessments.models import Assessment
-from gradeflow_app.jobs.models import Job
 from gradeflow_app.marking.remarks import schedule_marking
 from gradeflow_app.results.models import Result
-from tests.conftest import SANDBOX_SCRIPT, full_marks_marking, sandbox
+from tests.conftest import SANDBOX_SCRIPT, FakeRunner, full_marks_marking, sandbox
 
 
 class App:
@@ -55,16 +55,39 @@ def test_a_callback_stops_when_refused_or_out_of_tries(
     assert len(app.requests) == attempts
 
 
+def test_a_run_that_reports_a_failure_exits_normally() -> None:
+    app_replies = [httpx.Response(200, json={"texts": ["a"]}), httpx.Response(204)]
+    sent: list[dict[str, Any]] = []
+
+    def reply(request: httpx.Request) -> httpx.Response:
+        if request.method == "POST":
+            sent.append(json.loads(request.content))
+        return app_replies.pop(0)
+
+    namespace = sandbox()
+    namespace["CLIENT"] = httpx.Client(transport=httpx.MockTransport(reply))
+    namespace["TASKS"]["compare"] = lambda job: 1 / 0
+    assert namespace["main"]("compare") == 0
+    assert sent == [{"event": "failed", "error": "division by zero"}]
+
+
+def test_a_run_whose_input_changed_ends_quietly() -> None:
+    namespace = sandbox()
+    namespace["CLIENT"] = httpx.Client(transport=httpx.MockTransport(lambda request: httpx.Response(410)))
+    assert namespace["main"]("mark") == 0
+
+
 @pytest.mark.django_db(transaction=True)
-def test_the_sandbox_marks_a_job_through_the_apps_job_urls(
-    live_server: LiveServer, assessment: Assessment, user: User, idle_executor: None
+def test_the_sandbox_marks_a_run_through_the_apps_job_urls(
+    live_server: LiveServer, assessment: Assessment, user: User, idle_runner: FakeRunner, settings: Settings
 ) -> None:
-    job = schedule_marking(full_marks_marking(assessment, "Q1"), user)
-    assert job is not None
-    url = live_server.url + reverse("job_input", args=[job.pk]).removesuffix("input")
-    environ = os.environ | {"GRADEFLOW_JOB_URL": url, "GRADEFLOW_JOB_SECRET": job.secret}
-    sandbox_run = subprocess.run([sys.executable, SANDBOX_SCRIPT, "mark", "60"], env=environ, check=False, timeout=60)
+    settings.GRADEFLOW_APP_URL_FOR_JOBS = live_server.url
+    schedule_marking(full_marks_marking(assessment, "Q1"), user)
+    [run_id] = idle_runner.run_ids("remark")
+    env = idle_runner.launches[run_id].environment()
+    sandbox_run = subprocess.run(
+        [sys.executable, SANDBOX_SCRIPT, "mark"], env=os.environ | env, check=False, timeout=60
+    )
     assert sandbox_run.returncode == 0
-    job.refresh_from_db()
-    assert (job.status, job.error) == (Job.Status.COMPLETED, "")
     assert Result.objects.filter(question__key="Q1").count() == assessment.students.count()
+    assert run_id not in idle_runner.held

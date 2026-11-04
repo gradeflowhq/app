@@ -1,19 +1,20 @@
+import json
 from dataclasses import asdict
-from datetime import timedelta
 from typing import Any, cast
 
 import pytest
 from django.http import HttpResponse
-from django.test import Client, RequestFactory
+from django.test import Client, RequestFactory, TestCase
 from django.urls import reverse
-from django.utils import timezone
 from gradeflow_core import GradeFlowError, ModelTrial, Progress
 from gradeflow_core.editing import dump_yaml
 from pytest_django import Settings
 
 from gradeflow_app.accounts.models import User
 from gradeflow_app.assessments.models import Assessment
-from gradeflow_app.jobs.models import PROGRESS_TEXT_LENGTH, Job
+from gradeflow_app.jobs import runs
+from gradeflow_app.jobs.runner import Ending, Run
+from gradeflow_app.jobs.runs import ENDING_REASONS, UNAVAILABLE_REASON
 from gradeflow_app.libraries.designer.workspace import MethodWorkspace
 from gradeflow_app.libraries.models import Method
 from gradeflow_app.marking.answers.column import out_of_date_notices
@@ -24,7 +25,7 @@ from gradeflow_app.model_service import views
 from gradeflow_app.model_service.endpoints import SERVICE_HEADER, TOKEN_HEADER, endpoint
 from gradeflow_app.model_service.models import ANSWERS_PER_REQUEST_LIMITS, ModelService, ModelTest
 from gradeflow_app.requests import Request
-from tests.conftest import create_method_draft, full_marks_marking, post_callback
+from tests.conftest import FakeRunner, create_method_draft, full_marks_marking, post_callback, signature
 
 PROVIDER_URL = "https://models.example.com/v1"
 PROVIDER = "Example AI"
@@ -66,8 +67,28 @@ def request_with_model_service(user: User) -> Request:
 
 
 def post_model_service(client: Client, name: str, data: dict[str, Any] | None = None) -> HttpResponse:
-    """A request from a device connected to the provider."""
-    return cast(HttpResponse, client.post(reverse(name), data or {}, headers=MODEL_SERVICE_HEADERS))
+    """A request from a device connected to the provider, and the runs it starts or stops once it commits."""
+    with TestCase.captureOnCommitCallbacks(execute=True):
+        return cast(HttpResponse, client.post(reverse(name), data or {}, headers=MODEL_SERVICE_HEADERS))
+
+
+def run_input(run_id: str) -> Any:
+    """What the run fetches to work on."""
+    run = Run.parse(run_id)
+    assert run is not None
+    headers = {"X-GradeFlow-Signature": signature(runs.secret(run), b"input")}
+    return Client().get(reverse("job_input", args=[run_id]), headers=headers).json()
+
+
+def endpoint_sent(fake_runner: FakeRunner, run_id: str) -> Any:
+    """The model endpoint the run was given, with its token."""
+    env = fake_runner.launches[run_id].environment()
+    return json.loads(env["GRADEFLOW_MODEL_ENDPOINT"]) if "GRADEFLOW_MODEL_ENDPOINT" in env else None
+
+
+def time_out(fake_runner: FakeRunner, run_id: str) -> None:
+    """End the run as the runner does one past its time limit."""
+    fake_runner.end(run_id, Ending.TIMED_OUT)
 
 
 def in_use(user: User) -> tuple[str, str, str]:
@@ -81,6 +102,14 @@ def criteria_marking(assessment: Assessment) -> Marking:
     question.save()
     definition = {"question": "Q3", "uses": "gradeflow/answer-criteria@1", "with": CRITERIA}
     return Marking.objects.create(assessment=assessment, question=question, definition=dump_yaml(definition))
+
+
+def mark_with_criteria(assessment: Assessment, user: User) -> str:
+    """The ID of the run marking Q3 with Answer Criteria, from a device connected to the provider."""
+    with TestCase.captureOnCommitCallbacks(execute=True):
+        run = schedule_marking(criteria_marking(assessment), user, endpoint(request_with_model_service(user)))
+    assert run is not None
+    return run.id
 
 
 def test_the_ai_service_is_among_the_accounts_integrations(client: Client) -> None:
@@ -97,11 +126,11 @@ def test_a_server_without_ai_services_says_so(client: Client, settings: Settings
 
 
 def test_connecting_asks_before_choosing_automatically(
-    client: Client, user: User, idle_executor: None, monkeypatch: pytest.MonkeyPatch
+    client: Client, user: User, fake_runner: FakeRunner, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(views, "list_models", lambda endpoint: ["decider", "reasoner"])
     page = post_model_service(client, "model_service_connect").text
-    assert not Job.objects.exists()
+    assert not fake_runner.launches
     assert "Not chosen yet. Choosing automatically tests up to 2 models on sample answers." in page
     assert "Choose automatically" in page
     assert "Pick myself" in page
@@ -110,38 +139,35 @@ def test_connecting_asks_before_choosing_automatically(
 
 
 def test_connecting_again_keeps_the_models_chosen(
-    client: Client, user: User, idle_executor: None, monkeypatch: pytest.MonkeyPatch
+    client: Client, user: User, fake_runner: FakeRunner, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(views, "list_models", lambda endpoint: ["decider"])
     model_service(user, fast_model="decider", chosen_by="myself")
     page = post_model_service(client, "model_service_connect").text
-    assert not Job.objects.exists()
+    assert not fake_runner.launches
     assert '<code class="truncate text-base-content">decider</code>' in page
 
 
 def test_choosing_automatically_runs_a_job_with_the_token_and_whats_been_tested(
-    client: Client, user: User, idle_executor: None
+    client: Client, user: User, idle_runner: FakeRunner
 ) -> None:
     model_service(user, MODEL_TRIALS[1])
-    page = post_model_service(client, "model_service_choose").text
-    job = Job.objects.get(kind=Job.Kind.MODEL_CHOICE)
-    assert job.input == {
-        "model_endpoint": {
-            "url": PROVIDER_URL,
-            "token": "secret-token",
-            "fast_model": None,
-            "careful_model": None,
-            "answers_per_request": ANSWERS_PER_REQUEST_LIMITS["default"],
-        },
-        "tried": TRIALS[1:],
+    post_model_service(client, "model_service_choose")
+    [run_id] = idle_runner.run_ids("model-choice")
+    assert endpoint_sent(idle_runner, run_id) == {
+        "url": PROVIDER_URL,
+        "token": "secret-token",
+        "fast_model": None,
+        "careful_model": None,
+        "answers_per_request": ANSWERS_PER_REQUEST_LIMITS["default"],
     }
-    assert "secret-token" not in str(job.marked_with)
-    assert "Testing models…" in page
+    assert run_input(run_id) == {"tried": TRIALS[1:]}
+    assert "Testing models…" in post_model_service(client, "model_service").text
     assert in_use(user) == ("tiny", "", "automatically"), "the best so far, though it missed some"
 
 
 def test_the_models_dialog_lists_every_model_with_how_each_did(
-    client: Client, user: User, idle_executor: None, monkeypatch: pytest.MonkeyPatch
+    client: Client, user: User, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(views, "list_models", lambda endpoint: ["tiny", "decider", "reasoner"])
     model_service(user, *MODEL_TRIALS, chosen_by="automatically")
@@ -161,7 +187,7 @@ def test_the_models_dialog_lists_every_model_with_how_each_did(
     assert '<input type="hidden" name="listed" value="reasoner">' in dialog
 
 
-def test_picking_a_model_uses_it_from_then_on(client: Client, user: User, idle_executor: None) -> None:
+def test_picking_a_model_uses_it_from_then_on(client: Client, user: User) -> None:
     model_service(user, *MODEL_TRIALS, chosen_by="automatically")
     response = post_model_service(client, "model_service_use", {"fast_model": "tiny", "listed": "decider"})
     assert in_use(user) == ("tiny", "", "myself")
@@ -173,7 +199,7 @@ def test_picking_a_model_uses_it_from_then_on(client: Client, user: User, idle_e
     assert in_use(user) == ("decider", "", "myself"), "turning it off keeps the models in use"
 
 
-def test_the_table_keeps_its_order_while_the_dialog_is_open(client: Client, user: User, idle_executor: None) -> None:
+def test_the_table_keeps_its_order_while_the_dialog_is_open(client: Client, user: User) -> None:
     model_service(user, *MODEL_TRIALS, fast_model="decider", chosen_by="myself")
     picked = {"fast_model": "tiny", "listed": ["decider", "tiny", "reasoner"]}
     table = post_model_service(client, "model_service_use", picked).text
@@ -182,7 +208,7 @@ def test_the_table_keeps_its_order_while_the_dialog_is_open(client: Client, user
     )
 
 
-def test_a_change_from_the_card_answers_with_the_card_alone(client: Client, idle_executor: None) -> None:
+def test_a_change_from_the_card_answers_with_the_card_alone(client: Client, idle_runner: FakeRunner) -> None:
     page = post_model_service(client, "model_service_choose").text
     assert 'id="model-table"' not in page
     assert 'id="model-service-models"' in page
@@ -199,7 +225,7 @@ def test_connecting_refuses_a_token_the_service_refuses(client: Client, monkeypa
     assert b'data-refused="true"' in response.content
 
 
-def test_only_the_servers_ai_services_connect(client: Client, user: User, idle_executor: None) -> None:
+def test_only_the_servers_ai_services_connect(client: Client, user: User) -> None:
     unoffered = {SERVICE_HEADER: "Elsewhere", TOKEN_HEADER: "secret-token"}
     response = client.post(reverse("model_service_connect"), headers=unoffered)
     assert b"Choose an AI service and enter its token." in response.content
@@ -212,60 +238,61 @@ def test_only_the_servers_ai_services_connect(client: Client, user: User, idle_e
     assert model_endpoint.url == PROVIDER_URL
 
 
-def test_choosing_automatically_uses_the_best_models_so_far(client: Client, user: User, idle_executor: None) -> None:
+def test_choosing_automatically_uses_the_best_models_so_far(
+    client: Client, user: User, idle_runner: FakeRunner
+) -> None:
     model_service(user, MODEL_TRIALS[1], fast_model="earlier", chosen_by="myself")
     post_model_service(client, "model_service_choose")
-    job = Job.objects.get(kind=Job.Kind.MODEL_CHOICE)
-    assert post_callback(job, {"event": "started"}) == 204
-    assert post_callback(job, {"event": "trying", "model": "decider", "role": "fast"}) == 204
+    [run_id] = idle_runner.run_ids("model-choice")
+    assert post_callback(run_id, {"event": "trying", "model": "decider", "role": "fast"}) == 204
     page = post_model_service(client, "model_service").text
     assert in_use(user) == ("tiny", "", "automatically")
     assert "<code>decider</code> as fast" in page
     table = post_model_service(client, "model_service_table", {"listed": ["decider", "tiny"]}).text
     assert table.count("Testing…") == 1
-    assert post_callback(job, {"event": "tried", "trial": TRIALS[0]}) == 204
+    assert post_callback(run_id, {"event": "tried", "trial": TRIALS[0]}) == 204
     page = post_model_service(client, "model_service").text
     assert in_use(user) == ("decider", "", "automatically")
     assert ">decider</code>" in page
     assert "Testing models · 1 done" in page
-    assert post_callback(job, {"event": "finished"}) == 204
+    assert post_callback(run_id, {"event": "finished"}) == 204
     assert in_use(user) == ("decider", "", "automatically")
     assert "Testing models" not in post_model_service(client, "model_service").text
 
 
-def test_a_choice_with_nothing_left_to_try_ends_without_a_failure(client: Client, idle_executor: None) -> None:
+def test_a_choice_with_nothing_left_to_try_ends_without_a_failure(
+    client: Client, user: User, idle_runner: FakeRunner
+) -> None:
     post_model_service(client, "model_service_choose")
-    job = Job.objects.get(kind=Job.Kind.MODEL_CHOICE)
-    for event in ({"event": "started"}, {"event": "finished"}):
-        assert post_callback(job, event) == 204
-    job.refresh_from_db()
-    assert job.status == Job.Status.COMPLETED
+    [run_id] = idle_runner.run_ids("model-choice")
+    assert post_callback(run_id, {"event": "finished"}) == 204
+    assert not idle_runner.held
+    assert ModelService.objects.get(user=user).choice_failure == ""
     assert "Couldn't choose automatically" not in post_model_service(client, "model_service").text
 
 
-def test_testing_a_model_shows_how_it_did_as_soon_as_it_finishes(client: Client, idle_executor: None) -> None:
+def test_testing_a_model_shows_how_it_did_as_soon_as_it_finishes(client: Client, idle_runner: FakeRunner) -> None:
     listed: dict[str, Any] = {"listed": ["decider", "reasoner"]}
     post_model_service(client, "model_service_test", listed | {"role": "fast", "model": "decider"})
-    response = post_model_service(client, "model_service_test", listed | {"role": "careful", "model": "reasoner"})
-    assert response.text.count("Testing…") == 2
-    jobs = Job.objects.filter(kind=Job.Kind.MODEL_TRIAL).order_by("created_at")
-    assert [job.input["trials"] for job in jobs if job.input] == [
+    post_model_service(client, "model_service_test", listed | {"role": "careful", "model": "reasoner"})
+    assert post_model_service(client, "model_service_table", listed).text.count("Testing…") == 2
+    job_ids = idle_runner.run_ids("model-trial")
+    assert [run_input(run_id)["trials"] for run_id in job_ids] == [
         [{"model": "decider", "role": "fast"}],
         [{"model": "reasoner", "role": "careful"}],
     ]
-    for event in ({"event": "started"}, {"event": "tried", "trial": TRIALS[0]}):
-        assert post_callback(jobs[0], event) == 204
+    assert post_callback(job_ids[0], {"event": "tried", "trial": TRIALS[0]}) == 204
     table = post_model_service(client, "model_service_table", listed).text
     assert "6/6 · 4 s" in table
     assert table.count("Testing…") == 1
-    post_callback(jobs[1], {"event": "failed", "error": "Ran past its time limit."})
+    time_out(idle_runner, job_ids[1])
     table = post_model_service(client, "model_service_table", listed).text
     assert "Testing…" not in table, "a test whose job ended without a result can be run again"
-    assert "Couldn't test: Ran past its time limit." in table
+    assert f"Couldn't test: {ENDING_REASONS[Ending.TIMED_OUT]}" in table
 
 
 def test_a_model_the_service_failed_on_can_be_tried_again(
-    client: Client, user: User, idle_executor: None, monkeypatch: pytest.MonkeyPatch
+    client: Client, user: User, idle_runner: FakeRunner, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     errored = ModelTrial(
         model="decider", role="fast", rows_matched=0, rows_tried=0, seconds=0.1, failure="The AI service answered 503."
@@ -276,44 +303,45 @@ def test_a_model_the_service_failed_on_can_be_tried_again(
     assert '<span class="line-clamp-2">The AI service answered 503.</span>' in dialog
     assert 'aria-label="Retry decider as the fast model"' in dialog
     post_model_service(client, "model_service_test", {"role": "fast", "model": "decider", "listed": "decider"})
-    job = Job.objects.get(kind=Job.Kind.MODEL_TRIAL)
-    for event in ({"event": "started"}, {"event": "tried", "trial": TRIALS[0]}):
-        assert post_callback(job, event) == 204
+    [run_id] = idle_runner.run_ids("model-trial")
+    assert post_callback(run_id, {"event": "tried", "trial": TRIALS[0]}) == 204
     assert "6/6 · 4 s" in post_model_service(client, "model_service_table", {"listed": "decider"}).text
 
 
-def test_testing_again_keeps_the_last_result_until_a_new_one(client: Client, user: User, idle_executor: None) -> None:
+def test_testing_again_keeps_the_last_result_until_a_new_one(
+    client: Client, user: User, idle_runner: FakeRunner
+) -> None:
     model_service(user, MODEL_TRIALS[0], chosen_by="automatically")
     listed = {"listed": "decider"}
-    table = post_model_service(client, "model_service_test", listed | {"role": "fast", "model": "decider"}).text
-    assert "Testing…" in table
+    post_model_service(client, "model_service_test", listed | {"role": "fast", "model": "decider"})
+    assert "Testing…" in post_model_service(client, "model_service_table", listed).text
     assert in_use(user)[0] == "decider", "it's still in use while it's tested again"
-    job = Job.objects.get(kind=Job.Kind.MODEL_TRIAL)
-    post_callback(job, {"event": "failed", "error": "The marking service is unavailable."})
+    idle_runner.is_down = True
+    post_model_service(client, "model_service_test", listed | {"role": "fast", "model": "decider"})
+    idle_runner.is_down = False
     table = post_model_service(client, "model_service_table", listed).text
     assert "Testing…" not in table
     assert "6/6 · 4 s" in table
+    assert f"Couldn't test: {UNAVAILABLE_REASON}" in table
     assert 'aria-label="Test decider again as the fast model"' in table
 
 
-def test_a_trial_that_cant_be_read_is_refused(client: Client, idle_executor: None) -> None:
+def test_a_trial_that_cant_be_read_is_refused(client: Client, idle_runner: FakeRunner) -> None:
     post_model_service(client, "model_service_test", {"role": "fast", "model": "decider"})
-    job = Job.objects.get(kind=Job.Kind.MODEL_TRIAL)
-    post_callback(job, {"event": "started"})
-    assert post_callback(job, {"event": "tried", "trial": {"model": "decider"}}) == 400
+    [run_id] = idle_runner.run_ids("model-trial")
+    assert post_callback(run_id, {"event": "tried", "trial": {"model": "decider"}}) == 400
     assert not ModelTest.objects.exclude(seconds=None).exists()
 
 
-def test_an_automatic_choice_that_failed_says_why(client: Client, idle_executor: None) -> None:
+def test_an_automatic_choice_that_failed_says_why(client: Client, idle_runner: FakeRunner) -> None:
     post_model_service(client, "model_service_choose")
-    job = Job.objects.get(kind=Job.Kind.MODEL_CHOICE)
-    post_callback(job, {"event": "started"})
-    post_callback(job, {"event": "failed", "error": "No model got every example right."})
+    [run_id] = idle_runner.run_ids("model-choice")
+    post_callback(run_id, {"event": "failed", "error": "No model got every example right."})
     page = post_model_service(client, "model_service").text
     assert "Couldn't choose automatically: No model got every example right." in page
 
 
-def test_answers_per_request_are_kept_and_sent_with_jobs(client: Client, user: User, idle_executor: None) -> None:
+def test_answers_per_request_are_kept_and_sent_with_runs(client: Client, user: User, idle_runner: FakeRunner) -> None:
     post_model_service(client, "model_service_answers_per_request", {"answers_per_request": "6"})
     assert ModelService.objects.get(user=user).answers_per_request == 6
     limits = ANSWERS_PER_REQUEST_LIMITS
@@ -323,43 +351,43 @@ def test_answers_per_request_are_kept_and_sent_with_jobs(client: Client, user: U
     assert f'value="{limits["maximum"] + 1}"' in refused.text, "the box keeps what was typed, beside its error"
     assert ModelService.objects.get(user=user).answers_per_request == 6
     post_model_service(client, "model_service_choose")
-    job = Job.objects.get(kind=Job.Kind.MODEL_CHOICE)
-    assert job.input is not None
-    assert job.input["model_endpoint"]["answers_per_request"] == 6
+    [run_id] = idle_runner.run_ids("model-choice")
+    assert endpoint_sent(idle_runner, run_id)["answers_per_request"] == 6
 
 
-def test_stopping_ends_the_running_choice_without_calling_it_a_failure(client: Client, idle_executor: None) -> None:
+def test_stopping_ends_the_running_choice_without_calling_it_a_failure(
+    client: Client, user: User, idle_runner: FakeRunner
+) -> None:
     post_model_service(client, "model_service_choose")
-    page = post_model_service(client, "model_service_stop").text
-    assert not Job.objects.filter(kind=Job.Kind.MODEL_CHOICE, status__in=Job.ACTIVE).exists()
+    post_model_service(client, "model_service_stop")
+    assert not runs.active("model-choice")
+    page = post_model_service(client, "model_service").text
     assert "Couldn't choose automatically" not in page
     assert "Not chosen yet." in page
 
 
-def test_a_choice_that_ends_early_keeps_the_models_it_found(client: Client, user: User, idle_executor: None) -> None:
+def test_a_choice_that_ends_early_keeps_the_models_it_found(
+    client: Client, user: User, idle_runner: FakeRunner
+) -> None:
     post_model_service(client, "model_service_choose")
-    job = Job.objects.get(kind=Job.Kind.MODEL_CHOICE)
-    post_callback(job, {"event": "started"})
-    post_callback(job, {"event": "tried", "trial": TRIALS[0]})
-    post_callback(job, {"event": "failed", "error": "Ran past its time limit."})
+    [run_id] = idle_runner.run_ids("model-choice")
+    post_callback(run_id, {"event": "tried", "trial": TRIALS[0]})
+    time_out(idle_runner, run_id)
     page = post_model_service(client, "model_service").text
     assert in_use(user)[0] == "decider"
     assert "Couldn't choose automatically" not in page
 
 
 def test_marking_that_asks_a_model_carries_the_endpoint_with_its_chosen_models(
-    client: Client, user: User, assessment: Assessment, idle_executor: None
+    user: User, assessment: Assessment, idle_runner: FakeRunner
 ) -> None:
     model_service(user, fast_model="decider", chosen_by="myself")
-    marking = criteria_marking(assessment)
-    job = schedule_marking(marking, user, endpoint(request_with_model_service(user)))
-    assert job is not None
-    assert job.input is not None
-    assert job.input["model_endpoint"]["token"] == "secret-token"
-    assert job.input["model_endpoint"]["fast_model"] == "decider"
+    sent = endpoint_sent(idle_runner, mark_with_criteria(assessment, user))
+    assert sent["token"] == "secret-token"
+    assert sent["fast_model"] == "decider"
 
 
-def test_a_method_test_run_carries_the_endpoint_when_its_test_values_ask_a_model(user: User) -> None:
+def test_a_method_test_run_asks_models_when_its_test_values_do(user: User) -> None:
     method = Method.objects.create(library=user.library, name="supplied")
     definition = dump_yaml(
         {
@@ -371,24 +399,21 @@ def test_a_method_test_run_carries_the_endpoint_when_its_test_values_ask_a_model
         }
     )
     workspace = MethodWorkspace(method, create_method_draft(method, user, definition))
-    model_endpoint = endpoint(request_with_model_service(user))
-    assert workspace.test_run(model_endpoint).model_endpoint is None
+    assert not workspace.test_run_asks_models()
     workspace.draft.test_values = {"checks": [{"uses": "gradeflow/answer-criteria@1", "with": CRITERIA}]}
-    assert workspace.test_run(model_endpoint).model_endpoint == model_endpoint
+    assert workspace.test_run_asks_models()
 
 
 def test_marking_that_asks_no_model_leaves_the_token_out(
-    client: Client, user: User, assessment: Assessment, idle_executor: None
+    user: User, assessment: Assessment, idle_runner: FakeRunner
 ) -> None:
-    job = schedule_marking(full_marks_marking(assessment, "Q3"), user, endpoint(request_with_model_service(user)))
-    assert job is not None
-    assert job.input is not None
-    assert job.input["model_endpoint"] is None
+    with TestCase.captureOnCommitCallbacks(execute=True):
+        run = schedule_marking(full_marks_marking(assessment, "Q3"), user, endpoint(request_with_model_service(user)))
+    assert run is not None
+    assert endpoint_sent(idle_runner, run.id) is None
 
 
-def test_a_change_from_a_device_without_a_model_service_keeps_the_decisions(
-    client: Client, user: User, assessment: Assessment, idle_executor: None
-) -> None:
+def test_a_change_from_a_device_without_a_model_service_keeps_the_decisions(user: User, assessment: Assessment) -> None:
     marking = criteria_marking(assessment)
     assert schedule_marking(marking, user) is None
     assert out_of_date_notices(assessment_checks(assessment), ["Q3"]) == [
@@ -397,20 +422,18 @@ def test_a_change_from_a_device_without_a_model_service_keeps_the_decisions(
 
 
 def test_jobs_that_ask_a_model_get_longer(
-    client: Client, user: User, assessment: Assessment, idle_executor: None, settings: Settings
+    user: User, assessment: Assessment, idle_runner: FakeRunner, settings: Settings
 ) -> None:
     settings.GRADEFLOW_MODEL_JOB_TIME_LIMIT = 1800
-    job = schedule_marking(criteria_marking(assessment), user, endpoint(request_with_model_service(user)))
-    assert job is not None
-    assert job.time_limit == 1800
+    assert idle_runner.launches[mark_with_criteria(assessment, user)].time_limit == 1800
 
 
-def test_marking_says_what_it_waits_on(client: Client, user: User, assessment: Assessment, idle_executor: None) -> None:
-    job = schedule_marking(criteria_marking(assessment), user, endpoint(request_with_model_service(user)))
-    assert job is not None
-    post_callback(job, {"event": "started"})
+def test_marking_says_what_it_waits_on(
+    client: Client, user: User, assessment: Assessment, idle_runner: FakeRunner
+) -> None:
+    run_id = mark_with_criteria(assessment, user)
     progress = Progress(completed=12, total=30, step="Deciding criteria")
-    assert post_callback(job, {"event": "progress", **asdict(progress)}) == 204
+    assert post_callback(run_id, {"event": "progress", **asdict(progress)}) == 204
     assert out_of_date_notices(assessment_checks(assessment), ["Q3"]) == []
     question = assessment.questions.get(key="Q3")
     column = client.get(reverse("answers", args=[assessment.pk, question.pk])).text
@@ -418,19 +441,7 @@ def test_marking_says_what_it_waits_on(client: Client, user: User, assessment: A
     assert "from before" not in column
 
 
-def test_a_long_step_is_cut_but_keeps_its_counts(user: User, assessment: Assessment, idle_executor: None) -> None:
-    job = schedule_marking(criteria_marking(assessment), user, endpoint(request_with_model_service(user)))
-    assert job is not None
-    post_callback(job, {"event": "started"})
-    post_callback(job, {"event": "progress", **asdict(Progress(completed=12, total=30, step="x" * 300))})
-    job.refresh_from_db()
-    assert job.progress_text.endswith("x: 12 of 30")
-    assert len(job.progress_text) == PROGRESS_TEXT_LENGTH
-
-
-def test_the_answers_column_asks_to_connect_when_marking_asks_a_model(
-    client: Client, user: User, assessment: Assessment, idle_executor: None
-) -> None:
+def test_the_answers_column_asks_to_connect_when_marking_asks_a_model(client: Client, assessment: Assessment) -> None:
     criteria_marking(assessment)
     question = assessment.questions.get(key="Q3")
     page = client.get(reverse("question", args=[assessment.pk, question.pk])).text
@@ -438,7 +449,7 @@ def test_the_answers_column_asks_to_connect_when_marking_asks_a_model(
 
 
 def test_a_question_groups_answers_column_asks_to_connect_when_marking_asks_a_model(
-    client: Client, assessment: Assessment, idle_executor: None
+    client: Client, assessment: Assessment
 ) -> None:
     criteria_marking(assessment).delete()
     parts = [
@@ -453,24 +464,13 @@ def test_a_question_groups_answers_column_asks_to_connect_when_marking_asks_a_mo
     assert "This marking uses AI" in column
 
 
-def test_choosing_again_leaves_the_running_choice(client: Client, idle_executor: None) -> None:
+def test_choosing_again_leaves_the_running_choice(client: Client, idle_runner: FakeRunner) -> None:
     post_model_service(client, "model_service_choose")
     post_model_service(client, "model_service_choose")
-    assert Job.objects.filter(kind=Job.Kind.MODEL_CHOICE, status__in=Job.ACTIVE).count() == 1
+    assert len(idle_runner.run_ids("model-choice")) == 1
+    assert len(runs.active("model-choice")) == 1
 
 
-def test_a_job_is_lost_past_its_own_time_limit(user: User, idle_executor: None) -> None:
-    started = timezone.now() - timedelta(seconds=700)
-    short_limit_job = Job.objects.create(
-        kind=Job.Kind.MODEL_CHOICE, status=Job.Status.RUNNING, started_at=started, time_limit=600
-    )
-    long_limit_job = Job.objects.create(
-        kind=Job.Kind.MODEL_CHOICE, status=Job.Status.RUNNING, started_at=started, time_limit=1800
-    )
-    assert list(Job.objects.timed_out()) == [short_limit_job]
-    assert list(Job.objects.running()) == [long_limit_job]
-
-
-def test_choosing_without_a_connected_device_says_so(client: Client, idle_executor: None) -> None:
+def test_choosing_without_a_connected_device_says_so(client: Client) -> None:
     response = client.post(reverse("model_service_choose"))
     assert "connected to an AI service." in response.text

@@ -9,15 +9,17 @@ from typing import Any
 from django.core.exceptions import ValidationError
 from django.template.loader import render_to_string
 from django.urls import reverse
-from gradeflow_core import Check, GradeFlowError, Methods, ModelEndpoint, QuestionSet
+from gradeflow_core import Check, GradeFlowError, Methods, QuestionSet
+from gradeflow_core import Method as CoreMethod
 from gradeflow_core.editing import FailedFile, LoadedFiles, MarkingDraft, MethodDraft, RowResult
+from pydantic import TypeAdapter
+from pydantic import ValidationError as PydanticValidationError
 
 from gradeflow_app.accounts.models import User
 from gradeflow_app.courses.models import Course
 from gradeflow_app.editor.editing import CheckWorkspace, EditorActions
-from gradeflow_app.jobs.models import Job
+from gradeflow_app.jobs import runs
 from gradeflow_app.jobs.payloads import TestRun
-from gradeflow_app.jobs.queue import stop
 from gradeflow_app.libraries.collection import (
     OfferedMethods,
     files_needed_by,
@@ -33,6 +35,10 @@ from gradeflow_app.ui.schemaforms.layout import unrepresentable_fields
 from gradeflow_app.ui.schemaforms.schema import labels_of, resolve, unwrap_nullable
 
 DRAFT_ONLY_VIEWS = frozenset({"method_choices", "method_field", "method_publish", "method_discard"})
+DRAFT_TESTS = "draft-tests"
+VERSION_TESTS = "version-tests"
+"""The kinds of run that mark a draft's and a version's test answers."""
+_RESULTS_ADAPTER = TypeAdapter(list[RowResult])
 
 
 class StaleWorkspace(Exception):
@@ -212,15 +218,17 @@ class MethodWorkspace(CheckWorkspace):
 
     def current_results(self) -> list[RowResult] | None:
         """The results of the last test run, while they mark what is here now."""
-        job = self.tests_record.last_run
-        return self.last_results() if job is not None and job.revision == self.tests_record.revision else None
+        tests_record = self.tests_record
+        return self.last_results() if tests_record.run_revision == tests_record.revision else None
 
     def last_results(self) -> list[RowResult] | None:
         """The results of the last test run, even if what is here has changed since, to show dimmed."""
-        job = self.tests_record.last_run
-        if job is None or job.status != Job.Status.COMPLETED or not job.ran_on_this_core:
+        if self.tests_record.results is None:
             return None
-        return [RowResult.model_validate(row) for row in job.result or []]
+        try:
+            return _RESULTS_ADAPTER.validate_python(self.tests_record.results)
+        except PydanticValidationError:
+            return None  # from a build of the core that marks differently
 
     @cached_property
     def untested(self) -> bool:
@@ -244,27 +252,23 @@ class MethodWorkspace(CheckWorkspace):
         if self.untested:
             raise ValidationError("Run the tests first, so the examples show their marks.")
         self.record_examples()
-        run = self.tests_record.last_run
-        matching_run = run if self.current_results() is not None else None
+        tested = self.current_results() is not None
         version = publish(self.draft_record, user, self.draft)
-        if matching_run is None:
-            stop(run)
-        else:
+        runs.stop(DRAFT_TESTS, self.draft_record.pk)
+        if tested:
             tests = version_tests_of(version, user)
-            tests.last_run, tests.revision = matching_run, self.tests_record.revision
-            tests.save(update_fields=["last_run", "revision"])
+            tests.revision = tests.run_revision = self.tests_record.revision
+            tests.results, tests.failure = self.tests_record.results, ""
+            tests.save(update_fields=["revision", "run_revision", "results", "failure"])
         return version
 
-    def test_run(self, model_endpoint: ModelEndpoint | None = None) -> TestRun:
-        """What a test run of the method marks, asking language models at `model_endpoint` if it does. Raises
-        `EditingError` if it can't be tried yet."""
-        method = self.draft.finalized()
-        methods = Methods([*(each for each in self.methods if each.ref != method.ref), method])
+    def test_run(self) -> TestRun:
+        """What a test run of the method marks. Raises `EditingError` if it can't be tried yet."""
+        method, methods = self._tested_methods()
         if self.draft_record is None:
             files = list(files_needed_by([method.ref]))
         else:
             files = [*files_needed_by(methods.dependencies(method.ref)), (self.method.full_name, self.draft.to_yaml())]
-        check = Check.load({"uses": method.ref, "with": self.draft.test_values}, methods=methods)
         return TestRun(
             method=method.ref,
             methods=files,
@@ -272,8 +276,17 @@ class MethodWorkspace(CheckWorkspace):
             question=self.draft.question,
             inputs=self.draft.test_values,
             rows=rows_of(self.tests),
-            model_endpoint=model_endpoint if check.needs_model_endpoint() else None,
         )
+
+    def test_run_asks_models(self) -> bool:
+        """Whether a test run asks language models. Raises `EditingError` if it can't be tried yet."""
+        method, methods = self._tested_methods()
+        return Check.load({"uses": method.ref, "with": self.draft.test_values}, methods=methods).needs_model_endpoint()
+
+    def _tested_methods(self) -> tuple[CoreMethod[Any], Methods]:
+        """The method as tested, and the methods it may use. Raises `EditingError` if it can't be tried yet."""
+        method = self.draft.finalized()
+        return method, Methods([*(each for each in self.methods if each.ref != method.ref), method])
 
     def save(self) -> None:
         """Store the edits made to the workspace as its next revision; with none, as after only opening a check,

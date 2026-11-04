@@ -3,7 +3,6 @@ from django.db import models
 from gradeflow_core import ModelEndpoint, ModelTrial, best_models
 
 from gradeflow_app.accounts.models import User
-from gradeflow_app.jobs.models import Job
 
 MODEL_NAME_LENGTH = 200
 ANSWERS_PER_REQUEST_LIMITS = ModelEndpoint.model_json_schema()["properties"]["answers_per_request"]
@@ -32,6 +31,11 @@ class ModelService(models.Model):
             MaxValueValidator(ANSWERS_PER_REQUEST_LIMITS["maximum"]),
         ],
     )
+
+    choice_failure = models.TextField(blank=True)
+    """Why the last automatic choice failed; stopping one isn't failing."""
+    trial_failure = models.TextField(blank=True)
+    """Why the last test of one model failed."""
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=["user", "url"], name="one_model_service_per_url")]
@@ -64,10 +68,10 @@ class ModelTest(models.Model):
     rows_tried = models.PositiveIntegerField(null=True)
     seconds = models.FloatField(null=True)
     failure = models.TextField(blank=True)
-    job = models.ForeignKey(Job, on_delete=models.SET_NULL, null=True, related_name="+")
-    """The job testing it, or that last did."""
+    run_id = models.CharField(max_length=200, blank=True)
+    """The run testing it, or that last did."""
     testing = models.BooleanField(default=False)
-    """Whether `job` has yet to report it."""
+    """Whether that run has yet to report it."""
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=["service", "model", "role"], name="one_test_per_model_role")]

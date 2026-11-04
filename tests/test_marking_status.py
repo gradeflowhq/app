@@ -7,13 +7,13 @@ from gradeflow_core.editing import dump_yaml
 
 from gradeflow_app.accounts.models import User
 from gradeflow_app.assessments.models import Assessment
-from gradeflow_app.jobs.models import Job
+from gradeflow_app.jobs.runner import Ending
 from gradeflow_app.marking.answers.column import out_of_date_notices
 from gradeflow_app.marking.checks import assessment_checks
 from gradeflow_app.marking.models import Marking
-from gradeflow_app.marking.remarks import remark, schedule_marking
+from gradeflow_app.marking.remarks import REMARK, remark, schedule_marking
 from gradeflow_app.results.models import Result
-from tests.conftest import full_marks_marking
+from tests.conftest import FakeRunner, full_marks_marking
 
 pytestmark = pytest.mark.django_db(transaction=True)
 
@@ -21,7 +21,7 @@ pytestmark = pytest.mark.django_db(transaction=True)
 @pytest.mark.parametrize("grouped", [False, True], ids=["question", "question-group"])
 @pytest.mark.parametrize("what_breaks", ["question-type", "definition"])
 def test_a_marking_that_stops_validating_schedules_nothing_and_says_so(
-    assessment: Assessment, user: User, client: Client, grouped: bool, what_breaks: str
+    assessment: Assessment, user: User, client: Client, fake_runner: FakeRunner, grouped: bool, what_breaks: str
 ) -> None:
     question = assessment.questions.get(key="Q1")
     q1_check = {"question": "Q1", "uses": "gradeflow/key-point@1", "with": {"point": "light"}}
@@ -41,8 +41,7 @@ def test_a_marking_that_stops_validating_schedules_nothing_and_says_so(
     )
     first = schedule_marking(marking, user)
     assert first is not None
-    first.refresh_from_db()
-    assert first.status == Job.Status.COMPLETED
+    assert Result.objects.filter(marking=marking).exists()
     previous = list(Result.objects.values("student_id", "question_id", "proportion", "revision"))
     if what_breaks == "question-type":
         question.definition = {"type": "number", "max_marks": 1}
@@ -50,9 +49,8 @@ def test_a_marking_that_stops_validating_schedules_nothing_and_says_so(
     else:
         marking.definition = "uses: course-unavailable@1"
         marking.save()
-    job_count = Job.objects.count()
     remark(assessment, ["Q1"], user)
-    assert Job.objects.count() == job_count
+    assert fake_runner.run_ids(REMARK) == [first.id]
     assert assessment_checks(assessment) == {}
     assert out_of_date_notices(assessment_checks(assessment), ["Q1"]) == [], "its own column says why"
     page_url = (
@@ -78,12 +76,12 @@ def test_a_marking_that_stops_validating_schedules_nothing_and_says_so(
     assert list(Result.objects.values("student_id", "question_id", "proportion", "revision")) == previous
 
 
-def test_a_failed_run_says_the_marks_are_from_before(assessment: Assessment, user: User) -> None:
-    marking = full_marks_marking(assessment, "Q1")
-    schedule_marking(marking, user)
-    marking.refresh_from_db()
-    job = marking.jobs.get(revision=marking.revision)
-    Job.objects.filter(pk=job.pk).update(status=Job.Status.FAILED, error="Ran past its time limit.")
+def test_a_failed_run_says_the_marks_are_from_before(
+    assessment: Assessment, user: User, idle_runner: FakeRunner
+) -> None:
+    run = schedule_marking(full_marks_marking(assessment, "Q1"), user)
+    assert run is not None
+    idle_runner.end(run.id, Ending.TIMED_OUT)
     assert out_of_date_notices(assessment_checks(assessment), ["Q1"]) == [
         "Marking failed: Ran past its time limit. The marks shown are from before."
     ]

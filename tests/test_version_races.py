@@ -21,13 +21,13 @@ from gradeflow_app.marking.checks import assessment_checks
 from gradeflow_app.marking.models import Marking, MarkingDraftRecord
 from gradeflow_app.marking.workspace import MarkingWorkspace
 from gradeflow_app.questions.models import Question
-from tests.conftest import FakeNomad, create_course, method_definition, publish_version, race, signed_in_client
+from tests.conftest import FakeRunner, create_course, method_definition, publish_version, race, signed_in_client
 
 pytestmark = pytest.mark.django_db(transaction=True)
 
 
 @pytest.fixture
-def course(user: User, nomad: FakeNomad) -> Course:
+def course(user: User) -> Course:
     return create_course(user, "Version races")
 
 
@@ -236,10 +236,8 @@ def test_an_invalid_saved_question_group_can_be_removed_without_losing_adjustmen
 
 
 def test_an_invalid_question_group_keeps_its_questions_when_another_draft_is_saved(
-    client: Client, course: Course, user: User, invalid_check: dict[str, Any]
+    client: Client, course: Course, user: User, invalid_check: dict[str, Any], fake_runner: FakeRunner
 ) -> None:
-    from gradeflow_app.jobs.models import Job
-
     draft = _create_draft(course, user)
     original = dump_yaml({"uses": "gradeflow/combination@1", "with": {"checks": [invalid_check]}})
     owning_marking = Marking.objects.create(assessment=draft.assessment, definition=original, questions_marked=["Q1"])
@@ -248,7 +246,7 @@ def test_an_invalid_question_group_keeps_its_questions_when_another_draft_is_sav
     assert b"Q1 has another marking" in response.content
     assert list(draft.assessment.markings.values_list("pk", flat=True)) == [owning_marking.pk]
     assert MarkingDraftRecord.objects.filter(pk=draft.pk).exists()
-    assert not Job.objects.filter(assessment=draft.assessment).exists()
+    assert not fake_runner.launches
     owning_marking.refresh_from_db()
     assert owning_marking.definition == original
     assert owning_marking.questions_marked == ["Q1"]

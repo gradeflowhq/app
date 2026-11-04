@@ -2,19 +2,17 @@ from dataclasses import replace
 
 import pytest
 from django.test import Client
-from django.urls import reverse
 from gradeflow_core import QuestionResult
 
 from gradeflow_app.assessments.models import Assessment
-from gradeflow_app.jobs import events, queue
-from gradeflow_app.jobs.models import Job
+from gradeflow_app.jobs.runs import RunState
 from gradeflow_app.marking.answers.combinations import combinations
 from gradeflow_app.marking.models import MarkingDraftRecord
-from gradeflow_app.marking.previews import preview_is_stale, preview_results
-from gradeflow_app.marking.workspace import MarkingWorkspace
+from gradeflow_app.marking.previews import preview_and_results, preview_is_stale, preview_state
+from gradeflow_app.marking.workspace import PREVIEW, MarkingWorkspace
 from gradeflow_app.results.marks import awards
 from gradeflow_app.results.models import Adjustment, Result
-from tests.conftest import NotifyingExecutor, preview_draft, start_marking
+from tests.conftest import FakeRunner, preview_draft, start_marking
 
 pytestmark = pytest.mark.django_db
 
@@ -28,40 +26,35 @@ def previewed_draft(client: Client, assessment: Assessment) -> MarkingDraftRecor
     return draft
 
 
-def test_previews_return_every_encrypted_id_and_survive_cleared_input(client: Client, assessment: Assessment) -> None:
+def test_previews_return_every_encrypted_id_and_run_once_for_what_they_mark(
+    client: Client, assessment: Assessment, fake_runner: FakeRunner
+) -> None:
     draft = previewed_draft(client, assessment)
-    assert draft.preview_id is not None
-    job = Job.objects.get(pk=draft.preview_id)
-    assert job.input is None
-    assert set(preview_results(job)) == set(assessment.students.values_list("encrypted_id", flat=True))
-    client.post(reverse("draft_preview", args=[assessment.pk, draft.pk]))
-    assert Job.objects.filter(kind=Job.Kind.PREVIEW).count() == 1
+    _, results = preview_and_results(MarkingWorkspace(draft))
+    assert results is not None
+    assert set(results) == set(assessment.students.values_list("encrypted_id", flat=True))
+    preview_draft(client, draft)
+    assert len(fake_runner.run_ids(PREVIEW)) == 1
 
 
 def test_a_changed_draft_previews_again_replacing_its_running_preview(
-    client: Client,
-    assessment: Assessment,
-    monkeypatch: pytest.MonkeyPatch,
+    client: Client, assessment: Assessment, idle_runner: FakeRunner
 ) -> None:
-    monkeypatch.setattr(queue, "executor", lambda: NotifyingExecutor(events.apply_started))
     url, draft = start_marking(client, assessment, "Q2", "gradeflow/accepted-answers@1")
     client.post(url, {"path": "", "fields_posted": "1", "answers": ["41"]})
     preview_draft(client, draft)
+    [first] = idle_runner.run_ids(PREVIEW)
     draft.refresh_from_db()
-    assert draft.preview is not None
-    first = draft.preview.pk
     assert not preview_is_stale(MarkingWorkspace(draft))
     client.post(url, {"path": "", "fields_posted": "1", "answers": ["42"]})
     draft.refresh_from_db()
     assert preview_is_stale(MarkingWorkspace(draft))
     preview_draft(client, draft)
     draft.refresh_from_db()
-    assert draft.preview_id != first
     assert not preview_is_stale(MarkingWorkspace(draft))
-    replaced = Job.objects.get(pk=first)
-    assert (replaced.status, replaced.error) == (Job.Status.FAILED, "Replaced by a newer run.")
-    assert draft.preview is not None
-    assert draft.preview.status == Job.Status.RUNNING
+    assert first in idle_runner.stopped
+    assert list(idle_runner.held) == idle_runner.run_ids(PREVIEW)[1:]
+    assert preview_state(draft) == RunState("queued")
 
 
 def test_awards_with_a_preview_preserve_independent_zero_and_empty_overrides(assessment: Assessment) -> None:

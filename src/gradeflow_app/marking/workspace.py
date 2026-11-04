@@ -18,7 +18,7 @@ from gradeflow_app.assessments.models import Assessment, AssessmentAccess
 from gradeflow_app.courses.models import Course
 from gradeflow_app.editor.editing import CheckWorkspace, Conflict, EditorActions
 from gradeflow_app.imports.models import answer_expression, has_imported_marks
-from gradeflow_app.jobs.queue import stop
+from gradeflow_app.jobs import runs
 from gradeflow_app.libraries.collection import OfferedMethods, offers, usable
 from gradeflow_app.live.topics import notify_change, topic
 from gradeflow_app.marking.checks import marking_draft
@@ -28,6 +28,8 @@ from gradeflow_app.requests import Request
 
 MAX_SUGGESTIONS = 100
 """The most common answers offered as suggestions."""
+PREVIEW = "preview"
+"""The kind of run that previews a draft."""
 
 
 @dataclass
@@ -114,7 +116,7 @@ class MarkingWorkspace(CheckWorkspace):
         marking = subject.marking or Marking(assessment=subject.assessment, question=subject.question)
         marking.definition = self.draft.definition
         marking.save()
-        stop(self.draft.preview)
+        runs.stop(PREVIEW, self.draft.pk)
         self.draft.delete()
         schedule_marking(marking, self.draft.user, model_endpoint)
         notify_change(topic("questions", subject.assessment.pk))
@@ -122,7 +124,7 @@ class MarkingWorkspace(CheckWorkspace):
 
     def discard(self) -> None:
         """End the draft, leaving the saved marking as it was."""
-        stop(self.draft.preview)
+        runs.stop(PREVIEW, self.draft.pk)
         self.draft.delete()
         notify_drafts_changed(self.draft.assessment, self.draft.user)
 
@@ -181,8 +183,9 @@ def start_draft(subject: MarkingSubject, user: User, definition: str) -> None:
             "assessment": subject.assessment,
             "definition": definition,
             "saved_marking_updated_at": subject.marking.updated_at if subject.marking else None,
-            "preview": None,
             "preview_input": None,
+            "preview_results": None,
+            "preview_failure": "",
         },
     )
     notify_drafts_changed(subject.assessment, user)

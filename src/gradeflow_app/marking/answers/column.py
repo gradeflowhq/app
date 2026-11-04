@@ -14,8 +14,7 @@ from gradeflow_core.editing import DECISIONS, can_mark_by_example
 from gradeflow_core.editing import Marking as CoreMarking
 
 from gradeflow_app.assessments.models import Assessment, AssessmentAccess
-from gradeflow_app.core_version import CORE_VERSION
-from gradeflow_app.jobs.models import Job
+from gradeflow_app.jobs.runs import RunState
 from gradeflow_app.libraries.collection import course_methods
 from gradeflow_app.marking import previews
 from gradeflow_app.marking.answers import answer_groups, comparisons
@@ -23,7 +22,7 @@ from gradeflow_app.marking.answers.answer_groups import AnswerGroup
 from gradeflow_app.marking.answers.combinations import Combination, combinations
 from gradeflow_app.marking.checks import assessment_checks, marking_draft, questions_involved, questions_marked
 from gradeflow_app.marking.models import Marking, MarkingSubject
-from gradeflow_app.marking.remarks import running_remarks
+from gradeflow_app.marking.remarks import NO_MODEL_SERVICE, running_remarks
 from gradeflow_app.marking.workspace import MarkingWorkspace
 from gradeflow_app.questions.models import Question
 from gradeflow_app.requests import Request
@@ -135,7 +134,7 @@ def answers_column_html(
 
 def preview_bar(request: Request, workspace: MarkingWorkspace) -> str:
     """The bar offering to preview the draft, to swap in as it changes."""
-    context = {"out_of_band": True} | draft_context(workspace)
+    context = {"out_of_band": True} | draft_context(workspace, previews.preview_state(workspace.draft))
     return render_to_string("results/answers.html#preview_bar", context, request)
 
 
@@ -159,18 +158,9 @@ def answers_context(
     compares_meaning = bool(texts) and options.similarity == "meaning" and not too_many_to_compare
     comparison = comparisons.cached_comparison(texts) if compares_meaning else None
     needs_comparison = compares_meaning and comparison is None
-    grouping_jobs = (
-        access.assessment.jobs.filter(
-            kind=Job.Kind.GROUPING,
-            question_keys=[question.key],
-            marked_with__comparison=comparisons.comparison_key(texts, core_version=CORE_VERSION),
-        )
-        if needs_comparison
-        else Job.objects.none()
-    )
-    grouping_job = grouping_jobs.running().first()
-    last = None if grouping_job else grouping_jobs.first()
-    failed_grouping_job = last if last is not None and last.status == Job.Status.FAILED else None
+    grouping = comparisons.grouping_state(question, texts) if needs_comparison else None
+    grouping_job = grouping if grouping is not None and grouping.is_active else None
+    failed_grouping_job = grouping if grouping is not None and grouping.status == "failed" else None
     groups = answer_groups.group(student_answers, grouped_by, comparison)
     job, preview_results = previews.preview_and_results(workspace)
     preview_by_student = None
@@ -212,7 +202,7 @@ def answers_context(
         "too_many_to_compare": too_many_to_compare,
         "can_mark_by_example": can_mark_by_example(question.core_question),
         "decisions": DECISIONS.items(),
-        **draft_context(workspace),
+        **draft_context(workspace, job),
     }
 
 
@@ -220,7 +210,7 @@ def group_by_meaning(request: Request, access: AssessmentAccess, question: Quest
     """Prepare a reusable comparison for this question's current answers."""
     texts = answer_groups.grouping_texts(answer_groups.student_answers(question), GROUPINGS["meaning"][1])
     if texts and not answer_groups.too_many_to_compare(texts) and comparisons.cached_comparison(texts) is None:
-        comparisons.start_grouping(access.assessment, question, texts, request.user)
+        comparisons.start_grouping(question, texts)
 
 
 def combinations_context(
@@ -265,7 +255,7 @@ def combinations_context(
         "preview_summary": _combinations_preview_summary(rows) if results is not None else None,
         "marking_job": _marking_job(assessment, keys),
         "is_question_group": True,
-        **draft_context(workspace),
+        **draft_context(workspace, job),
     }
 
 
@@ -274,17 +264,16 @@ def out_of_date_notices(accepted: Mapping[Marking, Check], question_keys: Iterab
     run. One that can't mark says why in its own column; one marking them now shows its progress."""
     keys = set(question_keys)
     messages = []
-    for marking, check in accepted.items():
+    for marking in accepted:
         if not keys & marking.questions_given_marks:
             continue
-        latest_job = marking.jobs.filter(revision=marking.revision).first()
-        if latest_job is None and check.needs_model_endpoint():
+        if marking.failure == NO_MODEL_SERVICE:
             messages.append(
                 "Not marked again: the change came from a device without an AI service. The marks shown are "
                 "from before."
             )
-        elif latest_job is not None and latest_job.status == Job.Status.FAILED:
-            messages.append(f"Marking failed: {latest_job.error} The marks shown are from before.")
+        elif marking.failure:
+            messages.append(f"Marking failed: {marking.failure} The marks shown are from before.")
     return messages
 
 
@@ -298,19 +287,24 @@ def _asks_models(accepted: Mapping[Marking, Check], keys: Iterable[str], workspa
     return any(check.needs_model_endpoint() for check in checks)
 
 
-def draft_context(workspace: MarkingWorkspace | None) -> dict[str, Any]:
+def draft_context(workspace: MarkingWorkspace | None, preview: RunState | None) -> dict[str, Any]:
     """The draft the answers column previews, whether the marks shown are out of date for it, and if so whether it is
-    complete enough to preview again."""
+    complete enough to preview again. `preview` is how its latest preview went; one the runner lost counts as
+    none."""
     if workspace is None:
         return {"draft": None}
-    needs_preview = previews.preview_is_stale(workspace)
+    needs_preview = previews.preview_is_stale(workspace) or (
+        workspace.draft.preview_input is not None and preview is None
+    )
     return {"draft": workspace.draft, "needs_preview": needs_preview, "can_preview": needs_preview and workspace.valid}
 
 
-def _marking_job(assessment: Assessment, keys: Iterable[str]) -> Job | None:
+def _marking_job(assessment: Assessment, keys: Iterable[str]) -> RunState | None:
     """The run marking any of `keys` with the saved markings, while one runs."""
     wanted = set(keys)
-    return next((job for job in running_remarks(assessment) if wanted & set(job.question_keys)), None)
+    return next(
+        (state for marking, state in running_remarks(assessment) if wanted & set(marking.questions_marked)), None
+    )
 
 
 def _marked_and_read_keys(check: CoreMarking | None) -> tuple[list[str], list[str]]:

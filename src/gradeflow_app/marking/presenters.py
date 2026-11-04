@@ -178,7 +178,9 @@ def question_list(
     saved_by_key = saved_markings(markings, accepted)
     group_markings = [marking for marking in markings if marking.question_id is None]
     averages = average_proportions(assessment)
-    progress = {key: job.progress for job in running_remarks(assessment) for key in job.question_keys}
+    progress = {
+        key: state.progress for marking, state in running_remarks(assessment) for key in marking.questions_marked
+    }
     imported_keys = imported_mark_keys(assessment)
     drafts = list(
         MarkingDraftRecord.objects.filter(assessment=assessment, user=access.member.user).select_related("question")

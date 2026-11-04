@@ -15,12 +15,12 @@ from gradeflow_app.assessments.models import Assessment
 from gradeflow_app.editor.editing import problem_text
 from gradeflow_app.editor.presenters import editor
 from gradeflow_app.imports import models as import_models
-from gradeflow_app.jobs.models import Job
 from gradeflow_app.libraries.collection import course_methods
 from gradeflow_app.live.topics import topic
 from gradeflow_app.marking import checks
 from gradeflow_app.marking import workspace as marking_workspace
 from gradeflow_app.marking.answers import answer_groups, column
+from gradeflow_app.marking.answers.comparisons import GROUPING
 from gradeflow_app.marking.checks import definition_data
 from gradeflow_app.marking.models import Marking, MarkingDraftRecord
 from gradeflow_app.marking.workspace import MarkingWorkspace
@@ -28,6 +28,7 @@ from gradeflow_app.ui.middleware import MESSAGES_HEADER
 from gradeflow_app.ui.templatetags.ui import markdown
 from tests.conftest import (
     HTMX_HEADERS,
+    FakeRunner,
     between,
     code_draft,
     encrypted_id,
@@ -527,14 +528,14 @@ def test_the_way_back_opens_what_holds_the_check(client: Client, assessment: Ass
 
 
 def test_too_many_answers_to_compare_are_grouped_when_equal(
-    client: Client, assessment: Assessment, monkeypatch: pytest.MonkeyPatch
+    client: Client, assessment: Assessment, monkeypatch: pytest.MonkeyPatch, fake_runner: FakeRunner
 ) -> None:
     monkeypatch.setattr(answer_groups, "MAX_COMPARED", 2)
     url = reverse("answers", args=[assessment.pk, assessment.questions.get(key="Q1").pk])
     for grouping in ("spelling", "meaning"):
         page = client.get(url, {"group": grouping}, headers=HTMX_HEADERS).text
         assert "Too many answers to compare. Showing the same answers only." in page, grouping
-    assert not Job.objects.filter(kind=Job.Kind.GROUPING).exists(), "nothing to compare"
+    assert not fake_runner.run_ids(GROUPING), "nothing to compare"
     assert "Too many answers" not in client.get(url, {"group": "answers"}, headers=HTMX_HEADERS).text
 
 
@@ -639,7 +640,7 @@ def test_a_question_has_one_marking_but_a_draft_marking_it_again_previews(
     assert "Edited group" not in Marking.objects.get(pk=marking.pk).definition
     preview_draft(client, draft)
     draft.refresh_from_db()
-    assert draft.preview is not None, "a preview saves nothing, so it needn't wait for the other marking"
+    assert draft.preview_results is not None, "a preview saves nothing, so it needn't wait for the other marking"
 
 
 def test_question_group_validation_refreshes_when_another_marking_releases_its_question(

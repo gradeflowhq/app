@@ -1,22 +1,29 @@
-"""Marking every student with the saved markings, as remark jobs whose results replace those of earlier runs."""
+"""Marking every student with the saved markings, as remark runs whose results replace those of earlier runs."""
 
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable
 from typing import Any
 
 from django.db import transaction
 from gradeflow_core import Check, MarkedSubmission, ModelEndpoint, Submission
+from pydantic import TypeAdapter
 
 from gradeflow_app.accounts.models import User
 from gradeflow_app.assessments.models import Assessment
-from gradeflow_app.jobs import queue
+from gradeflow_app.jobs import runs
 from gradeflow_app.jobs.handlers import Handler, register
-from gradeflow_app.jobs.models import Job
 from gradeflow_app.jobs.payloads import MarkingRun
+from gradeflow_app.jobs.runner import Run
+from gradeflow_app.jobs.runs import RunState
 from gradeflow_app.libraries.collection import MethodFiles, method_files
 from gradeflow_app.live.topics import notify_change, topic
 from gradeflow_app.marking.checks import check_for, questions_involved
 from gradeflow_app.marking.models import Marking
 from gradeflow_app.results.models import Result
+
+REMARK = "remark"
+_SUBMISSIONS_ADAPTER = TypeAdapter(list[MarkedSubmission])
+NO_MODEL_SERVICE = "no-model-service"
+"""A marking's failure when the change came from a device without an AI service, so it wasn't marked again."""
 
 
 @transaction.atomic
@@ -35,55 +42,43 @@ def remark(
 
 
 @transaction.atomic
-def schedule_marking(marking: Marking, user: User, model_endpoint: ModelEndpoint | None = None) -> Job | None:
+def schedule_marking(marking: Marking, user: User, model_endpoint: ModelEndpoint | None = None) -> Run | None:
     """Mark every student with the saved marking, replacing the results of earlier runs, asking language models at
     `model_endpoint`. A marking the core can't use marks nothing until it is fixed; its column says why."""
     marking.assessment.lock()
     marking.refresh_from_db(
         from_queryset=Marking.objects.select_for_update(of=("self",)).select_related("question", "assessment__course")
     )
-    queue.cancel_jobs(marking.jobs.filter(status__in=Job.ACTIVE))
+    runs.stop(REMARK, marking.pk)
     marking.revision += 1
+    marking.failure = ""
     check = check_for(marking)
     if check is not None:
         removed = set(marking.questions_marked) - check.questions_marked()
         Result.objects.filter(question__assessment=marking.assessment, question__key__in=removed).delete()
         marking.questions_marked = sorted(check.questions_marked())
         marking.questions_read = sorted(check.questions_read())
+    run = None
+    if check is not None and marking.questions_marked:
+        needs_endpoint = check.needs_model_endpoint()
+        if needs_endpoint and model_endpoint is None:
+            marking.failure = NO_MODEL_SERVICE  # keeps the results it has
+        else:
+            run = Run(REMARK, str(marking.pk), str(marking.revision))
+            runs.start(run, model_endpoint if needs_endpoint else None)
     Marking.objects.filter(pk=marking.pk).update(
-        revision=marking.revision, questions_marked=marking.questions_marked, questions_read=marking.questions_read
-    )
-    if check is None or not marking.questions_marked:
-        return None
-    needs_endpoint = check.needs_model_endpoint()
-    if needs_endpoint and model_endpoint is None:
-        return None  # keeps the results it has; the column says it wasn't marked again
-    return mark_students(
-        marking.assessment,
-        check,
-        method_files(marking.used_versions.all()),
-        model_endpoint if needs_endpoint else None,
-        kind=Job.Kind.REMARK,
-        user=user,
-        marking=marking,
         revision=marking.revision,
+        failure=marking.failure,
+        questions_marked=marking.questions_marked,
+        questions_read=marking.questions_read,
     )
+    return run
 
 
-def mark_students(
-    assessment: Assessment,
-    check: Check,
-    methods: MethodFiles,
-    model_endpoint: ModelEndpoint | None,
-    *,
-    kind: Job.Kind,
-    user: User,
-    **job_fields: Any,
-) -> Job:
-    """A job marking every student of the assessment with `check`, which uses `methods`, given only the answers it
-    reads."""
+def marking_run(assessment: Assessment, check: Check, methods: MethodFiles) -> MarkingRun:
+    """Every student of the assessment marked with `check`, which uses `methods`, given only the answers it reads."""
     questions_read = check.questions_read()
-    payload = MarkingRun(
+    return MarkingRun(
         questions=assessment.question_set(),
         markings=[check.dump()],
         methods=list(methods),
@@ -94,18 +89,19 @@ def mark_students(
             )
             for student in assessment.students.all()
         ],
-        model_endpoint=model_endpoint,
     )
-    return queue.enqueue(
-        course=assessment.course,
-        assessment=assessment,
-        kind=kind,
-        question_keys=sorted(check.questions_marked()),
-        input=payload.model_dump(mode="json"),
-        marked_with={"markings": payload.markings, "methods": payload.methods},
-        user=user,
-        **job_fields,
-    )
+
+
+def marked_submissions(outcome: Any, assessment: Assessment, keys: Iterable[str]) -> list[MarkedSubmission]:
+    """A mark run's outcome, which must give every student of the assessment a result for each of `keys`. Raises
+    `ValueError` if it doesn't."""
+    submissions = _SUBMISSIONS_ADAPTER.validate_python(outcome)
+    expected = set(assessment.students.values_list("encrypted_id", flat=True))
+    received = {submission.student_id for submission in submissions}
+    missing_outputs = any(set(keys) - submission.results.keys() for submission in submissions)
+    if received != expected or len(submissions) != len(received) or missing_outputs:
+        raise ValueError("The marking service returned an incomplete set of student results.")
+    return submissions
 
 
 @transaction.atomic
@@ -113,38 +109,51 @@ def delete_marking(marking: Marking) -> None:
     """Delete a marking and its results."""
     marking.assessment.lock()
     current = Marking.objects.select_for_update(of=("self",)).select_related("question").get(pk=marking.pk)
-    queue.cancel_jobs(current.jobs.filter(status__in=Job.ACTIVE))
+    runs.stop(REMARK, current.pk)
     Result.objects.filter(
         question__assessment=current.assessment, question__key__in=current.questions_given_marks
     ).delete()
     current.delete()
 
 
-def running_remarks(assessment: Assessment) -> list[Job]:
-    return list(assessment.jobs.running().filter(kind=Job.Kind.REMARK).defer("input", "result", "marked_with"))
+def running_remarks(assessment: Assessment) -> list[tuple[Marking, RunState]]:
+    """The assessment's markings marking again, each with how its run is going."""
+    active = {(run.owner, run.key): state for run, state in runs.active(REMARK)}
+    return [
+        (marking, state)
+        for marking in assessment.markings.filter(pk__in=[owner for owner, _ in active])
+        if (state := active.get((str(marking.pk), str(marking.revision)))) is not None
+    ]
 
 
-def _lock_marking(job: Job) -> None:
-    if job.marking_id is not None:
-        Marking.objects.select_for_update().filter(pk=job.marking_id).first()
+def _marking(run: Run) -> Marking | None:
+    return Marking.objects.select_related("assessment").filter(pk=run.owner).first()
 
 
-def _is_current(job: Job) -> bool:
-    if job.marking_id is None:
-        return False
-    marking = Marking.objects.filter(pk=job.marking_id).first()
-    return (
-        marking is not None
-        and marking.revision == job.revision
-        and sorted(marking.questions_marked) == sorted(job.question_keys)
-    )
+def _input(run: Run) -> MarkingRun | None:
+    marking = _marking(run)
+    if marking is None or str(marking.revision) != run.key or (check := check_for(marking)) is None:
+        return None
+    return marking_run(marking.assessment, check, method_files(marking.used_versions.all()))
 
 
-def _store_results(job: Job, submissions: Sequence[MarkedSubmission]) -> None:
-    assert job.assessment is not None
-    assert job.revision is not None
-    questions = {question.key: question for question in job.assessment.questions.filter(key__in=job.question_keys)}
-    students = dict(job.assessment.students.values_list("encrypted_id", "id"))
+def _lock(run: Run) -> None:
+    if (marking := _marking(run)) is not None:
+        marking.assessment.lock()
+        Marking.objects.select_for_update().filter(pk=marking.pk).first()
+
+
+def _is_current(run: Run) -> bool:
+    return Marking.objects.filter(pk=run.owner, revision=run.key).exists()
+
+
+def _store_results(run: Run, outcome: Any) -> None:
+    marking = _marking(run)
+    assert marking is not None
+    assessment = marking.assessment
+    submissions = marked_submissions(outcome, assessment, marking.questions_marked)
+    questions = {question.key: question for question in assessment.questions.filter(key__in=marking.questions_marked)}
+    students = dict(assessment.students.values_list("encrypted_id", "id"))
     Result.objects.filter(question__in=questions.values()).delete()
     Result.objects.bulk_create(
         Result(
@@ -156,24 +165,35 @@ def _store_results(job: Job, submissions: Sequence[MarkedSubmission]) -> None:
             is_marked=result.is_marked,
             model_names=list(result.model_names),
             breakdown=result.breakdown and result.breakdown.model_dump(mode="json"),
-            marking_id=job.marking_id,
-            revision=job.revision,
+            marking=marking,
+            revision=marking.revision,
         )
         for submission in submissions
-        if submission.student_id in students
         for key, question in questions.items()
         if (result := submission.results.get(key)) is not None
     )
-    notify_change(topic("marks", job.assessment_id))
+    notify_change(topic("marks", assessment.pk))
+
+
+def _record_failure(run: Run, error: str) -> None:
+    Marking.objects.filter(pk=run.owner).update(failure=error)
+
+
+def _topics(run: Run) -> list[str]:
+    marking = _marking(run)
+    return [topic("jobs", marking.assessment_id)] if marking is not None else []
 
 
 register(
-    Job.Kind.REMARK,
+    REMARK,
     Handler(
         task="mark",
-        topics=lambda job: [topic("jobs", job.assessment_id)],
-        lock=_lock_marking,
+        topics=_topics,
+        input=_input,
         is_current=_is_current,
-        apply_outcome=_store_results,
+        finish=_store_results,
+        fail=_record_failure,
+        lock=_lock,
+        priority=50,
     ),
 )

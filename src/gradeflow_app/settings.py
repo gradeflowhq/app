@@ -220,7 +220,7 @@ if not DEBUG:
     }
 
 DATA_UPLOAD_MAX_MEMORY_SIZE = int(2.5 * 2**20)
-"""The largest request body, files apart; sandbox jobs send their results in batches of 1 MB to stay under it."""
+"""The largest request body, files apart; a run's callback with its whole outcome reads past it."""
 
 if not DEBUG and not (os.environ.get("GRADEFLOW_NOMAD_URL") and os.environ.get("GRADEFLOW_APP_URL_FOR_JOBS")):
     raise ImproperlyConfigured("Set GRADEFLOW_NOMAD_URL and GRADEFLOW_APP_URL_FOR_JOBS, which sandbox jobs need.")
@@ -239,5 +239,3 @@ GRADEFLOW_MODEL_JOB_TIME_LIMIT = int(os.environ.get("GRADEFLOW_MODEL_JOB_TIME_LI
 """For jobs that ask a language model, whose reasoning takes minutes."""
 GRADEFLOW_MODEL_PROVIDERS: dict[str, str] = json.loads(os.environ.get("GRADEFLOW_MODEL_PROVIDERS", "{}"))
 """The AI services people may connect, each name with its OpenAI-compatible endpoint. No request goes to any other."""
-GRADEFLOW_RUNNING_JOBS_PER_USER = int(os.environ.get("GRADEFLOW_RUNNING_JOBS_PER_USER", "5"))
-"""Most jobs a user may have running at once."""

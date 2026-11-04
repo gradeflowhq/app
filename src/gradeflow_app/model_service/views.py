@@ -15,7 +15,6 @@ from gradeflow_core import GradeFlowError, ModelTrial, best_models
 from gradeflow_core.editing import list_models
 from pydantic import ValidationError as PydanticValidationError
 
-from gradeflow_app.jobs.models import Job
 from gradeflow_app.jobs.payloads import ModelTrialRequest
 from gradeflow_app.model_service import choosing
 from gradeflow_app.model_service.endpoints import SERVICE_HEADER, connected_service, endpoint
@@ -230,18 +229,18 @@ def _table(request: Request, service: ModelService | None, model_names: Sequence
         "service": service,
         "rows": rows,
         "searchable": len(rows) > SEARCHABLE_MODELS,
-        "test_failure": choosing.failure_reason(service, Job.Kind.MODEL_TRIAL),
+        "test_failure": service.trial_failure,
     } | _choice_progress(service)
 
 
 def _choice_progress(service: ModelService) -> dict[str, Any]:
     """The automatic choice running for the service: how many tests it has finished, and the one under way."""
-    choosing_job = choosing.running(Job.Kind.MODEL_CHOICE, service).first()
-    if choosing_job is None:
+    if (choice := choosing.running_choice(service)) is None:
         return {"choosing_job": None}
-    tests = service.tests.filter(job=choosing_job)
+    run, state = choice
+    tests = service.tests.filter(run_id=run.id)
     return {
-        "choosing_job": choosing_job,
+        "choosing_job": state,
         "tests_done": tests.filter(testing=False).count(),
         "testing_now": tests.filter(testing=True).first(),
     }
@@ -264,7 +263,7 @@ def _models_context(
     context |= _choice_progress(service) | {
         "roles": [RoleModel(label, in_use[role], trials.get((in_use[role], role))) for role, label in ROLES],
         "any_in_use": any(in_use.values()),
-        "failure_reason": choosing.failure_reason(service, Job.Kind.MODEL_CHOICE),
+        "failure_reason": service.choice_failure,
     }
     if not context["any_in_use"] and not context["choosing_job"]:
         context["model_count"] = len(model_names) if model_names is not None else _model_count(request, service)

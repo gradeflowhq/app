@@ -1,48 +1,55 @@
-"""What each kind of job does beyond its task in the sandbox: what its outcome changes, whether it still applies, and
-who hears of it. The feature that starts a kind of job registers its handler."""
+"""What each kind of run does around its task in the sandbox: what it runs on, what its outcome changes, whether it
+still applies, and who hears of it. The feature that starts a kind of run registers its handler."""
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Any
 
-from gradeflow_app.jobs.models import Job
+from pydantic import BaseModel
 
-type Task = Literal["mark", "test", "compare", "choose", "trial"]
-"""What the sandbox runs: a payload's submissions marked, a method's test answers marked, texts compared by meaning,
-a model endpoint's models chosen, or some of them tried."""
+from gradeflow_app.jobs.runner import Run, Task
 
 
-def _lock_nothing(job: Job) -> None:
+def _lock_nothing(run: Run) -> None:
     pass
-
-
-def _always_current(job: Job) -> bool:
-    return True
 
 
 @dataclass(frozen=True)
 class Handler:
     task: Task
-    topics: Callable[[Job], list[str]]
-    """What pages showing the job listen to."""
-    lock: Callable[[Job], None] = _lock_nothing
-    """Locks what its outcome changes, before the job itself is locked."""
-    is_current: Callable[[Job], bool] = _always_current
-    """Whether its outcome still applies; one that doesn't fails as out of date."""
-    apply_outcome: Callable[[Job, Any], None] | None = None
-    """Applies its outcome: the marked submissions of a mark task, the comparison of a compare task. Without it, the
-    job keeps the outcome as its result."""
-    apply_event: Callable[[Job, dict[str, Any]], None] | None = None
-    """Applies its task's own events as they arrive, with the job locked and running, such as a model test starting
-    or ending."""
+    topics: Callable[[Run], list[str]]
+    """What pages showing the run listen to."""
+    input: Callable[[Run], BaseModel | None]
+    """The run's input, built from its owner as it is now; None once the owner changed since the run started."""
+    is_current: Callable[[Run], bool]
+    """Whether its outcome still applies."""
+    finish: Callable[[Run, Any], None]
+    """Stores its outcome. Raises `ValueError` if the outcome doesn't fit the input."""
+    fail: Callable[[Run, str], None]
+    """Stores why it failed."""
+    lock: Callable[[Run], None] = _lock_nothing
+    """Locks what its outcome changes."""
+    apply_event: Callable[[Run, dict[str, Any]], None] | None = None
+    """Applies its task's own events as they arrive, such as a model test starting or ending."""
+    priority: int = 70
 
 
 _HANDLERS: dict[str, Handler] = {}
 
 
-def register(kind: Job.Kind, handler: Handler) -> None:
+def register(kind: str, handler: Handler) -> None:
     _HANDLERS[kind] = handler
 
 
-def handler(job: Job) -> Handler:
-    return _HANDLERS[job.kind]
+def handler(run: Run) -> Handler:
+    return _HANDLERS[run.kind]
+
+
+def is_registered(run: Run) -> bool:
+    return run.kind in _HANDLERS
+
+
+def parse_run(run_id: str) -> Run | None:
+    """The run with `run_id`, if its kind is registered."""
+    run = Run.parse(run_id)
+    return run if run is not None and is_registered(run) else None

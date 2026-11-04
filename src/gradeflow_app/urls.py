@@ -150,8 +150,8 @@ urlpatterns = [
     path("methods/<uuid:method>/", include(method_urls)),
     path("assessments/<uuid:assessment>/", include(assessment_urls)),
     path("invitations/<str:token>/", courses.invitation, name="invitation"),
-    path("jobs/<uuid:job_id>/input", callbacks.job_input, name="job_input"),
-    path("jobs/<uuid:job_id>/callback", callbacks.job_callback, name="job_callback"),
+    path("jobs/<str:run_id>/input", callbacks.job_input, name="job_input"),
+    path("jobs/<str:run_id>/callback", callbacks.job_callback, name="job_callback"),
     path("live/", live.stream, name="live"),
     path("markdown/", ui.markdown_preview, name="markdown_preview"),
 ]

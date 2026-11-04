@@ -141,12 +141,17 @@ class VersionUse(models.Model):
 
 
 class TestsRecord(models.Model):
-    """A person's test answers for a method, and the run that marked them last. ``revision`` changes with every
-    edit, so a run of an earlier revision is out of date."""
+    """A person's test answers for a method, and how the last run that ended marked them. ``revision`` changes with
+    every edit, so a run of an earlier revision is out of date."""
 
     tests = models.JSONField(default=dict)
     revision = models.PositiveIntegerField(default=0)
-    last_run = models.ForeignKey("jobs.Job", null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    run_revision = models.PositiveIntegerField(null=True, blank=True)
+    """The revision the last run that ended marked."""
+    results = models.JSONField(null=True, blank=True)
+    """What that run gave each test answer, unless it failed."""
+    failure = models.TextField(blank=True)
+    """Why that run failed."""
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:

@@ -21,11 +21,10 @@ from gradeflow_core.editing import QUESTION_TYPES, EditingError, new_question
 
 from gradeflow_app.editor import operations
 from gradeflow_app.editor.picker import PickerForm, check_picker
-from gradeflow_app.jobs.queue import stop
 from gradeflow_app.libraries import method_tests
 from gradeflow_app.libraries.access import MethodAccess, method_viewer
 from gradeflow_app.libraries.designer import presenters
-from gradeflow_app.libraries.designer.runs import run_tests
+from gradeflow_app.libraries.designer.runs import run_tests, stop_tests
 from gradeflow_app.libraries.designer.workspace import (
     MethodWorkspace,
     StaleWorkspace,
@@ -59,11 +58,7 @@ def _workspace(request: Request, access: MethodAccess, number: int | None) -> Me
         return MethodWorkspace(
             method, version_tests_of(get_object_or_404(method.versions, number=number), request.user)
         )
-    draft_record = (
-        MethodDraftRecord.objects.select_related("based_on", "last_run")
-        .filter(method=method, user=request.user)
-        .first()
-    )
+    draft_record = MethodDraftRecord.objects.select_related("based_on").filter(method=method, user=request.user).first()
     if draft_record is None:
         raise Http404
     return MethodWorkspace(method, draft_record)
@@ -79,13 +74,15 @@ def _edit(
     number: int | None,
     change: Callable[[MethodWorkspace], dict[str, Any] | None],
 ) -> HttpResponse:
-    """Apply `change` to the workspace, then show it; or show why it couldn't."""
+    """Apply `change` to the workspace and commit it, then show it with any run it started; or show why it
+    couldn't."""
     workspace = _workspace(request, access, number)
     if workspace.editable and not access.can_edit:
         raise PermissionDenied
     try:
-        current = lock_workspace(workspace, request.POST.get("revision"))
-        extra = change(current) or {}
+        with transaction.atomic():
+            current = lock_workspace(workspace, request.POST.get("revision"))
+            extra = change(current) or {}
     except StaleWorkspace:
         return _stale(request, workspace)
     except GradeFlowError as error:
@@ -186,12 +183,9 @@ def values(request: Request, access: MethodAccess, number: int | None = None) ->
 
 @require_POST
 @method_viewer()
-@transaction.atomic
 def run(request: Request, access: MethodAccess, number: int | None = None) -> HttpResponse:
     def change(workspace: MethodWorkspace) -> None:
-        workspace.tests_record.last_run = run_tests(
-            workspace.tests_record, workspace.test_run(endpoint(request)), workspace.course, request.user
-        )
+        run_tests(workspace.tests_record, endpoint(request) if workspace.test_run_asks_models() else None)
 
     return _edit(request, access, number, change)
 
@@ -454,7 +448,7 @@ def publish_draft(request: Request, access: MethodAccess) -> HttpResponse:
 def discard(request: Request, access: MethodAccess) -> HttpResponse:
     workspace = _workspace(request, access, None)
     method = workspace.method
-    stop(workspace.tests_record.last_run)
+    stop_tests(workspace.tests_record)
     workspace.tests_record.delete()
     if method.versions.exists():
         url = reverse("method_latest", args=[method.pk])

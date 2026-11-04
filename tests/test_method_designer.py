@@ -2,14 +2,12 @@
 
 import html
 import re
-from datetime import timedelta
 from html import unescape
 from typing import TYPE_CHECKING
 
 import pytest
 from django.test import Client
 from django.urls import reverse
-from django.utils import timezone
 from django.utils.html import escape
 from gradeflow_core import BUILTINS, Question
 from gradeflow_core.editing import MethodDraft, dump_yaml
@@ -17,8 +15,8 @@ from pytest_django import DjangoCaptureOnCommitCallbacks
 
 from gradeflow_app.accounts.models import User
 from gradeflow_app.courses.models import Course, Member, Role
-from gradeflow_app.jobs import events, queue
-from gradeflow_app.jobs.models import Job
+from gradeflow_app.jobs.runs import COMPLETED, UNREADABLE_REASON, RunState
+from gradeflow_app.libraries.designer.runs import run_state
 from gradeflow_app.libraries.designer.workspace import MethodWorkspace
 from gradeflow_app.libraries.method_tests import MethodTests
 from gradeflow_app.libraries.models import Method, MethodDraftRecord, VersionTests
@@ -26,6 +24,7 @@ from gradeflow_app.marking.checks import definition_data
 from gradeflow_app.questions.models import QUESTION_TYPE_LABELS
 from tests.conftest import (
     HTMX_HEADERS,
+    FakeRunner,
     create_course,
     designer_record,
     designer_url,
@@ -148,9 +147,9 @@ def test_running_the_tests_shows_the_marks_until_the_answers_change(
     with django_capture_on_commit_callbacks(execute=True):
         post_to_designer(client, method, "method_run")
     page = client.get(designer_url(method, "method_page")).text
-    job = Job.objects.get(kind=Job.Kind.DRAFT_TESTS)
-    assert job.status == Job.Status.COMPLETED, job.error
-    assert [row["answers"] for row in job.result or []] == [{"Q1": "light"}, {"Q1": "dark"}], "a result per answer"
+    tests = draft(method)
+    assert run_state(tests) == (COMPLETED, False), tests.failure
+    assert [row["answers"] for row in tests.results or []] == [{"Q1": "light"}, {"Q1": "dark"}], "a result per answer"
     assert "Results are up to date" in page
     results = client.get(designer_url(method, "method_results")).text
     assert "Results are up to date" in results
@@ -172,21 +171,26 @@ def test_test_answers_show_how_each_check_marked_them(
     assert "Any length." in results
 
 
-def test_unreadable_test_results_fail_the_run(client: Client, method: Method, idle_executor: None) -> None:
+def test_unreadable_test_results_fail_the_run(
+    client: Client,
+    method: Method,
+    idle_runner: FakeRunner,
+    django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks,
+) -> None:
     post_to_designer(client, method, "method_answers", operation="add", answer="light")
-    post_to_designer(client, method, "method_run")
-    job = Job.objects.get(kind=Job.Kind.DRAFT_TESTS)
-    assert post_callback(job, {"event": "tested", "results": [{"answers": {"Q1": "light"}}]}) == 204
-    job.refresh_from_db()
-    assert (job.status, job.error) == (Job.Status.FAILED, events.UNREADABLE_RESULTS_ERROR)
-    post_to_designer(client, method, "method_run")
-    rerun = Job.objects.filter(kind=Job.Kind.DRAFT_TESTS).exclude(pk=job.pk).get()
+    with django_capture_on_commit_callbacks(execute=True):
+        post_to_designer(client, method, "method_run")
+    [run_id] = idle_runner.run_ids("draft-tests")
+    assert post_callback(run_id, {"event": "finished", "outcome": [{"answers": {"Q1": "light"}}]}) == 204
+    assert run_state(draft(method))[0] == RunState("failed", UNREADABLE_REASON)
+    with django_capture_on_commit_callbacks(execute=True):
+        post_to_designer(client, method, "method_run")
+    rerun = idle_runner.run_ids("draft-tests")[-1]
     other = {"answers": {"Q1": "other"}, "matches_expected": None, "results": {}, "max_marks": 1}
-    assert post_callback(rerun, {"event": "tested", "results": [other]}) == 204
-    assert post_callback(rerun, {"event": "finished"}) == 204
-    rerun.refresh_from_db()
-    assert rerun.status == Job.Status.FAILED
-    assert "don't match the test answers" in rerun.error
+    assert post_callback(rerun, {"event": "finished", "outcome": [other]}) == 204
+    tests = draft(method)
+    assert run_state(tests)[0] == RunState("failed", tests.failure)
+    assert "don't match the test answers" in tests.failure
 
 
 FIRST_POINTS_PATH, SECOND_POINTS_PATH = "with.checks.0.with.points", "with.checks.1.with.points"
@@ -737,9 +741,11 @@ def test_publishing_records_what_the_tests_gave_the_examples(
     results = client.get(designer_url(method, "method_results")).text
     assert re.search(r'id="method-publish" hx-swap-oob="outerMorph".*?>Publish</button>', results, re.DOTALL)
     assert "Run the tests to publish" not in results
+    results_given = draft(method).results
+    assert results_given is not None
+    dark_result = results_given[1]
     post_publish(client, method)
     assert "Results are up to date" in client.get(designer_url(method, "method_page", 1)).text, "as tested"
-    dark_result = Job.objects.get(kind=Job.Kind.DRAFT_TESTS).result[1]  # type: ignore[index]
     version = method.versions.get()
     published_method = BUILTINS.with_files([(method.full_name, version.definition)]).find(version.ref)
     [row] = published_method.examples[0].rows
@@ -768,17 +774,21 @@ def test_a_draft_that_changes_nothing_isnt_published(client: Client, method: Met
 
 
 def test_a_publish_that_fails_keeps_the_test_run_and_the_draft(
-    client: Client, method: Method, bo: User, idle_executor: None
+    client: Client,
+    method: Method,
+    bo: User,
+    idle_runner: FakeRunner,
+    django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks,
 ) -> None:
     post_to_designer(client, method, "method_answers", operation="add", answer="light")
-    post_to_designer(client, method, "method_run")
+    with django_capture_on_commit_callbacks(execute=True):
+        post_to_designer(client, method, "method_run")
     post_to_designer(client, method, "method_answers", operation="add", answer="dark")
-    test_run = Job.objects.get(kind=Job.Kind.DRAFT_TESTS)
     before = draft(method).definition
     publish_version(method, bo, method_definition(answer="newer"))
-    assert "A newer version was published" in post_publish(client, method).text
-    test_run.refresh_from_db()
-    assert test_run.is_active
+    with django_capture_on_commit_callbacks(execute=True):
+        assert "A newer version was published" in post_publish(client, method).text
+    assert run_state(draft(method))[0] == RunState("queued")
     assert draft(method).definition == before
 
 
@@ -828,7 +838,7 @@ def test_a_version_is_tried_on_ones_own_answers_and_reset(
     assert answer_rows(method, 1) == [("light", False), ("dark", False)]
     with django_capture_on_commit_callbacks(execute=True):
         post_to_designer(client, method, "method_run", 1)
-    assert Job.objects.get(kind=Job.Kind.VERSION_TESTS).status == Job.Status.COMPLETED
+    assert run_state(designer_record(method, 1)) == (COMPLETED, False)
     assert post_to_designer(client, method, "method_answers", 1, operation="example", row="0").status_code == 404
     assert post_to_designer(client, method, "method_yaml", 1, definition="checks: [").status_code == 200
     version = method.versions.get()
@@ -951,28 +961,21 @@ def test_a_version_has_no_draft_only_views(client: Client, method: Method) -> No
         assert client.post(designer_url(method, name)).status_code in (404, 405), name
 
 
-def test_a_run_of_answers_since_changed_is_out_of_date(client: Client, method: Method, idle_executor: None) -> None:
-    post_to_designer(client, method, "method_answers", operation="add", answer="light")
-    post_to_designer(client, method, "method_run")
-    job = Job.objects.get(kind=Job.Kind.DRAFT_TESTS)
-    post_to_designer(client, method, "method_answers", operation="add", answer="dark")
-    assert post_callback(job, {"event": "finished"}) == 204
-    job.refresh_from_db()
-    assert (job.status, job.error) == (Job.Status.FAILED, "Out of date.")
-
-
-def test_test_runs_are_forgotten_after_a_day(
-    client: Client, method: Method, django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks
+def test_a_run_of_answers_since_changed_is_out_of_date(
+    client: Client,
+    method: Method,
+    idle_runner: FakeRunner,
+    django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks,
 ) -> None:
     post_to_designer(client, method, "method_answers", operation="add", answer="light")
     with django_capture_on_commit_callbacks(execute=True):
         post_to_designer(client, method, "method_run")
-    job = Job.objects.get(kind=Job.Kind.DRAFT_TESTS)
-    queue.recover_queue()
-    assert Job.objects.filter(pk=job.pk).exists()
-    Job.objects.filter(pk=job.pk).update(finished_at=timezone.now() - timedelta(days=2))
-    queue.recover_queue()
-    assert not Job.objects.filter(pk=job.pk).exists()
+    [run_id] = idle_runner.run_ids("draft-tests")
+    post_to_designer(client, method, "method_answers", operation="add", answer="dark")
+    assert run_state(draft(method))[1], "the tests changed since it started"
+    assert post_callback(run_id, {"event": "finished", "outcome": []}) == 204
+    assert (draft(method).run_revision, draft(method).failure) == (None, "")
+    assert not idle_runner.held
 
 
 def test_a_new_method_from_your_methods_is_yours(client: Client, user: User) -> None:

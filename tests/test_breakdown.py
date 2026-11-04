@@ -42,10 +42,9 @@ def test_a_marking_of_several_checks_shows_how_each_marked_an_answer(
         assessment=assessment, question=question, definition=dump_yaml(LIGHT_IN_AT_MOST_THREE_WORDS)
     )
     with TestCase.captureOnCommitCallbacks(execute=True):
-        job = schedule_marking(marking, user)
-    assert job is not None
-    job.refresh_from_db()
-    assert (job.status, job.error) == ("completed", "")
+        schedule_marking(marking, user)
+    marking.refresh_from_db()
+    assert marking.failure == ""
     stored = Result.objects.filter(question=question, breakdown__isnull=False).first()
     assert stored is not None
     breakdown = CheckResult.model_validate(stored.breakdown)
@@ -80,10 +79,9 @@ def test_the_breakdown_shows_the_fixed_code(client: Client, assessment: Assessme
     }
     marking = Marking.objects.create(assessment=assessment, question=question, definition=dump_yaml(check))
     with TestCase.captureOnCommitCallbacks(execute=True):
-        job = schedule_marking(marking, user)
-    assert job is not None
-    job.refresh_from_db()
-    assert (job.status, job.error) == ("completed", "")
+        schedule_marking(marking, user)
+    marking.refresh_from_db()
+    assert marking.failure == ""
     page = client.get(reverse("question", args=[assessment.pk, question.pk])).text
     text = html.unescape(re.sub(r"<span[^>]*>|</span>", "", page))
     assert re.search(r"Marked as\s*<code[^>]*>def f\(\):\n    return 1", text)

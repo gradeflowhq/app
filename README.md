@@ -4,7 +4,7 @@ The web app for GradeFlow, built with Django and HTMX on [GradeFlow core](https:
 
 ## Development
 
-You need Python 3.14 with uv, Docker, Node for the browser-module tests, and a [Nomad agent](#nomad).
+You need Python 3.14 with uv, Docker, Node for the browser-module tests, and a [Nomad agent](#nomad), version 2.0.3 or later.
 
 ```sh
 docker run -d --name gradeflow-postgres --restart unless-stopped -p 127.0.0.1:5434:5432 \
@@ -23,7 +23,7 @@ uv run manage.py tailwind watch  # downloads the Tailwind CLI on first run
 uv run uvicorn gradeflow_app.asgi:application --host 0.0.0.0 --port 8000 --reload \
   --reload-dir src --reload-include '*.html' --reload-include '*.txt'
 uv run manage.py db_worker       # sends invitation emails
-uv run manage.py job_worker      # starts queued sandbox jobs and recovers them after restarts
+uv run manage.py job_worker      # follows sandbox jobs in Nomad, and fails those that end without calling back
 ```
 
 Then sign up at http://localhost:8000. Emails, sign-up codes included, are written to `GRADEFLOW_EMAIL_FILE_PATH`.
@@ -73,7 +73,7 @@ echo 'export UV_NO_SYNC=1' >> dev.env
 
 Add `--reload-dir path/to/core/src/gradeflow_core` to the uvicorn command to reload on core changes.
 
-Each job records the sandbox image and the core version it ran with, and meaning comparisons are cached per core version. The version is the installed core's commit, or its version for a release wheel; set `GRADEFLOW_CORE_VERSION` to name a local editable build.
+Previews and meaning comparisons are kept per core version. The version is the installed core's commit, or its version for a release wheel; set `GRADEFLOW_CORE_VERSION` to name a local editable build.
 
 ## Configuration
 
@@ -101,7 +101,6 @@ Each job records the sandbox image and the core version it ran with, and meaning
 | `GRADEFLOW_APP_URL_FOR_JOBS` | `http://localhost:8000` | Where jobs reach the app |
 | `GRADEFLOW_JOB_TIME_LIMIT` | `600` | Seconds a job may run, not counting time queued |
 | `GRADEFLOW_MODEL_JOB_TIME_LIMIT` | `1800` | Seconds a job that asks a language model may run |
-| `GRADEFLOW_RUNNING_JOBS_PER_USER` | `5` | Jobs one person may have running at once |
 | `GRADEFLOW_CORE_VERSION` | the installed core's commit or version | |
 | `GRADEFLOW_CACHE_DIR` | `$XDG_CACHE_HOME/gradeflow` or `~/.cache/gradeflow` | The core's model cache |
 
@@ -126,9 +125,9 @@ CI publishes two images for each push to `main` (tag `main`) and each `v*` tag (
 - `GRADEFLOW_MODEL_PROVIDERS`, to mark with AI
 - `GRADEFLOW_VERSION`, an image tag such as `0.1`, to stay on a release line instead of `latest`
 
-The Nomad cluster's Docker driver must be able to pull the sandbox image, and its jobs must reach `GRADEFLOW_APP_URL_FOR_JOBS`. Jobs call back to `/jobs/`, which is exempt from the HTTPS redirect, so the job URL can be plain HTTP on a private network.
+The Nomad cluster must run Nomad 2.0.3 or later, which stops each job at its time limit. Its Docker driver must be able to pull the sandbox image, and its jobs must reach `GRADEFLOW_APP_URL_FOR_JOBS`. Jobs call back to `/jobs/`, which is exempt from the HTTPS redirect, so the job URL can be plain HTTP on a private network.
 
-Each person connects one of the `GRADEFLOW_MODEL_PROVIDERS` in Settings. The token stays in their browser and reaches a job only while it runs. Neither the app nor its jobs contact any other endpoint, so the cluster's network policy can limit jobs to the app and those hosts.
+Each person connects one of the `GRADEFLOW_MODEL_PROVIDERS` in Settings. The token stays in their browser and reaches a job only while it runs: it's in the Nomad job's environment, which the app purges once the job ends. Neither the app nor its jobs contact any other endpoint, so the cluster's network policy can limit jobs to the app and those hosts.
 
 ## Methods
 

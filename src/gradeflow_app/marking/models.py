@@ -25,7 +25,9 @@ class Marking(models.Model):
     used_versions = models.ManyToManyField(MethodVersion, through="MarkingUse", related_name="markings")
     """Every saved version it needs, directly or through others."""
     revision = models.PositiveIntegerField(default=0)
-    """Counts its remarks; marks and jobs of an earlier one are out of date."""
+    """Counts its remarks; marks and runs of an earlier one are out of date."""
+    failure = models.TextField(blank=True)
+    """Why its latest remark didn't mark."""
     questions_marked = models.JSONField(default=list)
     """The questions it marked when it last could, kept while it can't so they stay its own."""
     questions_read = models.JSONField(default=list)
@@ -62,11 +64,13 @@ class MarkingDraftRecord(models.Model):
     definition = models.TextField()
     saved_marking_updated_at = models.DateTimeField(null=True, blank=True)
     """When the saved marking this draft started from was saved; none for new marking."""
-    preview = models.ForeignKey("jobs.Job", null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
-    """Its latest preview since editing started, kept here rather than in the session: tabs share a session, and
-    each request saves it whole."""
     preview_input = models.TextField(null=True, blank=True)  # noqa: DJ001 - null is "never previewed"
-    """What `preview` marked with: the definition and the questions it marked or read, as they were."""
+    """What its latest preview marks with: the core version, the definition, and the questions it marks or reads.
+    Kept here rather than in the session, which tabs share."""
+    preview_results = models.JSONField(null=True, blank=True)
+    """The marked submissions that preview gave."""
+    preview_failure = models.TextField(blank=True)
+    """Why that preview failed."""
 
     class Meta:
         constraints = (

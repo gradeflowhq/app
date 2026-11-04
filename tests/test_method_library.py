@@ -14,7 +14,6 @@ from gradeflow_core.editing import dump_yaml
 from gradeflow_app.accounts.models import User
 from gradeflow_app.assessments.models import Assessment
 from gradeflow_app.courses.models import Course, Member, Role
-from gradeflow_app.jobs.models import Job
 from gradeflow_app.libraries import services
 from gradeflow_app.libraries.access import can_edit, openable_methods_filter
 from gradeflow_app.libraries.collection import course_methods, files_needed_by, offers, usable
@@ -29,6 +28,7 @@ from tests.conftest import (
     HTMX_HEADERS,
     create_course,
     create_method_draft,
+    encrypted_id,
     method_definition,
     publish_light_method,
     publish_version,
@@ -196,7 +196,7 @@ def test_a_marking_links_the_versions_it_needs_and_keeps_them_until_updated(
     assert used_refs(marking) == {"bio1010/parent@1", "bio1010/light@1"}, "with what it uses in turn"
     marking.delete()
     marking = save_marking(assessment, "bio1010/light@1", user)
-    newer = publish_version(version.method, user, method_definition(answer="chlorophyll"))
+    publish_version(version.method, user, method_definition(answer="chlorophyll"))
     marking.refresh_from_db()
     assert used_refs(marking) == {"bio1010/light@1"}
     url, draft = start_marking(client, assessment, "Q1", "")
@@ -207,8 +207,8 @@ def test_a_marking_links_the_versions_it_needs_and_keeps_them_until_updated(
     save_draft(client, draft)
     marking.refresh_from_db()
     assert used_refs(marking) == {"bio1010/light@2"}
-    remarked = marking.jobs.latest("created_at")
-    assert remarked.marked_with["methods"] == [["bio1010/light", newer.definition]], "marked with the update"
+    student = assessment.students.get(encrypted_id=encrypted_id("S001"))
+    assert Result.objects.get(question__key="Q1", student=student).proportion == 0, "marked with the update"
 
 
 def test_a_version_in_use_cant_be_deleted(
@@ -386,8 +386,6 @@ def test_an_archived_method_isnt_offered_but_its_markings_still_mark(
     picker = client.get(reverse("question_methods", args=[assessment.pk, question.pk])).text
     assert "Says light." not in picker
     marking = save_marking(assessment, version.ref, user)
-    job = marking.jobs.get()
-    assert job.status == Job.Status.COMPLETED
     assert Result.objects.filter(question=question).count() == assessment.students.count()
     draft = MarkingDraftRecord(assessment=assessment, question=question, definition=marking.definition, user=user)
     assert MarkingWorkspace(draft).valid
