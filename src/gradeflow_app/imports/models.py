@@ -8,19 +8,19 @@ from gradeflow_core import Submission
 from gradeflow_app.assessments.models import Assessment
 
 
-class ResultsFileManager(models.Manager["ResultsFile"]):
-    def get_queryset(self) -> models.QuerySet[ResultsFile]:
+class SubmissionsFileManager(models.Manager["SubmissionsFile"]):
+    def get_queryset(self) -> models.QuerySet[SubmissionsFile]:
         return super().get_queryset().defer("original")
 
 
-class ResultsFile(models.Model):
-    """An uploaded results file: the encrypted ID column and the chosen answer and marks columns.
+class SubmissionsFile(models.Model):
+    """An uploaded submissions file: the encrypted ID column and the chosen answer and marks columns.
 
     Rows count from 0 in the sheet as the browser reads it, blank rows included, so they match the spreadsheet.
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
-    assessment = models.ForeignKey(Assessment, on_delete=models.CASCADE, related_name="results_files")
+    assessment = models.ForeignKey(Assessment, on_delete=models.CASCADE, related_name="submissions_files")
     name = models.CharField(max_length=255)
     uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+")
     uploaded_at = models.DateTimeField(auto_now_add=True)
@@ -37,7 +37,7 @@ class ResultsFile(models.Model):
     first_row = models.PositiveIntegerField(null=True)
     last_row = models.PositiveIntegerField(null=True)
 
-    objects = ResultsFileManager()
+    objects = SubmissionsFileManager()
 
     class Meta:
         ordering = ("-uploaded_at",)
@@ -53,7 +53,7 @@ class Student(models.Model):
     answers = models.JSONField()
     """Raw answer by question key."""
     imported_marks = models.JSONField(default=dict)
-    """Marks from the results file by question key."""
+    """Marks from the submissions file by question key."""
 
     class Meta:
         constraints = (
@@ -81,11 +81,11 @@ def answer_expression(key: str) -> models.Func:
 
 
 def imported_mark_keys(assessment: Assessment) -> set[str]:
-    """The questions any student has marks for in the results file."""
+    """The questions any student has marks for in the submissions file."""
     keys = models.Func("imported_marks", function="jsonb_object_keys", output_field=models.TextField())
     return set(assessment.students.order_by().annotate(question=keys).values_list("question", flat=True).distinct())
 
 
 def has_imported_marks(assessment: Assessment, key: str) -> bool:
-    """Whether any student has marks for question `key` in the results file."""
+    """Whether any student has marks for question `key` in the submissions file."""
     return assessment.students.filter(imported_marks__has_key=key).exists()

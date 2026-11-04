@@ -1,14 +1,14 @@
 {% extends "layouts/assessment.html" %}
 {% block page_title %}Import · {% endblock %}
 {% block content %}
-{% with assessment=membership.assessment %}
+{% with assessment=access.assessment %}
 <c-page title="Import">
   <div class="contents" x-data="importer" data-assessment-id="{{ assessment.pk }}" data-original-url="{% url 'import_original' assessment.pk %}" data-sample-encrypted-id="{{ assessment.students.first.encrypted_id|default:'' }}">
     <form x-ref="upload" action="{% url 'import_upload' assessment.pk %}" method="post" enctype="multipart/form-data" hidden>{% csrf_token %}</form>
     {{ questions|json_script:"import-questions" }}
     {% if import_settings %}{{ import_settings|json_script:"import-settings" }}{% endif %}
-    <c-card title="Exam export">
-      <c-slot name="actions"><button type="button" class="btn btn-ghost btn-square btn-sm -mr-2 text-muted" data-dialog="results-guide" aria-label="How to import an exam export">{% icon "question-mark-circle" %}</button></c-slot>
+    <c-card title="Submissions file">
+      <c-slot name="actions"><button type="button" class="btn btn-ghost btn-square btn-sm -mr-2 text-muted" data-dialog="submissions-file-guide" aria-label="How to import a submissions file">{% icon "question-mark-circle" %}</button></c-slot>
       <div x-show="step === 'choose'" class="grid gap-5">
         {% if latest_file %}
         <div class="flex flex-wrap items-center gap-4">
@@ -21,7 +21,7 @@
           <button class="btn" x-on:click="replacing = true" x-show="!replacing">Replace</button>
         </div>
         {% endif %}
-        <div{% if latest_file %} x-show="replacing" x-cloak{% endif %}>{% include "imports/drop.html" with title=latest_file|yesno:"Drop the new exam export here,Drop the exam export here" file_types="CSV or Excel" accept=".csv,.txt,.xls,.xlsx,.xlsm,.xlsb" %}<p class="mt-4 flex items-center justify-center gap-2 text-sm text-muted">{% icon "lock-closed" "size-4" %}The file is encrypted on this computer. GradeFlow can read only its answers and marks.</p></div>
+        <div{% if latest_file %} x-show="replacing" x-cloak{% endif %}>{% include "imports/drop.html" with title=latest_file|yesno:"Drop the new submissions file here,Drop the submissions file here" file_types="CSV or Excel" accept=".csv,.txt,.xls,.xlsx,.xlsm,.xlsb" %}<p class="mt-4 flex items-center justify-center gap-2 text-sm text-muted">{% icon "lock-closed" "size-4" %}The file is encrypted on this computer. GradeFlow can read only its answers and marks.</p></div>
       </div>
 
       <div x-show="step !== 'choose'" x-cloak class="grid gap-6">
@@ -84,7 +84,7 @@
           <div>
             <p class="font-semibold" x-text="isFirstImport ? 'Set a student ID passphrase' : 'Enter the student ID passphrase'"></p>
             <p class="mt-1 text-sm text-muted" x-show="isFirstImport">Co-markers need it to see student IDs. It can't be recovered.</p>
-            <p class="mt-1 text-sm text-muted" x-show="!isFirstImport">Use the passphrase the first export was imported with.</p>
+            <p class="mt-1 text-sm text-muted" x-show="!isFirstImport">Use the passphrase the first submissions file was imported with.</p>
           </div>
           <div class="grid gap-4 sm:grid-cols-2">
             <label class="grid gap-1.5"><span class="font-medium">Passphrase</span><input type="password" class="input w-full" x-model="passphrase" autocomplete="new-password"></label>
@@ -96,7 +96,7 @@
         <div class="flex flex-wrap items-center justify-end gap-3">
           <p class="mr-auto flex items-center gap-1.5 text-sm text-error" x-show="fileProblem" x-cloak>{% icon "exclamation-circle" "size-4" %}<span x-text="fileProblem"></span></p>
           <template x-if="step === 'uploading'"><span class="flex items-center gap-3 text-sm text-muted"><span class="loading loading-spinner loading-sm"></span>Encrypting student IDs… <span class="tabular-nums" x-text="progress + '%'"></span></span></template>
-          <button class="btn btn-primary" x-on:click="submit" :disabled="step === 'uploading' || !!fileProblem"{% if latest_file %} data-confirm="Replace the exam export?" :data-confirm-detail="replaceDetail" data-confirm-button="Replace"{% endif %}>{% icon "arrow-up-tray" "size-4" %}{% if latest_file %}Replace export{% else %}Import exam export{% endif %}</button>
+          <button class="btn btn-primary" x-on:click="submit" :disabled="step === 'uploading' || !!fileProblem"{% if latest_file %} data-confirm="Replace the submissions file?" :data-confirm-detail="replaceDetail" data-confirm-button="Replace"{% endif %}>{% icon "arrow-up-tray" "size-4" %}{% if latest_file %}Replace submissions{% else %}Import submissions{% endif %}</button>
         </div>
       </div>
     </c-card>
@@ -104,7 +104,7 @@
     <c-alert x-show="error" x-cloak><span x-text="error"></span></c-alert>
   </div>
 
-  {% include "imports/results_guide.html" %}
+  {% include "imports/submissions_file_guide.html" %}
   {% if latest_file %}
   {% include "imports/question_document.html" %}
   {% include "imports/document_guide.html" %}

@@ -1,4 +1,4 @@
-<c-guide.dialog id="results-guide" title="Exam export" intro="A CSV or Excel file with a row per student: their ID, answers and any marks.">
+<c-guide.dialog id="submissions-file-guide" title="Submissions file" intro="A CSV or Excel file with a row per student: their ID, answers and any marks.">
   <c-guide.section title="From ExamSoft">
     <ol class="grid gap-4">
       <c-guide.step number="1"><p>Open the assessment, then <c-guide.path :steps="['Reporting/Scoring', 'List of Exam Takers’ Scores']" /></p></c-guide.step>
@@ -15,6 +15,6 @@
     </ol>
   </c-guide.section>
   <c-slot name="notes">
-    <c-guide.note icon="arrow-path">A new export replaces answers and marks. Question settings stay.</c-guide.note>
+    <c-guide.note icon="arrow-path">A new submissions file replaces answers and marks. Question settings stay.</c-guide.note>
   </c-slot>
 </c-guide.dialog>

@@ -9,12 +9,12 @@ from gradeflow_app.ui.fragments import fragment_of
 
 
 @assessment_member()
-def overview(request: Request, membership: AssessmentAccess) -> HttpResponse:
-    return render(request, "assessments/overview.html", overviews.overview_context(membership))
+def overview(request: Request, access: AssessmentAccess) -> HttpResponse:
+    return render(request, "assessments/overview.html", overviews.overview_context(access))
 
 
 @assessment_member()
 @fragment_of("overview")
-def activity(request: Request, membership: AssessmentAccess) -> HttpResponse:
-    events = overviews.activity(membership.assessment, limit=100)
-    return render(request, "assessments/activity.html", {"membership": membership, "events": events})
+def activity(request: Request, access: AssessmentAccess) -> HttpResponse:
+    events = overviews.activity(access.assessment, limit=100)
+    return render(request, "assessments/activity.html", {"access": access, "events": events})

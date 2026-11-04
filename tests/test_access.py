@@ -14,7 +14,9 @@ from gradeflow_app.courses import views
 from gradeflow_app.courses.invitations import accept_invitations, invitation_token
 from gradeflow_app.courses.models import INVITATION_LIFETIME, Course, Invitation, Member, Role
 from gradeflow_app.live.topics import topic
-from gradeflow_app.marking.models import MarkingDraftRecord
+from gradeflow_app.marking.models import Marking, MarkingDraftRecord
+from gradeflow_app.ui.middleware import MESSAGES_HEADER
+from gradeflow_app.urls import assessment_urls, course_urls
 from tests.conftest import HTMX_HEADERS, create_assessment, member_client, signed_in_client, start_marking
 
 pytestmark = pytest.mark.django_db
@@ -91,7 +93,7 @@ def test_a_course_keeps_an_owner(client: Client, user: User) -> None:
         (reverse("member_role", args=[course_id, user.pk]), {"role": Role.EDITOR}),
         (reverse("member_remove", args=[course_id, user.pk]), {}),
     ):
-        assert json.loads(client.post(url, data, headers=HTMX_HEADERS).headers["X-Messages"]) == [refused]
+        assert json.loads(client.post(url, data, headers=HTMX_HEADERS).headers[MESSAGES_HEADER]) == [refused]
     assert Member.objects.get(user=user).role == Role.OWNER
 
     second_owner = member_client(assessment, Role.OWNER)
@@ -124,7 +126,7 @@ def test_leaving_a_course(client: Client, user: User) -> None:
     assert left["HX-Redirect"] == reverse("courses")
     assert not Member.objects.filter(user__email="bo@example.edu").exists()
     refused = client.post(reverse("leave_course", args=[assessment.course_id]), headers=HTMX_HEADERS)
-    assert "A course needs an owner" in refused["X-Messages"]
+    assert "A course needs an owner" in refused[MESSAGES_HEADER]
     assert Member.objects.filter(user=user).exists()
 
 
@@ -148,7 +150,9 @@ def test_member_changes_say_what_changed(client: Client) -> None:
     bo_member = Member.objects.get(user__email="bo@example.edu")
 
     def messages_after(url: str, data: dict[str, object]) -> list[str]:
-        return [message["text"] for message in json.loads(client.post(url, data, headers=HTMX_HEADERS)["X-Messages"])]
+        return [
+            message["text"] for message in json.loads(client.post(url, data, headers=HTMX_HEADERS)[MESSAGES_HEADER])
+        ]
 
     members = reverse("members", args=[course_id])
     assert messages_after(members, {"email": "Cy@Example.edu", "role": Role.VIEWER}) == ["Invited cy@example.edu."]
@@ -251,3 +255,40 @@ def test_signing_in_to_accept_keeps_the_address_whole(client: Client) -> None:
     url = reverse("invitation", args=[invitation_token(invitation)])
     query = parse_qs(urlsplit(Client().get(url).headers["Location"]).query)
     assert query == {"email": ["ana+tag@example.edu"], "next": [url]}
+
+
+VIEWER_MAY_POST = {
+    *("overview", "activity", "questions", "question_list", "question", "answers", "marking", "marking_history"),
+    *("question_group", "question_group_answers", "students", "student", "export", "course_methods"),
+    *("answer_grouping", "download", "leave_course"),
+}
+"""The assessment and course routes that don't refuse a viewer's post: pages that only show, which take it as a
+visit, and the changes a viewer may make."""
+
+
+def test_every_route_hides_from_outsiders_and_refuses_viewers_changes(client: Client, assessment: Assessment) -> None:
+    _, draft = start_marking(client, assessment, "Q1", "gradeflow/key-points@1")
+    ids = {
+        "assessment": assessment.pk,
+        "course": assessment.course_id,
+        "question_id": draft.question_id,
+        "draft_id": draft.pk,
+        "marking_id": Marking.objects.create(assessment=assessment, definition="").pk,
+        "student_id": assessment.students.values_list("pk", flat=True).first(),
+        "history_id": 1,
+        "user_id": Member.objects.get(role=Role.OWNER).user_id,
+        "invitation_id": invite(client, assessment, "cy@example.edu").pk,
+    }
+    viewer = member_client(assessment, Role.VIEWER)
+    outsider = signed_in_client(User.objects.create_user("dee@example.edu", "another-password"))
+    routes = [*(("assessment", url) for url in assessment_urls), *(("course", url) for url in course_urls)]
+    for prefix, route in routes:
+        url = reverse(route.name, kwargs={name: ids[name] for name in [prefix, *route.pattern.converters]})
+        hidden = outsider.post(url)
+        if hidden.status_code == 405:
+            hidden = outsider.get(url)
+        assert hidden.status_code == 404, route.name
+        if route.name not in VIEWER_MAY_POST:
+            refused = viewer.post(url).status_code
+            assert refused in (403, 405), route.name
+    assert {route.name for _, route in routes} >= VIEWER_MAY_POST

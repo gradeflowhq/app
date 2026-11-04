@@ -21,7 +21,7 @@ from gradeflow_app.jobs.payloads import MarkingRun
 from gradeflow_app.marking.models import Marking
 from gradeflow_app.marking.remarks import delete_marking, remark, schedule_marking
 from gradeflow_app.results.models import Adjustment, Result
-from tests.conftest import EXPORT_CSV, FakeNomad, full_marks_marking, marked_by_sandbox, run_together, upload
+from tests.conftest import EXAM_CSV, FakeNomad, full_marks_marking, marked_by_sandbox, run_together, upload
 
 pytestmark = [pytest.mark.django_db(transaction=True), pytest.mark.usefixtures("nomad")]
 
@@ -183,7 +183,7 @@ def test_worker_hands_over_again_what_the_sandbox_never_received(
     assert nomad.submitted == [job.pk]
 
 
-def test_a_job_started_while_the_sandbox_is_down_waits_for_the_worker_to_fail_it(
+def test_a_job_started_while_the_sandbox_is_down_fails_if_the_sandbox_stays_down(
     assessment: Assessment, user: User, nomad: FakeNomad
 ) -> None:
     nomad.is_down = True
@@ -191,6 +191,10 @@ def test_a_job_started_while_the_sandbox_is_down_waits_for_the_worker_to_fail_it
     assert job is not None
     job.refresh_from_db()
     assert job.status == Job.Status.QUEUED, "the page that started it shows what its events change next"
+    queue.recover_queue()
+    job.refresh_from_db()
+    assert job.status == Job.Status.QUEUED, "a short outage fails nothing"
+    Job.objects.filter(pk=job.pk).update(dispatched_at=timezone.now() - queue.UNAVAILABLE_GRACE_PERIOD)
     queue.recover_queue()
     job.refresh_from_db()
     assert (job.status, job.error) == (Job.Status.FAILED, "The marking service is unavailable.")
@@ -269,7 +273,7 @@ def test_reimport_only_supersedes_the_jobs_of_markings_reading_changed_answers(
     first, untouched = q1_marking.jobs.get(), q2_marking.jobs.get()
     upload(client, assessment)
     assert q1_marking.jobs.count() == q2_marking.jobs.count() == 1
-    upload(client, assessment, EXPORT_CSV.replace("photosynthesis uses light", "changed answer"))
+    upload(client, assessment, EXAM_CSV.replace("photosynthesis uses light", "changed answer"))
     first.refresh_from_db()
     untouched.refresh_from_db()
     assert first.status == Job.Status.FAILED

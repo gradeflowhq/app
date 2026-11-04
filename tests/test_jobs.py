@@ -1,3 +1,4 @@
+import logging
 import uuid
 from datetime import timedelta
 from types import SimpleNamespace
@@ -32,6 +33,7 @@ from gradeflow_app.marking.remarks import remark, running_remarks
 from gradeflow_app.results.models import Result
 from tests.conftest import (
     HTMX_HEADERS,
+    FakeNomad,
     IdleExecutor,
     code_draft,
     marked_by_sandbox,
@@ -434,7 +436,7 @@ def test_a_preview_counts_the_students_whose_marks_change(client: Client, assess
             question=question,
             proportion=proportion,
             feedback=result.feedback,
-            method="Q",
+            method_label="Q",
             revision=0,
         )
     page = client.get(reverse("answers", args=[assessment.pk, question.pk])).text
@@ -520,7 +522,7 @@ def test_lost_jobs_are_not_running(
     assert lost.is_active
 
 
-def test_starting_work_fails_lost_jobs_together(
+def test_the_worker_fails_lost_jobs_together(
     assessment: Assessment, fully_marked: Assessment, user: User, monkeypatch: pytest.MonkeyPatch, idle_executor: None
 ) -> None:
     lost = [
@@ -531,7 +533,6 @@ def test_starting_work_fails_lost_jobs_together(
     published: list[tuple[str, ...]] = []
     monkeypatch.setattr(events, "notify_change", lambda *names: published.append(names))
     queue.dispatch()
-    remark(assessment, ["Q3"], user)
     failed = Job.objects.filter(error="Ran past its time limit.")
     assert sorted(failed.values_list("kind", "input")) == [("grouping", None), ("remark", None)]
     assert published[0] == tuple(sorted([topic("grouping", assessment.pk), topic("jobs", assessment.pk)])), "together"
@@ -575,15 +576,63 @@ def test_unreadable_marked_results_fail_the_job(
     assert not Result.objects.filter(question__key="Q1").exists()
 
 
-def test_remark_provenance_is_retained_after_a_day(
-    assessment: Assessment, fully_marked: Assessment, user: User, idle_executor: None
+def test_after_a_day_only_the_remarks_of_current_results_are_kept(
+    assessment: Assessment,
+    fully_marked: Assessment,
+    user: User,
+    monkeypatch: pytest.MonkeyPatch,
+    django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks,
 ) -> None:
-    old, recent = start_remark(assessment, "Q1", user), start_remark(assessment, "Q2", user)
-    Job.objects.filter(pk=old.pk).update(status=Job.Status.COMPLETED, finished_at=timezone.now() - timedelta(days=2))
-    Job.objects.filter(pk=recent.pk).update(status=Job.Status.COMPLETED, finished_at=timezone.now())
-    remark(assessment, ["Q3"], user)
-    assert Job.objects.filter(pk=old.pk).exists()
-    assert Job.objects.filter(pk=recent.pk).exists()
+    with django_capture_on_commit_callbacks(execute=True):
+        start_remark(assessment, "Q1", user)
+    with django_capture_on_commit_callbacks(execute=True):
+        latest = start_remark(assessment, "Q1", user)
+    queue.end(start_remark(assessment, "Q2", user), "Lost")
+    unfinished = start_remark(assessment, "Q3", user)
+    Job.objects.exclude(finished_at=None).update(finished_at=timezone.now() - queue.FINISHED_JOB_LIFETIME)
+    monkeypatch.setattr(queue, "executor", FakeNomad)
+    queue.recover_queue()
+    assert set(Job.objects.values_list("pk", flat=True)) == {latest.pk, unfinished.pk}
+
+
+def test_starting_work_hands_over_only_its_users_jobs(
+    assessment: Assessment,
+    fully_marked: Assessment,
+    user: User,
+    bo: User,
+    nomad: FakeNomad,
+    django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks,
+) -> None:
+    waiting = Job.objects.create(kind=Job.Kind.REMARK, assessment=assessment, created_by=bo, input={})
+    with django_capture_on_commit_callbacks(execute=True):
+        started = start_remark(assessment, "Q1", user)
+    assert nomad.submitted == [started.pk]
+    with django_capture_on_commit_callbacks(execute=True):
+        queue.dispatch()
+    assert nomad.submitted == [started.pk, waiting.pk]
+
+
+def test_a_marking_job_gets_only_the_answers_its_marking_reads(
+    assessment: Assessment, fully_marked: Assessment, user: User
+) -> None:
+    job = start_remark(assessment, "Q1", user)
+    assert job.input is not None
+    assert {key for submission in job.input["submissions"] for key in submission["answers"]} == {"Q1"}
+
+
+def test_failed_jobs_and_refused_callbacks_are_logged(
+    assessment: Assessment, fully_marked: Assessment, user: User, caplog: pytest.LogCaptureFixture
+) -> None:
+    job = start_remark(assessment, "Q1", user)
+    with caplog.at_level(logging.WARNING, "gradeflow_app"):
+        post_callback(job, {"event": "finished"}, secret="forged")
+        post_callback(job, {"event": "unknown"})
+        post_callback(job, {"event": "failed", "error": "Out of memory."})
+    assert [record.getMessage() for record in caplog.records if record.name.startswith("gradeflow_app")] == [
+        f"Refused a callback for job {job.pk}: its signature doesn't match",
+        f"Refused a callback for job {job.pk}",
+        f"Job {job.pk} (remark) failed: Out of memory.",
+    ]
 
 
 @pytest.mark.parametrize(

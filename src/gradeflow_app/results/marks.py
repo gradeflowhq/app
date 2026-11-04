@@ -20,13 +20,13 @@ from gradeflow_app.results.models import Adjustment, Result
 MAX_BARS = 50
 BAND_WIDTHS = (0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500)
 
-type Level = Literal["full", "partial", "zero"]
+type Level = Literal["full", "partial", "no_marks"]
 
 
 @dataclass
 class Award:
-    """What a student gets for a question: the adjustment a person set, else what the marking gives, else the exam
-    export's marks."""
+    """What a student gets for a question: the adjustment a person set, else what the marking gives, else the
+    submissions file's marks."""
 
     max_marks: float
     result: Result | None = None
@@ -103,7 +103,7 @@ def level_of(lowest_marks: float, highest_marks: float, max_marks: float) -> Lev
     allow for rounding."""
     if QuestionResult(proportion=_proportion(lowest_marks, max_marks), max_marks=max_marks).correct:
         return "full"
-    return "zero" if highest_marks == 0 else "partial"
+    return "no_marks" if highest_marks == 0 else "partial"
 
 
 def _proportion(marks: float, max_marks: float) -> float:
@@ -114,7 +114,7 @@ def awards(questions: Sequence[Question], students: Sequence[Student]) -> dict[t
     """Each student's award for each question, by student and question ID."""
     results = {
         (result.student_id, result.question_id): result
-        for result in Result.objects.filter(question__in=questions).select_related("marking")
+        for result in Result.objects.filter(question__in=questions, student__in=students).select_related("marking")
     }
     adjustments = {
         (adjustment.student_id, adjustment.question_id): adjustment
@@ -153,7 +153,7 @@ class QuestionSummary:
     marked_count: int
     average: float | None
     full_marks_count: int
-    zero_marks_count: int
+    no_marks_count: int
     blank_count: int
     adjusted_count: int
 
@@ -243,7 +243,7 @@ class Results:
                     marked_count=len(marks),
                     average=statistics.fmean(marks) if marks else None,
                     full_marks_count=levels["full"],
-                    zero_marks_count=levels["zero"],
+                    no_marks_count=levels["no_marks"],
                     blank_count=sum(
                         count for answer, count in answers.items() if not question.core_question.normalize(answer)
                     ),

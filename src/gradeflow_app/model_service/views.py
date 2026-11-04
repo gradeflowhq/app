@@ -1,5 +1,5 @@
 """The settings page's model service. The device sends all it knows of the service with each request, as
-`model_state`, and keeps what the response's `X-Model-ModelServiceState` says it now knows."""
+`model_state`, and keeps what the response's `X-Model-State` says it now knows."""
 
 from collections import defaultdict
 from dataclasses import dataclass
@@ -16,7 +16,13 @@ from pydantic import ValidationError
 from gradeflow_app.jobs.models import Job
 from gradeflow_app.jobs.payloads import ModelTrialRequest
 from gradeflow_app.model_service import choosing
-from gradeflow_app.model_service.endpoints import STATE_HEADER, ModelServiceState, endpoint
+from gradeflow_app.model_service.endpoints import (
+    ANSWERS_PER_REQUEST_LIMITS,
+    MODEL_NAME_LENGTH,
+    STATE_HEADER,
+    ModelServiceState,
+    endpoint,
+)
 from gradeflow_app.requests import Request
 
 NOT_CONNECTED_ERROR = "This device isn't connected to an AI service."
@@ -100,12 +106,13 @@ def answers_per_request(request: Request) -> HttpResponse:
     state = _state(request)
     if state is None:
         return _models(request, state, error=NOT_CONNECTED_ERROR)
+    value = request.POST.get("answers_per_request", "")
     try:
-        changed = ModelServiceState.model_validate(
-            state.model_dump() | {"answers_per_request": request.POST.get("answers_per_request")}
-        )
+        changed = ModelServiceState.model_validate(state.model_dump() | {"answers_per_request": value})
     except ValidationError:
-        return _models(request, state, answers_per_request_error="Enter a number from 1 to 40.")
+        limits = ANSWERS_PER_REQUEST_LIMITS
+        error = f"Enter a number from {limits['minimum']} to {limits['maximum']}."
+        return _models(request, state, answers_per_request_error=error, answers_per_request_value=value)
     return _models(request, changed)
 
 
@@ -164,7 +171,7 @@ def _with_state_header(response: HttpResponse, state: ModelServiceState | None) 
 
 
 def _picked(data: QueryDict) -> dict[str, str]:
-    return {role: data.get(f"{role}_model", "")[:200] for role, _ in ROLES}
+    return {role: data.get(f"{role}_model", "")[:MODEL_NAME_LENGTH] for role, _ in ROLES}
 
 
 def _status(
@@ -226,11 +233,17 @@ def trial_rows(state: ModelServiceState | None) -> list[TrialRow]:
 def _context(request: Request, state: ModelServiceState | None) -> dict[str, Any]:
     """What the card shows of the device's model service: its models, or the choice running for them."""
     if state is None:
-        return {"state": None, "choosing_job": None, "failure_reason": ""}
+        return {
+            "state": None,
+            "choosing_job": None,
+            "failure_reason": "",
+            "answers_per_request_limits": ANSWERS_PER_REQUEST_LIMITS,
+        }
     return {
         "state": state,
         "choosing_job": choosing.running(Job.Kind.MODEL_CHOICE, request.user, state.url).first(),
         "failure_reason": choosing.failure_reason(request.user, state, Job.Kind.MODEL_CHOICE),
+        "answers_per_request_limits": ANSWERS_PER_REQUEST_LIMITS,
     }
 
 
@@ -247,11 +260,16 @@ def _card(
 
 
 def _models(
-    request: Request, state: ModelServiceState | None, error: str = "", answers_per_request_error: str = ""
+    request: Request,
+    state: ModelServiceState | None,
+    error: str = "",
+    answers_per_request_error: str = "",
+    answers_per_request_value: str = "",
 ) -> HttpResponse:
     context = _context(request, state) | {
         "models_loaded": True,
         "error": error,
         "answers_per_request_error": answers_per_request_error,
+        "answers_per_request_value": answers_per_request_value,
     }
     return _with_state_header(render(request, "model_service/card.html#models", context), state)

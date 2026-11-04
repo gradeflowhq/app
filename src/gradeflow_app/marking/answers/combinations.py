@@ -71,7 +71,7 @@ def combinations(
     """Every combination of answers to `keys`, and to the questions in `reads`, that students gave, most common
     first."""
     questions = {question.key: question for question in assessment.questions.filter(key__in=[*keys, *reads])}
-    ordered_keys = list(questions)  # in the exam's order, so a condition reads before what it decides
+    ordered_keys = list(questions)  # in the assessment's order, so a condition reads before what it decides
     students = list(assessment.students.all())
     student_awards = awards(list(questions.values()), students)
     by_answers: dict[tuple[str, ...], Combination] = {}

@@ -1,8 +1,8 @@
 {# Opening a question or questions marked together swaps the other columns, the list (morphed, so it keeps its place) and the live stream, which then listens for what the page shows. #}
 {% partialdef list inline %}
 <nav id="question-list" class="workspace-questions" aria-label="Questions"
-     hx-get="{% url 'question_list' membership.assessment.pk %}?question={{ question_list.shown_id }}" hx-target="this" hx-swap="outerMorph"
-     hx-trigger="{% listen 'questions' membership.assessment.pk %}, {% listen 'marks' membership.assessment.pk %}, {% listen 'jobs' membership.assessment.pk %}, {% listen 'drafts' membership.assessment.pk request.user.pk %}">
+     hx-get="{% url 'question_list' access.assessment.pk %}?question={{ question_list.shown_id }}" hx-target="this" hx-swap="outerMorph"
+     hx-trigger="{% listen 'questions' access.assessment.pk %}, {% listen 'marks' access.assessment.pk %}, {% listen 'jobs' access.assessment.pk %}, {% listen 'drafts' access.assessment.pk request.user.pk %}">
   <div class="column-head column-sticky">
     <h1 class="text-base font-semibold">Questions</h1>
     <span class="tabular-nums ml-auto whitespace-nowrap text-sm text-muted">{{ question_list.marked_count }} of {{ question_list.questions|length }} marked</span>
@@ -11,7 +11,7 @@
   <ul class="grid gap-0.5 p-2">
     {% for item in question_list.questions %}{% with question=item.question %}
     <li>
-      <a href="{% url 'question' membership.assessment.pk question.pk %}" class="question-link"{% if item.is_shown %} aria-current="page"{% endif %}>
+      <a href="{% url 'question' access.assessment.pk question.pk %}" class="question-link"{% if item.is_shown %} aria-current="page"{% endif %}>
         <span class="min-w-0 flex-1">
           <span class="flex items-center gap-2">
             <span class="truncate font-medium">{{ question.key }}</span>
@@ -34,7 +34,7 @@
       {% for question_group in question_list.question_groups %}
       <li><a href="{{ question_group.url }}" class="question-link"{% if question_group.is_shown %} aria-current="page"{% endif %}><span class="min-w-0"><span class="flex items-center gap-2"><span class="truncate font-medium">{% if question_group.marked_keys %}{{ question_group.marked_keys|join:", " }}{% else %}New{% endif %}</span>{% if question_group.has_draft %}<span class="badge badge-primary badge-soft badge-sm" title="Your unsaved changes">Draft</span>{% endif %}</span>{% if question_group.method_label %}<span class="block truncate text-sm text-muted">{{ question_group.method_label }}</span>{% elif not question_group.has_draft %}<span class="block truncate text-sm text-warning">Not set up yet</span>{% endif %}</span></a></li>
       {% endfor %}
-      {% if membership.can_edit %}<li><a href="{% url 'question_group_new' membership.assessment.pk %}" class="question-link text-sm text-primary"{% if question_list.adding %} aria-current="page"{% endif %}>{% icon "plus" "size-4" %}New question group</a></li>{% endif %}
+      {% if access.can_edit %}<li><a href="{% url 'question_group_new' access.assessment.pk %}" class="question-link text-sm text-primary"{% if question_list.adding %} aria-current="page"{% endif %}>{% icon "plus" "size-4" %}New question group</a></li>{% endif %}
     </ul>
   </details>
   </div>

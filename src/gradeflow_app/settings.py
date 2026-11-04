@@ -6,6 +6,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 import dj_database_url
+from django.core.exceptions import ImproperlyConfigured
 from django.urls import reverse_lazy
 from django.utils.csp import CSP
 
@@ -42,7 +43,7 @@ INSTALLED_APPS = [
     "gradeflow_app.jobs",
     "gradeflow_app.marking",
     "gradeflow_app.results",
-    "gradeflow_app.publish",
+    "gradeflow_app.exports",
     "gradeflow_app.live",
 ]
 
@@ -91,6 +92,7 @@ DATABASES = {
         "GRADEFLOW_DATABASE_URL", default="postgres://gradeflow:gradeflow@localhost:5434/gradeflow"
     )
 }
+DATABASES["default"].setdefault("OPTIONS", {}).setdefault("connect_timeout", 5)
 if test_database := os.environ.get("GRADEFLOW_TEST_DATABASE"):
     DATABASES["default"]["TEST"] = {"NAME": test_database}
 CACHES = {
@@ -220,6 +222,8 @@ if not DEBUG:
 DATA_UPLOAD_MAX_MEMORY_SIZE = int(2.5 * 2**20)
 """The largest request body, files apart; sandbox jobs send their results in batches of 1 MB to stay under it."""
 
+if not DEBUG and not (os.environ.get("GRADEFLOW_NOMAD_URL") and os.environ.get("GRADEFLOW_APP_URL_FOR_JOBS")):
+    raise ImproperlyConfigured("Set GRADEFLOW_NOMAD_URL and GRADEFLOW_APP_URL_FOR_JOBS, which sandbox jobs need.")
 GRADEFLOW_NOMAD = {
     "url": os.environ.get("GRADEFLOW_NOMAD_URL", "http://localhost:4646"),
     "token": os.environ.get("GRADEFLOW_NOMAD_TOKEN", ""),

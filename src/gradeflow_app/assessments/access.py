@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from functools import partial
 from uuid import UUID
 
 from django.shortcuts import get_object_or_404
@@ -18,4 +19,4 @@ def assessment_access_of(request: Request, assessment_id: UUID, role: Role = Rol
 def assessment_member(role: Role = Role.VIEWER) -> Callable[[View], View]:
     """Calls the view with the user's `AssessmentAccess` to the assessment in place of the URL's `assessment` ID, once
     their role is at least `role`."""
-    return with_access_for("assessment", assessment_access_of, role)
+    return with_access_for("assessment", partial(assessment_access_of, role=role))

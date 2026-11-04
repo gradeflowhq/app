@@ -1,23 +1,29 @@
-"""A user's draft of a marking, as the core edits it, with the forms of its checks and the answers they suggest."""
+"""A user's draft of a marking, as the core edits it, with the forms of its checks and the answers they suggest; and
+starting, saving and discarding it."""
 
 from collections import Counter
 from dataclasses import dataclass
-from functools import cached_property
+from functools import cache, cached_property
 from typing import Any, Self
 from uuid import UUID
 
+from django.db import transaction
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
-from gradeflow_core import Methods, QuestionSet
+from gradeflow_core import Methods, ModelEndpoint, QuestionSet
 from gradeflow_core.editing import MarkingDraft, Position, dump_yaml
 
-from gradeflow_app.assessments.models import AssessmentAccess
+from gradeflow_app.accounts.models import User
+from gradeflow_app.assessments.models import Assessment, AssessmentAccess
 from gradeflow_app.courses.models import Course
 from gradeflow_app.editor.editing import CheckWorkspace, Conflict, EditorActions
 from gradeflow_app.imports.models import answer_expression, has_imported_marks
+from gradeflow_app.jobs.queue import stop
 from gradeflow_app.libraries.collection import OfferedMethods, offers, usable
+from gradeflow_app.live.topics import notify_change, topic
 from gradeflow_app.marking.checks import marking_draft
-from gradeflow_app.marking.models import Marking, MarkingDraftRecord, MarkingTarget
+from gradeflow_app.marking.models import Marking, MarkingDraftRecord, MarkingSubject
+from gradeflow_app.marking.remarks import schedule_marking
 from gradeflow_app.requests import Request
 
 MAX_SUGGESTIONS = 100
@@ -32,19 +38,17 @@ class MarkingWorkspace(CheckWorkspace):
 
     @classmethod
     def of(
-        cls, request: Request, membership: AssessmentAccess, draft_id: UUID, *, lock: bool = False, **filters: Any
+        cls, request: Request, access: AssessmentAccess, draft_id: UUID, *, lock: bool = False, **filters: Any
     ) -> Self:
         """The user's draft `draft_id` of the assessment; with `lock`, locked with the assessment for a change."""
         drafts = MarkingDraftRecord.objects.select_related("assessment", "question", "marking")
         if lock:
-            membership.assessment.lock()
+            access.assessment.lock()
             drafts = drafts.select_for_update(of=("self",))
-        return cls(
-            get_object_or_404(drafts, pk=draft_id, user=request.user, assessment=membership.assessment, **filters)
-        )
+        return cls(get_object_or_404(drafts, pk=draft_id, user=request.user, assessment=access.assessment, **filters))
 
-    @property
-    def subject(self) -> MarkingTarget:
+    @cached_property
+    def subject(self) -> MarkingSubject:
         return self.draft.subject
 
     @property
@@ -103,13 +107,34 @@ class MarkingWorkspace(CheckWorkspace):
         self.draft.definition = dump_yaml(self.checks.data if self.checks.problems else self.checks.finalized().dump())
         self.draft.save(update_fields=["definition"])
 
+    def save_marking(self, model_endpoint: ModelEndpoint | None) -> Marking:
+        """Save the draft as the subject's marking, end the draft, and mark the students with it, asking language
+        models at `model_endpoint` if it does."""
+        subject = self.subject
+        marking = subject.marking or Marking(assessment=subject.assessment, question=subject.question)
+        marking.definition = self.draft.definition
+        marking.save()
+        stop(self.draft.preview)
+        self.draft.delete()
+        schedule_marking(marking, self.draft.user, model_endpoint)
+        notify_change(topic("questions", subject.assessment.pk))
+        return marking
+
+    def discard(self) -> None:
+        """End the draft, leaving the saved marking as it was."""
+        stop(self.draft.preview)
+        self.draft.delete()
+        notify_drafts_changed(self.draft.assessment, self.draft.user)
+
     @cached_property
     def suggestions(self) -> dict[str, int]:
         """The question's commonest answers, with how many gave each."""
-        if self.subject.key is None:
+        question = self.subject.question
+        if question is None:
             return {}
-        answers = self.subject.assessment.students.values_list(answer_expression(self.subject.key), flat=True)
-        counts = Counter(text for answer in answers if (text := answer.strip()))
+        answers = self.subject.assessment.students.values_list(answer_expression(question.key), flat=True)
+        normalize = cache(question.core_question.normalize)
+        counts = Counter(text for answer in answers if normalize(answer) and (text := answer.strip()))
         return dict(counts.most_common(MAX_SUGGESTIONS))
 
     def suggestions_at(self, position: Position) -> dict[str, int]:
@@ -142,6 +167,29 @@ class MarkingWorkspace(CheckWorkspace):
         saved = self.subject.marking
         markings = self.subject.assessment.markings.select_related("question")
         return list(markings.exclude(pk=saved.pk) if saved is not None else markings)
+
+
+@transaction.atomic
+def start_draft(subject: MarkingSubject, user: User, definition: str) -> None:
+    """Start the user's draft of the subject's marking from `definition`, replacing any they had."""
+    subject.assessment.lock()
+    draft_target = {"question": subject.question} if subject.question else {"marking": subject.marking}
+    MarkingDraftRecord.objects.update_or_create(
+        user=user,
+        **draft_target,
+        defaults={
+            "assessment": subject.assessment,
+            "definition": definition,
+            "saved_marking_updated_at": subject.marking.updated_at if subject.marking else None,
+            "preview": None,
+            "preview_input": None,
+        },
+    )
+    notify_drafts_changed(subject.assessment, user)
+
+
+def notify_drafts_changed(assessment: Assessment, user: User) -> None:
+    notify_change(topic("drafts", assessment.pk, user.pk))
 
 
 def _name_and_url(marking: Marking) -> tuple[str, str]:

@@ -1,7 +1,7 @@
 {% extends "layouts/assessment.html" %}
 {% block page_title %}Settings · {% endblock %}
 {% block content %}
-{% with assessment=membership.assessment %}
+{% with assessment=access.assessment %}
 <c-page title="Settings">
   <div class="settings">
     <c-form-card id="assessment-details" title="Details">{{ form }}</c-form-card>

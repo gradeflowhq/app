@@ -20,8 +20,7 @@ from gradeflow_app.courses.forms import CourseForm, InviteForm, RoleForm
 from gradeflow_app.courses.invitations import accept_invitations, invitation_from_token, invitation_token, send_email
 from gradeflow_app.courses.models import INVITATION_LIFETIME, Course, Invitation, Member, Role
 from gradeflow_app.dashboard.progress import Stage, progress_of
-from gradeflow_app.libraries.models import Library
-from gradeflow_app.libraries.services import available_namespace, close_library, rename_namespace
+from gradeflow_app.libraries.services import close_library, rename_namespace
 from gradeflow_app.live.topics import notify_change, topic
 from gradeflow_app.requests import Request
 from gradeflow_app.ui.fragments import is_fragment
@@ -57,7 +56,6 @@ def courses(request: Request) -> HttpResponse:
     if request.method == "POST" and form.is_valid():
         with transaction.atomic():
             course = form.save()
-            Library.objects.create(namespace=available_namespace(course.name), course=course)
             Member.objects.create(course=course, user=request.user, role=Role.OWNER)
         return redirect("course", course.pk)
     members = Member.objects.filter(user=request.user).select_related("course").order_by("-course__updated_at")
@@ -164,13 +162,15 @@ def member_role(request: Request, member: Member, user_id: str) -> HttpResponse:
     form = RoleForm(request.POST)
     if not form.is_valid():
         return _members_partial(request, member)
-    if _leaves_an_owner(request, target, form.cleaned_data["role"]):
-        target.role = form.cleaned_data["role"]
-        target.save(update_fields=["role"])
-        notify_change(topic("members", member.course_id))
-        messages.success(request, f"{target.user}'s role is now {form.cleaned_data['role'].label}.")
-        if target == member:
-            return HttpResponseClientRefresh()
+    if refusal := _owner_refusal(target, form.cleaned_data["role"]):
+        messages.error(request, refusal)
+        return _members_partial(request, member)
+    target.role = form.cleaned_data["role"]
+    target.save(update_fields=["role"])
+    notify_change(topic("members", member.course_id))
+    messages.success(request, f"{target.user}'s role is now {form.cleaned_data['role'].label}.")
+    if target == member:
+        return HttpResponseClientRefresh()
     return _members_partial(request, member)
 
 
@@ -219,19 +219,19 @@ def invitation_role(request: Request, member: Member, invitation_id: str) -> Htt
     return _members_partial(request, member)
 
 
-def _leaves_an_owner(request: Request, target: Member, role: Role | None) -> bool:
-    """Whether `target` can change to `role`, or leave the course if it's None, and still leave it an owner. Says
-    why not in a message. Locks the course's owners, so owners changing each other at once can't all go."""
+def _owner_refusal(target: Member, role: Role | None) -> str | None:
+    """Why `target` can't change to `role`, or leave the course if it's None, if that leaves it without an owner.
+    Locks the course's owners, so owners changing each other at once can't all go."""
     owners = {owner.pk for owner in Member.objects.select_for_update().filter(course=target.course, role=Role.OWNER)}
     if target.pk in owners and role != Role.OWNER and not owners - {target.pk}:
-        messages.error(request, "A course needs an owner. Make someone else an owner first.")
-        return False
-    return True
+        return "A course needs an owner. Make someone else an owner first."
+    return None
 
 
 def _remove_member(request: Request, target: Member) -> bool:
     """Removes `target` from the course, unless that leaves it without an owner."""
-    if not _leaves_an_owner(request, target, None):
+    if refusal := _owner_refusal(target, None):
+        messages.error(request, refusal)
         return False
     target.delete()
     notify_change(topic("members", target.course_id))

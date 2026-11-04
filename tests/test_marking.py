@@ -8,21 +8,23 @@ from django.test import Client
 from django.urls import reverse
 from django.utils.html import escape
 from gradeflow_core import Check, GradeFlowError, InvalidError, Methods, Question, QuestionSet
-from gradeflow_core.editing import DECISIONS, Decision, MarkingDraft, answer_decisions, dump_yaml, mark_by_example
+from gradeflow_core.editing import DECISIONS, Decision, MarkingDraft, dump_yaml
 from pytest_django import DjangoCaptureOnCommitCallbacks
 
 from gradeflow_app.assessments.models import Assessment
-from gradeflow_app.editor.editing import located
+from gradeflow_app.editor.editing import problem_text
 from gradeflow_app.editor.presenters import editor
 from gradeflow_app.imports import models as import_models
 from gradeflow_app.jobs.models import Job
 from gradeflow_app.libraries.collection import course_methods
 from gradeflow_app.live.topics import topic
-from gradeflow_app.marking import checks, views
+from gradeflow_app.marking import checks
+from gradeflow_app.marking import workspace as marking_workspace
 from gradeflow_app.marking.answers import answer_groups, column
 from gradeflow_app.marking.checks import definition_data
 from gradeflow_app.marking.models import Marking, MarkingDraftRecord
 from gradeflow_app.marking.workspace import MarkingWorkspace
+from gradeflow_app.ui.middleware import MESSAGES_HEADER
 from gradeflow_app.ui.templatetags.ui import markdown
 from tests.conftest import (
     HTMX_HEADERS,
@@ -190,8 +192,8 @@ def test_while_previewing_the_marks_filters_follow_the_previewed_marks(client: C
     full = client.get(answers_url, {"filter": "full", "group": "answer"}, headers=HTMX_HEADERS).text
     assert "1 student<" in full, "41, given full marks by the preview"
     assert "5 students" not in full, "42, full marks only in the saved marking"
-    zero = client.get(answers_url, {"filter": "zero", "group": "answer"}, headers=HTMX_HEADERS).text
-    assert "5 students" in zero
+    no_marks = client.get(answers_url, {"filter": "no_marks", "group": "answer"}, headers=HTMX_HEADERS).text
+    assert "5 students" in no_marks
 
 
 def test_questions_cache_validation_and_markings_use_the_supplied_collection(
@@ -566,6 +568,13 @@ def test_a_values_check_suggests_that_values_answers(assessment: Assessment) -> 
     assert workspace.suggestions_at(workspace.checks.position("with.checks.1")) == {"water": 1}
 
 
+def test_answers_the_question_reads_as_blank_arent_suggested(assessment: Assessment) -> None:
+    assessment.students.filter(encrypted_id=encrypted_id("S001")).update(answers={"Q1": "N/A"})
+    workspace = workspace_of(assessment, {"question": "Q1", "uses": "gradeflow/accepted-answers@1"})
+    assert "N/A" not in workspace.suggestions
+    assert "respiration" in workspace.suggestions
+
+
 def test_the_marking_opens_from_its_breadcrumb_whose_path_is_empty(client: Client, assessment: Assessment) -> None:
     url, _ = start_marking(client, assessment, "Q1", "gradeflow/combination@1")
     client.post(url, {"path": "", "operation": "add", "target": "with.checks.0", "method": "gradeflow/key-points@1"})
@@ -705,23 +714,19 @@ def test_a_draft_is_edited_as_yaml_with_problems_on_their_lines(client: Client, 
     assert definition_tree(draft) == {"question": "Q1", "uses": "gradeflow/key-points@1", "with": {"points": ["light"]}}
 
 
-def marked_by_example(draft: MarkingDraftRecord, answer: str, given: Decision) -> dict[str, Any]:
+def marked_by_example(draft: MarkingDraftRecord, answer: str, decision: Decision) -> dict[str, Any]:
     """The draft as the core marks `answer` by example, written as the draft is saved."""
     draft.refresh_from_db()
     workspace = MarkingWorkspace(draft)
-    question = workspace.subject.question
-    assert question is not None
-    definition = mark_by_example(
-        workspace.checks.data, [answer], given, methods=workspace.methods, question=question.core_question
-    )
-    return Check.load(definition, methods=workspace.methods).dump()
+    workspace.checks.mark_by_example([answer], decision)
+    return Check.load(workspace.checks.data, methods=workspace.methods).dump()
 
 
 def decision_count(draft: MarkingDraftRecord) -> int:
     """How many answers the core says the draft decided, each of which the answers column offers to clear."""
     draft.refresh_from_db()
     workspace = MarkingWorkspace(draft)
-    return len(answer_decisions(workspace.checks.data, methods=workspace.methods))
+    return len(workspace.checks.answer_decisions())
 
 
 def test_an_answer_group_is_marked_by_example(client: Client, assessment: Assessment) -> None:
@@ -730,18 +735,18 @@ def test_an_answer_group_is_marked_by_example(client: Client, assessment: Assess
     question = assessment.questions.get(key="Q2")
     answers_url = reverse("answers", args=[assessment.pk, question.pk])
     answers = client.get(answers_url).text
-    assert all(f'value="{given}">{label}</button>' in answers for given, label in DECISIONS.items())
+    assert all(f'value="{decision}">{label}</button>' in answers for decision, label in DECISIONS.items())
     assert answers.count('value="cancel">') == decision_count(draft)
     example = reverse("mark_example", args=[assessment.pk, question.pk])
-    expected_tree = marked_by_example(draft, "41", "part_marks")
-    page = client.post(example, {"answer": ["41"], "decision": "part_marks"}, headers=HTMX_HEADERS)
+    expected_tree = marked_by_example(draft, "41", "partial_marks")
+    page = client.post(example, {"answer": ["41"], "decision": "partial_marks"}, headers=HTMX_HEADERS)
     assert 'id="marking-panel"' in page.text
     assert definition_tree(draft) == expected_tree
     assert client.get(answers_url).text.count('value="cancel">') == decision_count(draft)
     with pytest.raises(GradeFlowError) as refusal:
         marked_by_example(draft, "41", "full_marks")
     refused = client.post(example, {"answer": ["41"], "decision": "full_marks"}, headers=HTMX_HEADERS)
-    assert json.loads(refused.headers["X-Messages"]) == [{"level": "error", "text": str(refusal.value)}]
+    assert json.loads(refused.headers[MESSAGES_HEADER]) == [{"level": "error", "text": str(refusal.value)}]
     assert definition_tree(draft) == expected_tree
 
 
@@ -749,9 +754,9 @@ def test_each_answer_marked_by_example_redraws_the_editor(client: Client, assess
     _, draft = start_marking(client, assessment, "Q2", "gradeflow/accepted-answers@1")
     example = reverse("mark_example", args=[assessment.pk, draft.question_id])
     examples: list[tuple[str, Decision]] = [("41", "not_allowed"), ("42", "full_marks")]
-    for answer, given in examples:
-        expected_tree = marked_by_example(draft, answer, given)
-        page = client.post(example, {"answer": [answer], "decision": given}, headers=HTMX_HEADERS)
+    for answer, decision in examples:
+        expected_tree = marked_by_example(draft, answer, decision)
+        page = client.post(example, {"answer": [answer], "decision": decision}, headers=HTMX_HEADERS)
         assert definition_tree(draft) == expected_tree
         workspace = MarkingWorkspace(draft)
         assert workspace.valid
@@ -784,7 +789,7 @@ def test_starting_and_discarding_a_draft_refreshes_the_users_question_list(
     client: Client, assessment: Assessment, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     published_topics: list[str] = []
-    monkeypatch.setattr(views, "notify_change", lambda *names: published_topics.extend(names))
+    monkeypatch.setattr(marking_workspace, "notify_change", lambda *names: published_topics.extend(names))
     _, draft = start_marking(client, assessment, "Q2", "gradeflow/accepted-answers@1")
     client.post(reverse("draft_discard", args=[assessment.pk, draft.pk]), headers=HTMX_HEADERS)
     assert published_topics == [topic("drafts", assessment.pk, draft.user_id)] * 2
@@ -795,7 +800,7 @@ def test_changing_a_drafts_method_refreshes_the_users_question_list(
 ) -> None:
     url, draft = start_marking(client, assessment, "Q2", "gradeflow/accepted-answers@1")
     published_topics: list[str] = []
-    monkeypatch.setattr(views, "notify_change", lambda *names: published_topics.extend(names))
+    monkeypatch.setattr(marking_workspace, "notify_change", lambda *names: published_topics.extend(names))
     client.post(url, {"path": "", "operation": "open", "target": ""})
     assert published_topics == [], "the method is the same"
     client.post(url, {"path": "", "operation": "change_method", "target": "", "method": "gradeflow/full-marks@1"})
@@ -872,7 +877,7 @@ def test_a_problem_with_a_checks_settings_as_a_whole_names_only_the_check() -> N
     data = {"uses": "gradeflow/combination@1", "with": {"checks": [length]}}
     draft = MarkingDraft(data, questions, "Q1")
     (problem,) = draft.problems
-    assert located(draft, problem) == f"Length: {problem.message}"
+    assert problem_text(draft, problem) == f"Length: {problem.message}"
 
 
 def test_text_answers_in_an_answer_group_are_listed_under_answers(client: Client, assessment: Assessment) -> None:

@@ -1,5 +1,5 @@
 from collections.abc import Callable
-from functools import wraps
+from functools import partial, wraps
 from typing import Any
 from uuid import UUID
 
@@ -31,19 +31,17 @@ def course_from_query(request: Request) -> Course | None:
 def course_member(role: Role = Role.VIEWER) -> Callable[[View], View]:
     """Calls the view with the user's `Member` of the course in place of the URL's `course` ID, once their role is
     at least `role`."""
-    return with_access_for("course", member_of, role)
+    return with_access_for("course", partial(member_of, role=role))
 
 
-def with_access_for(
-    argument: str, access_of: Callable[[Request, UUID, Role], object], role: Role
-) -> Callable[[View], View]:
-    """Calls the view with the user's access to what the URL's `argument` ID names, as `access_of` gives it for
-    `role`, in place of the ID."""
+def with_access_for(argument: str, access_of: Callable[[Request, UUID], object]) -> Callable[[View], View]:
+    """Calls the view with the user's access to what the URL's `argument` ID names, as `access_of` gives it, in place
+    of the ID."""
 
     def decorate(view: View) -> View:
         @wraps(view)
         def wrapped(request: Request, *args: object, **kwargs: Any) -> HttpResponse:
-            return view(request, access_of(request, kwargs.pop(argument), role), *args, **kwargs)
+            return view(request, access_of(request, kwargs.pop(argument)), *args, **kwargs)
 
         return wrapped
 

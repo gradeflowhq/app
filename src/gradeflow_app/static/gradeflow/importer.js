@@ -1,4 +1,4 @@
-// Importing a results file: read in the browser, rows and columns detected and checked, student IDs encrypted, and
+// Importing a submissions file: read in the browser, rows and columns detected and checked, student IDs encrypted, and
 // only the ID, answer and marks columns uploaded in the clear. The whole file is uploaded encrypted, so its columns
 // can be changed later; names and every other column stay unreadable to the server.
 
@@ -118,7 +118,7 @@ export const importer = () => {
       const marksColumnCount = this.columns.filter((column) => column.role === "marks").length;
       return marksColumnCount ? `${marksColumnCount} with marks from the file` : "No marks columns";
     },
-    /** What replacing the export removes: the questions set up that aren't among the answer columns. */
+    /** What replacing the submissions file removes: the questions set up that aren't among the answer columns. */
     get removedQuestionsNote() {
       const keys = questions.filter((key) => !this.answerColumns.includes(key));
       if (!keys.length) return "";
@@ -178,7 +178,7 @@ export const importer = () => {
         this.error = "That file couldn't be read. Choose a CSV or Excel file.";
       }
     },
-    /** Reopens the current results file from the server's encrypted copy, with the choices it was imported with. */
+    /** Reopens the current submissions file from the server's encrypted copy, with the choices it was imported with. */
     async reopenFile() {
       this.error = "";
       this.opening = true;
@@ -311,7 +311,7 @@ export const importer = () => {
         const form = this.$refs.upload;
         const body = new FormData(form);
         body.set("name", this.fileName);
-        body.set("answers_csv", new Blob([Papa.unparse([uploadedColumns.map((index) => this.header[index]), ...rows])], { type: "text/csv" }), "results.csv");
+        body.set("answers_csv", new Blob([Papa.unparse([uploadedColumns.map((index) => this.header[index]), ...rows])], { type: "text/csv" }), "answers.csv");
         body.set("student_id_column", this.studentColumn);
         body.set("answer_columns", JSON.stringify(this.answerColumns));
         body.set("marks_columns", JSON.stringify(marksColumns));

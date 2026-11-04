@@ -2,7 +2,7 @@
 {% partialdef answers inline %}
 <div id="answers" class="flex min-h-full flex-col"{% if out_of_band %} hx-swap-oob="outerMorph"{% endif %}
      hx-get="{{ answers_url }}" hx-target="this" hx-swap="outerMorph"
-     hx-trigger="{% listen 'marks' membership.assessment.pk %}, {% listen 'questions' membership.assessment.pk %}, {% listen 'preview' membership.assessment.pk request.user.pk %}">
+     hx-trigger="{% listen 'marks' access.assessment.pk %}, {% listen 'questions' access.assessment.pk %}, {% listen 'preview' access.assessment.pk request.user.pk %}">
   <header class="column-sticky">
     <div class="column-head">
       <c-questions-toggle />

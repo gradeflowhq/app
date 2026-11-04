@@ -10,10 +10,10 @@
 <div class="flex flex-wrap items-center gap-2" data-toggles>
   <div class="segmented" role="group" aria-label="Show">
     {% if distinct_answers|length > 1 %}<label class="segment gap-1.5">Answers<span class="badge badge-sm badge-soft tabular-nums">{{ distinct_answers|length }}</span><input type="checkbox" class="sr-only" data-answers></label>{% endif %}
-    {% if answer_group.exported_answers %}<label class="segment gap-1.5">Original<span class="badge badge-sm badge-soft tabular-nums">{{ answer_group.exported_answers|length }}</span><input type="checkbox" class="sr-only" data-original></label>{% endif %}
+    {% if answer_group.original_answers %}<label class="segment gap-1.5">Original<span class="badge badge-sm badge-soft tabular-nums">{{ answer_group.original_answers|length }}</span><input type="checkbox" class="sr-only" data-original></label>{% endif %}
     <label class="segment gap-1.5">Students<span class="badge badge-sm badge-soft tabular-nums">{{ answer_group.student_count }}</span><input type="checkbox" class="sr-only" data-students></label>
   </div>
-  {% if membership.can_edit and not draft and not answer_group.joined_by_similarity %}<label class="btn btn-sm has-checked:btn-active ml-auto">{% icon "pencil-square" "size-4" %}Adjust marks<input type="checkbox" class="sr-only" data-adjust></label>{% endif %}
+  {% if access.can_edit and not draft and not answer_group.joined_by_similarity %}<label class="btn btn-sm has-checked:btn-active ml-auto">{% icon "pencil-square" "size-4" %}Adjust marks<input type="checkbox" class="sr-only" data-adjust></label>{% endif %}
 </div>
 {% if distinct_answers|length > 1 %}
 <ul class="hidden gap-2 group-has-[[data-answers]:checked]/body:grid" aria-label="Answers">
@@ -23,12 +23,12 @@
   {% if code and distinct_answers|length > 3 %}<li class="tabular-nums text-sm text-muted">and {{ distinct_answers|length|add:"-3" }} more</li>{% endif %}
 </ul>
 {% endif %}
-{% if answer_group.exported_answers %}
+{% if answer_group.original_answers %}
 <ul class="hidden gap-2 group-has-[[data-original]:checked]/body:grid" aria-label="Original">
-  {% for answer, count in answer_group.exported_answers|slice:":3" %}
+  {% for answer, count in answer_group.original_answers|slice:":3" %}
   <li><pre class="code-block">{{ answer }}</pre><p class="tabular-nums mt-1 text-sm text-muted">{{ count }} student{{ count|pluralize }}</p></li>
   {% endfor %}
-  {% if answer_group.exported_answers|length > 3 %}<li class="tabular-nums text-sm text-muted">and {{ answer_group.exported_answers|length|add:"-3" }} more</li>{% endif %}
+  {% if answer_group.original_answers|length > 3 %}<li class="tabular-nums text-sm text-muted">and {{ answer_group.original_answers|length|add:"-3" }} more</li>{% endif %}
 </ul>
 {% endif %}
 {% endpartialdef %}
@@ -77,7 +77,7 @@
       {% for entry in answer_group.student_answers|slice:":40" %}<li><button class="badge badge-ghost h-auto cursor-pointer py-1 hover:badge-neutral" hx-get="{% url 'student' question.assessment_id entry.student_pk %}" hx-target="#drawer-body" data-dialog="drawer"><c-student-id value="{{ entry.encrypted_student_id }}" />{% if entry.adjustment %} {% icon "pencil" "size-3" %}{% endif %}</button></li>{% endfor %}
       {% if answer_group.student_count > 40 %}<li class="text-sm text-muted">and {{ answer_group.student_count|add:"-40" }} more</li>{% endif %}
     </ul>
-    {% if membership.can_edit and not draft and not answer_group.joined_by_similarity %}
+    {% if access.can_edit and not draft and not answer_group.joined_by_similarity %}
     <form class="hidden gap-3 group-has-[[data-adjust]:checked]/body:grid" hx-post="{% url 'adjust' question.assessment_id question.pk %}" hx-target="#answers" hx-swap="outerMorph">
       {% csrf_token %}
       {% for student in answer_group.student_pks %}<input type="hidden" name="student" value="{{ student }}">{% endfor %}

@@ -1,36 +1,36 @@
 {% extends "layouts/assessment.html" %}
-{% block page_title %}Publish · {% endblock %}
+{% block page_title %}Export · {% endblock %}
 {% block content %}
-{% with assessment=membership.assessment course=membership.course %}
+{% with assessment=access.assessment course=access.course %}
 {% partialdef send_settings %}
 <span id="send-settings" class="min-w-0 flex-1" data-mode="{{ sending.mode }}" data-rounding="{{ sending.rounding|default_if_none:'' }}" data-feedback="{{ sending.include_feedback|yesno:'true,false' }}">{{ sending.summary }}{% if sending.override_count %} <span class="badge badge-primary badge-soft badge-sm ml-1" title="Differs from the course">Custom</span>{% endif %}</span>
 {% if out_of_band %}{% partial comment_preview %}{% endif %}
 {% endpartialdef %}
-<c-page title="Publish">
+<c-page title="Export">
   <c-slot name="actions">{% if student_count %}<button type="button" class="btn" data-dialog="download">{% icon "arrow-down-tray" "size-4" %}Download</button>{% endif %}</c-slot>
   {% if not student_count %}
-  <c-empty-state class="card-box" icon="paper-airplane" title="Nothing to publish yet">Import the exam export, then send its marks from here.{% if membership.can_edit %}<c-slot name="action"><a class="btn btn-primary" href="{% url 'import' assessment.pk %}">{% icon "arrow-up-tray" %}Import exam export</a></c-slot>{% endif %}</c-empty-state>
+  <c-empty-state class="card-box" icon="paper-airplane" title="Nothing to export yet">Import the submissions file, then send its marks from here.{% if access.can_edit %}<c-slot name="action"><a class="btn btn-primary" href="{% url 'import' assessment.pk %}">{% icon "arrow-up-tray" %}Import submissions</a></c-slot>{% endif %}</c-empty-state>
   {% elif not canvas_available %}
   <c-empty-state class="card-box" icon="link" title="Canvas isn't set up on this server">Download the marks to upload them yourself.</c-empty-state>
   {% elif not course_canvas.canvas_course %}
-  <c-empty-state class="card-box" icon="link" title="Not linked to Canvas">{% if not membership.can_edit %}An editor can link this course to Canvas.{% endif %}{% if membership.can_edit %}<c-slot name="action"><a class="btn btn-primary" href="{% url 'canvas_settings' course.pk %}">Set up Canvas</a></c-slot>{% endif %}</c-empty-state>
+  <c-empty-state class="card-box" icon="link" title="Not linked to Canvas">{% if not access.can_edit %}An editor can link this course to Canvas.{% endif %}{% if access.can_edit %}<c-slot name="action"><a class="btn btn-primary" href="{% url 'canvas_settings' course.pk %}">Set up Canvas</a></c-slot>{% endif %}</c-empty-state>
   {% else %}
-  <div class="contents"{% if membership.can_edit %} x-data="canvasPublisher" data-config="{{ config }}"{% endif %}>
-  {% if membership.can_edit %}
+  <div class="contents"{% if access.can_edit %} x-data="canvasExport" data-config="{{ config }}"{% endif %}>
+  {% if access.can_edit %}
   <c-card title="Canvas" x-show="!connected" x-cloak>
     <c-canvas-connect reason="This device needs your Canvas access token to send marks." />
   </c-card>
   {% endif %}
-  <div class="contents"{% if membership.can_edit %} x-show="connected" x-cloak{% endif %}>
+  <div class="contents"{% if access.can_edit %} x-show="connected" x-cloak{% endif %}>
   <c-card title="Canvas" body_class="px-5 py-1">
-    {% if membership.can_edit %}<c-slot name="actions"><a class="flex items-center gap-2 text-sm text-muted hover:text-base-content" href="{% url 'canvas_settings' course.pk %}"><span class="status status-success"></span><span x-text="canvasHost"></span></a></c-slot>{% endif %}
+    {% if access.can_edit %}<c-slot name="actions"><a class="flex items-center gap-2 text-sm text-muted hover:text-base-content" href="{% url 'canvas_settings' course.pk %}"><span class="status status-success"></span><span x-text="canvasHost"></span></a></c-slot>{% endif %}
     <div class="divide-y divide-base-300">
     <div class="setting-summary-row">
       <span class="setting-summary-label">Course</span>
       <span class="flex min-w-0 flex-1 items-center gap-3"><span class="initial-badge size-8 text-sm" aria-hidden="true">{% firstof course_canvas.canvas_course_name|first "C" %}</span><span class="truncate font-medium">{% firstof course_canvas.canvas_course_name course_canvas.canvas_course %}</span></span>
-      {% if membership.can_edit %}<a class="btn btn-ghost btn-sm -mr-3" href="{% url 'canvas_settings' course.pk %}">Change</a>{% endif %}
+      {% if access.can_edit %}<a class="btn btn-ghost btn-sm -mr-3" href="{% url 'canvas_settings' course.pk %}">Change</a>{% endif %}
     </div>
-    {% if membership.can_edit %}
+    {% if access.can_edit %}
     <div class="setting-summary-row">
       <span class="setting-summary-label">Assignment</span>
       <div class="flex min-w-0 flex-1 items-center gap-3">
@@ -41,11 +41,11 @@
         <span class="text-muted" x-show="!card('assignment').id && !loading('assignment')">None chosen</span>
       </div>
       <button type="button" class="btn btn-sm" :class="card('assignment').id && 'btn-ghost -mr-3'" x-on:click="pick('assignment')" x-text="card('assignment').id ? 'Change' : 'Choose'"></button>
-      {% include "publish/picker_dialog.html" with key="assignment" label="Assignment" search="Search assignments" empty="No assignments match." none="This course has no assignments yet." create="New assignment" %}
+      {% include "exports/picker_dialog.html" with key="assignment" label="Assignment" search="Search assignments" empty="No assignments match." none="This course has no assignments yet." create="New assignment" %}
     </div>
     <div class="grid gap-4 py-4 sm:grid-cols-2 sm:pl-32" x-show="creating" x-cloak>
       <div class="grid content-start gap-1.5"><label class="font-medium" for="canvas-new-name">Name</label><input id="canvas-new-name" class="input w-full" x-model="newName"></div>
-      {% include "publish/picker.html" with key="group" label="Assignment group" choose="Choose an assignment group" search="Search assignment groups" empty="No assignment groups match." none="This course has no assignment groups yet." create="New assignment group" panel="publish/new_group.html" %}
+      {% include "exports/picker.html" with key="group" label="Assignment group" choose="Choose an assignment group" search="Search assignment groups" empty="No assignment groups match." none="This course has no assignment groups yet." create="New assignment group" panel="exports/new_group.html" %}
     </div>
     <details class="group/send py-3.5"{% if form.errors %} open{% endif %}>
       <summary class="setting-summary-row cursor-pointer list-none py-0">
@@ -53,7 +53,7 @@
         {% partial send_settings %}
         <span class="btn btn-ghost btn-sm -mr-3">Change{% icon "chevron-down" "size-4 transition-transform group-open/send:rotate-180" %}</span>
       </summary>
-      <form class="mt-4 grid gap-4 sm:grid-cols-3 sm:pl-32" x-ref="sendSettings" hx-post="{% url 'publish_sending' assessment.pk %}" hx-trigger="change" hx-target="#send-settings" hx-swap="outerHTML">
+      <form class="mt-4 grid gap-4 sm:grid-cols-3 sm:pl-32" x-ref="sendSettings" hx-post="{% url 'export_sending' assessment.pk %}" hx-trigger="change" hx-target="#send-settings" hx-swap="outerHTML">
         <input type="hidden" name="{{ form.canvas_assignment.html_name }}" value="{{ form.canvas_assignment.value }}" :value="savedAssignment">
         {% for field in form.visible_fields %}{{ field.as_field_group }}{% endfor %}
       </form>
@@ -62,11 +62,11 @@
     <div class="setting-summary-row"><span class="setting-summary-label">How marks are sent</span>{% partial send_settings %}</div>
     {% endif %}
     </div>
-    {% if membership.can_edit %}
+    {% if access.can_edit %}
     <c-alert class="mb-3.5" x-show="error && !reviewing" x-cloak><span x-text="error"></span></c-alert>
-    {% partialdef canvas_rows inline %}<div id="publish-rows" hx-get="{% url 'publish_rows' membership.assessment.pk %}" hx-trigger="{% listen 'marks' membership.assessment.pk %}" hx-swap="outerHTML">{{ canvas_rows|json_script:"publish-rows-data" }}</div>{% endpartialdef %}
+    {% partialdef canvas_rows inline %}<div id="export-rows" hx-get="{% url 'export_rows' access.assessment.pk %}" hx-trigger="{% listen 'marks' access.assessment.pk %}" hx-swap="outerHTML">{{ canvas_rows|json_script:"export-rows-data" }}</div>{% endpartialdef %}
     {% endif %}
-    <c-slot name="footer">{% partialdef comment_preview inline %}<button type="button" id="comment-preview" class="btn btn-ghost -ml-4" hx-get="{% url 'publish_comment' membership.assessment.pk %}" hx-target="#comment-body" data-dialog="comment"{% if out_of_band %} hx-swap-oob="true"{% endif %}{% if not sending.include_feedback %} hidden{% endif %}>{% icon "eye" "size-4" %}Preview comment</button>{% endpartialdef %}{% if membership.can_edit %}
+    <c-slot name="footer">{% partialdef comment_preview inline %}<button type="button" id="comment-preview" class="btn btn-ghost -ml-4" hx-get="{% url 'export_comment' access.assessment.pk %}" hx-target="#comment-body" data-dialog="comment"{% if out_of_band %} hx-swap-oob="true"{% endif %}{% if not sending.include_feedback %} hidden{% endif %}>{% icon "eye" "size-4" %}Preview comment</button>{% endpartialdef %}{% if access.can_edit %}
       <span class="flex items-center gap-2 text-sm text-muted" x-show="isBusy && !reviewing" x-cloak><span class="loading loading-spinner loading-sm"></span><span x-text="busyLabel"></span></span>
       <button type="button" class="btn btn-primary ml-auto" x-on:click="review" :disabled="!canReview">{% icon "paper-airplane" "size-4" %}Send to Canvas</button>
     {% else %}
@@ -75,7 +75,7 @@
   </c-card>
   </div>
   <c-dialog id="comment" title="Comment in Canvas"><div id="comment-body"></div></c-dialog>
-  {% if membership.can_edit %}
+  {% if access.can_edit %}
   <c-dialog id="send-review" title="Send to Canvas" x-on:close="closeReview" x-on:cancel="preventCloseWhileSending">
     <div class="grid gap-4 px-6 pt-1">
       <p class="-mt-1 truncate text-sm text-muted" x-text="reviewTarget"></p>
@@ -109,7 +109,7 @@
       <table class="table">
         <thead><tr><th>Assignment</th><th class="text-right">Students</th><th class="max-sm:hidden">Sent by</th><th class="text-right max-sm:hidden">When</th></tr></thead>
         <tbody>
-          {% for publication in sent_marks %}<tr><td><span class="font-medium">{{ publication.assignment_name }}</span><span class="block text-sm text-muted sm:hidden">{{ publication.sent_by|default:"Someone" }} · {{ publication.sent_at|ago }}</span></td><td class="tabular-nums text-right">{{ publication.student_count }}</td><td class="text-muted max-sm:hidden">{{ publication.sent_by|default:"Someone" }}</td><td class="whitespace-nowrap text-right text-muted max-sm:hidden"><time datetime="{{ publication.sent_at|date:'c' }}">{{ publication.sent_at|ago }}</time></td></tr>{% endfor %}
+          {% for record in sent_marks %}<tr><td><span class="font-medium">{{ record.assignment_name }}</span><span class="block text-sm text-muted sm:hidden">{{ record.sent_by|default:"Someone" }} · {{ record.sent_at|ago }}</span></td><td class="tabular-nums text-right">{{ record.student_count }}</td><td class="text-muted max-sm:hidden">{{ record.sent_by|default:"Someone" }}</td><td class="whitespace-nowrap text-right text-muted max-sm:hidden"><time datetime="{{ record.sent_at|date:'c' }}">{{ record.sent_at|ago }}</time></td></tr>{% endfor %}
         </tbody>
       </table>
     </c-card>

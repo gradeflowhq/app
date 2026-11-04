@@ -24,12 +24,13 @@ type PreviewResults = dict[str, dict[str, QuestionResult]]
 
 
 def latest_preview(draft: MarkingDraftRecord) -> Job | None:
-    if draft.preview_id is None:
+    """The draft's latest preview; one past its time limit reads as failed until the job worker fails it."""
+    job = Job.objects.filter(pk=draft.preview_id).first() if draft.preview_id is not None else None
+    if job is None or not job.ran_on_this_core:
         return None
-    if timed_out := Job.objects.timed_out().filter(pk=draft.preview_id).first():
-        queue.end(timed_out, queue.TIMED_OUT_REASON)
-    job = Job.objects.filter(pk=draft.preview_id).first()
-    return job if job is not None and job.ran_on_this_core else None
+    if Job.objects.timed_out().filter(pk=job.pk).exists():
+        job.status, job.error = Job.Status.FAILED, queue.TIMED_OUT_REASON
+    return job
 
 
 def preview_results(job: Job) -> PreviewResults:
@@ -44,8 +45,8 @@ def preview_and_results(workspace: MarkingWorkspace | None) -> tuple[Job | None,
 
 
 @transaction.atomic
-def run_preview(request: Request, membership: AssessmentAccess, workspace: MarkingWorkspace) -> None:
-    membership.assessment.lock()
+def run_preview(request: Request, access: AssessmentAccess, workspace: MarkingWorkspace) -> None:
+    access.assessment.lock()
     draft = (
         MarkingDraftRecord.objects.select_for_update(of=("self",)).select_related("preview").get(pk=workspace.draft.pk)
     )
@@ -62,7 +63,7 @@ def run_preview(request: Request, membership: AssessmentAccess, workspace: Marki
     model_endpoint = endpoint(request) if check.needs_model_endpoint() else None
     methods = files_needed_by(methods_used(check.dump()))
     draft.preview = mark_students(
-        membership.assessment, check, methods, model_endpoint, kind=Job.Kind.PREVIEW, user=request.user
+        access.assessment, check, methods, model_endpoint, kind=Job.Kind.PREVIEW, user=request.user
     )
     draft.preview_input = preview_input
     draft.save(update_fields=["preview", "preview_input"])
@@ -83,7 +84,7 @@ def _preview_input(workspace: MarkingWorkspace) -> str | None:
     None while it can't mark."""
     if (check := workspace.finalized) is None:
         return None
-    keys = sorted(check.questions_marked() | check.questions_read())
+    keys = sorted(check.questions_read())
     questions = {key: workspace.questions[key].model_dump(mode="json") for key in keys}
     return json.dumps({"definition": workspace.draft.definition, "questions": questions})
 

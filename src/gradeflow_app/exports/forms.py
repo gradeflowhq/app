@@ -3,7 +3,7 @@ from typing import Any
 
 from django import forms
 
-from gradeflow_app.publish.models import AssessmentCanvas, CourseCanvas, MarksMode, SentMarks
+from gradeflow_app.exports.models import AssessmentCanvas, CourseCanvas, MarksMode, SentMarks
 from gradeflow_app.ui.schemaforms.widgets import Segmented
 from gradeflow_app.ui.templatetags.ui import marks
 

@@ -12,6 +12,7 @@ from gradeflow_app.live.models import Topic
 from gradeflow_app.requests import HtmxRequest
 
 NOTIFY_CHANNEL = "gradeflow_live"
+TOPIC_PREFIX = "live-"
 REFRESH_THROTTLE = "1s"
 """How often a page refreshes for one topic at most. It still refreshes once more for the last change."""
 _SALT = "gradeflow.live"
@@ -19,7 +20,7 @@ _SALT = "gradeflow.live"
 
 def topic(*about: object) -> str:
     """The event name for what `about` names, like `("marks", question.pk)`; a hash makes it short and valid."""
-    return "live-" + hashlib.blake2b(" ".join(map(str, about)).encode(), digest_size=8).hexdigest()
+    return TOPIC_PREFIX + hashlib.blake2b(" ".join(map(str, about)).encode(), digest_size=8).hexdigest()
 
 
 def notify_change(*names: str) -> None:

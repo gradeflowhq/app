@@ -54,7 +54,7 @@ class Preview:
     breakdown: GroupBreakdown | None = None
     full_marks_count: int = 0
     partial_marks_count: int = 0
-    zero_marks_count: int = 0
+    no_marks_count: int = 0
 
     @property
     def changed(self) -> bool:
@@ -66,7 +66,7 @@ class Preview:
         counts: dict[Level, int] = {
             "full": self.full_marks_count,
             "partial": self.partial_marks_count,
-            "zero": self.zero_marks_count,
+            "no_marks": self.no_marks_count,
         }
         return {level for level, count in counts.items() if count}
 
@@ -118,8 +118,8 @@ class AnswerGroup:
         return Counter(entry.normalized for entry in self.student_answers).most_common()
 
     @property
-    def exported_answers(self) -> list[tuple[str, int]]:
-        """Its answers the question reads visibly differently from how they were exported."""
+    def original_answers(self) -> list[tuple[str, int]]:
+        """Its answers the question reads visibly differently from how the submissions file has them."""
         return Counter(
             entry.answer
             for entry in self.student_answers
@@ -165,7 +165,7 @@ class AnswerGroup:
     @property
     def unmarked_count(self) -> int:
         """How many of its students the marking couldn't mark, such as answers it couldn't read."""
-        return sum(entry.result is not None and not entry.result.marked for entry in self.student_answers)
+        return sum(entry.result is not None and not entry.result.is_marked for entry in self.student_answers)
 
     @property
     def all_unmarked(self) -> bool:

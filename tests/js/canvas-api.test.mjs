@@ -23,6 +23,14 @@ test('requests go through the proxy with the token and the Canvas host', async (
   assert.deepEqual(calls[0].headers, { Authorization: 'Bearer secret', 'X-Host': 'canvas.example.edu' });
 });
 
+test('a request gives up once Canvas takes a minute', async (t) => {
+  const calls = stubFetch(t, () => jsonResponse({}));
+  const timeout = t.mock.method(AbortSignal, 'timeout');
+  await client().progress(7);
+  assert.deepEqual(timeout.mock.calls[0].arguments, [60_000]);
+  assert.equal(calls[0].signal, timeout.mock.calls[0].result);
+});
+
 test('keeps a Canvas base path', async (t) => {
   const calls = stubFetch(t, () => jsonResponse({}));
   await canvasClient({ baseUrl: 'https://lms.example.edu/canvas', token: 't', proxyUrl: 'https://proxy.example.org' }).progress(1);

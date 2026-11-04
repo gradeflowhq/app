@@ -4,9 +4,10 @@ A course's markings load the versions they use. A person editing marking may use
 courses', public ones and those the course uses; the picker offers the latest version of each that isn't archived.
 """
 
+import logging
 from collections.abc import Iterable
 from dataclasses import dataclass
-from functools import cached_property, lru_cache
+from functools import cache, cached_property, lru_cache
 from typing import Any
 from uuid import UUID
 
@@ -25,6 +26,7 @@ type MethodFiles = tuple[tuple[str, str], ...]
 
 BUILTIN_NAMES = frozenset(method.name for method in BUILTINS)
 BUILTIN_REFS = frozenset(method.ref for method in BUILTINS)
+_LOG = logging.getLogger(__name__)
 
 
 def method_files(versions: QuerySet[MethodVersion]) -> MethodFiles:
@@ -35,7 +37,16 @@ def method_files(versions: QuerySet[MethodVersion]) -> MethodFiles:
 @lru_cache(maxsize=64)
 def load_saved(published: MethodFiles) -> LoadedFiles:
     """Versions never change, so loading them once is enough."""
-    return load_method_files(published, BUILTINS)
+    loaded = load_method_files(published, BUILTINS)
+    for ref, failed in loaded.failed.items():
+        _log_failure(ref, failed.ref, " ".join(failed.messages))
+    return loaded
+
+
+@cache
+def _log_failure(ref: str, at_fault: str, problems: str) -> None:
+    """Logs a saved version this core can't load, once: it won't change."""
+    _LOG.warning("Saved method %s doesn't load, for problems in %s: %s", ref, at_fault, problems)
 
 
 def load_methods(published: MethodFiles) -> Methods:

@@ -7,6 +7,7 @@ Jobs send results as `marked` batches or `compared` JSON pieces to keep each req
 import hashlib
 import hmac
 import json
+import logging
 from typing import Any
 from uuid import UUID
 
@@ -20,6 +21,7 @@ from gradeflow_app.jobs import events, queue
 from gradeflow_app.jobs.handlers import Task, handler
 from gradeflow_app.jobs.models import Job
 
+_LOG = logging.getLogger(__name__)
 _RESULT_EVENTS: dict[str, tuple[Task, str]] = {
     "tested": ("test", "results"),
     "chosen": ("choose", "choice"),
@@ -46,18 +48,17 @@ def job_input(request: HttpRequest, job_id: UUID) -> HttpResponse:
 @login_not_required
 @require_POST
 def job_callback(request: HttpRequest, job_id: UUID) -> HttpResponse:
-    job = get_object_or_404(Job, pk=job_id)
+    job = get_object_or_404(Job.objects.defer("input", "result", "marked_with"), pk=job_id)
     if not _has_valid_signature(job, request, request.body):
+        _LOG.warning("Refused a callback for job %s: its signature doesn't match", job.pk)
         return HttpResponseForbidden()
     try:
         event = json.loads(request.body)
-    except ValueError, UnicodeDecodeError:
-        return HttpResponse(status=400)
-    if not isinstance(event, dict):
-        return HttpResponse(status=400)
-    try:
+        if not isinstance(event, dict):
+            raise TypeError("A job event is a JSON object.")
         _apply_event(job, event)
     except KeyError, TypeError, ValueError:
+        _LOG.warning("Refused a callback for job %s", job.pk, exc_info=True)
         return HttpResponse(status=400)
     return HttpResponse(status=204)
 

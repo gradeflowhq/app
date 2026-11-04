@@ -6,10 +6,10 @@
       <div class="column-head"><c-questions-toggle /><h2>New question group</h2></div>
       <div class="grid max-w-3xl gap-4 p-5">
         <p class="text-muted">For marks that depend on more than one answer, such as follow-through marks.</p>
-        {% if membership.can_edit %}
+        {% if access.can_edit %}
         <form method="post">
           {% csrf_token %}
-          {% url 'question_group_methods' membership.assessment.pk as guide_url %}
+          {% url 'question_group_methods' access.assessment.pk as guide_url %}
           <ul class="grid gap-2">{% for method in methods %}<c-method-choice :method="method" guide_url="{{ guide_url }}" />{% endfor %}</ul>
         </form>
         {% endif %}

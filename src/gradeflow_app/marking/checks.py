@@ -72,5 +72,5 @@ def questions_marked(marking: Marking, check: Check | None) -> set[str]:
 def questions_involved(marking: Marking, check: Check | None) -> set[str]:
     """The questions `marking` marks or reads, likewise."""
     if check is not None:
-        return check.questions_marked() | check.questions_read()
+        return check.questions_read()
     return marking.questions_given_marks | set(marking.questions_read)

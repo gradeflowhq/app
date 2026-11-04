@@ -22,14 +22,14 @@ from gradeflow_app.requests import Request
 
 @assessment_member(Role.EDITOR)
 @transaction.atomic
-def draft_yaml(request: Request, membership: AssessmentAccess, draft_id: UUID) -> HttpResponse:
+def draft_yaml(request: Request, access: AssessmentAccess, draft_id: UUID) -> HttpResponse:
     """The draft as YAML; posting saves the marking it reads as, of its question, then shows what else is wrong, if
     anything, with the editor behind brought up to date."""
-    workspace = MarkingWorkspace.of(request, membership, draft_id, lock=request.method == "POST")
+    workspace = MarkingWorkspace.of(request, access, draft_id, lock=request.method == "POST")
     draft_record = workspace.draft
     text = draft_record.definition
     problems: list[str] = []
-    action = reverse("draft_yaml", args=[membership.assessment.pk, draft_record.pk])
+    action = reverse("draft_yaml", args=[access.assessment.pk, draft_record.pk])
     context: dict[str, Any] = {"action": action}
     if request.method == "POST":
         text = str(request.POST.get("definition", ""))
@@ -45,9 +45,9 @@ def draft_yaml(request: Request, membership: AssessmentAccess, draft_id: UUID) -
                 return HttpResponseClientRefresh()
             saved = MarkingWorkspace(draft_record)
             context |= {
-                "membership": membership,
+                "access": access,
                 "editor": editor(saved, str(request.POST.get("path", ""))),
-                "answers_html": answers_column_html(request, membership, saved.subject, saved, out_of_band=True),
+                "answers_html": answers_column_html(request, access, saved.subject, saved, out_of_band=True),
                 "out_of_band_editor": True,
             }
     context |= {"text": text, "problems": problems}

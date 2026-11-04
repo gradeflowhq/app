@@ -21,17 +21,17 @@ from gradeflow_app.requests import Request
 
 @assessment_member(Role.EDITOR)
 @transaction.atomic
-def question_settings(request: Request, membership: AssessmentAccess, question_id: UUID) -> HttpResponse:
+def question_settings(request: Request, access: AssessmentAccess, question_id: UUID) -> HttpResponse:
     """A question's type and settings, from the schema the core publishes for each type."""
     if request.method == "POST":
-        membership.assessment.lock()
-    question = membership.question(question_id)
+        access.assessment.lock()
+    question = access.question(question_id)
     saved_question = question.core_question
     question_type = question_type_named(
         request.POST.get("question_type") or request.GET.get("question_type", ""), saved_question.type
     )
     is_saving = request.method == "POST" and "save" in request.POST
-    answers = membership.assessment.students.values_list(answer_expression(question.key), flat=True)
+    answers = access.assessment.students.values_list(answer_expression(question.key), flat=True)
     form = QuestionForm(retyped(saved_question, question_type, answers), data=request.POST if is_saving else None)
     if is_saving and (posted_question := form.posted_question()) is not None:
         question.core_question = posted_question
@@ -39,15 +39,15 @@ def question_settings(request: Request, membership: AssessmentAccess, question_i
         if posted_question.model_copy(update={"max_marks": saved_question.max_marks}) == saved_question:
             messages.success(request, "Saved.")
         else:
-            remark(membership.assessment, [question.key], request.user, endpoint(request))
+            remark(access.assessment, [question.key], request.user, endpoint(request))
             messages.success(request, f"Saved. Marking {question.key} again…")
-        notify_change(topic("questions", membership.assessment.pk))
+        notify_change(topic("questions", access.assessment.pk))
         return HttpResponseClientRefresh()
     return render(
         request,
         "questions/settings.html",
         {
-            "membership": membership,
+            "access": access,
             "question": question,
             "types": QUESTION_TYPE_LABELS.items(),
             "question_type": question_type,

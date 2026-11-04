@@ -4,7 +4,7 @@ from collections.abc import Iterable, Sequence
 from typing import Any
 
 from django.db import transaction
-from gradeflow_core import Check, MarkedSubmission, ModelEndpoint
+from gradeflow_core import Check, MarkedSubmission, ModelEndpoint, Submission
 
 from gradeflow_app.accounts.models import User
 from gradeflow_app.assessments.models import Assessment
@@ -80,12 +80,20 @@ def mark_students(
     user: User,
     **job_fields: Any,
 ) -> Job:
-    """A job marking every student of the assessment with `check`, which uses `methods`."""
+    """A job marking every student of the assessment with `check`, which uses `methods`, given only the answers it
+    reads."""
+    questions_read = check.questions_read()
     payload = MarkingRun(
         questions=assessment.question_set(),
         markings=[check.dump()],
         methods=list(methods),
-        submissions=[student.submission for student in assessment.students.all()],
+        submissions=[
+            Submission(
+                student_id=student.encrypted_id,
+                answers={key: answer for key, answer in student.answers.items() if key in questions_read},
+            )
+            for student in assessment.students.all()
+        ],
         model_endpoint=model_endpoint,
     )
     return queue.enqueue(
@@ -144,9 +152,9 @@ def _store_results(job: Job, submissions: Sequence[MarkedSubmission]) -> None:
             question=question,
             proportion=result.proportion,
             feedback=result.feedback,
-            method=result.method_label,
-            marked=result.is_marked,
-            language_models=list(result.model_names),
+            method_label=result.method_label,
+            is_marked=result.is_marked,
+            model_names=list(result.model_names),
             breakdown=result.breakdown and result.breakdown.model_dump(mode="json"),
             marking_id=job.marking_id,
             revision=job.revision,

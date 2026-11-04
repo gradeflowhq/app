@@ -71,6 +71,7 @@ def test_a_preview_the_sandbox_lost_can_be_tried_again(
     Job.objects.filter(pk=job.pk).update(status=Job.Status.RUNNING, started_at=timezone.now() - timedelta(days=1))
     column = client.get(reverse("answers", args=[assessment.pk, draft.question_id]), headers=HTMX_HEADERS).text
     assert "Preview failed: Ran past its time limit." in column
+    assert Job.objects.get(pk=job.pk).status == Job.Status.RUNNING, "reading it changes nothing"
     with django_capture_on_commit_callbacks(execute=True):
         client.post(preview_url, headers=HTMX_HEADERS)
     assert Job.objects.filter(kind=Job.Kind.PREVIEW).count() == 2

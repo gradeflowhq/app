@@ -1,5 +1,6 @@
 from django.db import models
-from gradeflow_core import QuestionResult
+from gradeflow_core import CheckResult, QuestionResult
+from pydantic import ValidationError
 from simple_history.models import HistoricalRecords
 
 from gradeflow_app.imports.models import Student
@@ -14,9 +15,9 @@ class Result(models.Model):
     question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name="results")
     proportion = models.FloatField()
     feedback = models.TextField(blank=True)
-    method = models.TextField()
-    marked = models.BooleanField(default=True)
-    language_models = models.JSONField(default=list)
+    method_label = models.TextField()
+    is_marked = models.BooleanField(default=True)
+    model_names = models.JSONField(default=list)
     """The language models that decided it, if any."""
     breakdown = models.JSONField(null=True)
     """How each check of the marking marked it, if the marking has several."""
@@ -30,15 +31,20 @@ class Result(models.Model):
         return f"{self.proportion:.0%}"
 
     def question_result(self, max_marks: float) -> QuestionResult:
-        """The core's result, out of the question's `max_marks` as they are now."""
+        """The core's result, out of the question's `max_marks` as they are now; without the breakdown if an earlier
+        core stored one this core can't read."""
+        try:
+            breakdown = CheckResult.model_validate(self.breakdown) if self.breakdown is not None else None
+        except ValidationError:
+            breakdown = None
         return QuestionResult(
             proportion=self.proportion,
             max_marks=max_marks,
             feedback=self.feedback,
-            method_label=self.method,
-            is_marked=self.marked,
-            model_names=tuple(self.language_models),
-            breakdown=self.breakdown,
+            method_label=self.method_label,
+            is_marked=self.is_marked,
+            model_names=tuple(self.model_names),
+            breakdown=breakdown,
         )
 
 

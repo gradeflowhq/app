@@ -4,6 +4,7 @@
  */
 
 const PAGE_SIZE = 100;
+const TIMEOUT_MS = 60_000;
 
 /** Canvas's array parameters are written `key[]=a&key[]=b`. */
 const queryString = (params) => new URLSearchParams(Object.entries(params).flatMap(([key, value]) =>
@@ -35,7 +36,11 @@ export const canvasClient = ({ baseUrl, token, proxyUrl }) => {
 
   /** `path` is the Canvas URL's path and query. */
   const request = async (path, init = {}) => {
-    const response = await fetch(proxy + path, { ...init, headers: { ...headers, ...init.headers } });
+    const response = await fetch(proxy + path, {
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+      ...init,
+      headers: { ...headers, ...init.headers },
+    });
     if (!response.ok) throw await requestError(response);
     return response;
   };

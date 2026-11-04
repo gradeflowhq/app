@@ -3,6 +3,7 @@ x-app: &app
   image: ghcr.io/gradeflowhq/app:${GRADEFLOW_VERSION:-latest}
   pull_policy: always
   restart: unless-stopped
+  init: true
   env_file:
     - path: .env
       required: false

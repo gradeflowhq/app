@@ -1,4 +1,4 @@
-{% url 'publish_comment' membership.assessment.pk as comment_url %}
+{% url 'export_comment' access.assessment.pk as comment_url %}
 <div class="grid gap-4 px-6 pb-6 pt-2">
   <div class="flex items-center gap-3">
     <c-student-id value="{{ student.encrypted_id }}" />

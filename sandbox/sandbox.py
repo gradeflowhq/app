@@ -11,6 +11,7 @@ import hashlib
 import hmac
 import json
 import os
+import random
 import signal
 import sys
 import time
@@ -27,17 +28,31 @@ MAX_SECONDS_BETWEEN_CALLBACKS = 1
 """Longest wait between callbacks with marked results, which show the job's progress."""
 CHUNK_SIZE = 60
 """Students marked between callbacks when a method asks a language model about many answers at once."""
+CALLBACK_ATTEMPTS = 6
+"""Tries for each callback, spread over up to a minute, so jobs outlast the app restarting. The app takes each event
+once, however often it's sent."""
 PR_SET_DUMPABLE = 4
+CLIENT = httpx.Client(timeout=120)
 
 
 def signature(body: bytes) -> str:
     return hmac.new(JOB_SECRET, body, hashlib.sha256).hexdigest()
 
 
-def call_back(event: dict[str, Any]) -> None:
+def call_back(event: dict[str, Any], *, attempts: int = CALLBACK_ATTEMPTS) -> None:
+    """Sends `event`, trying again after a while when the app can't be reached, fails or is busy."""
     body = json.dumps(event).encode()
     headers = {"Content-Type": "application/json", "X-GradeFlow-Signature": signature(body)}
-    httpx.post(JOB_URL + "callback", content=body, headers=headers, timeout=120).raise_for_status()
+    for attempt in range(1, attempts + 1):
+        try:
+            response = CLIENT.post(JOB_URL + "callback", content=body, headers=headers)
+            if attempt == attempts or not (response.is_server_error or response.status_code == 429):
+                response.raise_for_status()
+                return
+        except httpx.TransportError:
+            if attempt == attempts:
+                raise
+        time.sleep(random.uniform(0, 2**attempt))
 
 
 def model_endpoint(job: dict[str, Any]) -> Any:
@@ -160,8 +175,9 @@ def hide_secret_from_job_code() -> None:
 
 
 def report_time_limit(*_: object) -> None:
-    """Reports the job failed at its time limit, or when Nomad stops it, so the app stops waiting for it."""
-    call_back({"event": "failed", "error": "Ran past its time limit."})
+    """Reports the job failed at its time limit, or when Nomad stops it, so the app stops waiting for it. It has
+    seconds before Nomad kills it, so it tries once."""
+    call_back({"event": "failed", "error": "Ran past its time limit."}, attempts=1)
     sys.exit(1)
 
 
@@ -171,7 +187,7 @@ def main(task: str, time_limit: int) -> int:
     signal.signal(signal.SIGALRM, report_time_limit)
     signal.alarm(time_limit)
     call_back({"event": "started"})
-    response = httpx.get(JOB_URL + "input", headers={"X-GradeFlow-Signature": signature(b"input")}, timeout=120)
+    response = CLIENT.get(JOB_URL + "input", headers={"X-GradeFlow-Signature": signature(b"input")})
     response.raise_for_status()
     try:
         TASKS[task](response.json())

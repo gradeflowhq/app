@@ -35,7 +35,7 @@ class Conflict(NamedTuple):
     url: str
 
 
-def located(checks: MarkingDraft, problem: Problem, open_path: str = "") -> str:
+def problem_text(checks: MarkingDraft, problem: Problem, open_path: str = "") -> str:
     """`problem` in words, after where it is: the `label` of its check, unless that is the check at `open_path`, then
     the title of the setting at fault. Where the core can't say, the problem as the core words it."""
     try:
@@ -86,10 +86,6 @@ class CheckWorkspace(ABC):
 
     def suggestions_at(self, position: Position) -> dict[str, int]:
         return {}
-
-    def problem_text(self, problem: Problem, open_path: str = "") -> str:
-        """`problem` in words, after where it is unless that is the check at `open_path`."""
-        return located(self.checks, problem, open_path)
 
     def form(self, path: str, **kwargs: Any) -> ObjectForm:
         schema = self.checks.schema(path)

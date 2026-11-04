@@ -1,16 +1,11 @@
 """Publishing, saving markings and deleting methods on separate PostgreSQL connections; and saved markings the core
 no longer accepts."""
 
-import threading
-import time
 from collections.abc import Callable
-from concurrent.futures import Future, ThreadPoolExecutor
-from queue import Queue
 from typing import Any
 
 import pytest
 from django.core.exceptions import ValidationError
-from django.db import close_old_connections, connection, connections, transaction
 from django.test import Client
 from django.urls import reverse
 from gradeflow_core import MethodFileError
@@ -26,7 +21,7 @@ from gradeflow_app.marking.checks import assessment_checks
 from gradeflow_app.marking.models import Marking, MarkingDraftRecord
 from gradeflow_app.marking.workspace import MarkingWorkspace
 from gradeflow_app.questions.models import Question
-from tests.conftest import FakeNomad, create_course, method_definition, publish_version, signed_in_client
+from tests.conftest import FakeNomad, create_course, method_definition, publish_version, race, signed_in_client
 
 pytestmark = pytest.mark.django_db(transaction=True)
 
@@ -40,61 +35,6 @@ def course(user: User, nomad: FakeNomad) -> Course:
 def version(course: Course) -> MethodVersion:
     method = Method.objects.create(library=course.library, name="source")
     return publish_version(method, course.members.get(role=Role.OWNER).user, method_definition())
-
-
-def _run_on_own_connection(action: Callable[[], Any], backend_pids: Queue[int]) -> Any:
-    close_old_connections()
-    try:
-        with connection.cursor() as cursor:
-            cursor.execute("SET lock_timeout = '10s'")
-            cursor.execute("SELECT pg_backend_pid()")
-            backend_pids.put(cursor.fetchone()[0])
-        return action()
-    except (ValidationError, MethodFileError) as error:
-        return error
-    finally:
-        connections.close_all()
-
-
-def _wait_for_database_lock(backend_pid: int, operation: Future[Any]) -> None:
-    deadline = time.monotonic() + 5
-    while time.monotonic() < deadline:
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT wait_event_type FROM pg_stat_activity WHERE pid = %s", [backend_pid])
-            state = cursor.fetchone()
-        if state and state[0] == "Lock":
-            return
-        assert not operation.done(), "The competing write finished before the owning transaction committed."
-        time.sleep(0.01)
-    pytest.fail("The competing connection did not wait for a lock.")
-
-
-def _race(first: Callable[[], Any], second: Callable[[], Any]) -> tuple[Any, Any]:
-    """Hold the first operation's real locks until PostgreSQL confirms that the second is blocked."""
-    ready, release = threading.Event(), threading.Event()
-    first_backend_pids: Queue[int] = Queue()
-    second_backend_pids: Queue[int] = Queue()
-
-    def hold_first_locks() -> Any:
-        with transaction.atomic():
-            result = first()
-            ready.set()
-            assert release.wait(timeout=10)
-            return result
-
-    with ThreadPoolExecutor(max_workers=2) as pool:
-        first_future = pool.submit(_run_on_own_connection, hold_first_locks, first_backend_pids)
-        try:
-            assert ready.wait(timeout=10), (
-                first_future.result() if first_future.done() else "First write did not finish."
-            )
-            second_future = pool.submit(_run_on_own_connection, second, second_backend_pids)
-            first_pid, second_pid = first_backend_pids.get(timeout=5), second_backend_pids.get(timeout=5)
-            assert first_pid != second_pid
-            _wait_for_database_lock(second_pid, second_future)
-        finally:
-            release.set()
-        return first_future.result(timeout=10), second_future.result(timeout=10)
 
 
 def _saver(draft: MarkingDraftRecord, user: User, version: MethodVersion) -> Callable[[], tuple[int, int]]:
@@ -125,13 +65,13 @@ def test_publication_and_deletion_cannot_create_a_dangling_dependency(
         library_services.delete(Method.objects.get(pk=version.method_id), user)
 
     if deletion_first:
-        removed, outcome = _race(delete, publish)
+        removed, outcome = race(delete, publish)
         assert removed is None
         assert isinstance(outcome, (ValidationError, MethodFileError))
         assert not parent.versions.exists()
         assert not MethodVersion.objects.filter(pk=version.pk).exists()
     else:
-        outcome, removed = _race(publish, delete)
+        outcome, removed = race(publish, delete)
         assert isinstance(outcome, MethodVersion)
         assert isinstance(removed, ValidationError)
         assert MethodVersion.objects.filter(pk=version.pk).exists()
@@ -148,7 +88,7 @@ def test_saving_a_marking_and_deleting_its_method_serialize(
         library_services.delete(Method.objects.get(pk=version.method_id), user)
 
     if deletion_first:
-        removed, responses = _race(delete, save)
+        removed, responses = race(delete, save)
         assert removed is None
         assert responses == (200, 200)
         marking = Marking.objects.get(assessment=draft.assessment)
@@ -156,7 +96,7 @@ def test_saving_a_marking_and_deleting_its_method_serialize(
         assert assessment_checks(draft.assessment) == {}, "naming a deleted version, it marks nothing until fixed"
         assert not MethodVersion.objects.filter(pk=version.pk).exists()
     else:
-        responses, removed = _race(save, delete)
+        responses, removed = race(save, delete)
         assert responses == (200, 200)
         assert isinstance(removed, ValidationError)
         marking = Marking.objects.get(assessment=draft.assessment)
@@ -175,13 +115,13 @@ def test_renaming_a_course_and_saving_a_marking_that_uses_its_method_serialize(
         library_services.rename_namespace(Library.objects.get(course=course), "Renamed races")
 
     if rename_first:
-        _, responses = _race(rename, save)
+        _, responses = race(rename, save)
         assert responses == (200, 200)
         assert Library.objects.get(course=course).namespace == "renamed-races"
         marking = Marking.objects.get(assessment=draft.assessment)
         assert not marking.used_versions.exists(), "naming a renamed version, it marks nothing until fixed"
     else:
-        responses, _ = _race(save, rename)
+        responses, _ = race(save, rename)
         assert responses == (200, 200)
         assert Library.objects.get(course=course).namespace == "version-races"
         marking = Marking.objects.get(assessment=draft.assessment)
@@ -319,7 +259,7 @@ def test_concurrent_publications_of_one_version_publish_once(course: Course, ver
     Member.objects.create(course=course, user=bo, role=Role.EDITOR)
     first = _publisher(version.method, owner, method_definition(answer="first"))
     second = _publisher(version.method, bo, method_definition(answer="second"))
-    published_version, refused = _race(first, second)
+    published_version, refused = race(first, second)
     assert isinstance(published_version, MethodVersion)
     assert isinstance(refused, ValidationError)
     assert "A newer version was published" in refused.messages[0]

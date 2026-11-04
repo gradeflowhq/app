@@ -4,14 +4,13 @@ import re
 import pytest
 from django.test import Client
 from django.urls import reverse
-from gradeflow_core.editing import DECISIONS, Decision, answer_decisions, dump_yaml
+from gradeflow_core.editing import DECISIONS, Decision, dump_yaml
 
 from gradeflow_app.assessments.models import Assessment
-from gradeflow_app.libraries.collection import course_methods
-from gradeflow_app.marking.answers import answer_groups
-from gradeflow_app.marking.answers.column import _set_group_decisions
 from gradeflow_app.marking.models import MarkingDraftRecord
 from gradeflow_app.marking.workspace import MarkingWorkspace
+from gradeflow_app.results.models import Result
+from gradeflow_app.ui.middleware import MESSAGES_HEADER
 
 from .conftest import HTMX_HEADERS, start_marking
 from .test_marking import definition_tree
@@ -24,7 +23,7 @@ def answer_card(page: str, answer: str) -> str:
 
 
 @pytest.mark.parametrize(
-    ("decision", "color"), [("full_marks", "success"), ("part_marks", "warning"), ("not_allowed", "error")]
+    ("decision", "color"), [("full_marks", "success"), ("partial_marks", "warning"), ("not_allowed", "error")]
 )
 def test_decisions_lock_until_cancelled(client: Client, assessment: Assessment, decision: Decision, color: str) -> None:
     _, draft = start_marking(client, assessment, "Q2", "gradeflow/accepted-answers@1")
@@ -38,29 +37,30 @@ def test_decisions_lock_until_cancelled(client: Client, assessment: Assessment, 
     assert "This answer group gets</span>" in card
     assert 'value="cancel">' in card
     assert 'name="decision" value="full_marks"' not in card
-    assert 'name="decision" value="part_marks"' not in card
+    assert 'name="decision" value="partial_marks"' not in card
     assert 'name="decision" value="not_allowed"' not in card
     assert 'value="none"' not in card
 
     before = definition_tree(draft)
-    for second_decision in ("full_marks", "part_marks", "not_allowed"):
+    for second_decision in ("full_marks", "partial_marks", "not_allowed"):
         again = client.post(url, {"answer": ["42.0"], "decision": second_decision}, headers=HTMX_HEADERS)
         assert again.status_code == 200
         assert 'value="cancel"' in answer_card(again.text, "42")
-        assert ("X-Messages" in again.headers) == (second_decision != decision)
+        assert (MESSAGES_HEADER in again.headers) == (second_decision != decision)
         if second_decision != decision:
-            assert json.loads(again.headers["X-Messages"])[0]["level"] == "error"
+            assert json.loads(again.headers[MESSAGES_HEADER])[0]["level"] == "error"
         assert definition_tree(draft) == before
     refreshed = client.get(reverse("answers", args=[assessment.pk, draft.question_id])).text
     assert 'value="cancel"' in answer_card(refreshed, "42")
 
     cancelled = client.post(url, {"answer": ["42.0"], "decision": "cancel"}, headers=HTMX_HEADERS)
     assert cancelled.status_code == 200
-    assert answer_decisions(definition_tree(draft), methods=course_methods(assessment.course)) == {}
+    draft.refresh_from_db()
+    assert MarkingWorkspace(draft).checks.answer_decisions() == {}
     card = answer_card(cancelled.text, "42")
     assert 'name="decision" value="full_marks"' in card
     assert 'value="cancel"' not in card
-    assert client.post(url, {"answer": ["42"], "decision": "part_marks"}).status_code == 200
+    assert client.post(url, {"answer": ["42"], "decision": "partial_marks"}).status_code == 200
 
 
 def test_direct_form_edits_refresh_decisions(client: Client, assessment: Assessment) -> None:
@@ -89,14 +89,18 @@ def test_mixed_feedback_group_cannot_overwrite_an_existing_decision(client: Clie
     url = reverse("mark_example", args=[assessment.pk, draft.question_id])
     client.post(url, {"answer": ["42"], "decision": "full_marks"})
     before = definition_tree(draft)
-    assert client.post(url, {"answer": ["41", "42"], "decision": "part_marks"}).status_code == 200
+    assert client.post(url, {"answer": ["41", "42"], "decision": "partial_marks"}).status_code == 200
     assert definition_tree(draft) == before
-    assert draft.question_id is not None
-    question = assessment.questions.get(pk=draft.question_id)
-    group = answer_groups.AnswerGroup(student_answers=answer_groups.student_answers(question))
-    _set_group_decisions(question, MarkingWorkspace(MarkingDraftRecord.objects.get(pk=draft.pk)), [group])
-    assert [label for label, _ in group.decisions] == [DECISIONS["full_marks"]]
-    assert group.has_mixed_decisions, "a partly reviewed group must not be labelled simply Full marks"
+    question = assessment.questions.get(key="Q2")
+    for student in assessment.students.all():
+        Result.objects.create(
+            student=student, question=question, proportion=0, feedback="Wrong", method_label="M", revision=0
+        )
+    page = client.get(reverse("answers", args=[assessment.pk, question.pk]), {"group": "feedback"}).text
+    card = answer_card(page, "42")
+    assert "Mixed decisions" in card, "a partly reviewed group must not be labelled simply Full marks"
+    assert 'value="cancel"' in card
+    assert 'name="decision" value="partial_marks"' not in card
 
 
 def test_yaml_decisions_are_derived_after_refresh(client: Client, assessment: Assessment) -> None:

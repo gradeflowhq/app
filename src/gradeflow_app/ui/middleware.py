@@ -15,6 +15,7 @@ NAVIGATION_HEADERS = ("HX-Location", "HX-Redirect", "HX-Refresh")
 """Headers that have htmx load another page, which shows the messages itself."""
 LIVE_REFRESH = "X-Live-Refresh"
 """Marks a request a page sends by itself as something changed (htmx.js): the page may be on its way to another."""
+MESSAGES_HEADER = "X-Messages"
 
 
 class CompressionMiddleware(GZipMiddleware):
@@ -46,7 +47,7 @@ class HtmxMessagesMiddleware:
         if getattr(message_storage, "used", False):  # a whole page, which shows them itself
             return response
         if toast_list := toasts(message_storage):
-            response["X-Messages"] = json.dumps(toast_list)
+            response[MESSAGES_HEADER] = json.dumps(toast_list)
         return response
 
 

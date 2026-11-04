@@ -1,7 +1,7 @@
 {% extends "marking/base.html" %}
 {% block page_title %}{% firstof group.summary.method_label editor.label %} · {% endblock %}
 {% block marking_attrs %}{% if editor %}
-       hx-get="{{ editor.actions.update }}?status_only=1" hx-trigger="{% listen 'questions' membership.assessment.pk %}"
+       hx-get="{{ editor.actions.update }}?status_only=1" hx-trigger="{% listen 'questions' access.assessment.pk %}"
        hx-include="#marking-form [name=path]" hx-target="#editor-notices" hx-swap="innerHTML"{% endif %}{% endblock %}
 {% block marking %}
       {% if editor %}
@@ -9,17 +9,17 @@
       {% else %}
         <div class="column-head">
           <h2>Marking</h2>
-          {% if membership.can_edit %}
+          {% if access.can_edit %}
           <c-menu id="question-group-menu" button_class="btn btn-ghost btn-square btn-sm ml-auto">
-            {% if not group.summary.problems %}<li><button hx-get="{% url 'question_group_method_save' membership.assessment.pk group.marking.pk %}" hx-target="#drawer-body" data-dialog="drawer">{% icon "puzzle-piece" "size-4" %}Save as a method</button></li>{% endif %}
+            {% if not group.summary.problems %}<li><button hx-get="{% url 'question_group_method_save' access.assessment.pk group.marking.pk %}" hx-target="#drawer-body" data-dialog="drawer">{% icon "puzzle-piece" "size-4" %}Save as a method</button></li>{% endif %}
             <li><button form="question-group-remove" class="text-error" data-confirm="Remove this question group?" data-confirm-detail="{% if group.marked_keys %}{{ group.marked_keys|join:', ' }} keep{{ group.marked_keys|length|pluralize:'s,' }} any imported marks.{% endif %}" data-confirm-button="Remove">{% icon "trash" "size-4" %}Remove question group</button></li>
           </c-menu>
-          <form id="question-group-remove" method="post" action="{% url 'question_group_remove' membership.assessment.pk group.marking.pk %}" hidden>{% csrf_token %}</form>
+          <form id="question-group-remove" method="post" action="{% url 'question_group_remove' access.assessment.pk group.marking.pk %}" hidden>{% csrf_token %}</form>
           {% endif %}
         </div>
         <div class="grid gap-5 p-5">
           <c-marking-summary :summary="group.summary" question_group="{{ group.involved_keys|join:', ' }}" />
-          {% if membership.can_edit %}<form method="post" action="{% url 'question_group_edit' membership.assessment.pk group.marking.pk %}">{% csrf_token %}<button class="btn btn-primary">{% icon "pencil-square" "size-4" %}Edit marking</button></form>{% endif %}
+          {% if access.can_edit %}<form method="post" action="{% url 'question_group_edit' access.assessment.pk group.marking.pk %}">{% csrf_token %}<button class="btn btn-primary">{% icon "pencil-square" "size-4" %}Edit marking</button></form>{% endif %}
         </div>
       {% endif %}
 {% endblock %}

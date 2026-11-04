@@ -9,7 +9,7 @@
           <p class="flex flex-wrap items-center gap-2 font-medium">{{ entry.summary.method_label|default:"Marking" }}{% if entry.current %}<span class="badge badge-primary badge-soft badge-sm font-normal">Current</span>{% endif %}</p>
           <p class="text-sm text-muted">{{ entry.version.history_user|default:"Someone" }} · {{ entry.version.history_date|ago }}</p>
         </div>
-        {% if membership.can_edit and not entry.current %}<button class="btn btn-sm -my-1 shrink-0" hx-post="{% url 'marking_restore' membership.assessment.pk question.pk entry.version.history_id %}">Restore</button>{% endif %}
+        {% if access.can_edit and not entry.current %}<button class="btn btn-sm -my-1 shrink-0" hx-post="{% url 'marking_restore' access.assessment.pk question.pk entry.version.history_id %}">Restore</button>{% endif %}
       </div>
       {% if entry.summary.description %}<c-collapsible class="prose-core mt-2 text-sm text-muted">{{ entry.summary.description|markdown }}</c-collapsible>{% endif %}
     </li>

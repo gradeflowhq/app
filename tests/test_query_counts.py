@@ -14,7 +14,13 @@ from gradeflow_app.accounts.models import User
 from gradeflow_app.assessments.models import Assessment
 from gradeflow_app.libraries.models import Library
 from gradeflow_app.marking.models import Marking
-from tests.conftest import assessment_with_full_marks, create_assessment, publish_light_method, start_marking
+from tests.conftest import (
+    HTMX_HEADERS,
+    assessment_with_full_marks,
+    create_assessment,
+    publish_light_method,
+    start_marking,
+)
 
 pytestmark = pytest.mark.django_db
 
@@ -106,3 +112,15 @@ def test_adjusting_an_answer_group_query_count_does_not_grow(
         client.post(url, {"student": students[:2], "marks": "1"})
     with django_assert_num_queries(len(one_of_each)):
         assert client.post(url, {"student": students[:4], "marks": "1"}).status_code == 200
+
+
+@pytest.mark.parametrize("page", ["student", "export_comment"])
+def test_a_page_of_one_student_reads_only_their_results(client: Client, assessment: Assessment, page: str) -> None:
+    student = assessment.students.first()
+    assert student is not None
+    url = reverse(page, args=[assessment.pk, student.pk] if page == "student" else [assessment.pk])
+    with CaptureQueriesContext(connection) as captured:
+        assert client.get(url, headers=HTMX_HEADERS).status_code == 200
+    results_read = [query["sql"] for query in captured if 'FROM "results_result"' in query["sql"]]
+    assert results_read
+    assert all('"results_result"."student_id" IN' in sql for sql in results_read)

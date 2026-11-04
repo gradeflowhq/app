@@ -16,11 +16,11 @@ from gradeflow_app.ui.fragments import fragment_of, is_fragment
 
 
 @assessment_member()
-def students(request: Request, membership: AssessmentAccess) -> HttpResponse:
+def students(request: Request, access: AssessmentAccess) -> HttpResponse:
     template = "results/students.html#students" if is_fragment(request) else "results/students.html"
     context = {
-        "membership": membership,
-        "results": assessment_results(membership.assessment),
+        "access": access,
+        "results": assessment_results(access.assessment),
         "download_form": download_form(),
     }
     return render(request, template, context)
@@ -28,25 +28,27 @@ def students(request: Request, membership: AssessmentAccess) -> HttpResponse:
 
 @assessment_member()
 @fragment_of("students")
-def student(request: Request, membership: AssessmentAccess, student_id: UUID) -> HttpResponse:
-    return student_page(request, membership, get_object_or_404(membership.assessment.students, pk=student_id))
+def student(request: Request, access: AssessmentAccess, student_id: UUID) -> HttpResponse:
+    return student_page(request, access, get_object_or_404(access.assessment.students, pk=student_id))
 
 
-def student_page(request: Request, membership: AssessmentAccess, student: Student) -> HttpResponse:
-    student_results = assessment_results(membership.assessment, [student])
+def student_page(request: Request, access: AssessmentAccess, student: Student) -> HttpResponse:
+    student_results = assessment_results(access.assessment, [student])
     (row,) = student_results.rows
     rows = []
     for question in student_results.questions:
         award = row.awards[question.key]
-        method = award.result.method if award.result else "Imported marks" if award.imported_marks is not None else ""
-        if award.result and award.result.language_models:
-            method += f" ({', '.join(award.result.language_models)})"
+        method = (
+            award.result.method_label if award.result else "Imported marks" if award.imported_marks is not None else ""
+        )
+        if award.result and award.result.model_names:
+            method += f" ({', '.join(award.result.model_names)})"
         rows.append((question, question.core_question.normalize(student.answers.get(question.key, "")), award, method))
     return render(
         request,
         "results/student.html",
         {
-            "membership": membership,
+            "access": access,
             "student": student,
             "rows": rows,
             "total": row.total,
@@ -57,7 +59,7 @@ def student_page(request: Request, membership: AssessmentAccess, student: Studen
 
 @require_POST
 @assessment_member()
-def download(request: Request, membership: AssessmentAccess) -> HttpResponse:
+def download(request: Request, access: AssessmentAccess) -> HttpResponse:
     form = download_form(request.POST)
     if form.is_valid():
         try:
@@ -65,17 +67,17 @@ def download(request: Request, membership: AssessmentAccess) -> HttpResponse:
         except InvalidError as error:
             form.add_problems(error.problems)
         else:
-            name = f"{membership.assessment.name} results.csv".replace("/", "-")
+            name = f"{access.assessment.name} results.csv".replace("/", "-")
             disposition = content_disposition_header(as_attachment=True, filename=name)
             # With a byte order mark, Excel reads the file as UTF-8.
-            data = _csv(membership, csv_format).encode("utf-8-sig")
+            data = _csv(access, csv_format).encode("utf-8-sig")
             return HttpResponse(
                 data, content_type="text/csv; charset=utf-8", headers={"Content-Disposition": disposition}
             )
-    return render(request, "results/download.html#form", {"membership": membership, "download_form": form}, status=422)
+    return render(request, "results/download.html#form", {"access": access, "download_form": form}, status=422)
 
 
-def _csv(membership: AssessmentAccess, csv_format: ResultsCsv) -> str:
-    results = assessment_results(membership.assessment)
+def _csv(access: AssessmentAccess, csv_format: ResultsCsv) -> str:
+    results = assessment_results(access.assessment)
     submissions = [results.marked_submission(row) for row in results.rows]
-    return csv_format.write(membership.assessment.question_set(), submissions)
+    return csv_format.write(access.assessment.question_set(), submissions)

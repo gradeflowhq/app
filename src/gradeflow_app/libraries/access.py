@@ -1,14 +1,14 @@
 from collections.abc import Callable
 from dataclasses import dataclass
-from functools import wraps
+from functools import partial
 from uuid import UUID
 
 from django.core.exceptions import PermissionDenied
 from django.db.models import Q
-from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 
 from gradeflow_app.accounts.models import User
+from gradeflow_app.courses.access import with_access_for
 from gradeflow_app.courses.models import Member, Role
 from gradeflow_app.libraries.models import Library, Method
 from gradeflow_app.requests import Request, View
@@ -50,21 +50,19 @@ class MethodAccess:
         return "layouts/course.html" if self.member else "layouts/methods.html"
 
 
+def _method_access_of(request: Request, method_id: UUID, *, edit: bool = False) -> MethodAccess:
+    """The user's access to the method. Someone who can't open it gets "not found"; with `edit`, someone who can't
+    change it gets "forbidden"."""
+    methods = Method.objects.filter(openable_methods_filter(request.user)).distinct()
+    method = get_object_or_404(methods.select_related("library__course"), pk=method_id)
+    library = method.library
+    member = Member.objects.filter(course=library.course_id, user=request.user).first() if library.course_id else None
+    editable = Role(member.role).allows(Role.EDITOR) if member else library.user_id == request.user.pk
+    if edit and not editable:
+        raise PermissionDenied
+    return MethodAccess(method, editable, member)
+
+
 def method_viewer(*, edit: bool = False) -> Callable[[View], View]:
-    """Calls the view with a `MethodAccess` of the method in place of the URL's `method` ID. Someone who can't open the
-    method gets "not found"; with `edit`, someone who can't change it gets "forbidden"."""
-
-    def decorate(view: View) -> View:
-        @wraps(view)
-        def wrapped(request: Request, method: UUID, *args: object, **kwargs: object) -> HttpResponse:
-            methods = Method.objects.filter(openable_methods_filter(request.user)).distinct()
-            found_method = get_object_or_404(methods.select_related("library__course"), pk=method)
-            editable = can_edit(request.user, found_method.library)
-            if edit and not editable:
-                raise PermissionDenied
-            member = Member.objects.filter(course=found_method.library.course_id, user=request.user).first()
-            return view(request, MethodAccess(found_method, editable, member), *args, **kwargs)
-
-        return wrapped
-
-    return decorate
+    """Calls the view with a `MethodAccess` of the method in place of the URL's `method` ID."""
+    return with_access_for("method", partial(_method_access_of, edit=edit))

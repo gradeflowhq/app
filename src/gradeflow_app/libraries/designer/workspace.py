@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from functools import cached_property
 from typing import Any
 
+from django.core.exceptions import ValidationError
 from django.template.loader import render_to_string
 from django.urls import reverse
 from gradeflow_core import Check, GradeFlowError, Methods, ModelEndpoint, QuestionSet
@@ -16,6 +17,7 @@ from gradeflow_app.courses.models import Course
 from gradeflow_app.editor.editing import CheckWorkspace, EditorActions
 from gradeflow_app.jobs.models import Job
 from gradeflow_app.jobs.payloads import TestRun
+from gradeflow_app.jobs.queue import stop
 from gradeflow_app.libraries.collection import (
     OfferedMethods,
     files_needed_by,
@@ -25,7 +27,7 @@ from gradeflow_app.libraries.collection import (
 )
 from gradeflow_app.libraries.method_tests import MethodTests, examples_of, questions_of, rows_of
 from gradeflow_app.libraries.models import Method, MethodDraftRecord, MethodVersion, VersionTests
-from gradeflow_app.libraries.services import method_draft, version_name
+from gradeflow_app.libraries.services import method_draft, publish, version_name
 from gradeflow_app.ui.schemaforms.forms import ObjectForm
 from gradeflow_app.ui.schemaforms.layout import unrepresentable_fields
 from gradeflow_app.ui.schemaforms.schema import labels_of, resolve, unwrap_nullable
@@ -230,6 +232,29 @@ class MethodWorkspace(CheckWorkspace):
         if rows := examples_of(self.tests, self.current_results()):
             self.draft.set_example(rows, index=self.tests.get("example_index"))
 
+    def publish(self, user: User) -> MethodVersion:
+        """Publish the draft as the method's next version, which starts with the last test run's results if they
+        mark the draft as it is. Raises `ValidationError` if the draft can't be published yet."""
+        assert self.draft_record is not None
+        if not self.changed:
+            assert self.version is not None
+            raise ValidationError(f"Nothing changed since version {self.version.number}.")
+        if not self.valid:
+            raise ValidationError(f"Finish the marking first: {self.checks.problems[0].message}")
+        if self.untested:
+            raise ValidationError("Run the tests first, so the examples show their marks.")
+        self.record_examples()
+        run = self.tests_record.last_run
+        matching_run = run if self.current_results() is not None else None
+        version = publish(self.draft_record, user, self.draft)
+        if matching_run is None:
+            stop(run)
+        else:
+            tests = version_tests_of(version, user)
+            tests.last_run, tests.revision = matching_run, self.tests_record.revision
+            tests.save(update_fields=["last_run", "revision"])
+        return version
+
     def test_run(self, model_endpoint: ModelEndpoint | None = None) -> TestRun:
         """What a test run of the method marks, asking language models at `model_endpoint` if it does. Raises
         `EditingError` if it can't be tried yet."""
@@ -313,6 +338,7 @@ def start_draft(method: Method, user: User, version: MethodVersion) -> MethodDra
 
 
 def version_tests_of(version: MethodVersion, user: User) -> VersionTests:
+    """The user's test answers of `version`, copied from the version's own the first time they're asked for."""
     tests, _ = VersionTests.objects.get_or_create(
         version=version, user=user, defaults={"tests": deepcopy(version.tests)}
     )

@@ -5,7 +5,7 @@
 <div id="marking-panel" hx-get="{% url 'marking' question.assessment_id question.pk %}" hx-trigger="{% listen 'questions' question.assessment_id %}" hx-target="this" hx-swap="outerMorph">
   <div class="column-head">
     <h2>Marking</h2>
-    {% if panel.mode == "summary" and membership.can_edit %}
+    {% if panel.mode == "summary" and access.can_edit %}
     <c-menu id="marking-menu" button_class="btn btn-ghost btn-square btn-sm ml-auto">
       <li><button hx-get="{% url 'marking_history' question.assessment_id question.pk %}" hx-target="#drawer-body" data-dialog="drawer">{% icon "clock" "size-4" %}History</button></li>
       {% if not panel.summary.problems %}<li><button hx-get="{% url 'method_save' question.assessment_id question.pk %}" hx-target="#drawer-body" data-dialog="drawer">{% icon "puzzle-piece" "size-4" %}Save as a method</button></li>{% endif %}
@@ -16,11 +16,11 @@
   <div class="grid gap-5 p-5">
   {% if panel.mode == "summary" %}
     <c-marking-summary :summary="panel.summary" :archived="panel.archived" />
-    {% if membership.can_edit %}<div><button class="btn btn-primary" hx-post="{% url 'marking_start' question.assessment_id question.pk %}" hx-target="#marking-panel" hx-swap="outerHTML">{% icon "pencil-square" "size-4" %}Edit marking</button></div>{% endif %}
+    {% if access.can_edit %}<div><button class="btn btn-primary" hx-post="{% url 'marking_start' question.assessment_id question.pk %}" hx-target="#marking-panel" hx-swap="outerHTML">{% icon "pencil-square" "size-4" %}Edit marking</button></div>{% endif %}
   {% elif panel.mode == "question_group" %}
     <c-marking-summary :summary="panel.summary" question_group="{{ panel.question_group.involved_keys|join:', ' }}" />
     <div><a class="btn" href="{% url 'question_group' question.assessment_id panel.question_group.marking.pk %}">Open question group</a></div>
-  {% elif membership.can_edit %}
+  {% elif access.can_edit %}
     <div class="flex items-start gap-3">
       <div class="min-w-0 flex-1">
         <h3 class="font-semibold">Choose a method</h3>

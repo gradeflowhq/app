@@ -89,7 +89,7 @@ def test_every_published_version_is_a_method_and_only_the_latest_is_offered(
 def test_publishing_numbers_the_version_and_ends_the_draft(library: Library, user: User) -> None:
     method = Method.objects.create(library=library, name="light")
     draft = create_method_draft(method, user, method_definition())
-    version = services.publish(draft, user, MethodWorkspace(method, draft).draft)
+    version = MethodWorkspace(method, draft).publish(user)
     assert version.ref == "bio1010/light@1"
     assert definition_data(version.definition)["version"] == 1
     assert version.tests == draft.tests
@@ -103,7 +103,7 @@ def test_a_draft_of_an_older_version_isnt_published(library: Library, user: User
     stale_draft = create_method_draft(version.method, bo, method_definition(answer="stale"))
     publish_version(version.method, user, method_definition(answer="newer"))
     with pytest.raises(ValidationError, match="A newer version was published"):
-        services.publish(stale_draft, bo, MethodWorkspace(version.method, stale_draft).draft)
+        MethodWorkspace(version.method, stale_draft).publish(bo)
     assert version.method.versions.count() == 2
     assert MethodDraftRecord.objects.filter(pk=stale_draft.pk).exists()
 
@@ -113,7 +113,7 @@ def test_two_methods_in_a_library_arent_called_the_same(library: Library, user: 
     method = Method.objects.create(library=library, name="bright")
     draft = create_method_draft(method, user, method_definition(label="light"))
     with pytest.raises(ValidationError, match="This library already has a method called “Light”"):
-        services.publish(draft, user, MethodWorkspace(method, draft).draft)
+        MethodWorkspace(method, draft).publish(user)
     assert not method.versions.exists()
     draft.delete()
     assert services.taken_label(library, "LIGHT") == "Light"

@@ -2,6 +2,6 @@
 {% block page_title %}Questions · {% endblock %}
 {% block content %}
 <c-page title="Questions">
-  <c-empty-state class="card-box" icon="queue-list" title="No questions yet">Import the exam export to see its questions.{% if membership.can_edit %}<c-slot name="action"><a class="btn btn-primary" href="{% url 'import' membership.assessment.pk %}">{% icon "arrow-up-tray" %}Import exam export</a></c-slot>{% endif %}</c-empty-state>
+  <c-empty-state class="card-box" icon="queue-list" title="No questions yet">Import the submissions file to see its questions.{% if access.can_edit %}<c-slot name="action"><a class="btn btn-primary" href="{% url 'import' access.assessment.pk %}">{% icon "arrow-up-tray" %}Import submissions</a></c-slot>{% endif %}</c-empty-state>
 </c-page>
 {% endblock %}

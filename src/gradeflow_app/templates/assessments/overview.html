@@ -1,17 +1,17 @@
 {% extends "layouts/assessment.html" %}
 {% block content %}
-{% with assessment=membership.assessment %}
+{% with assessment=access.assessment %}
 <c-page title="Overview">
   {% if not progress.latest_import %}
-    <c-empty-state class="card-box" icon="arrow-up-tray" title="Import your exam to start">A CSV or Excel export, such as ExamSoft’s “Exam Taker Results”.
-      {% if membership.can_edit %}<c-slot name="action"><a class="btn btn-primary" href="{% url 'import' assessment.pk %}">{% icon "arrow-up-tray" %}Import exam export</a></c-slot>{% endif %}
+    <c-empty-state class="card-box" icon="arrow-up-tray" title="Import submissions to start">A CSV or Excel file, such as ExamSoft’s “Exam Taker Results”.
+      {% if access.can_edit %}<c-slot name="action"><a class="btn btn-primary" href="{% url 'import' assessment.pk %}">{% icon "arrow-up-tray" %}Import submissions</a></c-slot>{% endif %}
     </c-empty-state>
   {% else %}
     <section class="card-box flex flex-wrap items-center gap-x-8 gap-y-4 px-5 py-4" aria-label="Progress">
       <ol class="grid flex-1 basis-full gap-4 sm:flex sm:basis-auto sm:flex-wrap sm:gap-x-10">
         <li class="flex items-center gap-3">
           {% include "assessments/step.html" with is_done=True %}
-          <div><p class="font-medium">Exam export</p><p class="text-sm text-muted">Imported {{ progress.latest_import.uploaded_at|ago }}</p></div>
+          <div><p class="font-medium">Submissions file</p><p class="text-sm text-muted">Imported {{ progress.latest_import.uploaded_at|ago }}</p></div>
         </li>
         <li class="flex items-center gap-3">
           {% include "assessments/step.html" with is_done=progress.all_marked number=2 is_next=True %}
@@ -22,9 +22,9 @@
           <div><p class="font-medium">Canvas</p><p class="text-sm text-muted">{% if progress.latest_sent_marks %}Sent {{ progress.latest_sent_marks.sent_at|ago }}{% else %}Not sent{% endif %}</p></div>
         </li>
       </ol>
-      {% if membership.can_edit %}
+      {% if access.can_edit %}
         {% if not progress.all_marked %}<a href="{% url 'questions' assessment.pk %}" class="btn btn-primary max-sm:w-full">Continue marking</a>
-        {% elif not progress.latest_sent_marks %}<a href="{% url 'publish' assessment.pk %}" class="btn btn-primary max-sm:w-full">{% icon "paper-airplane" "size-4" %}Send to Canvas</a>{% endif %}
+        {% elif not progress.latest_sent_marks %}<a href="{% url 'export' assessment.pk %}" class="btn btn-primary max-sm:w-full">{% icon "paper-airplane" "size-4" %}Send to Canvas</a>{% endif %}
       {% endif %}
     </section>
 
@@ -43,7 +43,7 @@
         </div>
       </c-card>
       <c-card title="Statistics" class="flex flex-col" body_class="flex flex-1 flex-col justify-between gap-6 p-5">
-        {% if not progress.marked_count %}<c-slot name="actions"><span class="text-sm text-muted">From the exam export</span></c-slot>{% endif %}
+        {% if not progress.marked_count %}<c-slot name="actions"><span class="text-sm text-muted">From the submissions file</span></c-slot>{% endif %}
         {% with statistics=box_plot.statistics positions=box_plot.positions %}
           <div class="flex items-end justify-between gap-4">
             <div><p class="text-sm text-muted">Mean</p><p class="tabular-nums text-3xl font-semibold tracking-tight">{{ statistics.mean|marks:2 }}<span class="ml-1.5 text-base font-normal text-muted" title="Standard deviation">± {{ statistics.standard_deviation|marks:2 }} SD</span></p></div>
@@ -89,7 +89,7 @@
                 </div>{% endif %}
               </td>
               <td class="tabular-nums text-right max-sm:hidden">{% if summary.average is None %}<span class="text-subtle">—</span>{% else %}{{ summary.full_marks_count }}{% endif %}</td>
-              <td class="tabular-nums text-right max-sm:hidden">{% if summary.average is None %}<span class="text-subtle">—</span>{% else %}{{ summary.zero_marks_count }}{% endif %}</td>
+              <td class="tabular-nums text-right max-sm:hidden">{% if summary.average is None %}<span class="text-subtle">—</span>{% else %}{{ summary.no_marks_count }}{% endif %}</td>
               <td class="tabular-nums text-right max-sm:hidden">{{ summary.blank_count }}</td>
               {% if has_adjustments %}<td class="tabular-nums text-right max-sm:hidden">{% if summary.adjusted_count %}{{ summary.adjusted_count }}{% else %}<span class="text-subtle">—</span>{% endif %}</td>{% endif %}
             </tr>

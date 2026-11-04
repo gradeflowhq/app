@@ -10,8 +10,12 @@ from pydantic import AfterValidator, BaseModel, Field, SecretStr, ValidationErro
 
 from gradeflow_app.requests import Request
 
-STATE_HEADER = "X-Model-ModelServiceState"
+STATE_HEADER = "X-Model-State"
 TOKEN_HEADER = "X-Model-Token"
+MODEL_NAME_LENGTH = 200
+_ANSWERS_PER_REQUEST_FIELD = ModelEndpoint.model_fields["answers_per_request"]
+ANSWERS_PER_REQUEST_LIMITS = ModelEndpoint.model_json_schema()["properties"]["answers_per_request"]
+"""The core's default, minimum and maximum of how many students' answers one request may hold."""
 
 
 def _check_offered(provider: str) -> str:
@@ -25,9 +29,9 @@ class ModelServiceState(BaseModel):
 
     provider: Annotated[str, AfterValidator(_check_offered)]
     """One of `GRADEFLOW_MODEL_PROVIDERS`, the only endpoints jobs and the server send requests to."""
-    fast_model: str = Field(default="", max_length=200)
-    careful_model: str = Field(default="", max_length=200)
-    answers_per_request: int = Field(default=12, ge=1, le=40)
+    fast_model: str = Field(default="", max_length=MODEL_NAME_LENGTH)
+    careful_model: str = Field(default="", max_length=MODEL_NAME_LENGTH)
+    answers_per_request: Annotated[int, _ANSWERS_PER_REQUEST_FIELD] = _ANSWERS_PER_REQUEST_FIELD.default
     chosen_by: Literal["", "automatically", "myself"] = ""
     trials: list[ModelTrial] = []
     """Each model's latest trial in each role."""

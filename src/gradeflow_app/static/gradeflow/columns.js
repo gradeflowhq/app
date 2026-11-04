@@ -1,5 +1,5 @@
 /**
- * Detects the roles of columns in an exam results file: the student ID column,
+ * Detects the roles of columns in a submissions file: the student ID column,
  * answer columns and the marks column paired with each answer column.
  */
 
@@ -43,7 +43,7 @@ const couldBeStudentId = (value) => /^[\w.@-]+$/.test(value) && !SUMMARY_ROW.tes
 /** ExamSoft's "Answer Key in First Row" puts this in the ID column. */
 const ANSWER_KEY_ROW = /^answer key\s*-->$/i;
 
-/** Whether `row` is a results file's answer key, which is never a student. */
+/** Whether `row` is a submissions file's answer key, which is never a student. */
 export const isAnswerKeyRow = (row, idIndex) => ANSWER_KEY_ROW.test((row[idIndex] ?? '').trim());
 
 /** @returns {number} the first row with values in most of the columns, usually 0 */

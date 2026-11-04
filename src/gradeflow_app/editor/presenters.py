@@ -9,7 +9,7 @@ from gradeflow_core import GradeFlowError, Methods, Problem
 from gradeflow_core import Method as CoreMethod
 from gradeflow_core.editing import ChecksSetting, MarkingDraft
 
-from gradeflow_app.editor.editing import CheckWorkspace, Conflict, EditorActions
+from gradeflow_app.editor.editing import CheckWorkspace, Conflict, EditorActions, problem_text
 from gradeflow_app.editor.guide import choices, question_group_check
 from gradeflow_app.libraries.collection import BUILTIN_NAMES, OfferedMethods
 from gradeflow_app.ui.schemaforms.forms import ObjectForm
@@ -60,7 +60,7 @@ def _made_by(method: CoreMethod[Any] | None, offers: OfferedMethods) -> str:
 def _problem_elsewhere_text(workspace: CheckWorkspace, problem: Problem, open_path: str) -> str:
     """A problem of a check other than the one at `open_path`; one not filled in yet, as what to do."""
     label = workspace.checks.label(problem.check) if problem.check else "The marking"
-    return f"Finish {label}." if problem.is_incomplete else workspace.problem_text(problem, open_path)
+    return f"Finish {label}." if problem.is_incomplete else problem_text(workspace.checks, problem, open_path)
 
 
 def _card(workspace: CheckWorkspace, path: str) -> CheckCard:
@@ -73,7 +73,7 @@ def _card(workspace: CheckWorkspace, path: str) -> CheckCard:
         label=checks.label(path),
         description=checks.describe(path),
         has_problems=bool(problems),
-        problem=workspace.problem_text(problem, path) if problem else "",
+        problem=problem_text(workspace.checks, problem, path) if problem else "",
         notes=checks.notes(path),
     )
 

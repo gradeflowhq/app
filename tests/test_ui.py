@@ -5,6 +5,7 @@ from datetime import timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+import pytest
 from django import forms
 from django.test import Client
 from django.urls import reverse
@@ -12,7 +13,10 @@ from django.utils import timezone
 from gradeflow_core.editing import new_question
 
 from gradeflow_app.assessments.models import Assessment
+from gradeflow_app.live.topics import TOPIC_PREFIX
+from gradeflow_app.model_service.endpoints import STATE_HEADER, TOKEN_HEADER
 from gradeflow_app.ui.forms import MarkdownInput
+from gradeflow_app.ui.middleware import LIVE_REFRESH, MESSAGES_HEADER
 from gradeflow_app.ui.templatetags.ui import (
     ago,
     browser,
@@ -132,7 +136,7 @@ def test_empty_required_fields_are_left_to_the_server_to_flag() -> None:
 
 
 def test_times_show_in_the_browsers_time_zone(client: Client, assessment: Assessment) -> None:
-    uploaded_at = assessment.results_files.get().uploaded_at
+    uploaded_at = assessment.submissions_files.get().uploaded_at
     client.cookies["tz"] = "Asia/Singapore"
     page = client.get(reverse("activity", args=[assessment.pk]), headers=HTMX_HEADERS).text
     assert uploaded_at.astimezone(ZoneInfo("Asia/Singapore")).strftime("%H:%M") in page
@@ -160,7 +164,7 @@ def test_messages_from_in_page_actions_show_at_once(client: Client, assessment: 
         headers=HTMX_HEADERS,
     )
     assert response.status_code == 422
-    assert {"level": "error", "text": "Marks must be between 0 and 1."} in json.loads(response.headers["X-Messages"])
+    assert {"level": "error", "text": "Marks must be between 0 and 1."} in json.loads(response.headers[MESSAGES_HEADER])
     assert b"Marks must be between" not in client.get(reverse("overview", args=[assessment.pk])).content
 
 
@@ -169,16 +173,16 @@ def test_messages_show_once_when_a_whole_page_follows(client: Client) -> None:
     client.post(reverse("assessment_settings", args=[assessment.pk]), {"name": "Final", "description": ""})
     page = client.get(reverse("assessment_settings", args=[assessment.pk]), headers=HTMX_HEADERS)
     assert b"Saved." in page.content
-    assert "X-Messages" not in page.headers
+    assert MESSAGES_HEADER not in page.headers
 
 
 def test_a_live_refresh_leaves_messages_for_the_page_the_person_goes_to(client: Client) -> None:
     assessment = create_assessment(client)
     client.post(reverse("assessment_settings", args=[assessment.pk]), {"name": "Final", "description": ""})
-    live_headers = HTMX_HEADERS | {"X-Live-Refresh": "true"}
+    live_headers = HTMX_HEADERS | {LIVE_REFRESH: "true"}
     refresh = client.get(reverse("question_list", args=[assessment.pk]), headers=live_headers)
     assert refresh.status_code == 200
-    assert "X-Messages" not in refresh.headers
+    assert MESSAGES_HEADER not in refresh.headers
     assert b"Saved." in client.get(reverse("assessment_settings", args=[assessment.pk])).content
 
 
@@ -191,7 +195,7 @@ def test_messages_survive_a_reload(client: Client, assessment: Assessment) -> No
         headers=HTMX_HEADERS,
     )
     assert response.headers["HX-Refresh"] == "true"
-    assert "X-Messages" not in response.headers
+    assert MESSAGES_HEADER not in response.headers
     page = client.get(reverse("questions", args=[assessment.pk]), follow=True)
     assert [str(message) for message in page.context["messages"]][-1:] == ["Saved. Marking Q2 again…"]
 
@@ -220,3 +224,18 @@ def test_the_inline_script_carries_the_pages_nonce(client: Client) -> None:
     match = re.search(r'<script nonce="([^"]+)">', response.text)
     assert match
     assert f"'nonce-{match[1]}'" in response.headers["Content-Security-Policy"]
+
+
+@pytest.mark.parametrize(
+    ("name", "value", "script"),
+    [
+        ("STATE_HEADER", STATE_HEADER, "models.js"),
+        ("TOKEN_HEADER", TOKEN_HEADER, "models.js"),
+        ("LIVE_REFRESH", LIVE_REFRESH, "htmx.js"),
+        ("MESSAGES_HEADER", MESSAGES_HEADER, "htmx.js"),
+        ("TOPIC_PREFIX", TOPIC_PREFIX, "htmx.js"),
+    ],
+)
+def test_the_browser_uses_the_names_the_server_reads_and_sends(name: str, value: str, script: str) -> None:
+    path = Path(__file__).parents[1] / "src" / "gradeflow_app" / "static" / "gradeflow" / script
+    assert f'const {name} = "{value}";' in path.read_text()

@@ -82,14 +82,14 @@ class MarkingDraftRecord(models.Model):
         return f"Draft by {self.user}"
 
     @cached_property
-    def subject(self) -> MarkingTarget:
-        return MarkingTarget.of(self.assessment, self.question, self.marking)
+    def subject(self) -> MarkingSubject:
+        return MarkingSubject.of(self.assessment, self.question, self.marking)
 
 
 @dataclass(frozen=True)
-class MarkingTarget:
-    """What a marking marks: a question, or a question group when there is no `question`. `marking` is the saved
-    marking, None until there is one."""
+class MarkingSubject:
+    """The subject of a marking: a question, or a question group when there is no `question`. `marking` is the
+    saved marking, None until there is one."""
 
     assessment: Assessment
     question: Question | None
@@ -98,7 +98,7 @@ class MarkingTarget:
     @classmethod
     def of(
         cls, assessment: Assessment, question: Question | None = None, marking: Marking | None = None
-    ) -> MarkingTarget:
+    ) -> MarkingSubject:
         """The subject of a question's marking, looked up by `question`, or of the question group `marking` is;
         with neither, of a new question group."""
         if question is not None:

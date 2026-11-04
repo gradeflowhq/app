@@ -11,7 +11,7 @@ from uuid import UUID
 
 from django.conf import settings
 from django.db import connection, transaction
-from django.db.models import Model
+from django.db.models import Exists, Model, OuterRef, Q
 from django.db.models.functions import Now
 from django.utils import timezone
 
@@ -22,8 +22,11 @@ from gradeflow_app.courses.models import Course
 from gradeflow_app.jobs import events
 from gradeflow_app.jobs.executors import ExecutorUnavailable, executor
 from gradeflow_app.jobs.models import Job
+from gradeflow_app.results.models import Result
 
 FINISHED_JOB_LIFETIME = timedelta(days=1)
+UNAVAILABLE_GRACE_PERIOD = timedelta(minutes=2)
+"""How long a job handed to the executor may wait to start while the executor can't be reached."""
 STOPPED_REASON = "Stopped."
 """Why a job someone stopped, or started again, ended: not a failure to show them."""
 TIMED_OUT_REASON = "Ran past its time limit."
@@ -62,17 +65,17 @@ def enqueue(
         **outcome_for,
     )
     events.notify_job_change(job)
-    transaction.on_commit(dispatch)
+    transaction.on_commit(partial(_dispatch_for_user, job.created_by_id))
     return job
 
 
 def end(job: Job, error: str | None = None) -> None:
-    """Complete the job, or fail it with `error`; either way, dispatch the work waiting for it to end."""
+    """Complete the job, or fail it with `error`; either way, dispatch its user's work waiting for it to end."""
     if error is None:
         events.complete(job)
     else:
         events.fail(job, error)
-    transaction.on_commit(dispatch)
+    transaction.on_commit(partial(_dispatch_for_user, job.created_by_id))
 
 
 def stop(job: Job | None) -> None:
@@ -94,8 +97,11 @@ def cancel_jobs(jobs: Iterable[Job], reason: str = "Replaced by a newer run.") -
 
 
 def dispatch() -> None:
-    """Dispatch queued work under each user's limit. Safe across concurrent workers."""
-    events.fail_all(list(Job.objects.timed_out()), TIMED_OUT_REASON)
+    """Fail the jobs past their time limit, which frees their users' places, then dispatch queued work under each
+    user's limit. Safe across concurrent workers."""
+    if timed_out := list(Job.objects.timed_out()):
+        _LOG.warning("Jobs ran past their time limit: %s", ", ".join(str(job.pk) for job in timed_out))
+        events.fail_all(timed_out, TIMED_OUT_REASON)
     queued_users = list(
         Job.objects.filter(status=Job.Status.QUEUED, dispatched_at=None)
         .values_list("created_by_id", flat=True)
@@ -138,16 +144,19 @@ def _submit(job_id: UUID) -> None:
 
 
 def recover_queue() -> None:
-    """Dispatch queued work and settle what the sandbox can't call back about. Finished jobs other than remarks, which
-    record how results were marked, are forgotten after a while."""
+    """Dispatch queued work and settle what the sandbox can't call back about. Finished jobs are forgotten after a
+    while, apart from the remarks whose results are current, which record how they were marked."""
     dispatch()
     _reconcile()
-    Job.objects.exclude(kind=Job.Kind.REMARK).filter(finished_at__lt=timezone.now() - FINISHED_JOB_LIFETIME).delete()
+    has_current_results = Exists(Result.objects.filter(marking=OuterRef("marking"), revision=OuterRef("revision")))
+    Job.objects.filter(finished_at__lt=timezone.now() - FINISHED_JOB_LIFETIME).exclude(
+        Q(kind=Job.Kind.REMARK, status=Job.Status.COMPLETED) & has_current_results
+    ).delete()
 
 
 def _reconcile() -> None:
     """Hand over again the jobs the executor never received. Fail those it ended without calling back, and those
-    still waiting to start while it can't be reached."""
+    still waiting to start after a grace period while it can't be reached."""
     dispatched = list(
         Job.objects.filter(status__in=Job.ACTIVE, dispatched_at__isnull=False).defer("input", "result", "marked_with")
     )
@@ -160,9 +169,10 @@ def _reconcile() -> None:
                 executor().submit(job)
     except ExecutorUnavailable:
         _LOG.warning("The sandbox is unavailable", exc_info=True)
-        events.fail_all(
-            [job for job in dispatched if job.status == Job.Status.QUEUED], "The marking service is unavailable."
-        )
+        waiting = Job.objects.filter(
+            status=Job.Status.QUEUED, dispatched_at__lt=timezone.now() - UNAVAILABLE_GRACE_PERIOD
+        ).defer("input", "result", "marked_with")
+        events.fail_all(list(waiting), "The marking service is unavailable.")
         dispatch()
         return
     # A running job the executor no longer lists has ended too.

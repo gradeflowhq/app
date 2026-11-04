@@ -12,7 +12,7 @@ from django.urls import reverse
 from gradeflow_app.accounts.models import User
 from gradeflow_app.assessments.models import Assessment, AssessmentAccess
 from gradeflow_app.dashboard.progress import progress
-from gradeflow_app.imports.models import ResultsFile, imported_mark_keys
+from gradeflow_app.imports.models import SubmissionsFile, imported_mark_keys
 from gradeflow_app.marking.checks import assessment_checks
 from gradeflow_app.marking.models import Marking
 from gradeflow_app.marking.presenters import MarkingBadge, SavedMarking, marking_badge, saved_markings
@@ -61,8 +61,8 @@ class _Change:
     student: object = None
 
 
-def overview_context(membership: AssessmentAccess) -> dict[str, Any]:
-    assessment = membership.assessment
+def overview_context(access: AssessmentAccess) -> dict[str, Any]:
+    assessment = access.assessment
     accepted = assessment_checks(assessment)
     assessment_progress = progress(assessment, accepted)
     results = assessment_results(assessment) if assessment_progress.latest_import else None
@@ -70,7 +70,7 @@ def overview_context(membership: AssessmentAccess) -> dict[str, Any]:
     latest_events = activity(assessment, limit=OVERVIEW_ACTIVITY_LIMIT + 1)
     saved_by_key = saved_markings(assessment.markings.select_related("question"), accepted)
     return {
-        "membership": membership,
+        "access": access,
         "progress": assessment_progress,
         "results": results_with_marks,
         "questions": _questions(assessment, results_with_marks, saved_by_key) if results_with_marks else [],
@@ -133,7 +133,7 @@ def activity(assessment: Assessment, limit: int) -> list[Event]:
     adjustments, or to one question group, counts once."""
     events = [
         Event(file.uploaded_at, file.uploaded_by, f"imported {file.name} ({_student_count_text(file.student_count)})")
-        for file in ResultsFile.objects.filter(assessment=assessment).select_related("uploaded_by")[:limit]
+        for file in SubmissionsFile.objects.filter(assessment=assessment).select_related("uploaded_by")[:limit]
     ]
     events += [
         Event(

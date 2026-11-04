@@ -1,5 +1,5 @@
 // Canvas from the browser: the Canvas address and token never leave this device, and to send marks the app only
-// gives encrypted IDs and totals (#publish-rows); IDs are decrypted and matched to Canvas users here.
+// gives encrypted IDs and totals (#export-rows); IDs are decrypted and matched to Canvas users here.
 
 import { canvasClient, gradeFor, matchStudents } from "./canvas-api.js";
 import { decryptId } from "./crypto.js";
@@ -9,6 +9,7 @@ import { counted, matches } from "./words.js";
 
 const CANVAS_STORAGE_KEY = "gradeflow:canvas";
 const POLL_MS = 2000;
+const POLL_LIMIT_MS = 5 * 60_000;
 const SENDING = "Sending marks…";
 const TOKEN_REFUSED = "Canvas didn't accept the access token.";
 
@@ -16,6 +17,7 @@ const errorMessage = (error, host) => {
   if (error.status === 401) return TOKEN_REFUSED;
   if (error.proxy) return `GradeFlow can't reach ${host} through its Canvas proxy. Check the Canvas address, or disconnect and connect again.`;
   if (error instanceof TypeError) return "Canvas can't be reached. Check your connection and try again.";
+  if (error.name === "TimeoutError") return "Canvas didn't answer in time. Try again.";
   return error.message || "Canvas can't be reached.";
 };
 
@@ -101,7 +103,7 @@ const NO_CARD = Object.freeze({ id: "", name: "", detail: "", initial: "" });
 
 /**
  * Choosing `this[key]` from `this[key + "Items"]` (each `{id, name, detail, initial, search}`) in a dialog, for each
- * of `keys`, shown by publish/picker.html. A component may give `<key>Placeholder`, the card while its items aren't
+ * of `keys`, shown by exports/picker.html. A component may give `<key>Placeholder`, the card while its items aren't
  * loaded or for something not yet made, and `afterChoose(key)`. `naming[key]` is true while the dialog names a new one.
  * With nothing chosen, the card is `NO_CARD`, so a template can read its fields without a check.
  */
@@ -247,9 +249,9 @@ export const canvasCourse = () =>
     },
   });
 
-// An assessment's Publish page: sending its marks to an assignment, existing or new, in the course's Canvas course,
+// An assessment's Export page: sending its marks to an assignment, existing or new, in the course's Canvas course,
 // after a review that matches students. How they're sent is the server's to say (#send-settings), as its form saves it.
-export const canvasPublisher = () => {
+export const canvasExport = () => {
   let students = []; // the Canvas course's, once matched
 
   return compose(canvasComponent(), listPicker("assignment", "group"), groups(), {
@@ -336,7 +338,7 @@ export const canvasPublisher = () => {
 
     /** The marks as they are now, matched to the Canvas course's students. */
     async match() {
-      const rows = JSON.parse(document.getElementById("publish-rows-data").textContent);
+      const rows = JSON.parse(document.getElementById("export-rows-data").textContent);
       if (!rows.length) throw new Error("There are no marks to send yet.");
       const passphrase = await passphraseFor(this.config.assessment, rows[0].studentId);
       if (!passphrase) throw new Error("Enter the student ID passphrase to match students.");
@@ -379,7 +381,9 @@ export const canvasPublisher = () => {
           ]),
         );
         let progress = await this.client.updateGrades(this.course, assignment.id, gradeData);
+        const pollUntil = Date.now() + POLL_LIMIT_MS;
         while (progress.workflow_state === "queued" || progress.workflow_state === "running") {
+          if (Date.now() > pollUntil) throw new Error("Canvas is still updating the grades. Check the assignment in Canvas.");
           await new Promise((resolve) => setTimeout(resolve, POLL_MS));
           progress = await this.client.progress(progress.id);
         }

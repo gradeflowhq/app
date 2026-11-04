@@ -10,7 +10,7 @@ from gradeflow_core import Check, GradeFlowError, QuestionSet
 from gradeflow_core.editing import EditingError, LoadedFiles, MarkingDraft, methods_used
 
 from gradeflow_app.assessments.models import Assessment, AssessmentAccess
-from gradeflow_app.editor.editing import located
+from gradeflow_app.editor.editing import problem_text
 from gradeflow_app.editor.guide import Choices, choices
 from gradeflow_app.imports.models import has_imported_marks, imported_mark_keys
 from gradeflow_app.libraries.collection import loaded_course_methods, offers, usable
@@ -65,7 +65,7 @@ def saved_summary(definition: str, key: str | None, loaded: LoadedFiles, questio
         return MarkingSummary(
             label, "", tuple(failed.messages), is_compatible=False, incompatible_version=version_name(failed.ref)
         )
-    problem_texts = tuple(dict.fromkeys(located(draft, problem) for problem in problems))
+    problem_texts = tuple(dict.fromkeys(problem_text(draft, problem) for problem in problems))
     return MarkingSummary(label, "", problem_texts, is_compatible=check_of(definition, loaded.methods) is not None)
 
 
@@ -169,10 +169,10 @@ class QuestionList:
 
 
 def question_list(
-    membership: AssessmentAccess, shown_id: str, accepted: Mapping[Marking, Check] | None = None
+    access: AssessmentAccess, shown_id: str, accepted: Mapping[Marking, Check] | None = None
 ) -> QuestionList:
     """`accepted`, the assessment's markings the core accepts, saves working them out again."""
-    assessment = membership.assessment
+    assessment = access.assessment
     accepted = assessment_checks(assessment) if accepted is None else accepted
     markings = list(assessment.markings.select_related("question"))
     saved_by_key = saved_markings(markings, accepted)
@@ -181,10 +181,10 @@ def question_list(
     progress = {key: job.progress for job in running_remarks(assessment) for key in job.question_keys}
     imported_keys = imported_mark_keys(assessment)
     drafts = list(
-        MarkingDraftRecord.objects.filter(assessment=assessment, user=membership.member.user).select_related("question")
+        MarkingDraftRecord.objects.filter(assessment=assessment, user=access.member.user).select_related("question")
     )
     drafted_ids = {draft.question_id for draft in drafts} | {draft.marking_id for draft in drafts}
-    parsed = _parsed_drafts(membership, drafts)
+    parsed = _parsed_drafts(access, drafts)
     draft_methods = {
         subject_id: drafted_method(parsed[draft.pk])
         for draft in drafts
@@ -237,12 +237,12 @@ def question_list(
     return QuestionList(shown_id, listed, question_groups)
 
 
-def _parsed_drafts(membership: AssessmentAccess, drafts: list[MarkingDraftRecord]) -> dict[UUID, MarkingDraft]:
+def _parsed_drafts(access: AssessmentAccess, drafts: list[MarkingDraftRecord]) -> dict[UUID, MarkingDraft]:
     """Each of the user's `drafts` as the core edits it, by its ID."""
     if not drafts:
         return {}
-    questions = membership.assessment.question_set()
-    methods = usable(membership.member.user, membership.course)
+    questions = access.assessment.question_set()
+    methods = usable(access.member.user, access.course)
     return {
         draft.pk: marking_draft(draft.definition, questions, draft.question.key if draft.question else None, methods)
         for draft in drafts
@@ -293,13 +293,13 @@ class Panel:
 
 
 def panel(
-    membership: AssessmentAccess,
+    access: AssessmentAccess,
     question: Question,
     marking: Marking | None,
     accepted: Mapping[Marking, Check] | None = None,
 ) -> Panel:
     """`accepted`, the assessment's markings the core accepts, saves working them out again."""
-    assessment = membership.assessment
+    assessment = access.assessment
     accepted = assessment_checks(assessment) if accepted is None else accepted
     saved_group_marking = saved_markings(assessment.markings.filter(question=None), accepted).get(question.key)
     group_marking = saved_group_marking.marking if saved_group_marking else None
@@ -307,8 +307,8 @@ def panel(
         saved_group(assessment, group_marking, accepted.get(group_marking)) if group_marking and not marking else None
     )
     check = accepted.get(marking) if marking else accepted.get(group_marking) if group_marking else None
-    choosing = marking is None and group_marking is None and membership.can_edit
-    user = membership.member.user
+    choosing = marking is None and group_marking is None and access.can_edit
+    user = access.member.user
     return Panel(
         mode="summary" if marking else "question_group" if group else "choose",
         question_group=group,

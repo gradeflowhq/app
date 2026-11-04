@@ -1,6 +1,6 @@
 <c-dialog id="download" title="Download results">
   {% partialdef form inline %}
-  <form method="post" action="{% url 'download' membership.assessment.pk %}" data-decrypt="{{ membership.assessment.pk }}" hx-boost="false">
+  <form method="post" action="{% url 'download' access.assessment.pk %}" data-decrypt="{{ access.assessment.pk }}" hx-boost="false">
     {% csrf_token %}
     <div class="grid gap-4 px-6 pt-2">
       <c-more-options :open="download_form.is_bound">{{ download_form }}</c-more-options>

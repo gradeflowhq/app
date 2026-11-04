@@ -16,7 +16,7 @@ from gradeflow_app.ui.templatetags.ui import percent
 from tests.conftest import HTMX_HEADERS, create_assessment, encrypted_id, start_marking
 
 
-@pytest.mark.parametrize(("imported_marks", "marks", "level"), [(5, 3, "full"), (-1, 0, "zero")])
+@pytest.mark.parametrize(("imported_marks", "marks", "level"), [(5, 3, "full"), (-1, 0, "no_marks")])
 def test_marks_count_from_0_to_the_questions_maximum(imported_marks: float, marks: float, level: str) -> None:
     award = Award(max_marks=3, imported_marks=imported_marks)
     result = award.question_result()
@@ -93,7 +93,7 @@ def test_downloads_open_as_utf8_in_spreadsheets(client: Client, assessment: Asse
 
 def test_there_is_nothing_to_download_before_an_import(client: Client) -> None:
     assessment = create_assessment(client)
-    for name in ("students", "publish"):
+    for name in ("students", "export"):
         page = client.get(reverse(name, args=[assessment.pk])).text
         assert 'data-dialog="download"' not in page
         assert "data-decrypt" not in page
@@ -102,8 +102,8 @@ def test_there_is_nothing_to_download_before_an_import(client: Client) -> None:
 def test_a_result_keeps_a_long_method_label(assessment: Assessment) -> None:
     label = "Accepted answers " * 10
     student, question = assessment.students.earliest("pk"), assessment.questions.earliest("pk")
-    Result.objects.create(student=student, question=question, proportion=1, method=label, revision=0)
-    assert Result.objects.get().method == label
+    Result.objects.create(student=student, question=question, proportion=1, method_label=label, revision=0)
+    assert Result.objects.get().method_label == label
 
 
 def test_a_download_needs_a_student_id_column(client: Client, assessment: Assessment) -> None:
@@ -125,7 +125,7 @@ def adjusted_assessment(assessment: Assessment) -> Assessment:
             question=questions["Q1"],
             proportion=student.imported_marks["Q1"],
             feedback="Good." if student.encrypted_id == encrypted_id("S006") else "",
-            method="Key Points",
+            method_label="Key Points",
             revision=0,
         )
     adjustments: list[tuple[str, str, float | None, str | None]] = [
@@ -177,7 +177,7 @@ def test_totals_count_adjusted_marks_and_every_adjustment(adjusted_assessment: A
             summary.marked_count,
             summary.average,
             summary.full_marks_count,
-            summary.zero_marks_count,
+            summary.no_marks_count,
             summary.blank_count,
             summary.adjusted_count,
         )
@@ -238,13 +238,18 @@ def test_activity_tells_clearing_adjustments_from_making_them(client: Client, ad
 
 
 @pytest.mark.parametrize("return_to", ["student", "answers"])
-def test_adjustment_request_can_clear_feedback_without_changing_zero_marks(
+def test_adjustment_request_can_clear_feedback_without_changing_no_marks(
     client: Client, assessment: Assessment, return_to: str
 ) -> None:
     question = assessment.questions.get(key="Q1")
     student = assessment.students.get(encrypted_id=encrypted_id("S001"))
     Result.objects.create(
-        student=student, question=question, proportion=1, feedback="Generated feedback", method="Saved", revision=0
+        student=student,
+        question=question,
+        proportion=1,
+        feedback="Generated feedback",
+        method_label="Saved",
+        revision=0,
     )
     page_url = (
         reverse("student", args=[assessment.pk, student.pk])
@@ -284,11 +289,11 @@ def test_marks_that_round_to_the_maximum_are_full(client: Client, assessment: As
     question = assessment.questions.get(key="Q1")
     for student in assessment.students.all():
         Result.objects.create(
-            student=student, question=question, proportion=0.7 + 0.2 + 0.1, method="Weighted", revision=0
+            student=student, question=question, proportion=0.7 + 0.2 + 0.1, method_label="Weighted", revision=0
         )
 
     summary = assessment_results(assessment).summaries()[0]
-    assert (summary.full_marks_count, summary.zero_marks_count) == (10, 0)
+    assert (summary.full_marks_count, summary.no_marks_count) == (10, 0)
     url = reverse("answers", args=[assessment.pk, question.pk])
     assert "1 student" in client.get(url, {"filter": "full"}, headers=HTMX_HEADERS).text
     assert "1 student" not in client.get(url, {"filter": "partial"}, headers=HTMX_HEADERS).text
@@ -299,7 +304,7 @@ def test_marks_that_round_to_the_maximum_are_full(client: Client, assessment: As
 
 def test_the_overview_says_how_each_question_is_marked(client: Client, assessment: Assessment) -> None:
     page = client.get(reverse("overview", args=[assessment.pk])).text
-    assert "From the exam export" in page, "nothing is marked yet"
+    assert "From the submissions file" in page, "nothing is marked yet"
     assert page.count("Imported marks") == 1
     assert page.count("Not marked") == 2
     assert "Adjusted</th>" not in page, "no column while no one is adjusted"
@@ -331,5 +336,5 @@ def test_a_run_of_changes_to_a_questions_adjustments_shows_once(client: Client, 
 
 def test_downloads_are_only_posted_from_the_dialog(client: Client, assessment: Assessment) -> None:
     assert client.get(reverse("download", args=[assessment.pk])).status_code == 405
-    for name in ("students", "publish"):
+    for name in ("students", "export"):
         assert 'data-dialog="download"' in client.get(reverse(name, args=[assessment.pk])).text, name

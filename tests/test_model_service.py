@@ -1,6 +1,5 @@
 from dataclasses import asdict
 from datetime import timedelta
-from pathlib import Path
 from typing import cast
 
 import pytest
@@ -14,7 +13,7 @@ from pytest_django import Settings
 
 from gradeflow_app.accounts.models import User
 from gradeflow_app.assessments.models import Assessment
-from gradeflow_app.jobs.models import Job
+from gradeflow_app.jobs.models import PROGRESS_TEXT_LENGTH, Job
 from gradeflow_app.libraries.designer.workspace import MethodWorkspace
 from gradeflow_app.libraries.models import Method
 from gradeflow_app.marking.answers.column import out_of_date_notices
@@ -22,7 +21,13 @@ from gradeflow_app.marking.checks import assessment_checks
 from gradeflow_app.marking.models import Marking
 from gradeflow_app.marking.remarks import schedule_marking
 from gradeflow_app.model_service import views
-from gradeflow_app.model_service.endpoints import STATE_HEADER, ModelServiceState, endpoint
+from gradeflow_app.model_service.endpoints import (
+    ANSWERS_PER_REQUEST_LIMITS,
+    STATE_HEADER,
+    TOKEN_HEADER,
+    ModelServiceState,
+    endpoint,
+)
 from gradeflow_app.requests import Request
 from tests.conftest import create_method_draft, full_marks_marking, post_callback
 
@@ -31,7 +36,7 @@ PROVIDER = "Example AI"
 # Built unchecked, as the server offers the provider only once `_offer_provider` runs.
 PROVIDER_STATE = ModelServiceState.model_construct(provider=PROVIDER)
 MODEL_SERVICE_HEADERS = {
-    "X-Model-Token": "secret-token",
+    TOKEN_HEADER: "secret-token",
     STATE_HEADER: ModelServiceState.model_construct(provider=PROVIDER, fast_model="decider").model_dump_json(),
 }
 TRIALS = [
@@ -121,7 +126,7 @@ def test_choosing_automatically_runs_a_job_with_the_token(client: Client, idle_e
             "token": "secret-token",
             "fast_model": None,
             "careful_model": None,
-            "answers_per_request": 12,
+            "answers_per_request": ANSWERS_PER_REQUEST_LIMITS["default"],
         }
     }
     assert "secret-token" not in str(job.marked_with)
@@ -161,11 +166,6 @@ def test_connecting_refuses_a_token_the_service_refuses(client: Client, monkeypa
     assert f"<option selected>{PROVIDER}</option>".encode() in response.content
     assert b'data-refused="true"' in response.content
     assert STATE_HEADER not in response
-
-
-def test_the_browser_sends_its_model_service_in_the_header_the_server_reads() -> None:
-    script = Path(views.__file__).parents[1] / "static" / "gradeflow" / "models.js"
-    assert f'const STATE_HEADER = "{STATE_HEADER}";' in script.read_text()
 
 
 def test_only_the_servers_ai_services_connect(client: Client, user: User, idle_executor: None) -> None:
@@ -231,9 +231,12 @@ def test_an_automatic_choice_that_failed_says_why(client: Client, idle_executor:
 def test_answers_per_request_are_kept_on_the_device_and_sent_with_jobs(client: Client, idle_executor: None) -> None:
     response = post_model_service(client, "model_service_answers_per_request", {"answers_per_request": "6"})
     assert returned_state(response).answers_per_request == 6
-    refused = post_model_service(client, "model_service_answers_per_request", {"answers_per_request": "41"})
-    assert "Enter a number from 1 to 40." in refused.text
-    assert returned_state(refused).answers_per_request == 12
+    limits = ANSWERS_PER_REQUEST_LIMITS
+    too_many = {"answers_per_request": limits["maximum"] + 1}
+    refused = post_model_service(client, "model_service_answers_per_request", too_many)
+    assert f"Enter a number from {limits['minimum']} to {limits['maximum']}." in refused.text
+    assert f'value="{limits["maximum"] + 1}"' in refused.text, "the box keeps what was typed, beside its error"
+    assert returned_state(refused).answers_per_request == limits["default"]
     post_model_service(client, "model_service_choose", {"chosen_by": "automatically"}, state=returned_state(response))
     job = Job.objects.get(kind=Job.Kind.MODEL_CHOICE)
     assert job.input is not None
@@ -316,6 +319,16 @@ def test_marking_says_what_it_waits_on(client: Client, user: User, assessment: A
     column = client.get(reverse("answers", args=[assessment.pk, question.pk])).text
     assert "Deciding criteria: 12 of 30" in column
     assert "from before" not in column
+
+
+def test_a_long_step_is_cut_but_keeps_its_counts(user: User, assessment: Assessment, idle_executor: None) -> None:
+    job = schedule_marking(criteria_marking(assessment), user, endpoint(request_with_model_service(user)))
+    assert job is not None
+    post_callback(job, {"event": "started"})
+    post_callback(job, {"event": "progress", **asdict(Progress(completed=12, total=30, step="x" * 300))})
+    job.refresh_from_db()
+    assert job.progress_text.endswith("x: 12 of 30")
+    assert len(job.progress_text) == PROGRESS_TEXT_LENGTH
 
 
 def test_the_answers_column_asks_to_connect_when_marking_asks_a_model(

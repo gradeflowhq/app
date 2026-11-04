@@ -25,7 +25,9 @@ class Nomad:
     def __init__(self, url: str, token: str, datacenter: str, namespace: str) -> None:
         self.datacenter = datacenter
         self.namespace = namespace
-        self.client = httpx.Client(base_url=url, headers={"X-Nomad-Token": token} if token else {}, timeout=30)
+        self.client = httpx.Client(
+            base_url=url, headers={"X-Nomad-Token": token} if token else {}, timeout=httpx.Timeout(30, connect=5)
+        )
 
     def submit(self, job: Job) -> None:
         """Hand `job` over to run; handing it over again changes nothing. Raises `ExecutorUnavailable`."""

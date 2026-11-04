@@ -5,6 +5,7 @@ from gradeflow_app.assessments import views as assessments
 from gradeflow_app.courses import views as courses
 from gradeflow_app.dashboard import views as dashboard
 from gradeflow_app.editor import picker
+from gradeflow_app.exports import views as exports
 from gradeflow_app.imports import views as imports
 from gradeflow_app.jobs import callbacks
 from gradeflow_app.landing import views as landing
@@ -15,7 +16,6 @@ from gradeflow_app.marking import views as marking
 from gradeflow_app.marking import yaml
 from gradeflow_app.marking.answers import views as answers
 from gradeflow_app.model_service import views as model_service
-from gradeflow_app.publish import views as publish
 from gradeflow_app.questions import views as questions
 from gradeflow_app.results import views as results
 from gradeflow_app.ui import views as ui
@@ -70,11 +70,11 @@ assessment_urls = [
     path("students/", results.students, name="students"),
     path("students/<uuid:student_id>/", results.student, name="student"),
     path("download/", results.download, name="download"),
-    path("publish/", publish.send_marks, name="publish"),
-    path("publish/rows/", publish.canvas_rows, name="publish_rows"),
-    path("publish/comment/", publish.comment, name="publish_comment"),
-    path("publish/settings/", publish.save_sending, name="publish_sending"),
-    path("publish/sent/", publish.record_sent, name="publish_record"),
+    path("export/", exports.send_marks, name="export"),
+    path("export/rows/", exports.canvas_rows, name="export_rows"),
+    path("export/comment/", exports.comment, name="export_comment"),
+    path("export/settings/", exports.save_sending, name="export_sending"),
+    path("export/sent/", exports.record_sent, name="export_record"),
 ]
 
 
@@ -98,7 +98,7 @@ course_urls = [
     path("members/<uuid:user_id>/role/", courses.member_role, name="member_role"),
     path("members/<uuid:user_id>/remove/", courses.member_remove, name="member_remove"),
     path("leave/", courses.leave_course, name="leave_course"),
-    path("canvas/", publish.canvas_settings, name="canvas_settings"),
+    path("canvas/", exports.canvas_settings, name="canvas_settings"),
     path("methods/", libraries.course_methods, name="course_methods"),
     path("invitations/<uuid:invitation_id>/revoke/", courses.invitation_revoke, name="invitation_revoke"),
     path("invitations/<uuid:invitation_id>/resend/", courses.invitation_resend, name="invitation_resend"),

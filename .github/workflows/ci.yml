@@ -21,6 +21,7 @@ jobs:
     env:
       GRADEFLOW_DEBUG: "true"
       GRADEFLOW_SECRET_KEY: ci
+      UV_NO_SYNC: "1"
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v10.3.3
@@ -30,6 +31,14 @@ jobs:
         with:
           node-version: 26
       - run: uv sync
+      # The core branch with this branch's name, or else the one a pull request goes into.
+      - run: |
+          for branch in "$GITHUB_HEAD_REF" "$GITHUB_BASE_REF" "$GITHUB_REF_NAME"; do
+            if git ls-remote --exit-code https://github.com/gradeflowhq/core "refs/heads/$branch" > /dev/null; then
+              uv pip install "gradeflow-core[llm] @ git+https://github.com/gradeflowhq/core@$branch"
+              break
+            fi
+          done
       - run: uv run ruff format --check
       - run: uv run ruff check
       - run: uv run mypy
@@ -38,9 +47,12 @@ jobs:
         env:
           GRADEFLOW_DEBUG: "false"
           GRADEFLOW_EMAIL_BACKEND: django.core.mail.backends.smtp.EmailBackend
+          GRADEFLOW_NOMAD_URL: http://nomad.invalid
+          GRADEFLOW_APP_URL_FOR_JOBS: http://app.invalid
           GRADEFLOW_SECRET_KEY: ci-deploy-check-0123456789-abcdefghijklmnopqrstuvwxyz
       - run: uv run pytest --cov
       - run: node --test tests/js/*.test.mjs
+      - run: printf '%s\n' src/gradeflow_app/static/gradeflow/*.js | xargs -n1 node --check
 
   # Publishes the web app and the sandbox from main and release tags; dev only runs the tests.
   images:

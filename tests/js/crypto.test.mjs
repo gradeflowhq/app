@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { createCipheriv, createDecipheriv, createHash, createHmac, hkdfSync, pbkdf2Sync } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
 import { decryptFile, decryptId, decryptText, encryptFile, encryptId, ENCRYPTED_IDS } from '../../src/gradeflow_app/static/gradeflow/crypto.js';
@@ -98,4 +99,13 @@ test('decryptFile round trips and rejects a wrong passphrase, tampering and othe
   otherVersion[3] = 2;
   await assert.rejects(decryptFile(otherVersion, PASSPHRASE), /Not an encrypted file/);
   await assert.rejects(decryptFile(FILE, PASSPHRASE), /Not an encrypted file/);
+});
+
+// The server checks the same fixture's ID and file (tests/test_imports.py).
+const GOLDEN = JSON.parse(readFileSync(new URL('../fixtures/encrypted.json', import.meta.url)));
+
+test('reproduces the golden encrypted ID and opens the golden file', async () => {
+  assert.equal(await encryptId(GOLDEN.student_id, GOLDEN.passphrase, GOLDEN.assessment_id), GOLDEN.encrypted_id);
+  const file = await decryptFile(Uint8Array.fromBase64(GOLDEN.encrypted_file), GOLDEN.passphrase);
+  assert.equal(new TextDecoder().decode(file), GOLDEN.file);
 });

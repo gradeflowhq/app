@@ -26,7 +26,7 @@ EFFECT_ICONS: dict[str, EffectIcon] = {
     "no_marks": EffectIcon("x-mark", "text-error", "No marks"),
     "penalty": EffectIcon("minus-circle", "text-error", "Penalty"),
     "uncounted": EffectIcon("minus", "text-subtle", "Didn't count"),
-    "unmarked": EffectIcon("exclamation-triangle", "text-warning", "Needs marking"),
+    "unmarked": EffectIcon("exclamation-triangle", "text-warning", "Couldn't mark"),
 }
 """The icon, color class and label of each effect but met and not met, which show as words."""
 

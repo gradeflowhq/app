@@ -100,7 +100,7 @@ def test_answer_group_changed_counts_compare_students_even_when_ranges_match(ass
     for index, student in enumerate(students):
         student.answers = {"Q1": "same", "Q2": "same"}
         student.save()
-        Result.objects.create(student=student, question=question, proportion=index, method="Before", revision=0)
+        Result.objects.create(student=student, question=question, proportion=index, method_label="Before", revision=0)
     results_by_student = {
         student.encrypted_id: {
             "Q1": QuestionResult(proportion=1 - index, max_marks=question.core_question.max_marks, method_label="After")

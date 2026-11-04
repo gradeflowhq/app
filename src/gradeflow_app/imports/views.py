@@ -13,8 +13,8 @@ from gradeflow_app.assessments.access import assessment_member
 from gradeflow_app.assessments.models import AssessmentAccess
 from gradeflow_app.courses.models import Role
 from gradeflow_app.imports.forms import QuestionDocumentForm, UploadForm
-from gradeflow_app.imports.models import ResultsFile
-from gradeflow_app.imports.services import ImportFailed, apply_question_document, import_results
+from gradeflow_app.imports.models import SubmissionsFile
+from gradeflow_app.imports.services import ImportFailed, apply_question_document, import_submissions
 from gradeflow_app.marking.remarks import remark
 from gradeflow_app.model_service.endpoints import endpoint
 from gradeflow_app.requests import Request
@@ -30,31 +30,31 @@ IMPORT_SETTINGS = (
     "answer_columns",
     "marks_columns",
 )
-"""What the importer needs to reopen a results file as it was imported."""
+"""What the importer needs to reopen a submissions file as it was imported."""
 
 
 @assessment_member(Role.EDITOR)
-def import_page(request: Request, membership: AssessmentAccess) -> HttpResponse:
-    latest_file = membership.assessment.results_files.annotate(has_original=Q(original__isnull=False)).first()
+def import_page(request: Request, access: AssessmentAccess) -> HttpResponse:
+    latest_file = access.assessment.submissions_files.annotate(has_original=Q(original__isnull=False)).first()
     return render(
         request,
         "imports/import.html",
         {
-            "membership": membership,
+            "access": access,
             "latest_file": latest_file,
             "import_settings": (
                 model_to_dict(latest_file, fields=IMPORT_SETTINGS) if latest_file and latest_file.has_original else None
             ),
-            "questions": list(membership.assessment.questions.values_list("key", flat=True)),
+            "questions": list(access.assessment.questions.values_list("key", flat=True)),
         },
     )
 
 
 @require_GET
 @assessment_member(Role.EDITOR)
-def original(request: Request, membership: AssessmentAccess) -> HttpResponse:
-    """The latest results file, as the browser encrypted it."""
-    data = membership.assessment.results_files.values_list("original", flat=True).first()
+def original(request: Request, access: AssessmentAccess) -> HttpResponse:
+    """The latest submissions file, as the browser encrypted it."""
+    data = access.assessment.submissions_files.values_list("original", flat=True).first()
     if data is None:
         raise Http404
     return HttpResponse(bytes(data), content_type="application/octet-stream")
@@ -62,9 +62,9 @@ def original(request: Request, membership: AssessmentAccess) -> HttpResponse:
 
 @require_POST
 @assessment_member(Role.EDITOR)
-def upload(request: Request, membership: AssessmentAccess) -> HttpResponse:
-    """Imports the results the importer uploads; a failure is plain text for it to show."""
-    assessment = membership.assessment
+def upload(request: Request, access: AssessmentAccess) -> HttpResponse:
+    """Imports the submissions file the importer uploads; a failure is plain text for it to show."""
+    assessment = access.assessment
     form = UploadForm(request.POST, request.FILES)
     if not form.is_valid():
         return _import_error(first_error(form))
@@ -72,7 +72,9 @@ def upload(request: Request, membership: AssessmentAccess) -> HttpResponse:
     csv_text, key_row = import_settings.pop("answers_csv"), import_settings.pop("answer_key")
     try:
         with transaction.atomic():
-            summary = import_results(assessment, request.user, ResultsFile(**import_settings), csv_text, key_row)
+            summary = import_submissions(
+                assessment, request.user, SubmissionsFile(**import_settings), csv_text, key_row
+            )
             remark(assessment, summary.changed_questions, request.user, endpoint(request))
     except ImportFailed as error:
         return _import_error(str(error))
@@ -95,7 +97,7 @@ def upload(request: Request, membership: AssessmentAccess) -> HttpResponse:
             details.append(
                 f"removed question{pluralize(summary.removed_questions)} {', '.join(summary.removed_questions)}"
             )
-        messages.success(request, "Results replaced: " + "; ".join(details) + ".")
+        messages.success(request, "Submissions file replaced: " + "; ".join(details) + ".")
     return HttpResponseClientRedirect(reverse("import", args=[assessment.pk]))
 
 
@@ -105,18 +107,18 @@ def _import_error(reason: str) -> HttpResponse:
 
 @require_POST
 @assessment_member(Role.EDITOR)
-def question_document(request: Request, membership: AssessmentAccess) -> HttpResponse:
+def question_document(request: Request, access: AssessmentAccess) -> HttpResponse:
     form = QuestionDocumentForm(request.POST, request.FILES)
     if form.is_valid():
         try:
             with transaction.atomic():
-                document_questions, changed = apply_question_document(membership.assessment, form.cleaned_data["file"])
-                remark(membership.assessment, changed, request.user, endpoint(request))
+                document_questions, changed = apply_question_document(access.assessment, form.cleaned_data["file"])
+                remark(access.assessment, changed, request.user, endpoint(request))
         except ImportFailed as failed:
             form.add_error("file", str(failed))
         else:
             count = len(document_questions)
             messages.success(request, f"Set up {count} question{pluralize(count)} from the question document.")
-            return HttpResponseClientRedirect(reverse("questions", args=[membership.assessment.pk]))
-    context = {"assessment": membership.assessment, "error": form.errors["file"][0]}
+            return HttpResponseClientRedirect(reverse("questions", args=[access.assessment.pk]))
+    context = {"assessment": access.assessment, "error": form.errors["file"][0]}
     return render(request, "imports/question_document.html", context, status=422)

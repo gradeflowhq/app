@@ -1,9 +1,12 @@
 """Saved versions and markings the current core can't read: the rest keeps working, and each shows what is wrong."""
 
+import logging
 import re
 from html import unescape
+from io import StringIO
 
 import pytest
+from django.core.management import call_command
 from django.test import Client
 from django.urls import reverse
 from gradeflow_core.editing import dump_yaml
@@ -11,9 +14,9 @@ from gradeflow_core.editing import dump_yaml
 from gradeflow_app.accounts.models import User
 from gradeflow_app.assessments.models import Assessment
 from gradeflow_app.courses.models import Course
-from gradeflow_app.libraries.collection import loaded_usable_methods
+from gradeflow_app.libraries.collection import _log_failure, load_saved, loaded_usable_methods
 from gradeflow_app.libraries.models import Method, MethodVersion
-from gradeflow_app.marking.models import Marking
+from gradeflow_app.marking.models import Marking, MarkingDraftRecord
 from gradeflow_app.questions.models import Question
 from tests.conftest import HTMX_HEADERS, create_course, publish_light_method
 
@@ -153,3 +156,39 @@ def test_versions_an_earlier_core_saved_say_so_and_the_rest_load(
     assert "compatible" not in client.get(reverse("method_page", args=[light.pk, 1])).text
     loaded = loaded_usable_methods(course.members.get().user, course)
     assert MethodVersion.objects.get(method=light, number=1).ref in loaded.methods.by_ref
+
+
+def test_versions_an_earlier_core_saved_are_logged_once(
+    client: Client, course: Course, light: Method, wrapper: Method, caplog: pytest.LogCaptureFixture
+) -> None:
+    load_saved.cache_clear()
+    _log_failure.cache_clear()
+    with caplog.at_level(logging.WARNING, "gradeflow_app.libraries.collection"):
+        for _ in range(2):
+            client.get(reverse("course_methods", args=[course.pk]))
+    problems = " ".join(OLD_PROBLEMS)
+    assert sorted(record.getMessage() for record in caplog.records) == [
+        f"Saved method method-laboratory/light@2 doesn't load, for problems in method-laboratory/light@2: {problems}",
+        f"Saved method method-laboratory/wrapper@1 doesn't load, for problems in method-laboratory/light@2: {problems}",
+    ]
+
+
+def test_a_check_lists_what_this_core_cant_load(light: Method, wrapper: Method, question: Question, user: User) -> None:
+    marking_of(question, MethodVersion.objects.get(method=wrapper).ref)
+    old_draft = {
+        "question": "Q1",
+        "uses": "gradeflow/key-points@1",
+        "with": {"points": ["a"], "evaluate_expected": 1, "variables": {}},
+    }
+    MarkingDraftRecord.objects.create(
+        assessment=question.assessment, user=user, question=question, definition=dump_yaml(old_draft)
+    )
+    output = StringIO()
+    call_command("check_saved", stdout=output)
+    assert output.getvalue().splitlines() == [
+        f"method-laboratory/light@2: {' '.join(OLD_PROBLEMS)}",
+        "method-laboratory/wrapper@1: uses method-laboratory/light@2",
+        "Method laboratory › Assessment › Q1: uses: There's no method method-laboratory/wrapper@1.",
+        "Method laboratory › Assessment › Q1, draft by Ana Tan: evaluate_expected: Unknown setting. "
+        "variables: Unknown setting.",
+    ]

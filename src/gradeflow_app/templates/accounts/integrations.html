@@ -4,6 +4,6 @@
 <h1>Integrations</h1>
 {% include "model_service/card.html" %}
 {% include "model_service/guide.html" %}
-{% if canvas_config %}{% include "publish/integration.html" %}{% include "publish/integration_guide.html" %}{% endif %}
+{% if canvas_config %}{% include "exports/integration.html" %}{% include "exports/integration_guide.html" %}{% endif %}
 <p class="flex gap-2 px-5 text-sm text-muted">{% icon "information-circle" "size-4 mt-0.5 shrink-0" %}<span>You use these services at your own risk. You’re responsible for how you connect them and what you send through them, and GradeFlow can’t be held liable for either.</span></p>
 {% endblock %}

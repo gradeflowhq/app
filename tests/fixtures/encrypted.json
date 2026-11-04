@@ -1,0 +1,8 @@
+{
+  "assessment_id": "assessment-1",
+  "passphrase": "correct horse battery",
+  "student_id": "10000001",
+  "file": "StudentID,Q1\n10000001,yes\n",
+  "encrypted_id": "enc:v2:iQgipHzcIe4Cp/w65PCwZQ==:vg9myIhUqsK/69cB:QY5lqxsUR3jgjCpUCzcONCgrHmOsiS+4",
+  "encrypted_file": "R0ZGAYkIIqR83CHuAqf8OuTwsGXeoOqZIbnAmbZ9ups4cUuHTRu/kXX1+hNJgZjGOQLAR4VBQIOJcrLP42g0wXYXVWtde/zKvTY="
+}

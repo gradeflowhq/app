@@ -1,7 +1,7 @@
 // Behaviour shared by every page, and Alpine with every component registered.
 
 import Alpine from "../vendor/alpinejs-csp-3.17.4/module.esm.min.js";
-import { canvasConnection, canvasCourse, canvasPublisher } from "./canvas.js";
+import { canvasConnection, canvasCourse, canvasExport } from "./canvas.js";
 import { histogram } from "./charts.js";
 import { collapsible } from "./collapsible.js";
 import { codeEditor } from "./code.js";
@@ -47,7 +47,7 @@ const components = {
   answerGroup,
   canvasConnection,
   canvasCourse,
-  canvasPublisher,
+  canvasExport,
   canvasSend,
   choiceList,
   collapsible,

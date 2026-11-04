@@ -43,7 +43,6 @@ dev = [
     "ruff>=0.17",
     "types-pygments>=2.21.0.20260819",
 ]
-qa = ["playwright>=1.64"]
 sandbox = ["gradeflow-core[ml,llm]", "httpx>=0.28"]
 
 [tool.uv.sources]

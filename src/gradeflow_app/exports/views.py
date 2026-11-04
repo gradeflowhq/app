@@ -14,8 +14,8 @@ from gradeflow_app.assessments.access import assessment_member
 from gradeflow_app.assessments.models import Assessment, AssessmentAccess
 from gradeflow_app.courses.access import course_member
 from gradeflow_app.courses.models import Member, Role
-from gradeflow_app.publish.forms import AssessmentCanvasForm, CourseCanvasForm, SentMarksForm
-from gradeflow_app.publish.models import AssessmentCanvas, CourseCanvas, MarksMode, SentMarks
+from gradeflow_app.exports.forms import AssessmentCanvasForm, CourseCanvasForm, SentMarksForm
+from gradeflow_app.exports.models import AssessmentCanvas, CourseCanvas, MarksMode, SentMarks
 from gradeflow_app.requests import Request
 from gradeflow_app.results.forms import download_form
 from gradeflow_app.results.marks import Results, StudentMarks, assessment_results
@@ -47,7 +47,7 @@ def canvas_settings(request: Request, member: Member) -> HttpResponse:
         return redirect("canvas_settings", member.course_id)
     return render(
         request,
-        "publish/canvas.html",
+        "exports/canvas.html",
         {
             "member": member,
             "form": form,
@@ -58,13 +58,13 @@ def canvas_settings(request: Request, member: Member) -> HttpResponse:
 
 
 @assessment_member()
-def send_marks(request: Request, membership: AssessmentAccess) -> HttpResponse:
-    assessment = membership.assessment
+def send_marks(request: Request, access: AssessmentAccess) -> HttpResponse:
+    assessment = access.assessment
     canvas_available = bool(settings.GRADEFLOW_CORS_PROXY_URL)
     assessment_canvas = AssessmentCanvas.of(assessment)
-    course_canvas = CourseCanvas.of(membership.course)
+    course_canvas = CourseCanvas.of(access.course)
     context: dict[str, object] = {
-        "membership": membership,
+        "access": access,
         "canvas_available": canvas_available,
         "course_canvas": course_canvas,
         "sending": effective_sending(assessment_canvas, course_canvas),
@@ -72,35 +72,35 @@ def send_marks(request: Request, membership: AssessmentAccess) -> HttpResponse:
         "student_count": assessment.students.count(),
         "download_form": download_form(),
     }
-    if canvas_available and course_canvas.canvas_course and membership.can_edit:
+    if canvas_available and course_canvas.canvas_course and access.can_edit:
         context |= {
             "form": AssessmentCanvasForm(instance=assessment_canvas),
-            "canvas_rows": _canvas_rows(membership),
+            "canvas_rows": _canvas_rows(access),
             "config": _canvas_config(
                 course_canvas,
                 assessment=str(assessment.pk),
                 name=assessment.name,
                 assignment=assessment_canvas.canvas_assignment,
-                sentUrl=reverse("publish_record", args=[assessment.pk]),
+                sentUrl=reverse("export_record", args=[assessment.pk]),
             ),
         }
-    return render(request, "publish/publish.html", context)
+    return render(request, "exports/export.html", context)
 
 
 @require_GET
 @assessment_member(Role.EDITOR)
-@fragment_of("publish")
-def canvas_rows(request: Request, membership: AssessmentAccess) -> HttpResponse:
+@fragment_of("export")
+def canvas_rows(request: Request, access: AssessmentAccess) -> HttpResponse:
     return render(
         request,
-        "publish/publish.html#canvas_rows",
-        {"membership": membership, "canvas_rows": _canvas_rows(membership)},
+        "exports/export.html#canvas_rows",
+        {"access": access, "canvas_rows": _canvas_rows(access)},
     )
 
 
-def _canvas_rows(membership: AssessmentAccess) -> list[dict[str, object]]:
+def _canvas_rows(access: AssessmentAccess) -> list[dict[str, object]]:
     """Each student's encrypted ID, total and comment, for the browser to send to Canvas."""
-    results = assessment_results(membership.assessment)
+    results = assessment_results(access.assessment)
     return [
         {
             "studentId": row.student.encrypted_id,
@@ -122,18 +122,18 @@ def _comment(results: Results, row: StudentMarks) -> str:
 
 @require_GET
 @assessment_member()
-@fragment_of("publish")
-def comment(request: Request, membership: AssessmentAccess) -> HttpResponse:
+@fragment_of("export")
+def comment(request: Request, access: AssessmentAccess) -> HttpResponse:
     """A student's comment as it's sent with their marks, a page per student."""
-    results = assessment_results(membership.assessment)
-    if not results.rows:
+    page = Paginator(access.assessment.students.all(), 1).get_page(request.GET.get("page"))
+    if not (students := list(page.object_list)):
         raise Http404
-    page = Paginator(results.rows, 1).get_page(request.GET.get("page"))
-    (row,) = page.object_list
+    results = assessment_results(access.assessment, students)
+    (row,) = results.rows
     return render(
         request,
-        "publish/comment.html",
-        {"membership": membership, "page": page, "student": row.student, "comment": _comment(results, row)},
+        "exports/comment.html",
+        {"access": access, "page": page, "student": row.student, "comment": _comment(results, row)},
     )
 
 
@@ -170,32 +170,32 @@ def effective_sending(assessment: AssessmentCanvas, course: CourseCanvas) -> Sen
 
 @require_POST
 @assessment_member(Role.EDITOR)
-def save_sending(request: Request, membership: AssessmentAccess) -> HttpResponse:
+def save_sending(request: Request, access: AssessmentAccess) -> HttpResponse:
     """Saves the assessment's assignment and its overrides; answers with how its marks are now sent."""
-    form = AssessmentCanvasForm(request.POST, instance=AssessmentCanvas.of(membership.assessment))
+    form = AssessmentCanvasForm(request.POST, instance=AssessmentCanvas.of(access.assessment))
     if not form.is_valid():
         messages.error(request, first_error(form))
         return HttpResponse(status=422)
-    sending = effective_sending(form.save(), CourseCanvas.of(membership.course))
+    sending = effective_sending(form.save(), CourseCanvas.of(access.course))
     return render(
         request,
-        "publish/publish.html#send_settings",
-        {"membership": membership, "sending": sending, "out_of_band": True},
+        "exports/export.html#send_settings",
+        {"access": access, "sending": sending, "out_of_band": True},
     )
 
 
 @require_POST
 @assessment_member(Role.EDITOR)
-def record_sent(request: Request, membership: AssessmentAccess) -> HttpResponse:
-    form = SentMarksForm(request.POST, instance=SentMarks(assessment=membership.assessment, sent_by=request.user))
+def record_sent(request: Request, access: AssessmentAccess) -> HttpResponse:
+    form = SentMarksForm(request.POST, instance=SentMarks(assessment=access.assessment, sent_by=request.user))
     if not form.is_valid():
         messages.error(request, "Sent, but GradeFlow couldn't record it.")
         return HttpResponse(status=400)
     form.save()
     return render(
         request,
-        "publish/publish.html#sent_marks",
-        {"membership": membership, "sent_marks": _sent_marks(membership.assessment)},
+        "exports/export.html#sent_marks",
+        {"access": access, "sent_marks": _sent_marks(access.assessment)},
     )
 
 

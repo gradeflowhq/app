@@ -6,7 +6,7 @@ from gradeflow_core import AnswersCsv, GradeFlowError, QuestionSet, read_answer_
 
 from gradeflow_app.accounts.models import User
 from gradeflow_app.assessments.models import Assessment
-from gradeflow_app.imports.models import ResultsFile, Student
+from gradeflow_app.imports.models import Student, SubmissionsFile
 from gradeflow_app.live.topics import notify_change, topic
 from gradeflow_app.questions.models import Question
 
@@ -35,14 +35,14 @@ class ImportSummary:
 
 
 @transaction.atomic
-def import_results(
+def import_submissions(
     assessment: Assessment,
     user: User,
-    file: ResultsFile,
+    file: SubmissionsFile,
     csv_text: str,
     key_row: dict[str, str] | None = None,
 ) -> ImportSummary:
-    """Replace the assessment's results with `csv_text`, a CSV whose student IDs are already encrypted.
+    """Replace the assessment's students and answers with `csv_text`, a CSV whose student IDs are already encrypted.
 
     Questions already set up keep their settings but accept the new answers, such as a choice's new options; new ones
     are worked out from the answers. Both read the answers and `key_row`, the file's answer key row by answer column.
@@ -70,9 +70,8 @@ def import_results(
 
     assessment.lock()
     existing = {student.encrypted_id: student for student in assessment.students.all()}
-    previous_questions = {question.key: question.definition for question in assessment.questions.all()}
-    first_import = not existing and not assessment.questions.exists()
     incoming = {submission.student_id: submission for submission in submissions}
+    removed_keys = existing.keys() - incoming.keys()
     changed_by_student = {
         key: {
             question
@@ -81,15 +80,17 @@ def import_results(
         }
         for key in existing.keys() & incoming.keys()
     }
-    changed_questions = set().union(*changed_by_student.values())
-    removed_keys = existing.keys() - incoming.keys()
-    assessment.students.filter(encrypted_id__in=removed_keys).delete()
     # A question one file has and the other doesn't is no change to anyone's answers.
     changed_students = sum(
         1
         for key, questions in changed_by_student.items()
         if questions & existing[key].answers.keys() & incoming[key].answers.keys()
     )
+    previous_questions = {question.key: question.definition for question in assessment.questions.all()}
+    first_import = not existing and not previous_questions
+    updated_questions = assessment.question_set().updated_from([*submissions, read_answer_key(key_row or {})])
+
+    assessment.students.filter(encrypted_id__in=removed_keys).delete()
     Student.objects.bulk_create(
         [
             Student(
@@ -104,17 +105,17 @@ def import_results(
         unique_fields=["assessment", "encrypted_id"],
         update_fields=["answers", "imported_marks"],
     )
-
-    questions = assessment.question_set()
-    previous_keys = set(questions)
-    updated_questions = questions.updated_from([*submissions, read_answer_key(key_row or {})])
     _store_questions(assessment, updated_questions, file.answer_columns)
     file.assessment = assessment
     file.uploaded_by = user
     file.student_count = len(incoming)
     file.save()
-    assessment.results_files.exclude(pk=file.pk).filter(original__isnull=False).update(original=None)
+    assessment.submissions_files.exclude(pk=file.pk).filter(original__isnull=False).update(original=None)
     assessment.save(update_fields=["updated_at"])
+    notify_change(topic("questions", assessment.pk))
+
+    previous_keys = previous_questions.keys()
+    changed_questions = set().union(*changed_by_student.values())
     changed_questions.update(
         question.key
         for question in assessment.questions.all()
@@ -122,8 +123,8 @@ def import_results(
     )
     changed_questions.update(previous_keys - updated_questions.keys())
     if existing.keys() != incoming.keys():
+        # A marking marks every student at once, so new or removed students mean marking every question again.
         changed_questions.update(previous_keys | updated_questions.keys())
-    notify_change(topic("questions", assessment.pk))
     return ImportSummary(
         student_count=len(incoming),
         question_count=len(updated_questions),
@@ -159,7 +160,7 @@ def apply_question_document(assessment: Assessment, data: bytes) -> tuple[list[s
     except GradeFlowError as error:
         raise ImportFailed(str(error)) from error
     if not document_questions:
-        raise ImportFailed("The question document has none of the exam export's questions.")
+        raise ImportFailed("The question document has none of the submissions file's questions.")
     changed = set()
     for question in assessment.questions.filter(key__in=list(document_questions)):
         if question.core_question != document_questions[question.key]:

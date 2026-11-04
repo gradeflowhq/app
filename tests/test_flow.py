@@ -21,17 +21,18 @@ from gradeflow_app.accounts.models import User
 from gradeflow_app.assessments.models import Assessment
 from gradeflow_app.courses.models import Course, Member, Role
 from gradeflow_app.editor.guide import guide_context, used_for
+from gradeflow_app.exports.models import SentMarks
 from gradeflow_app.libraries.collection import course_methods
 from gradeflow_app.marking.checks import check_of, definition_data
 from gradeflow_app.marking.models import Marking, MarkingDraftRecord
 from gradeflow_app.marking.workspace import MarkingWorkspace
-from gradeflow_app.publish.models import SentMarks
 from gradeflow_app.questions import views as question_views
 from gradeflow_app.questions.forms import QuestionForm
 from gradeflow_app.results.models import Adjustment, Result
+from gradeflow_app.ui.middleware import MESSAGES_HEADER
 from gradeflow_app.ui.templatetags.ui import markdown, marks, math_markdown
 from tests.conftest import (
-    EXPORT_ROWS,
+    EXAM_ROWS,
     HTMX_HEADERS,
     assessment_with_full_marks,
     between,
@@ -107,7 +108,7 @@ def test_adjusting_several_students(client: Client, assessment: Assessment) -> N
     )
     assert response.status_code == 200
     assert Adjustment.objects.filter(question=question).count() == 2
-    assert {"level": "success", "text": "Adjusted 2 students."} in json.loads(response.headers["X-Messages"])
+    assert {"level": "success", "text": "Adjusted 2 students."} in json.loads(response.headers[MESSAGES_HEADER])
     response = client.post(
         reverse("adjust", args=[assessment.pk, question.pk]), {"student": [str(students[0])], "marks": "9"}
     )
@@ -142,7 +143,7 @@ def test_pages_render(client: Client, assessment: Assessment) -> None:
         ("answers", [assessment.pk, question.pk]),
         ("question_settings", [assessment.pk, question.pk]),
         ("students", [assessment.pk]),
-        ("publish", [assessment.pk]),
+        ("export", [assessment.pk]),
         ("question_group_new", [assessment.pk]),
         ("course_methods", [assessment.course_id]),
         ("settings", []),
@@ -155,11 +156,11 @@ def test_pages_render(client: Client, assessment: Assessment) -> None:
 def test_parts_of_a_page_opened_on_their_own_go_to_the_page(client: Client, assessment: Assessment) -> None:
     student = assessment.students.all()[0]
     students = reverse("students", args=[assessment.pk])
-    publish = reverse("publish", args=[assessment.pk])
+    export = reverse("export", args=[assessment.pk])
     parts = {
         reverse("student", args=[assessment.pk, student.pk]): students,
-        reverse("publish_rows", args=[assessment.pk]): publish,
-        reverse("publish_comment", args=[assessment.pk]): publish,
+        reverse("export_rows", args=[assessment.pk]): export,
+        reverse("export_comment", args=[assessment.pk]): export,
         reverse("activity", args=[assessment.pk]): reverse("overview", args=[assessment.pk]),
     }
     for part, page_url in parts.items():
@@ -563,13 +564,13 @@ def test_the_question_list_shows_unsaved_drafts(client: Client, assessment: Asse
         "an unsaved question group stays reachable"
     )
     assert page.count(">Draft</span>") == 2
-    assert ">Accepted Answers</span>" in page, "the method being drafted"
+    assert f">{BUILTINS.find('gradeflow/accepted-answers@1').label}</span>" in page, "the method being drafted"
     assert "0 of" in page, "a draft marks nothing yet"
 
 
 def test_multiple_values_are_listed_in_order_and_may_repeat(client: Client, assessment: Assessment) -> None:
     question = assessment.questions.get(key="Q3")
-    answers = [answer for *_, answer in EXPORT_ROWS]
+    answers = [answer for *_, answer in EXAM_ROWS]
     inferred_question = converted_question(question.core_question, "values", answers)
     url = reverse("question_settings", args=[assessment.pk, question.pk])
     form = client.get(url, {"question_type": "values"}).text

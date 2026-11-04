@@ -1,25 +1,27 @@
 import base64
 import hashlib
-import hmac
 import json
 import os
 import runpy
 import threading
+import time
 from collections.abc import Callable
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass, field
-from functools import partial
 from pathlib import Path
+from queue import Queue
 from typing import TYPE_CHECKING, Any
 from unittest.mock import patch
 from uuid import UUID
 
+import httpx
 import pytest
+from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.db import close_old_connections
+from django.db import close_old_connections, connection, connections, transaction
 from django.test import Client, TestCase
 from django.urls import reverse
-from gradeflow_core import MarkedSubmission, QuestionSet
+from gradeflow_core import MarkedSubmission, MethodFileError, QuestionSet
 from gradeflow_core import Question as CoreQuestion
 from gradeflow_core.editing import dump_yaml
 from pytest_django import Settings
@@ -28,12 +30,10 @@ from gradeflow_app.accounts.models import User
 from gradeflow_app.assessments.models import Assessment
 from gradeflow_app.courses.models import Course, Member, Role
 from gradeflow_app.jobs import queue
-from gradeflow_app.jobs.callbacks import _apply_event as receive
 from gradeflow_app.jobs.executors import ExecutorUnavailable
 from gradeflow_app.jobs.handlers import handler
 from gradeflow_app.jobs.models import Job
 from gradeflow_app.jobs.payloads import MarkingRun
-from gradeflow_app.libraries import services
 from gradeflow_app.libraries.designer.workspace import MethodWorkspace
 from gradeflow_app.libraries.method_tests import new_tests
 from gradeflow_app.libraries.models import Library, Method, MethodDraftRecord, MethodVersion, VersionTests
@@ -50,7 +50,7 @@ def encrypted_id(student_id: str) -> str:
     return f"enc:v2:{digest[:24]}:{digest[24:40]}:{digest[:20]}"
 
 
-EXPORT_ROWS = [
+EXAM_ROWS = [
     # student, Q1 (text), Q1 marks, Q2 (number), Q3 (choice)
     ("S001", "photosynthesis uses light", "1", "42", "A"),
     ("S002", "Photosynthesis uses light.", "1", "42.0", "B"),
@@ -65,8 +65,8 @@ EXPORT_ROWS = [
 ]
 
 
-EXPORT_CSV = "StudentID,Q1,Q1 Pts,Q2,Q3\n" + "".join(
-    f'{encrypted_id(student)},"{q1}",{q1_marks},{q2},{q3}\n' for student, q1, q1_marks, q2, q3 in EXPORT_ROWS
+EXAM_CSV = "StudentID,Q1,Q1 Pts,Q2,Q3\n" + "".join(
+    f'{encrypted_id(student)},"{q1}",{q1_marks},{q2},{q3}\n' for student, q1, q1_marks, q2, q3 in EXAM_ROWS
 )
 
 HTMX_HEADERS = {"HX-Request": "true", "HX-Request-Type": "partial"}
@@ -78,11 +78,32 @@ type Event = dict[str, Any]
 type Task = Callable[[dict[str, Any]], None]
 
 
+def sandbox(url: str = "http://testserver/", secret: str = "test") -> dict[str, Any]:
+    """The globals of the sandbox script, run in the test's process for the job at `url` with `secret`. Its requests
+    go to the app's views."""
+    with patch.dict(os.environ, {"GRADEFLOW_JOB_URL": url, "GRADEFLOW_JOB_SECRET": secret}):
+        namespace: dict[str, Any] = runpy.run_path(str(SANDBOX_SCRIPT))["main"].__globals__
+    namespace["CLIENT"] = httpx.Client(transport=_ViewTransport())
+    return namespace
+
+
+class _ViewTransport(httpx.BaseTransport):
+    def handle_request(self, request: httpx.Request) -> httpx.Response:
+        response = Client().generic(
+            request.method,
+            request.url.path,
+            request.read(),
+            content_type=request.headers.get("Content-Type", "application/octet-stream"),
+            headers={"X-GradeFlow-Signature": request.headers["X-GradeFlow-Signature"]},
+        )
+        return httpx.Response(response.status_code, content=response.content)
+
+
 def sandbox_tasks(call_back: Callable[[Event], None]) -> dict[str, Task]:
     """The sandbox's tasks, by name, run in the test's process and sending their events to `call_back`."""
-    with patch.dict(os.environ, {"GRADEFLOW_JOB_URL": "http://sandbox.invalid/", "GRADEFLOW_JOB_SECRET": "test"}):
-        tasks: dict[str, Task] = runpy.run_path(str(SANDBOX_SCRIPT))["TASKS"]
-    tasks["mark"].__globals__["call_back"] = call_back
+    namespace = sandbox()
+    namespace["call_back"] = call_back
+    tasks: dict[str, Task] = namespace["TASKS"]
     return tasks
 
 
@@ -94,21 +115,22 @@ def marked_by_sandbox(payload: MarkingRun) -> list[MarkedSubmission]:
 
 
 class InProcessExecutor:
-    """Runs jobs in the sandbox's tasks, in the test's process, its events received as the callback receives them.
-    Grouping jobs stay queued for tests to drive through their callbacks: the app has no embedding model."""
+    """Runs jobs in the sandbox's tasks, in the test's process, its callbacks sent to the callback view. Grouping
+    jobs stay queued for tests to drive through their callbacks: the app has no embedding model."""
 
     def submit(self, job: Job) -> None:
         if job.kind == Job.Kind.GROUPING:
             return
         assert job.input is not None
-        task = sandbox_tasks(partial(receive, job))[handler(job).task]
-        receive(job, {"event": "started"})
+        namespace = sandbox("http://testserver" + reverse("job_input", args=[job.pk]).removesuffix("input"), job.secret)
+        call_back = namespace["call_back"]
+        call_back({"event": "started"})
         try:
-            task(job.input)
+            namespace["TASKS"][handler(job).task](job.input)
         except Exception as error:
-            receive(job, {"event": "failed", "error": str(error) or type(error).__name__})
+            call_back({"event": "failed", "error": str(error) or type(error).__name__})
         else:
-            receive(job, {"event": "finished"})
+            call_back({"event": "finished"})
 
     def cancel(self, job: Job) -> None:
         pass
@@ -153,13 +175,13 @@ def create_assessment(client: Client, name: str = "Midterm") -> Assessment:
     return assessment
 
 
-def upload(client: Client, assessment: Assessment, csv: str = EXPORT_CSV, **fields: object) -> Response:
+def upload(client: Client, assessment: Assessment, csv: str = EXAM_CSV, **fields: object) -> Response:
     """Imports `csv`, with `fields` overriding the form's, and runs the marking that follows as the commit would."""
     with TestCase.captureOnCommitCallbacks(execute=True):
         return client.post(
             reverse("import_upload", args=[assessment.pk]),
             {
-                "name": "results.csv",
+                "name": "exam.csv",
                 "answers_csv": SimpleUploadedFile("answers.csv", csv.encode(), "text/csv"),
                 "student_id_column": "StudentID",
                 "answer_columns": json.dumps(["Q1", "Q2", "Q3"]),
@@ -171,7 +193,7 @@ def upload(client: Client, assessment: Assessment, csv: str = EXPORT_CSV, **fiel
 
 @pytest.fixture
 def assessment(client: Client) -> Assessment:
-    """An assessment with `EXPORT_ROWS` imported."""
+    """An assessment with `EXAM_ROWS` imported."""
     created = create_assessment(client)
     response = upload(client, created)
     assert response.status_code == 200, response.content
@@ -267,9 +289,65 @@ def run_together[T](*actions: Callable[[], T]) -> list[T]:
         return list(pool.map(run, actions))
 
 
+def _run_on_own_connection(action: Callable[[], Any], backend_pids: Queue[int]) -> Any:
+    close_old_connections()
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SET lock_timeout = '10s'")
+            cursor.execute("SELECT pg_backend_pid()")
+            backend_pids.put(cursor.fetchone()[0])
+        return action()
+    except (ValidationError, MethodFileError) as error:
+        return error
+    finally:
+        connections.close_all()
+
+
+def _wait_for_database_lock(backend_pid: int, operation: Future[Any]) -> None:
+    deadline = time.monotonic() + 5
+    while time.monotonic() < deadline:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT wait_event_type FROM pg_stat_activity WHERE pid = %s", [backend_pid])
+            row = cursor.fetchone()
+        if row and row[0] == "Lock":
+            return
+        assert not operation.done(), "The competing write finished before the owning transaction committed."
+        time.sleep(0.01)
+    pytest.fail("The competing connection did not wait for a lock.")
+
+
+def race(first: Callable[[], Any], second: Callable[[], Any]) -> tuple[Any, Any]:
+    """Hold the first operation's real locks until PostgreSQL confirms that the second is blocked."""
+    ready, release = threading.Event(), threading.Event()
+    first_backend_pids: Queue[int] = Queue()
+    second_backend_pids: Queue[int] = Queue()
+
+    def hold_first_locks() -> Any:
+        with transaction.atomic():
+            result = first()
+            ready.set()
+            assert release.wait(timeout=10)
+            return result
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        first_future = pool.submit(_run_on_own_connection, hold_first_locks, first_backend_pids)
+        try:
+            assert ready.wait(timeout=10), (
+                first_future.result() if first_future.done() else "First write did not finish."
+            )
+            second_future = pool.submit(_run_on_own_connection, second, second_backend_pids)
+            first_pid, second_pid = first_backend_pids.get(timeout=5), second_backend_pids.get(timeout=5)
+            assert first_pid != second_pid
+            _wait_for_database_lock(second_pid, second_future)
+        finally:
+            release.set()
+        return first_future.result(timeout=10), second_future.result(timeout=10)
+
+
 def signature(secret: str, body: bytes) -> str:
     """What the sandbox signs `body` with, by the job's `secret`."""
-    return hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
+    sign: Callable[[bytes], str] = sandbox(secret=secret)["signature"]
+    return sign(body)
 
 
 def post_callback(job: Job, event: dict[str, Any], secret: str | None = None) -> int:
@@ -363,7 +441,7 @@ def create_method_draft(method: Method, user: User, definition: str) -> MethodDr
 
 def publish_version(method: Method, user: User, definition: str) -> MethodVersion:
     draft = create_method_draft(method, user, definition)
-    return services.publish(draft, user, MethodWorkspace(method, draft).draft)
+    return MethodWorkspace(method, draft).publish(user)
 
 
 def publish_light_method(library: Library, user: User, name: str = "light", label: str = "Light") -> MethodVersion:
@@ -372,7 +450,6 @@ def publish_light_method(library: Library, user: User, name: str = "light", labe
 
 def create_course(owner: User, name: str = "Chemistry") -> Course:
     course = Course.objects.create(name=name)
-    Library.objects.create(namespace=services.available_namespace(name), course=course)
     Member.objects.create(course=course, user=owner, role=Role.OWNER)
     return course
 

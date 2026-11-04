@@ -12,6 +12,8 @@ from gradeflow_app.assessments.models import Assessment
 from gradeflow_app.core_version import CORE_VERSION
 from gradeflow_app.courses.models import Course
 
+PROGRESS_TEXT_LENGTH = 200
+
 
 class JobQuerySet(models.QuerySet["Job"]):
     def running(self) -> Self:
@@ -69,7 +71,7 @@ class Job(models.Model):
     progress = models.FloatField(default=0)
     time_limit = models.PositiveIntegerField(default=_time_limit)
     """Seconds the sandbox may run it."""
-    progress_text = models.CharField(max_length=200, blank=True)
+    progress_text = models.CharField(max_length=PROGRESS_TEXT_LENGTH, blank=True)
     """What a running job is waiting on, such as "Deciding criteria: 12 of 30"."""
     error = models.TextField(blank=True)
     input = models.JSONField(null=True, blank=True)

@@ -1,7 +1,7 @@
-"""The test answers a method is tried on: its questions, test values and submissions, kept as JSON.
+"""The test answers a method is tried on: its questions, test values and rows of test answers, kept as JSON.
 
-A submission answers every question; its answers stay together however rows are added, cleared or deleted. Those
-chosen as examples become the method's example.
+A row holds a test answer to every question; its answers stay together however rows are added, cleared or deleted.
+Rows chosen as examples become the method's example.
 """
 
 from collections.abc import Mapping, Sequence
@@ -43,7 +43,7 @@ def rows_of(tests: MethodTests) -> list[ExampleRow]:
 
 
 def examples_of(tests: MethodTests, results: Sequence[RowResult] | None = None) -> list[ExampleRow]:
-    """The submissions chosen as examples, with what `results`, a run of every submission, gave them."""
+    """The rows chosen as examples, with what `results`, a run of every row, gave them."""
     rows = tests.get("rows", [])
     row_results: Sequence[RowResult | None] = results if results is not None else [None] * len(rows)
     return [
@@ -155,7 +155,7 @@ def _as_list(value: Any) -> list[Any]:
 
 @dataclass(frozen=True)
 class TestAnswerView:
-    """A submission as the answers column shows it: its answer to one question, and what the last run gave it."""
+    """A test answer to one question as the answers column shows it, and what the last run gave it."""
 
     index: int
     answer: str
@@ -175,7 +175,7 @@ class TestAnswerView:
 def answer_rows(
     tests: MethodTests, question: str, results: list[RowResult] | None, shown_question: Question | None = None
 ) -> list[TestAnswerView]:
-    """Each submission's answer to `question`, with what the run of `results` gave it, if it marked these answers."""
+    """Each row's test answer to `question`, with what the run of `results` gave it, if it marked these answers."""
     rows = tests.get("rows", [])
     row_results = results or []
     views = []

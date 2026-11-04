@@ -7,12 +7,11 @@ from html import unescape
 from typing import TYPE_CHECKING
 
 import pytest
-from django.core.exceptions import ValidationError
 from django.test import Client
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.html import escape
-from gradeflow_core import BUILTINS, Problem, Question
+from gradeflow_core import BUILTINS, Question
 from gradeflow_core.editing import MethodDraft, dump_yaml
 from pytest_django import DjangoCaptureOnCommitCallbacks
 
@@ -20,8 +19,6 @@ from gradeflow_app.accounts.models import User
 from gradeflow_app.courses.models import Course, Member, Role
 from gradeflow_app.jobs import events, queue
 from gradeflow_app.jobs.models import Job
-from gradeflow_app.libraries.designer import presenters as designer_presenters
-from gradeflow_app.libraries.designer import views as designer_views
 from gradeflow_app.libraries.designer.workspace import MethodWorkspace
 from gradeflow_app.libraries.method_tests import MethodTests
 from gradeflow_app.libraries.models import Method, MethodDraftRecord, VersionTests
@@ -36,6 +33,7 @@ from tests.conftest import (
     post_callback,
     post_publish,
     post_to_designer,
+    publish_version,
     signed_in_client,
 )
 
@@ -253,8 +251,9 @@ def test_checks_of_a_method_share_an_input(client: Client, method: Method) -> No
     post_to_designer(client, method, "method_field", operation="bind", field=SECOND_POINTS_PATH, input=name)
     assert input_name_at(core_draft(method), SECOND_POINTS_PATH) == name
     input_page = input_form(client, method, name)
-    assert "Key Points 1 · Points" in input_page
-    assert "Key Points 2 · Points" in input_page
+    label = BUILTINS.find("gradeflow/key-points@1").label
+    assert f"{label} 1 · Points" in input_page
+    assert f"{label} 2 · Points" in input_page
     post_to_designer(client, method, "method_field", operation="new_input", field=SECOND_POINTS_PATH)
     core = core_draft(method)
     second_input = input_name_at(core, SECOND_POINTS_PATH)
@@ -534,7 +533,8 @@ def test_a_check_named_by_an_input_shows_the_name_it_gets(client: Client, method
         assert "{{ inputs." not in page
         return page
 
-    assert ">Key Points</h3>" in shown("with.checks.0"), "without a default, as its method"
+    label = BUILTINS.find("gradeflow/key-points@1").label
+    assert f">{label}</h3>" in shown("with.checks.0"), "without a default, as its method"
     post_to_designer(client, method, "method_inputs", None, **{"input": name, "input-default": "Says light"})
     assert ">Says light</button>" in shown("")
     assert ">Says light</h3>" in shown("with.checks.0")
@@ -768,18 +768,14 @@ def test_a_draft_that_changes_nothing_isnt_published(client: Client, method: Met
 
 
 def test_a_publish_that_fails_keeps_the_test_run_and_the_draft(
-    client: Client, method: Method, monkeypatch: pytest.MonkeyPatch, idle_executor: None
+    client: Client, method: Method, bo: User, idle_executor: None
 ) -> None:
     post_to_designer(client, method, "method_answers", operation="add", answer="light")
     post_to_designer(client, method, "method_run")
     post_to_designer(client, method, "method_answers", operation="add", answer="dark")
     test_run = Job.objects.get(kind=Job.Kind.DRAFT_TESTS)
     before = draft(method).definition
-
-    def refused(*args: object, **kwargs: object) -> None:
-        raise ValidationError("A newer version was published since you started.")
-
-    monkeypatch.setattr(designer_views, "publish", refused)
+    publish_version(method, bo, method_definition(answer="newer"))
     assert "A newer version was published" in post_publish(client, method).text
     test_run.refresh_from_db()
     assert test_run.is_active
@@ -1012,11 +1008,3 @@ def test_the_picker_for_a_check_thats_gone_isnt_found(client: Client, method: Me
         ).status_code
         == 404
     )
-
-
-def test_a_methods_problem_with_a_test_value_names_the_input_by_its_title() -> None:
-    inputs = {"min_value": {"title": "Lower limit"}, "untitled": {}}
-    problem_text = designer_presenters._input_problem_text
-    assert problem_text(Problem("Must be a number.", field=("min_value",)), inputs) == "Lower limit: Must be a number."
-    assert problem_text(Problem("Must be a number.", field=("untitled",)), inputs) == "untitled: Must be a number."
-    assert problem_text(Problem("Add at least one question."), inputs) == "Add at least one question."

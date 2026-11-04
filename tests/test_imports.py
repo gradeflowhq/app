@@ -1,5 +1,6 @@
+import base64
 import json
-import os
+from pathlib import Path
 
 import pytest
 from django.contrib.messages import get_messages
@@ -13,14 +14,14 @@ from pytest_django import DjangoAssertNumQueries
 from gradeflow_app.accounts.models import User
 from gradeflow_app.assessments.models import Assessment
 from gradeflow_app.imports import forms
-from gradeflow_app.imports.models import ResultsFile, imported_mark_keys
-from gradeflow_app.imports.services import apply_question_document, import_results
+from gradeflow_app.imports.models import SubmissionsFile, imported_mark_keys
+from gradeflow_app.imports.services import apply_question_document, import_submissions
 from gradeflow_app.marking.models import Marking
 from gradeflow_app.results.marks import assessment_results
 from gradeflow_app.results.models import Adjustment
 from tests.conftest import (
-    EXPORT_CSV,
-    EXPORT_ROWS,
+    EXAM_CSV,
+    EXAM_ROWS,
     HTMX_HEADERS,
     create_assessment,
     encrypted_id,
@@ -30,7 +31,9 @@ from tests.conftest import (
 
 pytestmark = pytest.mark.django_db
 
-ENCRYPTED_FILE = b"GFF\x01" + os.urandom(28) + b"ciphertext and tag"
+GOLDEN = json.loads((Path(__file__).parent / "fixtures" / "encrypted.json").read_text())
+"""What crypto.js writes, which tests/js/crypto.test.mjs checks it still does."""
+ENCRYPTED_FILE = base64.b64decode(GOLDEN["encrypted_file"])
 FILE_SETTINGS = {"sheet": "Results", "header_row": "2", "first_row": "3", "last_row": "5"}
 
 
@@ -47,11 +50,19 @@ def encrypted_original() -> SimpleUploadedFile:
     return SimpleUploadedFile("original", ENCRYPTED_FILE, "application/octet-stream")
 
 
+def test_accepts_the_ids_and_file_the_browser_encrypts(client: Client) -> None:
+    assessment = create_assessment(client)
+    csv = f"StudentID,Q1\n{GOLDEN['encrypted_id']},yes\n"
+    columns = {"answer_columns": json.dumps(["Q1"]), "marks_columns": "{}"}
+    assert upload(client, assessment, csv, original=encrypted_original(), **columns).status_code == 200
+    assert list(assessment.students.values_list("encrypted_id", flat=True)) == [GOLDEN["encrypted_id"]]
+
+
 def test_keeps_the_encrypted_original_and_the_import_settings(client: Client) -> None:
     assessment = create_assessment(client)
     assert upload(client, assessment, original=encrypted_original(), **FILE_SETTINGS).status_code == 200
 
-    file = ResultsFile.objects.get()
+    file = SubmissionsFile.objects.get()
     assert (file.sheet, file.header_row, file.first_row, file.last_row) == ("Results", 2, 3, 5)
     assert file.original is not None
     assert bytes(file.original) == ENCRYPTED_FILE
@@ -59,7 +70,7 @@ def test_keeps_the_encrypted_original_and_the_import_settings(client: Client) ->
     assert b"Check columns" in page.content
     assert b'<script id="import-settings" type="application/json">' in page.content
     assert page.context["import_settings"] == {
-        "name": "results.csv",
+        "name": "exam.csv",
         "sheet": "Results",
         "header_row": 2,
         "first_row": 3,
@@ -93,7 +104,7 @@ def test_an_oversized_original_is_refused(client: Client, monkeypatch: pytest.Mo
 def test_older_imports_ask_for_the_file_again(client: Client, assessment: Assessment) -> None:
     page = client.get(reverse("import", args=[assessment.pk]))
     assert b"Check columns" not in page.content
-    assert b"Drop the new exam export here" in page.content
+    assert b"Drop the new submissions file here" in page.content
     assert b"import-settings" not in page.content
     assert client.get(reverse("import_original", args=[assessment.pk])).status_code == 404
 
@@ -123,9 +134,9 @@ def test_changing_columns_replaces_the_results_and_keeps_adjustments(client: Cli
     assert changed.status_code == 200
     assert sorted(assessment.students.values_list("imported_marks", flat=True), key=str) == [{"Q1": 1.0}, {"Q1": 2.0}]
     marks_by_student = {row.student.encrypted_id: row.awards["Q1"].marks for row in assessment_results(assessment).rows}
-    assert marks_by_student[encrypted_id("S002")] == 1, "without marking, a student has the export's marks"
+    assert marks_by_student[encrypted_id("S002")] == 1, "without marking, a student has the submissions file's marks"
     assert Adjustment.objects.get().student == s001
-    current, older = ResultsFile.objects.all()
+    current, older = SubmissionsFile.objects.all()
     assert (current.last_row, current.marks_columns) == (4, {"Q1": "Marks B"})
     assert current.original is not None
     assert older.original is None
@@ -134,12 +145,12 @@ def test_changing_columns_replaces_the_results_and_keeps_adjustments(client: Cli
 def test_an_import_returns_the_questions_whose_answers_changed(assessment: Assessment, user: User) -> None:
     def changed_by(csv: str) -> set[str]:
         columns = ["Q1", "Q2", "Q3"]
-        file = ResultsFile(name="results.csv", student_id_column="StudentID", answer_columns=columns)
-        imported = import_results(assessment, user, file, csv)
+        file = SubmissionsFile(name="exam.csv", student_id_column="StudentID", answer_columns=columns)
+        imported = import_submissions(assessment, user, file, csv)
         return imported.changed_questions
 
-    changed = EXPORT_CSV.replace("respiration", "fermentation")
-    assert changed_by(EXPORT_CSV) == set()
+    changed = EXAM_CSV.replace("respiration", "fermentation")
+    assert changed_by(EXAM_CSV) == set()
     assert changed_by(changed) == {"Q1"}
     assert changed_by(changed.rsplit("\n", 2)[0] + "\n") == {"Q1", "Q2", "Q3"}, "a student fewer changes every question"
 
@@ -154,27 +165,27 @@ def test_an_import_stays_on_the_import_page_with_what_it_did(client: Client) -> 
 
 
 def test_a_replace_says_which_students_it_added_and_removed(client: Client, assessment: Assessment) -> None:
-    rows = [("S011", "light", "1", "42", "A"), ("S002", "changed", "1", "42.0", "B"), *EXPORT_ROWS[2:]]
+    rows = [("S011", "light", "1", "42", "A"), ("S002", "changed", "1", "42.0", "B"), *EXAM_ROWS[2:]]
     csv = "StudentID,Q1,Q1 Pts,Q2,Q3\n" + "".join(f"{encrypted_id(row[0])},{','.join(row[1:])}\n" for row in rows)
     response = upload(client, assessment, csv)
     page = client.get(response.headers["HX-Redirect"], follow=True).text
-    assert "Results replaced: 10 students (1 new, 1 removed); 1 with changed answers." in page
+    assert "Submissions file replaced: 10 students (1 new, 1 removed); 1 with changed answers." in page
 
 
-EXPORT_WITHOUT_Q3 = "".join(line.rsplit(",", 1)[0] + "\n" for line in EXPORT_CSV.splitlines())
+EXAM_WITHOUT_Q3 = "".join(line.rsplit(",", 1)[0] + "\n" for line in EXAM_CSV.splitlines())
 
 
 def test_a_replace_counts_changed_answers_only_in_questions_both_files_have(
     client: Client, assessment: Assessment
 ) -> None:
-    response = upload(client, assessment, EXPORT_WITHOUT_Q3, answer_columns=json.dumps(["Q1", "Q2"]))
+    response = upload(client, assessment, EXAM_WITHOUT_Q3, answer_columns=json.dumps(["Q1", "Q2"]))
     page = client.get(response.headers["HX-Redirect"], follow=True).text
-    assert "Results replaced: 10 students; removed question Q3." in page
+    assert "Submissions file replaced: 10 students; removed question Q3." in page
 
 
 def test_activity_names_the_question_of_a_marking_removed_with_it(client: Client, assessment: Assessment) -> None:
     full_marks_marking(assessment, "Q3")
-    upload(client, assessment, EXPORT_WITHOUT_Q3, answer_columns=json.dumps(["Q1", "Q2"]))
+    upload(client, assessment, EXAM_WITHOUT_Q3, answer_columns=json.dumps(["Q1", "Q2"]))
     page = client.get(reverse("activity", args=[assessment.pk]), headers=HTMX_HEADERS).text
     assert "removed marking for Q3" in page
     assert "question group" not in page
@@ -184,7 +195,7 @@ def test_a_first_import_sets_up_the_questions_the_core_infers(client: Client) ->
     assessment = create_assessment(client)
     upload(client, assessment)
     config = AnswersCsv(student_id_column="StudentID", answer_columns=["Q1", "Q2", "Q3"])
-    inferred = QuestionSet({}).updated_from(config.read(EXPORT_CSV))
+    inferred = QuestionSet({}).updated_from(config.read(EXAM_CSV))
     assert {question.key: question.core_question for question in assessment.questions.all()} == dict(inferred)
 
 
@@ -254,11 +265,11 @@ def test_the_answer_key_shapes_the_questions_and_is_no_student(client: Client) -
     upload_with_key(client, assessment, csv, key)
 
     assert assessment.questions.get().core_question == inferred_questions(csv, key)["Q1"]
-    assert assessment.students.count() == ResultsFile.objects.get().student_count == 3
+    assert assessment.students.count() == SubmissionsFile.objects.get().student_count == 3
     assert not Marking.objects.exists()
 
 
-def test_a_replaced_export_keeps_the_questions_set_up_accepting_its_answers_and_works_out_new_ones(
+def test_a_replaced_submissions_file_keeps_the_questions_set_up_accepting_its_answers_and_works_out_new_ones(
     client: Client,
 ) -> None:
     assessment = create_assessment(client)
@@ -339,7 +350,7 @@ def test_a_question_document_without_the_exams_questions_says_so(client: Client,
     file = question_document((9, "Unasked", "1.0"))
     response = client.post(reverse("question_document", args=[assessment.pk]), {"file": file}, headers=HTMX_HEADERS)
     assert response.status_code == 422
-    assert "The question document has none of the exam export&#x27;s questions." in response.text
+    assert "The question document has none of the submissions file&#x27;s questions." in response.text
     assert not any(question.core_question.description for question in assessment.questions.all())
 
 

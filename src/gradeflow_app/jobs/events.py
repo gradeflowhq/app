@@ -1,5 +1,6 @@
 """What sandbox jobs report, applied in the order of the edits they marked."""
 
+import logging
 from collections.abc import Sequence
 from typing import Any, Self
 
@@ -11,10 +12,11 @@ from pydantic import BaseModel, TypeAdapter, ValidationError, model_validator
 
 from gradeflow_app.assessments.models import Assessment
 from gradeflow_app.jobs.handlers import Task, handler
-from gradeflow_app.jobs.models import Job, SubmissionBatch
+from gradeflow_app.jobs.models import PROGRESS_TEXT_LENGTH, Job, SubmissionBatch
 from gradeflow_app.live.topics import notify_change
 
 UNREADABLE_RESULTS_ERROR = "The marking service sent results that can't be read."
+_LOG = logging.getLogger(__name__)
 
 
 def _locked(job: Job) -> Job:
@@ -112,7 +114,9 @@ def record_progress(job: Job, event: dict[str, Any]) -> None:
         progress = _PROGRESS_ADAPTER.validate_python(event)
     except ValidationError:
         return
-    job.progress_text = f"{progress.step[:150]}: {progress.completed} of {progress.total}"
+    counts = f": {progress.completed} of {progress.total}"
+    step = progress.step[: PROGRESS_TEXT_LENGTH - len(counts)]
+    job.progress_text = step + counts
     job.save(update_fields=["progress_text"])
     notify_job_change(job)
 
@@ -206,6 +210,7 @@ def _comparison(job: Job) -> AnswerComparison:
 
 
 def fail(job: Job, error: str) -> None:
+    _LOG.warning("Job %s (%s) failed: %s", job.pk, job.kind, error)
     fail_all([job], error)
 
 

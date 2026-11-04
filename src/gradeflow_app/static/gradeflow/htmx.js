@@ -3,6 +3,10 @@
 import { storeModelState, modelHeaders, modelState } from "./models.js";
 import { showToast } from "./toasts.js";
 
+const LIVE_REFRESH = "X-Live-Refresh";
+const MESSAGES_HEADER = "X-Messages";
+const TOPIC_PREFIX = "live-";
+
 // The server shows times in this browser's time timeZone.
 const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 if (!document.cookie.split("; ").includes(`tz=${timeZone}`)) {
@@ -12,20 +16,20 @@ if (!document.cookie.split("; ").includes(`tz=${timeZone}`)) {
 // Signing in rotates the CSRF token, and boosted pages keep the first page's <body>, so each request reads the
 // token from its cookie.
 const csrfToken = () => document.cookie.match(/(?:^|; )csrftoken=([^;]+)/)?.[1] ?? "";
-// A live refresh (live/topics.py names its events "live-…") leaves the messages to the page the person goes to. A
-// change may start marking that asks this device's model service, so it carries the service's endpoint and token;
-// the model service's own requests carry all the device knows of it, and their responses what it now knows.
+// A live refresh (live/topics.py starts its event names with TOPIC_PREFIX) leaves the messages to the page the person
+// goes to. A change may start marking that asks this device's model service, so it carries the service's endpoint and
+// token; the model service's own requests carry all the device knows of it, and their responses what it now knows.
 document.addEventListener("htmx:config:request", (event) => {
   const { request, sourceEvent, sourceElement } = event.detail.ctx;
   if (request.method !== "GET") Object.assign(request.headers, { "X-CSRFToken": csrfToken(), ...modelHeaders() });
   if (request.method !== "GET" && sourceElement?.closest("[data-model-service]")) request.body.set("model_state", modelState());
-  if (sourceEvent?.type?.startsWith("live-")) request.headers["X-Live-Refresh"] = "true";
+  if (sourceEvent?.type?.startsWith(TOPIC_PREFIX)) request.headers[LIVE_REFRESH] = "true";
 });
 document.addEventListener("htmx:finally:request", (event) => storeModelState(event.detail.ctx.response));
 
 // Messages from in-page requests arrive in a header (ui/middleware.py). A failed change that shows nothing, such
 // as a form's errors (`hx-status:422`), says so plainly.
-const messagesOf = (ctx) => JSON.parse(ctx.response?.headers.get("X-Messages") ?? "[]");
+const messagesOf = (ctx) => JSON.parse(ctx.response?.headers.get(MESSAGES_HEADER) ?? "[]");
 document.addEventListener("htmx:finally:request", (event) => {
   const { ctx } = event.detail;
   const messages = messagesOf(ctx);

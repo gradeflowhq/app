@@ -4,7 +4,8 @@
 // service's own requests carry the rest.
 
 const MODELS_STORAGE_KEY = "gradeflow:models";
-const STATE_HEADER = "X-Model-ModelServiceState";
+const STATE_HEADER = "X-Model-State";
+const TOKEN_HEADER = "X-Model-Token";
 
 function storedModelService() {
   try {
@@ -22,9 +23,9 @@ const clear = () => localStorage.removeItem(MODELS_STORAGE_KEY);
 export function modelHeaders() {
   const stored = storedModelService();
   if (!stored) return {};
-  const { provider, fast_model = "", careful_model = "", answers_per_request = 12 } = stored;
+  const { provider, fast_model = "", careful_model = "", answers_per_request } = stored;
   const state = { provider, fast_model, careful_model, answers_per_request };
-  return { "X-Model-Token": stored.token, [STATE_HEADER]: JSON.stringify(state) };
+  return { [TOKEN_HEADER]: stored.token, [STATE_HEADER]: JSON.stringify(state) };
 }
 
 // All the device knows of its model service but the token, for the model service's own requests.

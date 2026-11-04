@@ -6,7 +6,7 @@
   <ol class="card-box divide-y divide-base-300" aria-label="Questions">
     {% for question, answer, award, marks_source in rows %}
     {% with low=award.marks max_marks=question.core_question.max_marks adjustment=award.adjustment code=question.core_question|code_language %}
-    <li class="grid gap-3 px-4 py-3"{% if membership.can_edit %} x-data="adjustForm" data-feedback="{% if not adjustment or adjustment.feedback is None %}marking{% elif adjustment.feedback %}own{% else %}none{% endif %}"{% endif %}>
+    <li class="grid gap-3 px-4 py-3"{% if access.can_edit %} x-data="adjustForm" data-feedback="{% if not adjustment or adjustment.feedback is None %}marking{% elif adjustment.feedback %}own{% else %}none{% endif %}"{% endif %}>
       <div class="flex items-start gap-4">
         <div class="min-w-0 flex-1">
           <p class="text-sm"><span class="font-semibold">{{ question.key }}</span>{% if marks_source %} <span class="text-muted">· {{ marks_source }}</span>{% endif %}</p>
@@ -18,11 +18,11 @@
           <c-marks :low="low" :high="low" :max_marks="max_marks" />
           {% if award.is_previous_result %}<span class="badge badge-warning badge-soft badge-sm">Previous result</span>{% endif %}
           {% if adjustment %}<span class="badge badge-info badge-soft badge-sm">Adjusted</span>{% endif %}
-          {% if membership.can_edit %}<button type="button" class="btn btn-ghost btn-sm -mr-2.5 text-muted hover:text-base-content" x-show="!isFormOpen" x-on:click="show" aria-label="Adjust {{ question.key }}">{% icon "pencil-square" "size-4" %}Adjust</button>{% endif %}
+          {% if access.can_edit %}<button type="button" class="btn btn-ghost btn-sm -mr-2.5 text-muted hover:text-base-content" x-show="!isFormOpen" x-on:click="show" aria-label="Adjust {{ question.key }}">{% icon "pencil-square" "size-4" %}Adjust</button>{% endif %}
         </div>
       </div>
-      {% if membership.can_edit %}
-      <form class="grid gap-4 rounded-box border border-base-300 bg-base-200/50 p-4" x-show="isFormOpen" x-cloak hx-post="{% url 'adjust' membership.assessment.pk question.pk %}" hx-target="#drawer-body">
+      {% if access.can_edit %}
+      <form class="grid gap-4 rounded-box border border-base-300 bg-base-200/50 p-4" x-show="isFormOpen" x-cloak hx-post="{% url 'adjust' access.assessment.pk question.pk %}" hx-target="#drawer-body">
         {% csrf_token %}<input type="hidden" name="student" value="{{ student.pk }}"><input type="hidden" name="return_to" value="student">
         {% if adjustment and award.result %}<p class="text-sm text-muted">The marking gives {{ award.marking_marks|marks }}.</p>{% endif %}
         <div class="grid gap-1.5">

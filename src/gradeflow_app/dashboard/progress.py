@@ -8,11 +8,11 @@ from django.db.models import QuerySet
 from gradeflow_core import Check, Methods
 
 from gradeflow_app.assessments.models import Assessment
-from gradeflow_app.imports.models import ResultsFile
+from gradeflow_app.exports.models import SentMarks
+from gradeflow_app.imports.models import SubmissionsFile
 from gradeflow_app.libraries.collection import course_methods
 from gradeflow_app.marking.checks import accepted_checks
 from gradeflow_app.marking.models import Marking
-from gradeflow_app.publish.models import SentMarks
 
 
 class Stage(StrEnum):
@@ -24,7 +24,7 @@ class Stage(StrEnum):
 
 @dataclass(frozen=True)
 class Progress:
-    latest_import: ResultsFile | None
+    latest_import: SubmissionsFile | None
     question_count: int
     marked_count: int
     latest_sent_marks: SentMarks | None
@@ -46,7 +46,7 @@ class Progress:
 def progress(assessment: Assessment, accepted: Mapping[Marking, Check]) -> Progress:
     """The assessment's progress, with `accepted`, its markings the core accepts."""
     return Progress(
-        latest_import=assessment.results_files.first(),
+        latest_import=assessment.submissions_files.first(),
         question_count=assessment.questions.count(),
         marked_count=len({key for check in accepted.values() for key in check.questions_marked()}),
         latest_sent_marks=assessment.sent_marks.first(),
@@ -55,7 +55,7 @@ def progress(assessment: Assessment, accepted: Mapping[Marking, Check]) -> Progr
 
 def progress_of(assessments: QuerySet[Assessment]) -> list[tuple[Assessment, Progress]]:
     """Each of the assessments, all of one course, with its progress, read in as many queries for any number."""
-    assessment_list = list(assessments.prefetch_related("questions", "markings", "results_files", "sent_marks"))
+    assessment_list = list(assessments.prefetch_related("questions", "markings", "submissions_files", "sent_marks"))
     methods = course_methods(assessment_list[0].course) if assessment_list else Methods()
     return [
         (

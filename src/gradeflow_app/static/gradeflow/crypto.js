@@ -6,7 +6,7 @@
  * The synthetic IV makes encrypted IDs deterministic per assessment, so they work as
  * keys, while equal IVs only ever occur for equal plaintexts.
  *
- * Original results files: "GFF" | version 1 | salt (16) | random iv (12) | AES-256-GCM ciphertext and tag, with
+ * Original submissions files: "GFF" | version 1 | salt (16) | random iv (12) | AES-256-GCM ciphertext and tag, with
  * the 32-byte header as additional data. The key is HKDF-SHA256 of the same 512 bits with info "gradeflow:file:v1",
  * so files never share a key with IDs.
  */

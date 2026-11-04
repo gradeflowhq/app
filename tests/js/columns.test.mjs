@@ -3,7 +3,7 @@ import { test } from 'node:test';
 
 import { detectColumns, detectHeaderRow, detectStudentRows, isAnswerKeyRow } from '../../src/gradeflow_app/static/gradeflow/columns.js';
 
-test('ExamSoft export: StudentID, Qn answers with their Qn Pts', () => {
+test('ExamSoft file: StudentID, Qn answers with their Qn Pts', () => {
   const header = ['StudentID', 'Last Name', 'First Name', 'Email', 'Points', 'Raw', 'Q1', 'Q1 Pts', 'Q2', 'Q2 Pts', 'Q10', 'Q10 Pts'];
   const rows = [
     ['S1000001', 'Tan', 'Ann', 'e1@example.edu', '7', '7', 'A', '1', 'B,C', '2', 'x = 3', '4'],
@@ -118,7 +118,7 @@ test('detectStudentRows keeps every row below the header without IDs to compare'
   assert.deepEqual(detectStudentRows([['StudentID']], 1, 0), [1, 0]);
 });
 
-test('ExamSoft export with its answer key row: neither it nor the row below is a student', () => {
+test('ExamSoft file with its answer key row: neither it nor the row below is a student', () => {
   const rows = [
     ['StudentID', 'First Name', 'Last Name', 'Points', 'PercentageScore', 'Raw', 'Q1', 'Q1 Pts', 'Q2', 'Q2 Pts', 'Assessment Name'],
     ['ANSWER KEY -->', '', '', '', '', '', 'A,C', '', '0.63|0.625|~Terminal|terminal|', '', 'Midterm'],

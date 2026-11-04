@@ -14,6 +14,7 @@ from gradeflow_app.marking.remarks import schedule_marking
 from gradeflow_app.results.marks import Award
 from gradeflow_app.results.models import Result
 from gradeflow_app.results.templatetags.results import Table, breakdown_blocks
+from gradeflow_app.ui.templatetags.ui import inline_markdown
 from tests.conftest import make_code_question
 
 LIGHT_IN_AT_MOST_THREE_WORDS = {
@@ -45,11 +46,27 @@ def test_a_marking_of_several_checks_shows_how_each_marked_an_answer(
     assert job is not None
     job.refresh_from_db()
     assert (job.status, job.error) == ("completed", "")
-    assert Result.objects.filter(question=question).filter(breakdown__isnull=False).exists()
+    stored = Result.objects.filter(question=question, breakdown__isnull=False).first()
+    assert stored is not None
+    breakdown = CheckResult.model_validate(stored.breakdown)
     page = client.get(reverse("question", args=[assessment.pk, question.pk])).text
-    assert "All of these" in page
-    assert "Has at most <code>3</code> words." in page
+    assert all(inline_markdown(check.title) in page for check in (breakdown, *breakdown.children))
     assert "No marks" in page
+
+
+def test_a_breakdown_this_core_cant_read_is_left_out(client: Client, assessment: Assessment, user: User) -> None:
+    question = assessment.questions.get(key="Q1")
+    marking = Marking.objects.create(
+        assessment=assessment, question=question, definition=dump_yaml(LIGHT_IN_AT_MOST_THREE_WORDS)
+    )
+    with TestCase.captureOnCommitCallbacks(execute=True):
+        schedule_marking(marking, user)
+    Result.objects.filter(question=question).update(
+        breakdown={"title": "Saved by an earlier core", "effect": "renamed"}
+    )
+    page = client.get(reverse("question", args=[assessment.pk, question.pk]))
+    assert page.status_code == 200
+    assert "Saved by an earlier core" not in page.text
 
 
 def test_the_breakdown_shows_the_fixed_code(client: Client, assessment: Assessment, user: User) -> None:

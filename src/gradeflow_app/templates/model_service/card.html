@@ -41,7 +41,7 @@
       {% if models_loaded %}
         <c-setting-row label="Answers per request">
           <c-slot name="detail">{% if answers_per_request_error %}<span class="text-error">{{ answers_per_request_error }}</span>{% else %}How many students' answers each request to the AI holds.{% endif %}</c-slot>
-          <input type="number" name="answers_per_request" value="{{ state.answers_per_request|default:12 }}" min="1" max="40" class="input w-20 tabular-nums" aria-label="Answers per request" hx-post="{% url 'model_service_answers_per_request' %}" hx-trigger="change" hx-target="#model-service-models" hx-swap="outerHTML">
+          <input type="number" name="answers_per_request" value="{% firstof answers_per_request_value state.answers_per_request answers_per_request_limits.default %}" min="{{ answers_per_request_limits.minimum }}" max="{{ answers_per_request_limits.maximum }}" class="input w-20 tabular-nums" aria-label="Answers per request" hx-post="{% url 'model_service_answers_per_request' %}" hx-trigger="change" hx-target="#model-service-models" hx-swap="outerHTML">
         </c-setting-row>
       {% endif %}
     </div>

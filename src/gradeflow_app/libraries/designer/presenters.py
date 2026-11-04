@@ -9,6 +9,7 @@ from django.http import QueryDict
 from gradeflow_core import Problem
 from gradeflow_core.editing import EditingError
 
+from gradeflow_app.editor.editing import problem_text
 from gradeflow_app.editor.presenters import editor
 from gradeflow_app.libraries import method_tests
 from gradeflow_app.libraries.access import MethodAccess
@@ -103,7 +104,7 @@ def _problems(workspace: MethodWorkspace, problems: list[Problem]) -> list[str]:
     if not problems:
         inputs = workspace.draft.inputs
         return [_input_problem_text(problem, inputs) for problem in workspace.draft.problems]
-    return [workspace.problem_text(problem) for problem in problems] if workspace.yaml_only_reasons else []
+    return [problem_text(workspace.checks, problem) for problem in problems] if workspace.yaml_only_reasons else []
 
 
 def _input_problem_text(problem: Problem, inputs: Mapping[str, Mapping[str, Any]]) -> str:

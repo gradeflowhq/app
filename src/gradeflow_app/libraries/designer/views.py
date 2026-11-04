@@ -35,7 +35,7 @@ from gradeflow_app.libraries.designer.workspace import (
     version_tests_of,
 )
 from gradeflow_app.libraries.models import Method, MethodDraftRecord
-from gradeflow_app.libraries.services import method_draft, publish
+from gradeflow_app.libraries.services import method_draft
 from gradeflow_app.libraries.views import library_url
 from gradeflow_app.model_service.endpoints import endpoint
 from gradeflow_app.questions.forms import QuestionForm, question_type_named, retyped
@@ -332,17 +332,13 @@ def question(request: Request, access: MethodAccess, number: int | None = None) 
     )
     answers = method_tests.answers_to(workspace.tests, key)
     question = retyped(existing, question_type, answers) if existing else new_question(question_type)
-    saving = request.method == "POST" and "save" in request.POST
+    operation = "save" if "save" in request.POST else request.POST.get("operation", "")
+    saving = operation == "save"
     form = QuestionForm(question, data=request.POST if saving else None)
     if not workspace.editable:
         form.disable()
-    operation = request.POST.get("operation", "save" if saving else "")
-    edited_question = form.posted_question() if saving and operation == "save" else None
-    if (
-        request.method == "POST"
-        and workspace.editable
-        and (operation in ("duplicate", "remove") or edited_question is not None)
-    ):
+    edited_question = form.posted_question() if saving else None
+    if workspace.editable and (operation in ("duplicate", "remove") or edited_question is not None):
 
         def change(current: MethodWorkspace) -> dict[str, Any]:
             draft, tests = current.draft, current.tests  # the draft as it was, for set_questions to compare
@@ -442,26 +438,7 @@ def publish_draft(request: Request, access: MethodAccess) -> HttpResponse:
     workspace = _workspace(request, access, None)
     try:
         Method.objects.select_for_update().get(pk=workspace.method.pk)
-        current = lock_workspace(workspace, request.POST.get("revision"))
-        assert current.draft_record is not None
-        if not current.changed:
-            assert current.version is not None
-            raise ValidationError(f"Nothing changed since version {current.version.number}.")
-        if not current.valid:
-            raise ValidationError(f"Finish the marking first: {current.checks.problems[0].message}")
-        if current.untested:
-            raise ValidationError("Run the tests first, so the examples show their marks.")
-        current.record_examples()
-        run = current.tests_record.last_run
-        matching_run = run if current.current_results() is not None else None
-        version = publish(current.draft_record, request.user, current.draft)
-        if matching_run is None:
-            stop(run)
-        else:
-            # The run marked what was just published, so the version starts with its results.
-            tests = version_tests_of(version, request.user)
-            tests.last_run, tests.revision = matching_run, current.tests_record.revision
-            tests.save(update_fields=["last_run", "revision"])
+        version = lock_workspace(workspace, request.POST.get("revision")).publish(request.user)
     except StaleWorkspace:
         return _stale(request, workspace)
     except (GradeFlowError, ValidationError) as error:

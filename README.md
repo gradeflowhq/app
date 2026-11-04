@@ -1,6 +1,6 @@
 # GradeFlow app
 
-The web app for GradeFlow, built with Django and HTMX on [GradeFlow core](https://github.com/gradeflowhq/core). Educators import an exam export, mark each question, review answers in groups and send the marks to Canvas. Student IDs are encrypted everywhere except in the browser.
+The web app for GradeFlow, built with Django and HTMX on [GradeFlow core](https://github.com/gradeflowhq/core). Educators import their students' answers, mark each question, review answers in groups and send the marks to Canvas. Student IDs are encrypted everywhere except in the browser.
 
 ## Development
 
@@ -33,11 +33,12 @@ Then sign up at http://localhost:8000. Emails, sign-up codes included, are writt
 ```sh
 uv run ruff check && uv run ruff format --check
 uv run mypy
+uv run manage.py makemigrations --check --dry-run
 uv run pytest
 node --test tests/js/*.test.mjs
 ```
 
-Tests run jobs in-process, so they need PostgreSQL but not Nomad. pytest keeps its test database between runs: pass `--create-db` after adding a migration, and set `GRADEFLOW_TEST_DATABASE` to give a parallel run its own.
+Tests run jobs in-process, so they need PostgreSQL but not Nomad. pytest keeps its test database between runs: pass `--create-db` after adding a migration, and set `GRADEFLOW_TEST_DATABASE` to give a parallel run its own. `uvx pre-commit install` formats and checks each commit with ruff.
 
 ### Nomad
 
