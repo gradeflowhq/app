@@ -1,5 +1,5 @@
 """Runs one GradeFlow job: marks submissions or test answers with the core, compares answers for grouping by
-meaning, or chooses or tries a model endpoint's models.
+meaning, or tries a model endpoint's models.
 
 Usage: sandbox.py mark|compare|test|choose|trial SECONDS. It fetches input and sends signed callbacks as it goes, and
 stops after SECONDS.
@@ -134,28 +134,23 @@ def test(job: dict[str, Any]) -> None:
 
 
 def choose(job: dict[str, Any]) -> None:
-    from gradeflow_core import choose_models
+    from gradeflow_core import ModelTrial, try_models
 
-    choice = choose_models(model_endpoint(job))
-    chosen_endpoint = choice.endpoint
-    call_back(
-        {
-            "event": "chosen",
-            "choice": {
-                "fast_model": chosen_endpoint.fast_model,
-                "careful_model": chosen_endpoint.careful_model,
-                "trials": [trial.model_dump(mode="json") for trial in choice.trials],
-            },
-        }
-    )
+    def report_start(model: str, role: str) -> None:
+        call_back({"event": "trying", "model": model, "role": role})
+
+    tried = [ModelTrial.model_validate(trial) for trial in job["tried"]]
+    for model_trial in try_models(model_endpoint(job), tried, on_start=report_start):
+        call_back({"event": "tried", "trial": model_trial.model_dump(mode="json")})
 
 
-def try_models(job: dict[str, Any]) -> None:
+def trial(job: dict[str, Any]) -> None:
     from gradeflow_core.editing import try_model
 
     endpoint = model_endpoint(job)
-    trials = [try_model(endpoint, trial["role"], trial["model"]) for trial in job["trials"]]
-    call_back({"event": "trials", "trials": [trial.model_dump(mode="json") for trial in trials]})
+    for request in job["trials"]:
+        model_trial = try_model(endpoint, request["role"], request["model"])
+        call_back({"event": "tried", "trial": model_trial.model_dump(mode="json")})
 
 
 TASKS: dict[str, Callable[[dict[str, Any]], None]] = {
@@ -163,7 +158,7 @@ TASKS: dict[str, Callable[[dict[str, Any]], None]] = {
     "compare": compare,
     "test": test,
     "choose": choose,
-    "trial": try_models,
+    "trial": trial,
 }
 
 

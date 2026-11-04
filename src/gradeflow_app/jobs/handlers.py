@@ -32,6 +32,9 @@ class Handler:
     apply_outcome: Callable[[Job, Any], None] | None = None
     """Applies its outcome: the marked submissions of a mark task, the comparison of a compare task. Without it, the
     job keeps the outcome as its result."""
+    apply_event: Callable[[Job, dict[str, Any]], None] | None = None
+    """Applies its task's own events as they arrive, with the job locked and running, such as a model test starting
+    or ending."""
 
 
 _HANDLERS: dict[str, Handler] = {}

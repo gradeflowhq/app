@@ -4,7 +4,7 @@ import { matches } from "./words.js";
 
 // Shows the `[data-search]` items that have every word typed, the sections that still have one, and `[data-empty]`
 // when nothing typed matches. With nothing typed, it shows the items `isListed`: all of them.
-const searchList = () => ({
+export const searchList = () => ({
   query: "",
 
   search(event) {

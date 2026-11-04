@@ -1,6 +1,6 @@
 // htmx on every page: the headers its requests carry, what their responses say, and how pages swap in.
 
-import { storeModelState, modelHeaders, modelState } from "./models.js";
+import { modelHeaders } from "./models.js";
 import { showToast } from "./toasts.js";
 
 const LIVE_REFRESH = "X-Live-Refresh";
@@ -17,15 +17,13 @@ if (!document.cookie.split("; ").includes(`tz=${timeZone}`)) {
 // token from its cookie.
 const csrfToken = () => document.cookie.match(/(?:^|; )csrftoken=([^;]+)/)?.[1] ?? "";
 // A live refresh (live/topics.py starts its event names with TOPIC_PREFIX) leaves the messages to the page the person
-// goes to. A change may start marking that asks this device's model service, so it carries the service's endpoint and
-// token; the model service's own requests carry all the device knows of it, and their responses what it now knows.
+// goes to. A change may start marking that asks this device's AI service, so it names the service and carries its
+// token.
 document.addEventListener("htmx:config:request", (event) => {
-  const { request, sourceEvent, sourceElement } = event.detail.ctx;
+  const { request, sourceEvent } = event.detail.ctx;
   if (request.method !== "GET") Object.assign(request.headers, { "X-CSRFToken": csrfToken(), ...modelHeaders() });
-  if (request.method !== "GET" && sourceElement?.closest("[data-model-service]")) request.body.set("model_state", modelState());
   if (sourceEvent?.type?.startsWith(TOPIC_PREFIX)) request.headers[LIVE_REFRESH] = "true";
 });
-document.addEventListener("htmx:finally:request", (event) => storeModelState(event.detail.ctx.response));
 
 // Messages from in-page requests arrive in a header (ui/middleware.py). A failed change that shows nothing, such
 // as a form's errors (`hx-status:422`), says so plainly.

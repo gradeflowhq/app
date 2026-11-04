@@ -1,0 +1,2 @@
+{# How a model did when tested: sample answers marked as expected, of how many, and how long it took. #}
+<span class="whitespace-nowrap tabular-nums {% if trial.failure %}text-muted{% else %}font-medium text-success{% endif %}">{{ trial.rows_matched }}/{{ trial.rows_tried }} · {{ trial.seconds|duration }}</span>

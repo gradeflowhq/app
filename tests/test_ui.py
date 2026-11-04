@@ -14,13 +14,14 @@ from gradeflow_core.editing import new_question
 
 from gradeflow_app.assessments.models import Assessment
 from gradeflow_app.live.topics import TOPIC_PREFIX
-from gradeflow_app.model_service.endpoints import STATE_HEADER, TOKEN_HEADER
+from gradeflow_app.model_service.endpoints import SERVICE_HEADER, TOKEN_HEADER
 from gradeflow_app.ui.forms import MarkdownInput
 from gradeflow_app.ui.middleware import LIVE_REFRESH, MESSAGES_HEADER
 from gradeflow_app.ui.templatetags.ui import (
     ago,
     browser,
     code_language,
+    duration,
     highlight,
     history_day,
     initials,
@@ -123,6 +124,17 @@ def test_marks_and_percentages_round_halves_up_alike() -> None:
     assert (marks(19 / 40), percent(19 / 40)) == ("0.48", "48%")
     assert (marks(2), marks(1.5), marks(1 / 3), percent(0.125)) == ("2", "1.5", "0.33", "13%")
     assert marks(2.2, 2) == "2.20"
+
+
+def test_durations_read_as_people_say_them() -> None:
+    assert [duration(seconds) for seconds in (0.3, 4.2, 59.4, 60, 97, 808)] == [
+        "<1 s",
+        "4 s",
+        "59 s",
+        "1 min",
+        "1.6 min",
+        "13 min",
+    ]
 
 
 def test_empty_required_fields_are_left_to_the_server_to_flag() -> None:
@@ -229,7 +241,7 @@ def test_the_inline_script_carries_the_pages_nonce(client: Client) -> None:
 @pytest.mark.parametrize(
     ("name", "value", "script"),
     [
-        ("STATE_HEADER", STATE_HEADER, "models.js"),
+        ("SERVICE_HEADER", SERVICE_HEADER, "models.js"),
         ("TOKEN_HEADER", TOKEN_HEADER, "models.js"),
         ("LIVE_REFRESH", LIVE_REFRESH, "htmx.js"),
         ("MESSAGES_HEADER", MESSAGES_HEADER, "htmx.js"),

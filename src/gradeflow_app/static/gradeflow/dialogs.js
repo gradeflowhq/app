@@ -2,7 +2,7 @@
 
 // A dialog shows a skeleton until what a button loads into it arrives, never what it showed before.
 document.addEventListener("click", (event) => {
-  const openButton = event.target.closest("[data-dialog][hx-get][hx-target]");
+  const openButton = event.target.closest("[data-dialog]:is([hx-get], [hx-post])[hx-target]");
   const target = openButton && document.querySelector(openButton.getAttribute("hx-target"));
   if (target) target.innerHTML = '<div class="grid gap-3 p-6"><div class="skeleton h-7 w-1/2"></div><div class="skeleton h-40 w-full"></div></div>';
 });

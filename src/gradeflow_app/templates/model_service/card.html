@@ -1,6 +1,6 @@
 {# The settings page's model service: which of the server's AI services this device uses, the token it keeps for marking that asks a language model, and the models chosen for them. #}
 {% partialdef card inline %}
-<c-card id="model-service" title="AI service" body_class="" x-data="modelService" data-model-service
+<c-card id="model-service" title="AI service" body_class="" x-data="modelService"
         data-connect="{% url 'model_service_connect' %}"
         data-refused="{{ connect_error|yesno:'true,' }}">
   <c-slot name="actions"><button type="button" class="btn btn-ghost btn-square btn-sm -mr-2 text-muted" data-dialog="ai-service-guide" aria-label="How to connect an AI service">{% icon "question-mark-circle" %}</button></c-slot>
@@ -24,29 +24,51 @@
   </div>
   <div class="setting-rows" x-show="connected" x-cloak>
     <c-connected-service label="Service" host_property="provider" confirm="Disconnect this device?" confirm_detail="It forgets the token. Marking that uses AI waits until you connect again." />
-    {# Only the models refresh as a choice goes on, so what someone is typing above stays. The page doesn't know the device's models, so they load with what it keeps. #}
+    {# Only the models refresh as tests go on, so what someone is typing above stays. The page doesn't know which service the device uses, so they load with the service it names. #}
     {% partialdef models inline %}
-    <div id="model-service-models" class="divide-y divide-base-300" hx-post="{% url 'model_service' %}" hx-trigger="{% if not models_loaded %}load, {% endif %}{% listen 'models' request.user.pk %}" hx-swap="outerHTML">
+    {% url 'model_service_dialog' as dialog_url %}
+    <div id="model-service-models" class="divide-y divide-base-300"{% if out_of_band %} hx-swap-oob="outerMorph"{% endif %} hx-post="{% url 'model_service' %}" hx-trigger="{% if not models_loaded %}load, {% endif %}{% listen 'models' request.user.pk %}" hx-swap="outerHTML">
       <c-setting-row label="Models">
         <c-slot name="detail">
-          {% if not models_loaded %}<span class="skeleton block h-4 w-56"></span>
-          {% elif choosing_job %}<span class="flex items-center gap-2"><span class="loading loading-spinner loading-xs"></span>Choosing automatically, about 10 minutes. You can leave this page.</span>
-          {% elif state.fast_model %}<span class="flex flex-wrap gap-x-2"><span>Fast <code>{{ state.fast_model }}</code></span>{% if state.careful_model %}<span>· Careful <code>{{ state.careful_model }}</code></span>{% endif %}</span>
+          {% if not models_loaded %}<span class="skeleton mt-1 block h-4 w-56"></span>
           {% elif error %}<span class="text-error">{{ error }}</span>
+          {% elif any_in_use or choosing_job %}
+            <span class="mt-1 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1">
+              {% for role in roles %}
+                <span>{{ role.label }}</span>
+                <span class="flex min-w-0 flex-wrap items-center gap-x-2">{% if role.model %}<code class="truncate text-base-content">{{ role.model }}</code>{% if role.trial %}{% include "model_service/score.html" with trial=role.trial %}{% endif %}{% elif choosing_job %}Finding one…{% else %}None{% endif %}</span>
+              {% endfor %}
+            </span>
+            {% if choosing_job %}<span class="mt-2 flex min-w-0 items-center gap-2"><span class="loading loading-spinner loading-xs shrink-0"></span><span class="truncate">Testing models{% if tests_done %} · {{ tests_done }} done{% endif %}{% if testing_now %} · <code>{{ testing_now.model }}</code> as {{ testing_now.role }}{% elif not tests_done %}…{% endif %}</span></span>{% endif %}
           {% elif failure_reason %}<span class="text-error">Couldn't choose automatically: {{ failure_reason }}</span>
-          {% else %}Not chosen yet.{% endif %}
+          {% else %}Not chosen yet.{% if model_count %} Choosing automatically tests up to {{ model_count }} models on sample answers.{% endif %}{% endif %}
         </c-slot>
-        {% if models_loaded %}<button type="button" class="btn" data-dialog="model-chooser" hx-post="{% url 'model_service_dialog' %}" hx-target="#model-chooser-body" hx-swap="innerHTML">{% if state.fast_model or choosing_job %}Change{% else %}Choose models{% endif %}</button>{% endif %}
+        {% if models_loaded %}
+          {% if choosing_job %}<button type="button" class="btn btn-ghost" hx-post="{% url 'model_service_stop' %}" hx-target="#model-service-models" hx-swap="outerHTML">Stop</button>{% endif %}
+          {% if any_in_use or choosing_job %}
+            <button type="button" class="btn" data-dialog="model-chooser" hx-post="{{ dialog_url }}" hx-target="#model-chooser-body" hx-swap="innerHTML">Change</button>
+          {% else %}
+            <button type="button" class="btn" data-dialog="model-chooser" hx-post="{{ dialog_url }}" hx-target="#model-chooser-body" hx-swap="innerHTML">Pick myself</button>
+            <button type="button" class="btn btn-primary" hx-post="{% url 'model_service_choose' %}" hx-target="#model-service-models" hx-swap="outerHTML">Choose automatically</button>
+          {% endif %}
+        {% endif %}
       </c-setting-row>
       {% if models_loaded %}
-        <c-setting-row label="Answers per request">
-          <c-slot name="detail">{% if answers_per_request_error %}<span class="text-error">{{ answers_per_request_error }}</span>{% else %}How many students' answers each request to the AI holds.{% endif %}</c-slot>
-          <input type="number" name="answers_per_request" value="{% firstof answers_per_request_value state.answers_per_request answers_per_request_limits.default %}" min="{{ answers_per_request_limits.minimum }}" max="{{ answers_per_request_limits.maximum }}" class="input w-20 tabular-nums" aria-label="Answers per request" hx-post="{% url 'model_service_answers_per_request' %}" hx-trigger="change" hx-target="#model-service-models" hx-swap="outerHTML">
-        </c-setting-row>
+        <div class="py-4">
+          <c-more-options label="Advanced" :open="answers_per_request_error">
+            <div class="flex flex-wrap items-center justify-between gap-x-8 gap-y-3">
+              <div class="min-w-0">
+                <p class="font-medium">Answers per request</p>
+                <p class="text-sm text-muted">{% if answers_per_request_error %}<span class="text-error">{{ answers_per_request_error }}</span>{% else %}How many students' answers each request to the AI holds.{% endif %}</p>
+              </div>
+              <input type="number" name="answers_per_request" value="{% firstof answers_per_request_value service.answers_per_request answers_per_request_limits.default %}" min="{{ answers_per_request_limits.minimum }}" max="{{ answers_per_request_limits.maximum }}" class="input w-20 tabular-nums" aria-label="Answers per request" hx-post="{% url 'model_service_answers_per_request' %}" hx-trigger="change" hx-target="#model-service-models" hx-swap="outerHTML">
+            </div>
+          </c-more-options>
+        </div>
       {% endif %}
     </div>
     {% endpartialdef %}
   </div>
 </c-card>
 {% endpartialdef %}
-<c-dialog id="model-chooser" body_id="model-chooser-body" data-model-service>{% include "model_service/chooser.html" with loading=True %}</c-dialog>
+<c-dialog id="model-chooser" body_id="model-chooser-body" box_class="max-w-2xl">{% include "model_service/chooser.html" with loading=True %}</c-dialog>

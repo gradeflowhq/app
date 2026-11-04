@@ -7,7 +7,7 @@ from typing import Any, Self
 from django.db import transaction
 from django.utils import timezone
 from gradeflow_core import AnswerComparison, MarkedSubmission, Progress
-from gradeflow_core.editing import ModelTrial, RowResult
+from gradeflow_core.editing import RowResult
 from pydantic import BaseModel, TypeAdapter, ValidationError, model_validator
 
 from gradeflow_app.assessments.models import Assessment
@@ -89,20 +89,28 @@ def add_marked_batch(job: Job, submissions: Sequence[dict[str, Any]]) -> None:
 
 
 @transaction.atomic
-def store_result(job: Job, reported: object) -> None:
-    """Keep what the job's task reported, its test results or the models it chose or tried, for its result, while its
-    outcome still applies."""
+def store_test_results(job: Job, reported: object) -> None:
+    """Keep the test results the job reported, while its outcome still applies."""
     job = _locked(job)
-    job_handler = handler(job)
-    if not job.is_active or not job_handler.is_current(job):
+    if not job.is_active or not handler(job).is_current(job):
         return
-    adapter = _RESULT_ADAPTERS[job_handler.task]
     try:
-        job.result = adapter.dump_python(adapter.validate_python(reported), mode="json")
+        job.result = _TEST_RESULTS_ADAPTER.dump_python(_TEST_RESULTS_ADAPTER.validate_python(reported), mode="json")
     except ValidationError:
         fail(job, UNREADABLE_RESULTS_ERROR)
         return
     job.save(update_fields=["result"])
+
+
+@transaction.atomic
+def apply_task_event(job: Job, event: dict[str, Any]) -> None:
+    """An event of the job's own task, applied by its handler."""
+    job = _locked(job)
+    job_handler = handler(job)
+    if not job.is_active or job_handler.apply_event is None:
+        return
+    job_handler.apply_event(job, event)
+    notify_job_change(job)
 
 
 @transaction.atomic
@@ -121,19 +129,8 @@ def record_progress(job: Job, event: dict[str, Any]) -> None:
     notify_job_change(job)
 
 
-class _Choice(BaseModel):
-    fast_model: str | None
-    careful_model: str | None
-    trials: list[ModelTrial]
-
-
 _PROGRESS_ADAPTER = TypeAdapter(Progress)
-MODEL_TRIALS_ADAPTER = TypeAdapter(list[ModelTrial])
-_RESULT_ADAPTERS: dict[Task, TypeAdapter[Any]] = {
-    "test": TypeAdapter(list[RowResult]),
-    "choose": TypeAdapter(_Choice),
-    "trial": MODEL_TRIALS_ADAPTER,
-}
+_TEST_RESULTS_ADAPTER = TypeAdapter(list[RowResult])
 
 
 @transaction.atomic
@@ -172,9 +169,7 @@ def _outcome_and_result(job: Job, task: Task) -> tuple[Any, Any]:
         case "test":
             return _test_results(job), job.result
         case "choose" | "trial":
-            if job.result is None:
-                raise ValueError("The marking service didn't say how the models did.")
-            return job.result, job.result
+            return None, None
 
 
 def _submissions(job: Job) -> list[MarkedSubmission]:

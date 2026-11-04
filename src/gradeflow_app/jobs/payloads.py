@@ -2,7 +2,7 @@
 
 from typing import Annotated, Any, Literal
 
-from gradeflow_core import ModelEndpoint, QuestionSet, Submission
+from gradeflow_core import ModelEndpoint, ModelTrial, QuestionSet, Submission
 from gradeflow_core.editing import ExampleRow
 from pydantic import BaseModel, PlainSerializer
 
@@ -39,9 +39,10 @@ class TestRun(BaseModel):
 
 
 class ModelChoiceRun(BaseModel):
-    """A model endpoint whose models to choose."""
+    """A model endpoint whose models to choose, and those tried before, which aren't tried again."""
 
     model_endpoint: EndpointWithToken
+    tried: list[ModelTrial]
 
 
 class ModelTrialRequest(BaseModel):

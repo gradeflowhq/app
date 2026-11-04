@@ -1,0 +1,33 @@
+{# The Models dialog's table. It posts the models the dialog listed, so a refresh doesn't ask the service again. #}
+{{ card_html|default:"" }}
+<form id="model-table" class="grid gap-4" hx-post="{% url 'model_service_table' %}" hx-trigger="{% listen 'models' request.user.pk %}" hx-target:inherited="#model-table" hx-swap:inherited="outerMorph">
+  {% for row in rows %}<input type="hidden" name="listed" value="{{ row.model }}">{% endfor %}
+  <div class="flex flex-wrap items-center gap-x-4 gap-y-3 rounded-box border border-base-300 p-4">
+    <label class="flex min-w-60 flex-1 cursor-pointer items-start gap-3">
+      <input type="checkbox" name="automatically" class="toggle toggle-primary mt-0.5" hx-post="{% url 'model_service_automatic' %}" hx-trigger="change"{% if service.chosen_by == "automatically" %} checked{% endif %}>
+      <span class="min-w-0"><span class="block font-medium">Use the best automatically</span><span class="block text-sm text-muted">The one with the most sample answers right, then the fastest.</span></span>
+    </label>
+    {% if choosing_job %}
+      <span class="flex items-center gap-2 text-sm text-muted"><span class="loading loading-spinner loading-xs"></span>{{ tests_done }} done</span>
+      <button type="button" class="btn btn-sm" hx-post="{% url 'model_service_stop' %}">Stop</button>
+    {% else %}
+      <button type="button" class="btn btn-sm" hx-post="{% url 'model_service_choose' %}">{% icon "beaker" "size-4" %}Test models</button>
+    {% endif %}
+  </div>
+  {% if test_failure %}<c-alert>Couldn't test: {{ test_failure }}</c-alert>{% endif %}
+  {% if searchable %}<c-search label="Search models" class="w-full" id="model-search" hx-preserve x-on:input="search" />{% endif %}
+  <div role="table" aria-label="Models" class="max-h-[min(28rem,55vh)] overflow-y-auto rounded-box border border-base-300">
+    <div role="row" class="sticky top-0 z-10 grid grid-cols-[minmax(0,1fr)_12.5rem_12.5rem] gap-2 border-b border-base-300 bg-base-100 px-3 py-2 text-xs font-medium text-muted max-sm:hidden">
+      <span role="columnheader">Model</span><span role="columnheader">Fast</span><span role="columnheader">Careful</span>
+    </div>
+    {% for row in rows %}
+      <div role="row" data-search="{{ row.model }}" class="group/row grid grid-cols-[minmax(0,1fr)_12.5rem_12.5rem] items-center gap-2 border-b border-base-300 px-3 py-1.5 last:border-b-0 max-sm:grid-cols-1 max-sm:gap-1 max-sm:py-3">
+        <code role="cell" class="truncate text-xs" title="{{ row.model }}">{{ row.model }}</code>
+        {% for cell in row.cells %}
+          <div role="cell" class="flex min-w-0 items-center gap-2"><span class="w-14 shrink-0 text-xs text-muted sm:hidden">{{ cell.role|capfirst }}</span>{% include "model_service/cell.html" %}</div>
+        {% endfor %}
+      </div>
+    {% endfor %}
+    <p data-empty hidden class="px-3 py-6 text-center text-sm text-muted">No models match.</p>
+  </div>
+</form>

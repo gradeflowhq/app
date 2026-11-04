@@ -1,7 +1,7 @@
 """The endpoints sandbox jobs call: their input, and events as they run. Both are signed with the job's secret.
 
-Jobs send results as `marked` batches or `compared` JSON pieces to keep each request under the app's size limit;
-`finished` follows the last.
+Jobs send results as `marked` batches or `compared` JSON pieces to keep each request under the app's size limit, and
+other events their own task's handler applies; `finished` follows the last.
 """
 
 import hashlib
@@ -18,16 +18,10 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
 
 from gradeflow_app.jobs import events, queue
-from gradeflow_app.jobs.handlers import Task, handler
+from gradeflow_app.jobs.handlers import handler
 from gradeflow_app.jobs.models import Job
 
 _LOG = logging.getLogger(__name__)
-_RESULT_EVENTS: dict[str, tuple[Task, str]] = {
-    "tested": ("test", "results"),
-    "chosen": ("choose", "choice"),
-    "trials": ("trial", "trials"),
-}
-"""The events reporting a task's result: the task, and the field holding the result."""
 
 
 def _has_valid_signature(job: Job, request: HttpRequest, body: bytes) -> bool:
@@ -74,11 +68,13 @@ def _apply_event(job: Job, event: dict[str, Any]) -> None:
             events.add_marked_batch(job, event["submissions"])
         case "progress" if task == "mark":
             events.record_progress(job, event)
-        case "tested" | "chosen" | "trials" as name if _RESULT_EVENTS[name][0] == task:
-            events.store_result(job, event[_RESULT_EVENTS[name][1]])
+        case "tested" if task == "test":
+            events.store_test_results(job, event["results"])
         case "finished":
             queue.end(job)
         case "failed":
             queue.end(job, str(event.get("error", "")))
+        case _ if handler(job).apply_event is not None:
+            events.apply_task_event(job, event)
         case _:
             raise ValueError("Unknown job event.")

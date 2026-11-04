@@ -1,0 +1,18 @@
+{# One model in one role in the Models table: how it did, a radio to use it, and a button to test it, or test it again. #}
+{% url 'model_service_test' as test_url %}
+{% hx_vals role=cell.role model=row.model as test_values %}
+{% if cell.testing %}
+  <span class="flex h-8 flex-1 items-center gap-2 px-2 text-sm text-muted"><span class="loading loading-spinner loading-xs"></span>Testing…</span>
+{% elif not cell.trial %}
+  <button type="button" class="btn btn-ghost btn-sm h-8 px-2 font-normal text-muted hover:text-base-content" hx-post="{{ test_url }}" hx-vals="{{ test_values }}" aria-label="Test {{ row.model }} as the {{ cell.role }} model">Test</button>
+{% elif not cell.trial.rows_tried %}
+  <span class="flex min-w-0 flex-1 items-center gap-1.5 px-2 text-xs leading-tight text-muted">{% icon "exclamation-circle" "size-4 text-warning" %}<span class="line-clamp-2">{{ cell.trial.failure }}</span></span>
+  <button type="button" class="btn btn-ghost btn-square btn-sm shrink-0 text-muted" hx-post="{{ test_url }}" hx-vals="{{ test_values }}" aria-label="Retry {{ row.model }} as the {{ cell.role }} model" title="Retry">{% icon "arrow-path" "size-3.5" %}</button>
+{% else %}
+  <label class="flex h-8 min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-field px-2 text-sm hover:bg-base-200 has-checked:bg-primary/10 has-checked:ring-1 has-checked:ring-primary" title="{{ cell.trial.failure|default:'' }}">
+    <input type="radio" name="{{ cell.role }}_model" value="{{ row.model }}" class="radio radio-xs radio-primary" hx-post="{% url 'model_service_use' %}" hx-trigger="change" aria-label="Use {{ row.model }} as the {{ cell.role }} model"{% if cell.in_use %} checked{% endif %}>
+    {% include "model_service/score.html" with trial=cell.trial %}
+    {% if cell.best %}<span class="badge badge-primary badge-soft badge-xs">Best</span>{% endif %}
+  </label>
+  <button type="button" class="btn btn-ghost btn-square btn-sm shrink-0 text-muted opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100 pointer-coarse:opacity-100" hx-post="{{ test_url }}" hx-vals="{{ test_values }}" aria-label="Test {{ row.model }} again as the {{ cell.role }} model" title="Test again">{% icon "arrow-path" "size-3.5" %}</button>
+{% endif %}

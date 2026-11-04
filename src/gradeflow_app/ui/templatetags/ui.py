@@ -78,6 +78,17 @@ def marks(value: float | None, places: int | None = None) -> str:
 
 
 @register.filter
+def duration(seconds: float) -> str:
+    """How long something took, as people say it: <1 s, 4 s, 1.6 min, 13 min."""
+    if seconds < 1:
+        return "<1 s"
+    if seconds < 59.5:
+        return f"{seconds:.0f} s"
+    minutes = seconds / 60
+    return f"{minutes:.1f}".removesuffix(".0") + " min" if minutes < 9.95 else f"{minutes:.0f} min"
+
+
+@register.filter
 def ago(moment: datetime) -> str:
     """How long ago, in its largest unit: "just now", "1 hour ago", "2 days ago"."""
     if timezone.now() - moment < timedelta(minutes=1):

@@ -13,7 +13,7 @@ import { markdownEditor } from "./markdown.js";
 import { math } from "./math.js";
 import { modelService } from "./models.js";
 import { orderedChoices } from "./ordered.js";
-import { choiceList, methodPicker } from "./picker.js";
+import { choiceList, methodPicker, searchList } from "./picker.js";
 import { passphraseSettings } from "./passphrase.js";
 import { adjustForm } from "./student.js";
 import { studentTable } from "./table.js";
@@ -63,6 +63,7 @@ const components = {
   orderedChoices,
   passphraseSettings,
   openOnLoad,
+  searchList,
   studentTable,
   tagInput,
   testAnswer,
