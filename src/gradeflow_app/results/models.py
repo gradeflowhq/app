@@ -14,7 +14,7 @@ class Result(models.Model):
     question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name="results")
     proportion = models.FloatField()
     feedback = models.TextField(blank=True)
-    method = models.CharField(max_length=100)
+    method = models.TextField()
     marked = models.BooleanField(default=True)
     language_models = models.JSONField(default=list)
     """The language models that decided it, if any."""

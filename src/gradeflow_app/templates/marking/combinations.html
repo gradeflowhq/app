@@ -18,7 +18,7 @@
     {% include "results/answers.html#preview_bar" %}
   </header>
   <div class="grid content-start gap-3 p-4">
-    {% if not draft %}{% for notice in out_of_date_notices %}<p role="status" class="alert alert-warning alert-soft text-sm">{{ notice }}</p>{% endfor %}{% endif %}
+    {% include "results/answers.html#column_notices" %}
     {% if not question_keys %}
       <c-empty-state class="card-box" icon="squares-2x2" title="No questions yet">Choose the questions this question group marks, and their answers show here.</c-empty-state>
     {% elif rows %}

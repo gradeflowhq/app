@@ -10,10 +10,18 @@ from django.urls import reverse
 
 from gradeflow_app.assessments.models import Assessment
 from gradeflow_app.live.topics import topic
-from gradeflow_app.results.marks import TotalStatistics, assessment_results, awards, histogram
+from gradeflow_app.results.marks import Award, TotalStatistics, assessment_results, awards, histogram
 from gradeflow_app.results.models import Adjustment, Result
 from gradeflow_app.ui.templatetags.ui import percent
 from tests.conftest import HTMX_HEADERS, create_assessment, encrypted_id, start_marking
+
+
+@pytest.mark.parametrize(("imported_marks", "marks", "level"), [(5, 3, "full"), (-1, 0, "zero")])
+def test_marks_count_from_0_to_the_questions_maximum(imported_marks: float, marks: float, level: str) -> None:
+    award = Award(max_marks=3, imported_marks=imported_marks)
+    result = award.question_result()
+    assert result is not None
+    assert (award.marks, award.level, result.marks) == (marks, level, marks)
 
 
 def test_stats_describe_the_spread_of_totals() -> None:
@@ -89,6 +97,13 @@ def test_there_is_nothing_to_download_before_an_import(client: Client) -> None:
         page = client.get(reverse(name, args=[assessment.pk])).text
         assert 'data-dialog="download"' not in page
         assert "data-decrypt" not in page
+
+
+def test_a_result_keeps_a_long_method_label(assessment: Assessment) -> None:
+    label = "Accepted answers " * 10
+    student, question = assessment.students.earliest("pk"), assessment.questions.earliest("pk")
+    Result.objects.create(student=student, question=question, proportion=1, method=label, revision=0)
+    assert Result.objects.get().method == label
 
 
 def test_a_download_needs_a_student_id_column(client: Client, assessment: Assessment) -> None:

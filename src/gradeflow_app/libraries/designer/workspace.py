@@ -8,7 +8,7 @@ from typing import Any
 
 from django.template.loader import render_to_string
 from django.urls import reverse
-from gradeflow_core import GradeFlowError, Methods, ModelEndpoint, QuestionSet
+from gradeflow_core import Check, GradeFlowError, Methods, ModelEndpoint, QuestionSet
 from gradeflow_core.editing import FailedFile, LoadedFiles, MarkingDraft, MethodDraft, RowResult
 
 from gradeflow_app.accounts.models import User
@@ -234,12 +234,12 @@ class MethodWorkspace(CheckWorkspace):
         """What a test run of the method marks, asking language models at `model_endpoint` if it does. Raises
         `EditingError` if it can't be tried yet."""
         method = self.draft.finalized()
+        methods = Methods([*(each for each in self.methods if each.ref != method.ref), method])
         if self.draft_record is None:
             files = list(files_needed_by([method.ref]))
         else:
-            others = [each for each in self.methods if each.ref != method.ref]
-            dependencies = Methods([*others, method]).dependencies(method.ref)
-            files = [*files_needed_by(dependencies), (self.method.full_name, self.draft.to_yaml())]
+            files = [*files_needed_by(methods.dependencies(method.ref)), (self.method.full_name, self.draft.to_yaml())]
+        check = Check.load({"uses": method.ref, "with": self.draft.test_values}, methods=methods)
         return TestRun(
             method=method.ref,
             methods=files,
@@ -247,7 +247,7 @@ class MethodWorkspace(CheckWorkspace):
             question=self.draft.question,
             inputs=self.draft.test_values,
             rows=rows_of(self.tests),
-            model_endpoint=model_endpoint if method.needs_model_endpoint else None,
+            model_endpoint=model_endpoint if check.needs_model_endpoint() else None,
         )
 
     def save(self) -> None:

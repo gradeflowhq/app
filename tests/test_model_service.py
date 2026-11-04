@@ -15,6 +15,8 @@ from pytest_django import Settings
 from gradeflow_app.accounts.models import User
 from gradeflow_app.assessments.models import Assessment
 from gradeflow_app.jobs.models import Job
+from gradeflow_app.libraries.designer.workspace import MethodWorkspace
+from gradeflow_app.libraries.models import Method
 from gradeflow_app.marking.answers.column import out_of_date_notices
 from gradeflow_app.marking.checks import assessment_checks
 from gradeflow_app.marking.models import Marking
@@ -22,7 +24,7 @@ from gradeflow_app.marking.remarks import schedule_marking
 from gradeflow_app.model_service import views
 from gradeflow_app.model_service.endpoints import STATE_HEADER, ModelServiceState, endpoint
 from gradeflow_app.requests import Request
-from tests.conftest import full_marks_marking, post_callback
+from tests.conftest import create_method_draft, full_marks_marking, post_callback
 
 PROVIDER_URL = "https://models.example.com/v1"
 PROVIDER = "Example AI"
@@ -257,6 +259,24 @@ def test_marking_that_asks_a_model_carries_the_endpoint_with_its_chosen_models(
     assert job.input["model_endpoint"]["fast_model"] == "decider"
 
 
+def test_a_method_test_run_carries_the_endpoint_when_its_test_values_ask_a_model(user: User) -> None:
+    method = Method.objects.create(library=user.library, name="supplied")
+    definition = dump_yaml(
+        {
+            "label": "Supplied",
+            "summary": "Marks with the checks given.",
+            "question_types": ["text"],
+            "inputs": {"checks": {"default": [{"uses": "gradeflow/full-marks@1"}]}},
+            "checks": [{"uses": "gradeflow/combination@1", "with": {"checks": "{{ inputs.checks }}"}}],
+        }
+    )
+    workspace = MethodWorkspace(method, create_method_draft(method, user, definition))
+    model_endpoint = endpoint(request_with_model_service(user))
+    assert workspace.test_run(model_endpoint).model_endpoint is None
+    workspace.draft.test_values = {"checks": [{"uses": "gradeflow/answer-criteria@1", "with": CRITERIA}]}
+    assert workspace.test_run(model_endpoint).model_endpoint == model_endpoint
+
+
 def test_marking_that_asks_no_model_leaves_the_token_out(
     client: Client, user: User, assessment: Assessment, idle_executor: None
 ) -> None:
@@ -305,6 +325,22 @@ def test_the_answers_column_asks_to_connect_when_marking_asks_a_model(
     question = assessment.questions.get(key="Q3")
     page = client.get(reverse("question", args=[assessment.pk, question.pk])).text
     assert "This marking uses AI" in page
+
+
+def test_a_question_groups_answers_column_asks_to_connect_when_marking_asks_a_model(
+    client: Client, assessment: Assessment, idle_executor: None
+) -> None:
+    criteria_marking(assessment).delete()
+    parts = [
+        {"question": "Q3", "uses": "gradeflow/answer-criteria@1", "with": CRITERIA},
+        {"question": "Q1", "uses": "gradeflow/full-marks@1"},
+    ]
+    definition = {"uses": "gradeflow/combination@1", "with": {"checks": parts}}
+    marking = Marking.objects.create(
+        assessment=assessment, definition=dump_yaml(definition), questions_marked=["Q1", "Q3"]
+    )
+    column = client.get(reverse("question_group_answers", args=[assessment.pk, marking.pk])).text
+    assert "This marking uses AI" in column
 
 
 def test_choosing_again_leaves_the_running_choice(client: Client, idle_executor: None) -> None:

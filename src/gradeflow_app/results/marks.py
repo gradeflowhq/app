@@ -36,11 +36,13 @@ class Award:
 
     @property
     def marks(self) -> float | None:
+        """From 0 to the question's maximum, as in the core's result."""
+        marks = self.imported_marks
         if self.adjustment is not None and self.adjustment.marks is not None:
-            return self.adjustment.marks
-        if (marking_result := self.marking_result) is not None:
+            marks = self.adjustment.marks
+        elif (marking_result := self.marking_result) is not None:
             return marking_result.marks
-        return self.imported_marks
+        return None if marks is None else min(max(marks, 0.0), self.max_marks)
 
     @cached_property
     def marking_result(self) -> QuestionResult | None:
