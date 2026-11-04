@@ -235,7 +235,6 @@ def method_choices(request: Request, access: MethodAccess) -> HttpResponse:
     workspace = _workspace(request, access, None)
     picker_form = PickerForm(
         action=workspace.url("method_check"),
-        field="method",
         target="#method-work",
         swap="outerMorph",
         include="#method-state",
@@ -449,22 +448,20 @@ def publish_draft(request: Request, access: MethodAccess) -> HttpResponse:
             assert current.version is not None
             raise ValidationError(f"Nothing changed since version {current.version.number}.")
         if not current.valid:
-            raise ValidationError(f"Finish the marking first: {current.problems[0].message}")
+            raise ValidationError(f"Finish the marking first: {current.checks.problems[0].message}")
         if current.untested:
             raise ValidationError("Run the tests first, so the examples show their marks.")
-        # One step: a publish that fails keeps the draft's examples and test run as they were.
-        with transaction.atomic():
-            current.record_examples()
-            run = current.tests_record.last_run
-            matching_run = run if current.current_results() is not None else None
-            version = publish(current.draft_record, request.user, current.draft)
-            if matching_run is None:
-                stop(run)
-            else:
-                # The run marked what was just published, so the version starts with its results.
-                tests = version_tests_of(version, request.user)
-                tests.last_run, tests.revision = matching_run, current.tests_record.revision
-                tests.save(update_fields=["last_run", "revision"])
+        current.record_examples()
+        run = current.tests_record.last_run
+        matching_run = run if current.current_results() is not None else None
+        version = publish(current.draft_record, request.user, current.draft)
+        if matching_run is None:
+            stop(run)
+        else:
+            # The run marked what was just published, so the version starts with its results.
+            tests = version_tests_of(version, request.user)
+            tests.last_run, tests.revision = matching_run, current.tests_record.revision
+            tests.save(update_fields=["last_run", "revision"])
     except StaleWorkspace:
         return _stale(request, workspace)
     except (GradeFlowError, ValidationError) as error:

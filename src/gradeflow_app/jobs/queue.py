@@ -38,7 +38,7 @@ def enqueue(
     question_keys: Sequence[str],
     input: dict[str, Any],
     marked_with: dict[str, Any],
-    user: User | None,
+    user: User,
     assessment: Assessment | None = None,
     revision: int | None = None,
     **outcome_for: Model | None,

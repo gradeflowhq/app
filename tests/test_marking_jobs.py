@@ -407,12 +407,13 @@ def test_an_invalid_saved_definition_keeps_the_marks_of_every_question_it_marked
 
 
 def test_dispatching_twice_at_once_still_dispatches_one_job_per_user(
-    assessment: Assessment, settings: Settings
+    assessment: Assessment, user: User, settings: Settings
 ) -> None:
     settings.GRADEFLOW_RUNNING_JOBS_PER_USER = 1
     with transaction.atomic():
         for key in ["Q1", "Q2", "Q3"]:
-            schedule_marking(full_marks_marking(assessment, key))
+            schedule_marking(full_marks_marking(assessment, key), user)
+    Job.objects.update(created_by=None)  # as after the user is deleted
     dispatched = Job.objects.get(dispatched_at__isnull=False)
     Job.objects.filter(pk=dispatched.pk).update(status=Job.Status.COMPLETED)
     run_together(queue.dispatch, queue.dispatch)

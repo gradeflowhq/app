@@ -27,20 +27,15 @@ def query_count(client: Client, url: str) -> int:
     return len(captured)
 
 
-def assert_query_count_stays(
-    client: Client, url: str, add_two_more: Callable[[], object], django_assert_num_queries: DjangoAssertNumQueries
-) -> None:
+def assert_query_count_stays(client: Client, url: str, add_two_more: Callable[[], object]) -> None:
     """`url` takes no more queries once `add_two_more` adds two more of what it lists."""
     count_before = query_count(client, url)
     add_two_more()
-    with django_assert_num_queries(count_before):
-        assert client.get(url).status_code == 200
+    assert query_count(client, url) == count_before
 
 
 @pytest.mark.parametrize("page", ["courses", "course"])
-def test_assessment_lists_query_count_does_not_grow(
-    client: Client, page: str, django_assert_num_queries: DjangoAssertNumQueries
-) -> None:
+def test_assessment_lists_query_count_does_not_grow(client: Client, page: str) -> None:
     course = create_assessment(client, "Quiz 1").course
     assessment_with_full_marks(client, course, "Quiz 2", ["Q1", "Q2"])
 
@@ -49,12 +44,10 @@ def test_assessment_lists_query_count_does_not_grow(
             assessment_with_full_marks(client, course, name, ["Q1", "Q2"])
 
     url = reverse(page, args=[course.pk] if page == "course" else [])
-    assert_query_count_stays(client, url, add_two_more, django_assert_num_queries)
+    assert_query_count_stays(client, url, add_two_more)
 
 
-def test_library_page_query_count_does_not_grow(
-    client: Client, user: User, assessment: Assessment, django_assert_num_queries: DjangoAssertNumQueries
-) -> None:
+def test_library_page_query_count_does_not_grow(client: Client, user: User, assessment: Assessment) -> None:
     """The course's own methods, and those of the person's library its markings use."""
 
     def use_new_method(library: Library, name: str) -> None:
@@ -69,9 +62,7 @@ def test_library_page_query_count_does_not_grow(
             use_new_method(assessment.course.library, f"ours-{number}")
             use_new_method(user.library, f"mine-{number}")
 
-    assert_query_count_stays(
-        client, reverse("course_methods", args=[assessment.course.pk]), add_two_more, django_assert_num_queries
-    )
+    assert_query_count_stays(client, reverse("course_methods", args=[assessment.course.pk]), add_two_more)
 
 
 def test_question_list_query_count_does_not_grow(
@@ -94,18 +85,14 @@ def test_question_list_query_count_does_not_grow(
             assert client.get(three_questions_url).status_code == 200
 
 
-def test_question_list_of_drafts_query_count_does_not_grow(
-    client: Client, assessment: Assessment, django_assert_num_queries: DjangoAssertNumQueries
-) -> None:
+def test_question_list_of_drafts_query_count_does_not_grow(client: Client, assessment: Assessment) -> None:
     start_marking(client, assessment, "Q1", "gradeflow/custom-code@1")
 
     def add_two_more() -> None:
         for key in ["Q2", "Q3"]:
             start_marking(client, assessment, key, "gradeflow/custom-code@1")
 
-    assert_query_count_stays(
-        client, reverse("question_list", args=[assessment.pk]), add_two_more, django_assert_num_queries
-    )
+    assert_query_count_stays(client, reverse("question_list", args=[assessment.pk]), add_two_more)
 
 
 def test_adjusting_an_answer_group_query_count_does_not_grow(

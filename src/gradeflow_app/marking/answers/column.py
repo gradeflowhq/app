@@ -9,7 +9,7 @@ from typing import Any
 from django.http import Http404
 from django.template.loader import render_to_string
 from django.urls import reverse
-from gradeflow_core import Check, QuestionResult, QuestionSet
+from gradeflow_core import Check, QuestionResult
 from gradeflow_core.editing import DECISIONS, answer_decisions, can_mark_by_example
 from gradeflow_core.editing import Marking as CoreMarking
 
@@ -21,18 +21,10 @@ from gradeflow_app.marking import previews
 from gradeflow_app.marking.answers import answer_groups, comparisons
 from gradeflow_app.marking.answers.answer_groups import AnswerGroup
 from gradeflow_app.marking.answers.combinations import Combination, combinations
-from gradeflow_app.marking.answers.out_of_date import asks_language_models, out_of_date_notices
-from gradeflow_app.marking.checks import (
-    assessment_checks,
-    definition_data,
-    questions_involved,
-    questions_marked,
-    runnable_check,
-)
+from gradeflow_app.marking.checks import assessment_checks, definition_data, questions_involved, questions_marked
 from gradeflow_app.marking.models import Marking, MarkingTarget
 from gradeflow_app.marking.remarks import running_remarks
 from gradeflow_app.marking.workspace import MarkingWorkspace
-from gradeflow_app.model_service.endpoints import asks_models
 from gradeflow_app.questions.models import Question
 from gradeflow_app.requests import Request
 
@@ -247,7 +239,7 @@ def combinations_context(
         keys = sorted(questions_marked(subject.marking, saved))
         read_keys = sorted(questions_involved(subject.marking, saved) - set(keys))
     else:
-        keys, read_keys = _marked_and_read_keys(workspace.finalized if workspace else None, assessment.question_set())
+        keys, read_keys = _marked_and_read_keys(workspace.finalized if workspace else None)
     job, results = previews.preview_and_results(workspace)
     rows = combinations(assessment, keys, results, read_keys)
     only_changed = request.GET.get("filter") == "changed" and results is not None
@@ -271,10 +263,33 @@ def combinations_context(
     }
 
 
+def out_of_date_notices(accepted: Mapping[Marking, Check], question_keys: Iterable[str]) -> list[str]:
+    """Why the marks of these questions are from before: their marking, one of the `accepted` ones, failed or wasn't
+    run. One that can't mark says why in its own column; one marking them now shows its progress."""
+    keys = set(question_keys)
+    messages = []
+    for marking, check in accepted.items():
+        if not keys & marking.questions_given_marks:
+            continue
+        latest_job = marking.jobs.filter(revision=marking.revision).first()
+        if latest_job is None and check.needs_model_endpoint():
+            messages.append(
+                "Not marked again: the change came from a device without an AI service. The marks shown are "
+                "from before."
+            )
+        elif latest_job is not None and latest_job.status == Job.Status.FAILED:
+            messages.append(f"Marking failed: {latest_job.error} The marks shown are from before.")
+    return messages
+
+
 def _asks_models(accepted: Mapping[Marking, Check], keys: Iterable[str], workspace: MarkingWorkspace | None) -> bool:
-    """Whether the saved marking, or the draft being previewed, asks a language model."""
-    finalized = workspace.finalized if workspace else None
-    return asks_language_models(accepted, keys) or (finalized is not None and asks_models([finalized]))
+    """Whether a saved marking of these questions, one of the `accepted` ones, or the draft being previewed, asks a
+    language model, which needs a model service."""
+    wanted = set(keys)
+    checks = [check for marking, check in accepted.items() if wanted & marking.questions_given_marks]
+    if workspace is not None and (finalized := workspace.finalized) is not None:
+        checks.append(finalized)
+    return any(check.needs_model_endpoint() for check in checks)
 
 
 def draft_context(workspace: MarkingWorkspace | None) -> dict[str, Any]:
@@ -292,9 +307,9 @@ def _marking_job(assessment: Assessment, keys: Iterable[str]) -> Job | None:
     return next((job for job in running_remarks(assessment) if wanted & set(job.question_keys)), None)
 
 
-def _marked_and_read_keys(check: CoreMarking | None, questions: QuestionSet) -> tuple[list[str], list[str]]:
+def _marked_and_read_keys(check: CoreMarking | None) -> tuple[list[str], list[str]]:
     """The questions a marking of questions together marks, and those it only reads, such as a condition's."""
-    if (check := runnable_check(check, questions)) is None:
+    if check is None:
         return [], []
     marked = check.questions_marked()
     return sorted(marked), sorted(check.questions_read() - marked)

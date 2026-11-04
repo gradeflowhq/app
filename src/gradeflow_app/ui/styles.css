@@ -1,6 +1,5 @@
 @import "tailwindcss" source(none);
 @source "../templates";
-@source "../*/templates/**/*.html";
 @source "../static/gradeflow";
 @source "../**/*.py";
 @plugin "daisyui" {

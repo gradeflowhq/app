@@ -2,12 +2,6 @@
 // files dropped.
 export const dropZone = (onFiles) => ({
   dragging: false,
-  dragOver() {
-    this.dragging = true;
-  },
-  dragLeave() {
-    this.dragging = false;
-  },
   drop(event) {
     this.dragging = false;
     onFiles.call(this, event.dataTransfer.files);

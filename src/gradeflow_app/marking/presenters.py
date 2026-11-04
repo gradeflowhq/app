@@ -6,17 +6,20 @@ from typing import Literal
 from uuid import UUID
 
 from django.urls import reverse
-from gradeflow_core import Check, GradeFlowError, Methods, QuestionSet
-from gradeflow_core.editing import MarkingDraft
+from gradeflow_core import Check, GradeFlowError, QuestionSet
+from gradeflow_core.editing import EditingError, LoadedFiles, MarkingDraft, methods_used
 
 from gradeflow_app.assessments.models import Assessment, AssessmentAccess
 from gradeflow_app.editor.editing import located
 from gradeflow_app.editor.guide import Choices, choices
 from gradeflow_app.imports.models import has_imported_marks, imported_mark_keys
-from gradeflow_app.libraries.collection import OfferedMethods, course_methods, offers, usable
+from gradeflow_app.libraries.collection import loaded_course_methods, offers, usable
 from gradeflow_app.libraries.models import Method
+from gradeflow_app.libraries.services import version_name
 from gradeflow_app.marking.checks import (
     assessment_checks,
+    check_of,
+    definition_data,
     marking_draft,
     methods_for,
     questions_involved,
@@ -24,8 +27,7 @@ from gradeflow_app.marking.checks import (
 )
 from gradeflow_app.marking.models import Marking, MarkingDraftRecord
 from gradeflow_app.marking.remarks import running_remarks
-from gradeflow_app.marking.workspace import MarkingWorkspace
-from gradeflow_app.questions.models import QUESTION_TYPE_LABELS, Question
+from gradeflow_app.questions.models import Question
 from gradeflow_app.results.marks import average_proportions
 
 
@@ -36,10 +38,10 @@ class MarkingSummary:
     method_label: str
     description: str
     problems: tuple[str, ...] = ()
-
-    @property
-    def has_problems(self) -> bool:
-        return bool(self.problems)
+    is_compatible: bool = True
+    """False when the core can no longer read it: an earlier core saved it, or a version it uses."""
+    incompatible_version: str = ""
+    """The version at fault, such as “Light” version 2, when it's one the marking uses."""
 
 
 def summary_of(check: Check) -> MarkingSummary:
@@ -50,15 +52,21 @@ def summary_of(check: Check) -> MarkingSummary:
         return MarkingSummary(check.method.label, "", (str(error),))
 
 
-def saved_summary(definition: str, key: str | None, methods: Methods, questions: QuestionSet) -> MarkingSummary:
+def saved_summary(definition: str, key: str | None, loaded: LoadedFiles, questions: QuestionSet) -> MarkingSummary:
     """A saved marking of the question `key`, or of a question group, which can stop marking when the core or its
     questions change."""
-    draft = marking_draft(definition, questions, key, methods)
-    if problems := draft.problems:
-        method = draft.method("")
-        problem_texts = tuple(dict.fromkeys(located(draft, problem) for problem in problems))
-        return MarkingSummary(method.label if method else "", "", problem_texts)
-    return summary_of(draft.finalized())
+    draft = marking_draft(definition, questions, key, loaded.methods)
+    if not (problems := draft.problems):
+        return summary_of(draft.finalized())
+    method = draft.method("")
+    label = method.label if method else ""
+    used = sorted(methods_used(definition_data(definition)))
+    if failed := next((loaded.failed[ref] for ref in used if ref in loaded.failed), None):
+        return MarkingSummary(
+            label, "", tuple(failed.messages), is_compatible=False, incompatible_version=version_name(failed.ref)
+        )
+    problem_texts = tuple(dict.fromkeys(located(draft, problem) for problem in problems))
+    return MarkingSummary(label, "", problem_texts, is_compatible=check_of(definition, loaded.methods) is not None)
 
 
 def _summary(marking: Marking, check: Check | None, assessment: Assessment) -> MarkingSummary:
@@ -66,7 +74,7 @@ def _summary(marking: Marking, check: Check | None, assessment: Assessment) -> M
     if check is not None:
         return summary_of(check)
     key = marking.question.key if marking.question else None
-    return saved_summary(marking.definition, key, course_methods(assessment.course), assessment.question_set())
+    return saved_summary(marking.definition, key, loaded_course_methods(assessment.course), assessment.question_set())
 
 
 @dataclass(frozen=True)
@@ -121,28 +129,14 @@ def saved_markings(markings: Iterable[Marking], accepted: Mapping[Marking, Check
 @dataclass(frozen=True)
 class ListedQuestion:
     question: Question
-    method_label: str | None
-    """The label of the method of the user's draft of its marking, or else of its marking, while that can mark."""
     is_marked: bool
-    has_problems: bool
-    """It has a marking that can't mark until fixed."""
-    in_question_group: bool
-    has_imported_marks: bool
-    type: str
+    badge: MarkingBadge
     proportion: float | None
     """The average proportion of the question's marks."""
     progress: float | None
     """How far a remark of it has got, while one runs."""
     has_draft: bool
     is_shown: bool
-
-    @property
-    def badge(self) -> MarkingBadge:
-        if self.in_question_group and not self.has_draft:
-            return MarkingBadge("Question group", "warning" if self.has_problems else "method")
-        return marking_badge(
-            self.method_label, has_problems=self.has_problems, has_imported_marks=self.has_imported_marks
-        )
 
 
 @dataclass(frozen=True)
@@ -181,7 +175,7 @@ def question_list(
     assessment = membership.assessment
     accepted = assessment_checks(assessment) if accepted is None else accepted
     markings = list(assessment.markings.select_related("question"))
-    saved = saved_markings(markings, accepted)
+    saved_by_key = saved_markings(markings, accepted)
     group_markings = [marking for marking in markings if marking.question_id is None]
     averages = average_proportions(assessment)
     progress = {key: job.progress for job in running_remarks(assessment) for key in job.question_keys}
@@ -190,23 +184,32 @@ def question_list(
         MarkingDraftRecord.objects.filter(assessment=assessment, user=membership.member.user).select_related("question")
     )
     drafted_ids = {draft.question_id for draft in drafts} | {draft.marking_id for draft in drafts}
-    draft_methods = _draft_methods(membership, drafts)
+    parsed = _parsed_drafts(membership, drafts)
+    draft_methods = {
+        subject_id: drafted_method(parsed[draft.pk])
+        for draft in drafts
+        if (subject_id := draft.question_id or draft.marking_id)
+    }
     listed = []
     for question in assessment.questions.all():
-        saved_marking = saved.get(question.key)
-        own_marking = saved_marking.marking if saved_marking and not saved_marking.in_question_group else None
+        saved_marking = saved_by_key.get(question.key)
+        in_question_group = saved_marking is not None and saved_marking.in_question_group
+        has_problems = saved_marking is not None and saved_marking.has_problems
+        own_marking = saved_marking.marking if saved_marking and not in_question_group else None
+        has_draft = question.pk in drafted_ids or (own_marking is not None and own_marking.pk in drafted_ids)
+        method_label = draft_methods.get(question.pk) or (saved_marking.method_label if saved_marking else None)
         listed.append(
             ListedQuestion(
                 question=question,
-                method_label=draft_methods.get(question.pk) or (saved_marking.method_label if saved_marking else None),
-                is_marked=saved_marking is not None and not saved_marking.has_problems,
-                has_problems=saved_marking is not None and saved_marking.has_problems,
-                in_question_group=saved_marking is not None and saved_marking.in_question_group,
-                has_imported_marks=question.key in imported_keys,
-                type=QUESTION_TYPE_LABELS.get(question.core_question.type, ""),
+                is_marked=saved_marking is not None and not has_problems,
+                badge=MarkingBadge("Question group", "warning" if has_problems else "method")
+                if in_question_group and not has_draft
+                else marking_badge(
+                    method_label, has_problems=has_problems, has_imported_marks=question.key in imported_keys
+                ),
                 proportion=averages.get(question.pk),
                 progress=progress.get(question.key),
-                has_draft=question.pk in drafted_ids or (own_marking is not None and own_marking.pk in drafted_ids),
+                has_draft=has_draft,
                 is_shown=str(question.pk) == shown_id,
             )
         )
@@ -222,31 +225,26 @@ def question_list(
     ]
     for draft in drafts:
         if draft.question_id is None and draft.marking_id is None:
-            new_group = MarkingWorkspace(draft)
-            check = new_group.finalized
+            checks = parsed[draft.pk]
+            try:
+                marked_keys = sorted(checks.finalized().questions_marked())
+            except EditingError:
+                marked_keys = []
             url = reverse("question_group_draft", args=[assessment.pk, draft.pk])
             question_groups.append(
-                QuestionGroup(
-                    url,
-                    sorted(check.questions_marked()) if check else [],
-                    drafted_method(new_group.checks),
-                    True,
-                    str(draft.pk) == shown_id,
-                )
+                QuestionGroup(url, marked_keys, drafted_method(checks), True, str(draft.pk) == shown_id)
             )
     return QuestionList(shown_id, listed, question_groups)
 
 
-def _draft_methods(membership: AssessmentAccess, drafts: list[MarkingDraftRecord]) -> dict[UUID | None, str]:
-    """The method of each of the user's `drafts`, by what it marks."""
+def _parsed_drafts(membership: AssessmentAccess, drafts: list[MarkingDraftRecord]) -> dict[UUID, MarkingDraft]:
+    """Each of the user's `drafts` as the core edits it, by its ID."""
     if not drafts:
         return {}
     questions = membership.assessment.question_set()
     methods = usable(membership.member.user, membership.course)
     return {
-        draft.question_id or draft.marking_id: drafted_method(
-            marking_draft(draft.definition, questions, draft.question.key if draft.question else None, methods)
-        )
+        draft.pk: marking_draft(draft.definition, questions, draft.question.key if draft.question else None, methods)
         for draft in drafts
     }
 
@@ -286,7 +284,8 @@ class Panel:
     mode: Literal["summary", "question_group", "choose"]
     question_group: SavedGroup | None
     summary: MarkingSummary | None
-    choices: Choices
+    choices: Choices | None
+    """The methods to choose from, when choosing one."""
     has_imported_marks: bool
     has_history: bool
     archived: bool
@@ -309,13 +308,14 @@ def panel(
     )
     check = accepted.get(marking) if marking else accepted.get(group_marking) if group_marking else None
     choosing = marking is None and group_marking is None and membership.can_edit
-    user, course = membership.member.user, assessment.course
-    methods = methods_for(user, assessment, question.key) if choosing else Methods()
+    user = membership.member.user
     return Panel(
         mode="summary" if marking else "question_group" if group else "choose",
         question_group=group,
         summary=_summary(marking, check, assessment) if marking else group.summary if group else None,
-        choices=choices(methods, offers(user, course) if choosing else OfferedMethods((), (), {})),
+        choices=choices(methods_for(user, assessment, question.key), offers(user, assessment.course))
+        if choosing
+        else None,
         has_imported_marks=has_imported_marks(assessment, question.key),
         has_history=choosing and Marking.history.filter(question_id=question.pk).exists(),
         archived=check is not None and check.method.name in _archived_methods(marking or group_marking),

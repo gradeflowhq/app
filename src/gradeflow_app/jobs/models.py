@@ -56,12 +56,6 @@ class Job(models.Model):
     course = models.ForeignKey(Course, null=True, on_delete=models.CASCADE, related_name="jobs")
     """None for tests of a person's own method."""
     marking = models.ForeignKey("marking.Marking", null=True, on_delete=models.SET_NULL, related_name="jobs")
-    method_draft = models.ForeignKey(
-        "libraries.MethodDraftRecord", null=True, on_delete=models.SET_NULL, related_name="jobs"
-    )
-    version_tests = models.ForeignKey(
-        "libraries.VersionTests", null=True, on_delete=models.SET_NULL, related_name="jobs"
-    )
     revision = models.PositiveIntegerField(null=True)
     core_version = models.CharField(max_length=128, blank=True)
     """The core version that ran it, for tracing results."""

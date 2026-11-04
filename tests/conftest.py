@@ -392,12 +392,6 @@ def post_to_designer(
     client: Client, method: Method, view: str, number: int | None = None, /, **data: object
 ) -> Response:
     """Post `data` to the workspace's `view`, from a page showing the workspace as it is."""
-    return post_with_revision(client, method, view, number, data)
-
-
-def post_with_revision(
-    client: Client, method: Method, view: str, number: int | None, data: dict[str, object]
-) -> Response:
     revision = designer_record(method, number).revision
     return client.post(designer_url(method, view, number), {"revision": revision, **data}, headers=HTMX_HEADERS)
 

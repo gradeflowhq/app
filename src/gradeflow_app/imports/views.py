@@ -13,6 +13,7 @@ from gradeflow_app.assessments.access import assessment_member
 from gradeflow_app.assessments.models import AssessmentAccess
 from gradeflow_app.courses.models import Role
 from gradeflow_app.imports.forms import QuestionDocumentForm, UploadForm
+from gradeflow_app.imports.models import ResultsFile
 from gradeflow_app.imports.services import ImportFailed, apply_question_document, import_results
 from gradeflow_app.marking.remarks import remark
 from gradeflow_app.model_service.endpoints import endpoint
@@ -68,15 +69,10 @@ def upload(request: Request, membership: AssessmentAccess) -> HttpResponse:
     if not form.is_valid():
         return _import_error(first_error(form))
     import_settings = form.cleaned_data
+    csv_text, key_row = import_settings.pop("answers_csv"), import_settings.pop("answer_key")
     try:
         with transaction.atomic():
-            summary = import_results(
-                assessment,
-                request.user,
-                csv_text=import_settings.pop("answers_csv"),
-                key_row=import_settings.pop("answer_key"),
-                **import_settings,
-            )
+            summary = import_results(assessment, request.user, ResultsFile(**import_settings), csv_text, key_row)
             remark(assessment, summary.changed_questions, request.user, endpoint(request))
     except ImportFailed as error:
         return _import_error(str(error))

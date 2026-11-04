@@ -24,11 +24,10 @@ from gradeflow_app.requests import Request
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
 class PickerForm:
-    """Where the picker's form sends the chosen method: to `action`, as `field`, with any other `fields`; into
+    """Where the picker's form sends the chosen method: to `action`, as `method`, with any other `fields`; into
     `target` with `swap`, along with what `include` selects, or else as a plain form."""
 
     action: str
-    field: str
     target: str = ""
     swap: str = ""
     include: str = ""

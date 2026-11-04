@@ -2,22 +2,19 @@
 
 import hashlib
 from datetime import UTC, datetime
-from weakref import WeakKeyDictionary
 
 from django.core import signing
 from django.db import connection, transaction
-from django.http import HttpRequest
 from django.urls import reverse
 from django.utils import timezone
 
 from gradeflow_app.live.models import Topic
+from gradeflow_app.requests import HtmxRequest
 
 NOTIFY_CHANNEL = "gradeflow_live"
 REFRESH_THROTTLE = "1s"
 """How often a page refreshes for one topic at most. It still refreshes once more for the last change."""
 _SALT = "gradeflow.live"
-
-_topics_by_request: WeakKeyDictionary[HttpRequest, set[str]] = WeakKeyDictionary()
 
 
 def topic(*about: object) -> str:
@@ -40,15 +37,15 @@ def notify_change(*names: str) -> None:
                 cursor.execute("SELECT pg_notify(%s, %s)", [NOTIFY_CHANNEL, f"{name} {to_milliseconds(now)}"])
 
 
-def listen(request: HttpRequest, *names: str) -> str:
+def listen(request: HtmxRequest, *names: str) -> str:
     """The `hx-trigger` for `names`, which the page's stream sends."""
-    _topics_by_request.setdefault(request, set()).update(names)
+    request.live_topics = getattr(request, "live_topics", set()) | set(names)
     return ", ".join(f"{name} from:body throttle:{REFRESH_THROTTLE}" for name in names)
 
 
-def stream_url(request: HttpRequest) -> str | None:
+def stream_url(request: HtmxRequest) -> str | None:
     """Where the page streams the events it listens for; None if it listens for none."""
-    if not (names := _topics_by_request.get(request)):
+    if not (names := getattr(request, "live_topics", None)):
         return None
     token = signing.dumps([sorted(names), to_milliseconds(timezone.now())], salt=_SALT, compress=True)
     return reverse("live", query={"topics": token})

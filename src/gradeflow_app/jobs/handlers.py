@@ -21,7 +21,7 @@ def _always_current(job: Job) -> bool:
 
 
 @dataclass(frozen=True)
-class Handler[T]:
+class Handler:
     task: Task
     topics: Callable[[Job], list[str]]
     """What pages showing the job listen to."""
@@ -29,17 +29,17 @@ class Handler[T]:
     """Locks what its outcome changes, before the job itself is locked."""
     is_current: Callable[[Job], bool] = _always_current
     """Whether its outcome still applies; one that doesn't fails as out of date."""
-    apply_outcome: Callable[[Job, T], None] | None = None
+    apply_outcome: Callable[[Job, Any], None] | None = None
     """Applies its outcome: the marked submissions of a mark task, the comparison of a compare task. Without it, the
     job keeps the outcome as its result."""
 
 
-_HANDLERS: dict[str, Handler[Any]] = {}
+_HANDLERS: dict[str, Handler] = {}
 
 
-def register(kind: Job.Kind, handler: Handler[Any]) -> None:
+def register(kind: Job.Kind, handler: Handler) -> None:
     _HANDLERS[kind] = handler
 
 
-def handler(job: Job) -> Handler[Any]:
+def handler(job: Job) -> Handler:
     return _HANDLERS[job.kind]

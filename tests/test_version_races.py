@@ -230,7 +230,7 @@ def test_generated_invalid_settings_remain_a_repairable_draft(
     if in_question_group:
         draft.question = None
     draft.save()
-    assert MarkingWorkspace(draft).problems
+    assert MarkingWorkspace(draft).checks.problems
     url = (
         reverse("question_group_draft", args=[draft.assessment_id, draft.pk])
         if in_question_group

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}GradeFlow{% endblock %}</title>
+  <title>{% block title %}{% block page_title %}{% endblock %}GradeFlow{% endblock %}</title>
   <link rel="icon" href="{% static 'gradeflow/logo.svg' %}" type="image/svg+xml">
   <script {% csp_nonce_attr %}>
     try {
@@ -29,7 +29,7 @@
   {% endblock %}
   {% page_messages %}
   <div class="toast toast-center toast-bottom z-50" aria-live="polite">
-    <template x-for="toast in $store.toasts.visible" :key="toast.id"><div class="alert shadow-lg" :class="toast.alertClass" role="status"><template x-if="toast.isSuccess">{% icon "check-circle" %}</template><span x-text="toast.message"></span></div></template>
+    <template x-for="toast in $store.toasts.visible"><div class="alert shadow-lg" :class="toast.alertClass" role="status"><template x-if="toast.isSuccess">{% icon "check-circle" %}</template><span x-text="toast.message"></span></div></template>
   </div>
   <c-dialog id="confirm" title="">
     <form method="dialog">

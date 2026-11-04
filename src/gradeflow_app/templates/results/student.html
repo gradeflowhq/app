@@ -5,14 +5,14 @@
 <div class="p-6" id="student-detail">
   <ol class="card-box divide-y divide-base-300" aria-label="Questions">
     {% for question, answer, award, marks_source in rows %}
-    {% with low=award.marks max_marks=question.core_question.max_marks adjustment=award.adjustment %}
+    {% with low=award.marks max_marks=question.core_question.max_marks adjustment=award.adjustment code=question.core_question|code_language %}
     <li class="grid gap-3 px-4 py-3"{% if membership.can_edit %} x-data="adjustForm" data-feedback="{% if not adjustment or adjustment.feedback is None %}marking{% elif adjustment.feedback %}own{% else %}none{% endif %}"{% endif %}>
       <div class="flex items-start gap-4">
         <div class="min-w-0 flex-1">
           <p class="text-sm"><span class="font-semibold">{{ question.key }}</span>{% if marks_source %} <span class="text-muted">· {{ marks_source }}</span>{% endif %}</p>
-          {% include "results/answer_text.html" with expanded=True code=question.core_question|code_language %}
+          {% include "results/answer_text.html" with expanded=True %}
           {% include "results/answer_feedback.html" with feedback=award.feedback %}
-          {% if award.breakdown %}{% with code=question.core_question|code_language %}<c-more-options label="Breakdown" class="mt-2"><c-breakdown :check="award.breakdown" :language="code" /></c-more-options>{% endwith %}{% endif %}
+          {% if award.breakdown %}<c-more-options label="Breakdown" class="mt-2"><c-breakdown :check="award.breakdown" :language="code" /></c-more-options>{% endif %}
         </div>
         <div class="flex shrink-0 flex-col items-end gap-1">
           <c-marks :low="low" :high="low" :max_marks="max_marks" />
@@ -36,8 +36,8 @@
             <label class="segment whitespace-nowrap"><input type="radio" class="sr-only" value="own" x-model="feedback">Write your own</label>
             <label class="segment whitespace-nowrap"><input type="radio" class="sr-only" value="none" x-model="feedback">None</label>
           </div>
-          <textarea name="feedback" rows="2" class="textarea w-full" x-show="writesOwnFeedback" :disabled="!writesOwnFeedback"{% if not adjustment.feedback %} disabled{% endif %} aria-labelledby="feedback-{{ question.pk }}">{{ adjustment.feedback|default_if_none:'' }}</textarea>
-          <input type="hidden" name="clear_feedback" value="on" :disabled="!clearsFeedback"{% if not adjustment or adjustment.feedback != '' %} disabled{% endif %}>
+          <textarea name="feedback" rows="2" class="textarea w-full" x-show="feedback === 'own'" :disabled="feedback !== 'own'"{% if not adjustment.feedback %} disabled{% endif %} aria-labelledby="feedback-{{ question.pk }}">{{ adjustment.feedback|default_if_none:'' }}</textarea>
+          <input type="hidden" name="clear_feedback" value="on" :disabled="feedback !== 'none'"{% if not adjustment or adjustment.feedback != '' %} disabled{% endif %}>
         </div>
         <div class="flex flex-wrap items-center gap-2">
           {% if adjustment %}<button class="btn btn-ghost -ml-3 mr-auto text-error" name="action" value="clear" data-confirm="Clear the adjustment?" data-confirm-detail="The student gets the marking's marks and feedback for {{ question.key }} again." data-confirm-button="Clear">Clear adjustment</button>{% endif %}

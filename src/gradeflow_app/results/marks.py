@@ -218,13 +218,13 @@ class Results:
             for question in self.questions
             if (result := row.awards[question.key].question_result()) is not None
         }
-        return MarkedSubmission(**row.student.submission.model_dump(), results=results)
+        return MarkedSubmission(**row.student.submission.model_dump(), results=results, max_marks=self.max_marks)
 
     @property
     def has_marks(self) -> bool:
         return any(award.marks is not None for row in self.rows for award in row.awards.values())
 
-    @property
+    @cached_property
     def has_adjustments(self) -> bool:
         return any(row.adjusted_keys for row in self.rows)
 

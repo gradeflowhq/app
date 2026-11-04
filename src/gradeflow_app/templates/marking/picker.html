@@ -35,7 +35,7 @@
     <form class="flex flex-wrap items-center justify-end gap-2 border-t border-base-300 px-4 py-3 sm:px-6" {% if picker_form.target %}hx-post="{{ picker_form.action }}" hx-target="{{ picker_form.target }}" hx-swap="{{ picker_form.swap }}" data-close-on-success{% else %}method="post" action="{{ picker_form.action }}"{% endif %}{% if picker_form.include %} hx-include="{{ picker_form.include }}"{% endif %}>
       {% csrf_token %}
       {% for name, value in picker_form.fields.items %}<input type="hidden" name="{{ name }}" value="{{ value }}">{% endfor %}
-      <input type="hidden" name="{{ picker_form.field }}" value="{{ method.ref }}" :value="selected">
+      <input type="hidden" name="method" value="{{ method.ref }}" :value="selected">
       {% if picker_form.questions %}
       <label class="mr-auto flex w-full items-center gap-2 text-sm sm:w-auto">Question
         <select name="question" aria-label="Question" class="select select-sm w-auto" hx-get="{{ picker_form.reload_url }}" hx-include="this" hx-target="#picker-body" hx-swap="innerHTML">

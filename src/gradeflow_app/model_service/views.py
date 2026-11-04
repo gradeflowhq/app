@@ -85,8 +85,7 @@ def choose(request: Request) -> HttpResponse:
     if state is None or (model_endpoint := endpoint(request, state)) is None:
         return _models(request, state, error=NOT_CONNECTED_ERROR)
     if request.POST.get("chosen_by") != "myself":
-        if not choosing.running(Job.Kind.MODEL_CHOICE, request.user, state.url).exists():
-            choosing.choose(request.user, model_endpoint)
+        choosing.choose(request.user, model_endpoint)
         return _models(request, state)
     picked = _picked(request.POST)
     if not picked["fast"]:

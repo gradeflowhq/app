@@ -35,10 +35,6 @@ class MarkRange:
     low: float
     high: float
 
-    @classmethod
-    def spanning(cls, values: list[float]) -> MarkRange:
-        return cls(min(values), max(values))
-
 
 # The workspace in the hero: one question's answers grouped by the checks they pass.
 
@@ -112,11 +108,11 @@ class Workspace(LandingModel):
         return sum(1 for question in self.questions if question.method)
 
     @property
-    def rows(self) -> list[tuple[WorkspaceAnswerGroup, MarkRange, list[tuple[WorkspaceCheck, bool]]]]:
+    def rows(self) -> list[tuple[WorkspaceAnswerGroup, float, list[tuple[WorkspaceCheck, bool]]]]:
         workspace_marks = core_marks()["workspace"]
         return [
-            (group, MarkRange(value, value), list(zip(self.checks, correct, strict=True)))
-            for group, (value, _), correct in zip(
+            (group, mark, list(zip(self.checks, correct, strict=True)))
+            for group, (mark, _), correct in zip(
                 self.answer_groups,
                 workspace_marks["marks"],
                 zip(*workspace_marks["correct"], strict=True),

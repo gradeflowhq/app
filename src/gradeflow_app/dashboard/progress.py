@@ -10,7 +10,7 @@ from gradeflow_core import Check, Methods
 from gradeflow_app.assessments.models import Assessment
 from gradeflow_app.imports.models import ResultsFile
 from gradeflow_app.libraries.collection import course_methods
-from gradeflow_app.marking.checks import accepted_checks, keys_marked_by
+from gradeflow_app.marking.checks import accepted_checks
 from gradeflow_app.marking.models import Marking
 from gradeflow_app.publish.models import SentMarks
 
@@ -48,7 +48,7 @@ def progress(assessment: Assessment, accepted: Mapping[Marking, Check]) -> Progr
     return Progress(
         latest_import=assessment.results_files.first(),
         question_count=assessment.questions.count(),
-        marked_count=len(keys_marked_by(accepted)),
+        marked_count=len({key for check in accepted.values() for key in check.questions_marked()}),
         latest_sent_marks=assessment.sent_marks.first(),
     )
 

@@ -31,8 +31,7 @@
     {% if results %}
     {% with max_marks=results.max_marks %}
     <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
-      <div class="contents" x-data="histogram">
-      <c-card title="Distribution" class="lg:col-span-2">
+      <c-card title="Distribution" class="lg:col-span-2" x-data="histogram">
         <c-slot name="actions">
           <div class="segmented" role="radiogroup" aria-label="Bar width">
             {% for value, label, is_redundant in distribution.widths %}<label class="segment"><input type="radio" name="bar_width" class="sr-only" value="{{ value }}" x-model="barWidth"{% if is_redundant %} disabled{% endif %}>{{ label }}</label>{% endfor %}
@@ -43,7 +42,6 @@
           <canvas aria-label="Students by total marks" role="img"></canvas>
         </div>
       </c-card>
-      </div>
       <c-card title="Statistics" class="flex flex-col" body_class="flex flex-1 flex-col justify-between gap-6 p-5">
         {% if not progress.marked_count %}<c-slot name="actions"><span class="text-sm text-muted">From the exam export</span></c-slot>{% endif %}
         {% with statistics=box_plot.statistics positions=box_plot.positions %}

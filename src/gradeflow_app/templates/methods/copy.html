@@ -9,7 +9,7 @@
       <fieldset class="overflow-hidden rounded-box border border-base-300 focus-within:border-base-content/25">
         <legend class="sr-only">Copy to</legend>
         <label class="flex items-center gap-3 border-b border-base-300 px-4"><span class="grid w-8 shrink-0 place-items-center" aria-hidden="true">{% icon "magnifying-glass" "size-4 text-subtle" %}</span><input type="search" class="h-10 w-full bg-transparent text-sm outline-hidden placeholder:text-subtle" placeholder="Search" aria-label="Search" x-on:input="search" x-on:keydown.enter.prevent{% if not form.label.errors %} autofocus{% endif %}></label>
-        <ul class="grid max-h-60 grid-cols-[minmax(0,1fr)] content-start gap-0.5 overflow-y-auto p-1.5">
+        <ul class="grid max-h-60 content-start gap-0.5 overflow-y-auto p-1.5">
           {% for key, library_label in form.fields.library.choices %}
           <li data-search="{{ library_label|lower }}"><label class="group flex cursor-pointer items-center gap-3 rounded-field px-2.5 py-2 hover:bg-base-200 has-checked:bg-primary/8 has-focus-visible:outline-2 has-focus-visible:outline-primary">
             <input type="radio" name="library" value="{{ key }}" class="sr-only"{% if key == form.library.value %} checked{% endif %}>

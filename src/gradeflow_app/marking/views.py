@@ -9,7 +9,6 @@ from django.db import transaction
 from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
-from django.utils.safestring import mark_safe
 from django.views.decorators.http import require_POST
 from django_htmx.http import HttpResponseLocation, push_url
 from gradeflow_core import Check, GradeFlowError
@@ -27,12 +26,12 @@ from gradeflow_app.assessments.access import assessment_member
 from gradeflow_app.assessments.models import Assessment, AssessmentAccess
 from gradeflow_app.courses.models import Role
 from gradeflow_app.editor import operations
-from gradeflow_app.editor.guide import sections_of
+from gradeflow_app.editor.guide import choices, sections_of
 from gradeflow_app.editor.picker import PickerForm, check_picker, picker
 from gradeflow_app.editor.presenters import Editor, editor
 from gradeflow_app.jobs.queue import stop
 from gradeflow_app.libraries import services as libraries
-from gradeflow_app.libraries.collection import offers, usable
+from gradeflow_app.libraries.collection import loaded_usable_methods, offers, usable
 from gradeflow_app.libraries.forms import SaveMethodForm
 from gradeflow_app.live.topics import notify_change, topic
 from gradeflow_app.marking import presenters, previews
@@ -230,8 +229,7 @@ def draft_view(request: Request, membership: AssessmentAccess, draft_id: UUID) -
             or not previews.preview_is_stale(workspace)
             else preview_bar(request, workspace)
         )
-        status_html = '<span id="editor-status" hx-swap-oob="true" class="text-sm text-muted">Draft saved</span>'
-        context |= {"fields_only_update": True, "update_html": mark_safe(answers_html + status_html)}
+        context |= {"fields_only_update": True, "update_html": answers_html}
         return render(request, "marking/check.html#notices", context)
     context["answers_html"] = answers_column_html(request, membership, workspace.subject, workspace, out_of_band=True)
     response = render(request, "marking/panel.html", context)
@@ -294,7 +292,7 @@ def save(request: Request, membership: AssessmentAccess, draft_id: UUID) -> Http
         path = (
             path
             if workspace.problems_at(path, saving=True)
-            else next((problem.check for problem in workspace.problems), path)
+            else next((problem.check for problem in workspace.checks.problems), path)
         )
         context = {"membership": membership, "editor": _editor(request, workspace, path)}
         return render(request, "marking/editor.html", context)
@@ -346,7 +344,7 @@ def remove(request: Request, membership: AssessmentAccess, question_id: UUID) ->
 @assessment_member()
 def history(request: Request, membership: AssessmentAccess, question_id: UUID) -> HttpResponse:
     question = membership.question(question_id)
-    methods, questions = usable(request.user, membership.course), membership.assessment.question_set()
+    loaded, questions = loaded_usable_methods(request.user, membership.course), membership.assessment.question_set()
     history = (
         Marking.history.filter(question_id=question.pk)
         .exclude(history_type="-")
@@ -357,7 +355,7 @@ def history(request: Request, membership: AssessmentAccess, question_id: UUID) -
     versions = [
         {
             "version": version,
-            "summary": saved_summary(version.definition, question.key, methods, questions),
+            "summary": saved_summary(version.definition, question.key, loaded, questions),
             "current": current and index == 0,
         }
         for index, version in enumerate(history)
@@ -420,17 +418,11 @@ def question_group_new(request: Request, membership: AssessmentAccess) -> HttpRe
             assessment=membership.assessment, user=request.user, definition=definition
         )
         return redirect("question_group_draft", membership.assessment.pk, draft.pk)
+    offered = choices(methods_for(request.user, membership.assessment), offers(request.user, membership.course))
     context = {
         "membership": membership,
         "question_list": presenters.question_list(membership, "new"),
-        "methods": [
-            method
-            for section in sections_of(
-                methods_for(request.user, membership.assessment), offers(request.user, membership.course)
-            )
-            if section.tab != "public"
-            for method, _ in section.methods
-        ],
+        "methods": [*offered.everyday, *offered.saved, *offered.advanced],
     }
     return render(request, "marking/question_group_new.html", context)
 
@@ -447,7 +439,7 @@ def question_methods(request: Request, membership: AssessmentAccess, question_id
     question = membership.question(question_id)
     methods = methods_for(request.user, membership.assessment, question.key)
     action = reverse("marking_start", args=[membership.assessment.pk, question.pk])
-    picker_form = PickerForm(action=action, field="method", target="#marking-panel", swap="outerHTML")
+    picker_form = PickerForm(action=action, target="#marking-panel", swap="outerHTML")
     sections = sections_of(methods, offers(request.user, membership.course))
     return picker(
         request, sections, request.GET.get("selected", ""), picker_form, membership.course, question.core_question.type
@@ -461,7 +453,6 @@ def draft_methods(request: Request, membership: AssessmentAccess, draft_id: UUID
     args = [membership.assessment.pk, workspace.draft.pk]
     picker_form = PickerForm(
         action=reverse("draft", args=args),
-        field="method",
         target="#marking-panel",
         swap="outerHTML",
         fields={"path": request.GET.get("path", request.GET.get("target", ""))},
@@ -472,7 +463,7 @@ def draft_methods(request: Request, membership: AssessmentAccess, draft_id: UUID
 
 @assessment_member(Role.EDITOR)
 def question_group_methods(request: Request, membership: AssessmentAccess) -> HttpResponse:
-    picker_form = PickerForm(action=reverse("question_group_new", args=[membership.assessment.pk]), field="method")
+    picker_form = PickerForm(action=reverse("question_group_new", args=[membership.assessment.pk]))
     sections = sections_of(methods_for(request.user, membership.assessment), offers(request.user, membership.course))
     return picker(request, sections, request.GET.get("selected", ""), picker_form, membership.course)
 
@@ -483,14 +474,10 @@ def question_group(request: Request, membership: AssessmentAccess, marking_id: U
     subject = MarkingTarget.of(membership.assessment, marking=marking)
     workspace = draft_workspace(request, membership, subject)
     accepted = assessment_checks(membership.assessment)
-    group = presenters.saved_group(membership.assessment, marking, accepted.get(marking))
     context: dict[str, Any] = {
         "membership": membership,
         "question_list": presenters.question_list(membership, str(marking.pk), accepted),
-        "question_group": marking,
-        "question_group_marked_keys": group.marked_keys,
-        "question_group_involved_keys": group.involved_keys,
-        "summary": group.summary,
+        "group": presenters.saved_group(membership.assessment, marking, accepted.get(marking)),
         "answers": answers_column_html(request, membership, subject, workspace, accepted=accepted),
     }
     if workspace is not None:

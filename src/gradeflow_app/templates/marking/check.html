@@ -31,7 +31,7 @@
 
     <div id="editor-notices" class="grid gap-3 [&:not(:has(*))]:hidden">
       {% partialdef notices inline %}
-        {% if editor.description and not editor.holds_checks %}<c-summary :text="editor.description" />{% endif %}
+        {% if editor.description and not editor.checks_settings %}<c-summary :text="editor.description" />{% endif %}
         {% if editor.saved_by_someone_else %}<div role="alert" class="alert alert-warning alert-soft">{% icon "exclamation-triangle" %}<div class="grid justify-items-start gap-2"><p>Someone saved this marking after you started. Saving replaces their version.</p><button type="button" class="btn btn-sm" hx-post="{{ editor.actions.discard }}" data-confirm="Discard your changes?" data-confirm-detail="{{ editor.discard_note }}" data-confirm-button="Discard">Use theirs</button></div></div>{% endif %}
         {% if editor.conflicts %}
           <c-alert class="items-start">
@@ -51,6 +51,7 @@
           {% for field_set in editor.form.maps %}{% for entry in field_set.entries %}<c-field-errors :errors="entry.errors" id="{{ entry.prefix }}-error" hx-swap-oob="true" />{% endfor %}{% endfor %}
           {% for setting_view in editor.checks_settings %}<c-field-errors :errors="setting_view.errors" id="checks-setting-{{ setting_view.setting.name }}-error" hx-swap-oob="true" />{% endfor %}
           {{ update_html|default:"" }}
+          {% include "marking/editor.html#editor-status" %}
         {% endif %}
       {% endpartialdef %}
     </div>
@@ -71,7 +72,7 @@
           <div class="min-w-0 flex-1">
             <button type="button" class="block text-left font-medium after:absolute after:inset-0 after:rounded-box" hx-post="{{ draft_url }}" hx-vals="{% hx_vals operation="open" target=child.path %}">{{ child.label }}</button>
             {% if child.notes %}<p class="text-sm text-muted">{{ child.notes|join:" · " }}</p>{% endif %}
-            {% if child.has_problems and not child.problem %}<p class="text-sm text-warning">Not set up yet</p>{% elif child.description %}<c-collapsible class="prose-core text-sm text-muted">{{ child.description|markdown }}</c-collapsible>{% endif %}
+            {% if child.has_problems and not child.problem %}<p class="text-sm text-warning">Not set up yet</p>{% elif child.description %}<c-collapsible class="prose-core text-sm text-muted [&_pre]:relative">{{ child.description|markdown }}</c-collapsible>{% endif %}
             {% if child.problem %}<p class="text-sm text-error">{{ child.problem }}</p>{% endif %}
           </div>
           {% if editor.editable and not setting_view.has_fixed_count %}

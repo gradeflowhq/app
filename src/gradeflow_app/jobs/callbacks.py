@@ -17,8 +17,15 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
 
 from gradeflow_app.jobs import events, queue
-from gradeflow_app.jobs.handlers import handler
+from gradeflow_app.jobs.handlers import Task, handler
 from gradeflow_app.jobs.models import Job
+
+_RESULT_EVENTS: dict[str, tuple[Task, str]] = {
+    "tested": ("test", "results"),
+    "chosen": ("choose", "choice"),
+    "trials": ("trial", "trials"),
+}
+"""The events reporting a task's result: the task, and the field holding the result."""
 
 
 def _has_valid_signature(job: Job, request: HttpRequest, body: bytes) -> bool:
@@ -64,14 +71,10 @@ def _apply_event(job: Job, event: dict[str, Any]) -> None:
             events.apply_comparison_part(job, event)
         case "marked" if task == "mark":
             events.add_marked_batch(job, event["submissions"])
-        case "tested" if task == "test":
-            events.store_test_results(job, event["results"])
         case "progress" if task == "mark":
             events.record_progress(job, event)
-        case "chosen" if task == "choose":
-            events.store_model_choice(job, event["choice"])
-        case "trials" if task == "trial":
-            events.store_model_trials(job, event["trials"])
+        case "tested" | "chosen" | "trials" as name if _RESULT_EVENTS[name][0] == task:
+            events.store_result(job, event[_RESULT_EVENTS[name][1]])
         case "finished":
             queue.end(job)
         case "failed":

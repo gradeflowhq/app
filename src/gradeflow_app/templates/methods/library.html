@@ -25,11 +25,11 @@
         {% endfor %}
         {% for row in methods %}
         <tr data-href>
-          <td><a class="font-medium hover:underline" href="{% url 'method_page' row.method.pk row.version.version %}">{{ row.version.label }}</a><p class="max-w-48 truncate text-sm text-muted sm:max-w-md">{{ row.version.summary }}</p></td>
+          <td><span class="flex items-center gap-2"><a class="font-medium hover:underline" href="{% url 'method_page' row.method.pk row.number %}">{{ row.label }}</a>{% include "methods/not_compatible.html" %}</span><p class="max-w-48 truncate text-sm text-muted sm:max-w-md">{{ row.summary }}</p></td>
           <td class="text-muted max-sm:hidden">{{ row.type_labels|join:", " }}</td>
           <td class="text-muted max-sm:hidden">{% if row.marking_count %}{{ row.marking_count }} marking{{ row.marking_count|pluralize }}{% else %}Not used{% endif %}</td>
           <td class="text-muted max-md:hidden">{% if row.method.public %}Anyone{% elif member %}Members{% else %}Only you{% endif %}</td>
-          <td class="tabular-nums text-right">{{ row.version.version }}</td>
+          <td class="tabular-nums text-right">{{ row.number }}</td>
         </tr>
         {% endfor %}
       </tbody>
@@ -47,9 +47,9 @@
         <tbody>
           {% for row in other_library_methods %}
           <tr data-href>
-            <td><a class="font-medium hover:underline" href="{% url 'method_page' row.method.pk row.version.version %}">{{ row.version.label }}</a><p class="text-sm text-muted">by {{ row.method.library.owner_name }}</p></td>
+            <td><span class="flex items-center gap-2"><a class="font-medium hover:underline" href="{% url 'method_page' row.method.pk row.number %}">{{ row.label }}</a>{% include "methods/not_compatible.html" %}</span><p class="text-sm text-muted">by {{ row.method.library.owner_name }}</p></td>
             <td class="text-muted max-sm:hidden">{{ row.marking_count }} marking{{ row.marking_count|pluralize }}</td>
-            <td class="whitespace-nowrap text-right">{% if row.method.archived %}<span class="badge badge-ghost badge-sm">Archived</span> {% elif row.newer_version_number %}<span class="badge badge-info badge-soft badge-sm">{{ row.newer_version_number }} available</span> {% endif %}<span class="tabular-nums">{{ row.version.version }}</span></td>
+            <td class="whitespace-nowrap text-right">{% if row.method.archived %}<span class="badge badge-ghost badge-sm">Archived</span> {% elif row.newer_version_number %}<span class="badge badge-info badge-soft badge-sm">{{ row.newer_version_number }} available</span> {% endif %}<span class="tabular-nums">{{ row.number }}</span></td>
           </tr>
           {% endfor %}
         </tbody>

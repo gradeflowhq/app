@@ -23,10 +23,12 @@ MODEL_JOB_KINDS = (Job.Kind.MODEL_CHOICE, Job.Kind.MODEL_TRIAL)
 
 
 @transaction.atomic
-def choose(user: User, endpoint: ModelEndpoint) -> Job:
-    """Try the endpoint's models and keep the best. Those in use stay until the device collects the new ones."""
-    queue.cancel_jobs(running(Job.Kind.MODEL_CHOICE, user, endpoint.url), queue.STOPPED_REASON)
-    return queue.enqueue(
+def choose(user: User, endpoint: ModelEndpoint) -> None:
+    """Try the endpoint's models and keep the best, unless that is already running. Those in use stay until the
+    device collects the new ones."""
+    if running(Job.Kind.MODEL_CHOICE, user, endpoint.url).exists():
+        return
+    queue.enqueue(
         kind=Job.Kind.MODEL_CHOICE,
         course=None,
         question_keys=[],
@@ -110,5 +112,5 @@ def _topics(job: Job) -> list[str]:
     return [topic("models", job.created_by_id)]
 
 
-register(Job.Kind.MODEL_CHOICE, Handler[dict[str, Any]](task="choose", topics=_topics))
-register(Job.Kind.MODEL_TRIAL, Handler[list[dict[str, Any]]](task="trial", topics=_topics))
+register(Job.Kind.MODEL_CHOICE, Handler(task="choose", topics=_topics))
+register(Job.Kind.MODEL_TRIAL, Handler(task="trial", topics=_topics))

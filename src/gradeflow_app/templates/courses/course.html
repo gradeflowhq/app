@@ -12,7 +12,7 @@
         <tr data-href>
           <td><a class="font-medium hover:underline" href="{% url 'overview' assessment.pk %}">{{ assessment.name }}</a>{% if assessment.description %}<p class="max-w-md truncate text-sm text-muted">{{ assessment.description }}</p>{% endif %}</td>
           <td class="tabular-nums text-right max-sm:hidden">{{ assessment.student_count|default:"—" }}</td>
-          <td>{% include "assessments/progress.html" %}</td>
+          <td>{% if progress.stage == "import" %}<span class="text-muted">Not imported</span>{% elif progress.stage == "mark" %}<span class="tabular-nums">{{ progress.marked_count }} of {{ progress.question_count }}</span> <span class="text-muted">marked</span>{% elif progress.stage == "send" %}<span class="font-medium text-primary">Ready to send</span>{% else %}<span class="text-muted">Sent {{ progress.latest_sent_marks.sent_at|ago }}</span>{% endif %}</td>
           <td class="text-muted max-sm:hidden">{{ assessment.updated_at|ago }}</td>
         </tr>
         {% endfor %}

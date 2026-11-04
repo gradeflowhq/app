@@ -14,10 +14,4 @@ export const collapsible = () => ({
   destroy() {
     this.observer.disconnect();
   },
-  get label() {
-    return this.expanded ? "Show less" : "Show all";
-  },
-  toggle() {
-    this.expanded = !this.expanded;
-  },
 });

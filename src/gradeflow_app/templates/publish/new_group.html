@@ -1,8 +1,8 @@
 {# Names a new assignment group inside the group picker (canvas.js's `groups`). #}
-<div class="grid gap-3 border-t border-base-300 px-6 py-4" x-show="groupCreating" x-cloak>
+<div class="grid gap-3 border-t border-base-300 px-6 py-4" x-show="naming.group" x-cloak>
   <div class="flex gap-3">
     <div class="grid flex-1 gap-1.5"><label for="new-group-name" class="font-medium">Name</label><input id="new-group-name" class="input w-full" x-model="groupNewName" x-on:keydown.enter.prevent="createGroup"></div>
     <div class="grid w-28 gap-1.5" x-show="weighted"><label for="new-group-weight" class="font-medium">Weight</label><label class="input w-full"><input id="new-group-weight" type="number" min="0" step="any" class="tabular-nums" x-model.number="groupNewWeight" x-on:keydown.enter.prevent="createGroup"><span class="text-muted">%</span></label></div>
   </div>
-  <div class="flex justify-end gap-2"><button type="button" class="btn btn-ghost" x-on:click="cancelGroup">Back</button><button type="button" class="btn btn-primary" x-on:click="createGroup" :disabled="!canCreateGroup">Create assignment group</button></div>
+  <div class="flex justify-end gap-2"><button type="button" class="btn btn-ghost" x-on:click="naming.group = false">Back</button><button type="button" class="btn btn-primary" x-on:click="createGroup" :disabled="!canCreateGroup">Create assignment group</button></div>
 </div>

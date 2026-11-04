@@ -256,6 +256,24 @@ def test_a_methods_guide_leaves_out_examples_without_a_result() -> None:
     assert "Blank" not in shown
 
 
+def test_a_saved_methods_guide_says_what_using_it_asks_for() -> None:
+    text = dump_yaml(
+        {
+            "version": 1,
+            "label": "Terms",
+            "summary": "Says the terms.",
+            "question_types": ["text"],
+            "inputs": {"terms": {"title": "Terms"}, "limit_to_three_words": {"default": False}},
+            "checks": [
+                {"for_each": "{{ inputs.terms }}", "uses": "gradeflow/key-point@1", "with": {"point": "{{ item }}"}},
+                {"if": "{{ inputs.limit_to_three_words }}", "uses": "gradeflow/length@1", "with": {"max_length": 3}},
+            ],
+        }
+    )
+    methods = BUILTINS.with_files([("lab/terms", text)])
+    assert guide_context(methods[-1].ref, methods)["setting_titles"] == ["Terms", "Limit To Three Words"]
+
+
 def test_unknown_methods_have_no_guide(client: Client, assessment: Assessment) -> None:
     assert client.get(reverse("method_guide", args=["gradeflow/nope@1"]), headers=HTMX_HEADERS).status_code == 404
 

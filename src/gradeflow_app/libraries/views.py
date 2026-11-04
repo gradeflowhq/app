@@ -14,8 +14,7 @@ from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 from gradeflow_core import GradeFlowError, InvalidError, Methods, QuestionSet
-from gradeflow_core import Method as CoreMethod
-from gradeflow_core.editing import EditingError, MethodDraft, method_ref, new_question
+from gradeflow_core.editing import EditingError, LoadedFiles, MethodDraft, method_ref, new_question
 
 from gradeflow_app.accounts.models import User
 from gradeflow_app.courses.access import course_from_query, course_member
@@ -23,7 +22,14 @@ from gradeflow_app.courses.models import Course, Member, Role
 from gradeflow_app.editor.guide import works_with
 from gradeflow_app.libraries import services
 from gradeflow_app.libraries.access import MethodAccess, can_edit, method_viewer
-from gradeflow_app.libraries.collection import load_methods, method_files, offers, usable
+from gradeflow_app.libraries.collection import (
+    OfferedMethods,
+    load_saved,
+    loaded_usable_methods,
+    method_files,
+    offers,
+    usable,
+)
 from gradeflow_app.libraries.forms import CopyForm, NewMethodForm
 from gradeflow_app.libraries.models import Library, Method, MethodDraftRecord, MethodVersion
 from gradeflow_app.requests import Request
@@ -63,10 +69,39 @@ class LibraryMethod:
     """A saved method in a list: the version shown, and how many markings in the person's courses use it."""
 
     method: Method
-    version: CoreMethod[Any]
+    number: int
+    label: str
+    summary: str
     type_labels: list[str]
     marking_count: int
     newer_version_number: int | None = None
+    incompatible_version: str = ""
+    """The version at fault, such as “Light” version 2, when the core can't load the one shown."""
+
+
+def _library_method(
+    method: Method, number: int, loaded: LoadedFiles, marking_count: int, offered: OfferedMethods | None = None
+) -> LibraryMethod:
+    """The list row for `method`'s version `number`."""
+    ref = method_ref(method.full_name, number)
+    if (method_version := loaded.methods.by_ref.get(ref)) is None:
+        saved_version = method.versions.get(number=number)
+        draft = services.method_draft(method, saved_version.definition, saved_version.tests, Methods(), version=number)
+        at_fault = services.version_name(loaded.failed[ref].ref)
+        return LibraryMethod(
+            method, number, draft.label, draft.summary, [], marking_count, incompatible_version=at_fault
+        )
+    newer_version = offered.newer_version(method_version, loaded.methods) if offered else None
+    newer_number = newer_version.version if newer_version else None
+    return LibraryMethod(
+        method,
+        number,
+        method_version.label,
+        method_version.summary,
+        works_with(method_version),
+        marking_count,
+        newer_number,
+    )
 
 
 def _published_methods(library: Library, user: User, *, archived: bool) -> tuple[list[LibraryMethod], int]:
@@ -74,13 +109,15 @@ def _published_methods(library: Library, user: User, *, archived: bool) -> tuple
     in_my_courses = Q(versions__markings__assessment__course__members__user=user)
     methods = list(
         library.methods.filter(versions__isnull=False)
-        .annotate(marking_count=Count("versions__markings", filter=in_my_courses, distinct=True))
+        .annotate(
+            marking_count=Count("versions__markings", filter=in_my_courses, distinct=True),
+            newest=Max("versions__number"),
+        )
         .order_by("name")
     )
-    versions = MethodVersion.objects.filter(method__library=library)
-    newest = {method.name: method for method in load_methods(method_files(versions)).latest()}
+    loaded = load_saved(method_files(MethodVersion.objects.filter(method__library=library).with_used_versions()))
     shown = [
-        LibraryMethod(method, newest[method.full_name], works_with(newest[method.full_name]), method.marking_count)
+        _library_method(method, method.newest, loaded, method.marking_count)
         for method in methods
         if method.archived == archived
     ]
@@ -169,22 +206,11 @@ def _other_library_methods(course: Course, user: User, library: Library) -> list
     )
     if not used_methods:
         return []
-    methods = usable(user, course)
-    offered = offers(user, course)
-    rows = []
-    for method in sorted(used_methods, key=lambda method: method.full_name):
-        version = methods.by_ref[method_ref(method.full_name, method.newest)]
-        newer_version = offered.newer_version(version, methods)
-        rows.append(
-            LibraryMethod(
-                method,
-                version,
-                works_with(version),
-                method.marking_count,
-                newer_version.version if newer_version else None,
-            )
-        )
-    return rows
+    loaded, offered = loaded_usable_methods(user, course), offers(user, course)
+    return [
+        _library_method(method, method.newest, loaded, method.marking_count, offered)
+        for method in sorted(used_methods, key=lambda method: method.full_name)
+    ]
 
 
 @require_POST

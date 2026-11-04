@@ -1,4 +1,4 @@
-<c-landing.app-frame course="Introductory Biology" assessment="Final Exam" class="mx-auto max-w-3xl" x-data="answerGroups" data-accepted="{{ grouping.accepted_json }}">
+<c-landing.app-frame course="Introductory Biology" assessment="Final Exam" class="mx-auto max-w-3xl" x-data="{ grouping: 'by_meaning', accepted: {{ grouping.accepted_json }} }">
   <div class="flex items-baseline gap-3 border-b border-base-300 p-4"><h3 class="text-base font-semibold">{{ grouping.question_key }}</h3><span class="text-sm text-muted">{{ grouping.question_text }}</span></div>
   <div class="flex flex-wrap items-center gap-2 border-b border-base-300 px-4 py-3"><span class="text-sm text-muted">Accepted answers</span><template x-for="answer in accepted" :key="answer"><span class="badge badge-primary badge-soft" x-text="answer"></span></template></div>
   <div class="flex items-center gap-2 px-4 py-3"><label for="grouping-by" class="text-sm text-muted">Answer groups</label><select id="grouping-by" class="select select-sm w-40" x-model="grouping"><option value="by_answer">Same answers</option><option value="by_meaning" selected>Similar meaning</option></select></div>

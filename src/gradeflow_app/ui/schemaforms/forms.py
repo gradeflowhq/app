@@ -13,7 +13,7 @@ from gradeflow_app.ui.forms import BoundField, posted_indexes
 from gradeflow_app.ui.schemaforms.fields import field_for
 from gradeflow_app.ui.schemaforms.layout import NESTED_SEPARATOR, FieldHints, Layout, Tag, TaggedMap, layout
 from gradeflow_app.ui.schemaforms.schema import Schema
-from gradeflow_app.ui.schemaforms.widgets import CodeInput, DecimalInput, Segmented
+from gradeflow_app.ui.schemaforms.widgets import DecimalInput, Segmented
 
 FRACTIONS = {0.5: "½", 0.25: "¼", 0.75: "¾"}
 MINUS = "−"  # noqa: RUF001 - a minus sign, as people write it
@@ -151,9 +151,6 @@ class ObjectForm(forms.Form):
         if not self.is_bound:
             self.cleaned_data: dict[str, Any] = {}  # so `add_error` can show the core's problems
         self.fields = dict(self.layout.fields)
-        for form_field in self.fields.values():
-            if isinstance(form_field.widget, CodeInput):
-                form_field.widget.path = path
         self.rows = [
             RowForms(
                 name,

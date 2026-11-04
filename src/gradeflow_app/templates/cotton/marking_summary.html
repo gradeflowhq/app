@@ -7,4 +7,4 @@
   {% if summary.description %}<c-collapsible class="prose-core mt-1">{{ summary.description|markdown }}</c-collapsible>{% endif %}
 </div>
 {% endif %}
-{% if summary.has_problems %}<c-invalid-marking :problems="summary.problems" />{% endif %}
+{% if summary.problems %}<div role="alert" class="alert alert-warning alert-soft items-start">{% icon "exclamation-triangle" "size-5 shrink-0" %}<div class="grid gap-1"><p class="font-medium">{% if summary.is_compatible %}This marking can't mark until it's fixed{% else %}This marking isn't compatible with the current GradeFlow{% endif %}</p>{% if summary.incompatible_version %}<p class="text-sm">It uses {{ summary.incompatible_version }}, which has {{ summary.problems|length|pluralize:"this problem,these problems" }}:</p>{% endif %}<ul class="ml-5 list-disc text-sm">{% for problem in summary.problems %}<li>{{ problem }}</li>{% endfor %}</ul>{% if not summary.is_compatible %}<p class="text-sm">Fix it by editing its YAML, or remove it.</p>{% endif %}</div></div>{% endif %}

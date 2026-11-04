@@ -2,21 +2,20 @@
 // otherwise for the tab in sessionStorage. The passphrase dialog (c-passphrase) asks for it when needed.
 
 import { decryptId } from "./crypto.js";
-import { local, session } from "./storage.js";
 import { showToast } from "./toasts.js";
 
 const key = (assessment) => `gradeflow:passphrase:${assessment}`;
 
-export const storedPassphrase = (assessment) => local.get(key(assessment)) ?? session.get(key(assessment));
+export const storedPassphrase = (assessment) => localStorage.getItem(key(assessment)) ?? sessionStorage.getItem(key(assessment));
 
 export function remember(assessment, passphrase, persist) {
   forget(assessment);
-  (persist ? local : session).set(key(assessment), passphrase);
+  (persist ? localStorage : sessionStorage).setItem(key(assessment), passphrase);
 }
 
 function forget(assessment) {
-  local.remove(key(assessment));
-  session.remove(key(assessment));
+  localStorage.removeItem(key(assessment));
+  sessionStorage.removeItem(key(assessment));
 }
 
 // The assessment settings' passphrase row: whether this device knows it, entering it, and forgetting it.
@@ -43,7 +42,7 @@ export const passphraseSettings = () => ({
   },
 });
 
-export const isRemembered = (assessment) => local.get(key(assessment)) !== null;
+export const isRemembered = (assessment) => localStorage.getItem(key(assessment)) !== null;
 
 export const passphraseOpens = (passphrase, encryptedId) =>
   decryptId(encryptedId, passphrase).then(
@@ -69,7 +68,6 @@ export async function passphraseFor(assessment, encryptedId) {
 
 function ask(assessment, encryptedId) {
   const dialog = document.getElementById("passphrase");
-  if (!dialog) return Promise.resolve(null);
   const form = dialog.querySelector("form[data-passphrase]");
   const error = dialog.querySelector("[data-error]");
   error.hidden = true;

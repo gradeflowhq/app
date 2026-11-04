@@ -8,7 +8,7 @@
     <span class="tabular-nums ml-auto whitespace-nowrap text-sm text-muted">{{ question_list.marked_count }} of {{ question_list.questions|length }} marked</span>
   </div>
   <div class="contents" hx-target:inherited="#question-work" hx-select:inherited="#question-work" hx-select-oob:inherited="#question-list:outerMorph, #live-stream" hx-swap:inherited="outerHTML">
-  <ul class="grid grid-cols-[minmax(0,1fr)] gap-0.5 p-2">
+  <ul class="grid gap-0.5 p-2">
     {% for item in question_list.questions %}{% with question=item.question %}
     <li>
       <a href="{% url 'question' membership.assessment.pk question.pk %}" class="question-link"{% if item.is_shown %} aria-current="page"{% endif %}>

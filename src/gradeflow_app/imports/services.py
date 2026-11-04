@@ -38,32 +38,26 @@ class ImportSummary:
 def import_results(
     assessment: Assessment,
     user: User,
-    *,
-    name: str,
+    file: ResultsFile,
     csv_text: str,
-    student_id_column: str,
-    answer_columns: list[str],
-    marks_columns: dict[str, str],
     key_row: dict[str, str] | None = None,
-    original: bytes | None = None,
-    sheet: str = "",
-    header_row: int | None = None,
-    first_row: int | None = None,
-    last_row: int | None = None,
 ) -> ImportSummary:
     """Replace the assessment's results with `csv_text`, a CSV whose student IDs are already encrypted.
 
     Questions already set up keep their settings but accept the new answers, such as a choice's new options; new ones
     are worked out from the answers. Both read the answers and `key_row`, the file's answer key row by answer column.
-    `original` is the whole file, encrypted in the browser, and the other arguments are the choices made reading it,
-    so they can be changed later.
+    `file` is unsaved and holds the choices made reading the file, so they can be changed later, and its `original`,
+    the whole file encrypted in the browser.
     """
+    original = file.original
     if original is not None and not (
-        original.startswith(ENCRYPTED_FILE_HEADER) and len(original) >= ENCRYPTED_FILE_OVERHEAD
+        original[: len(ENCRYPTED_FILE_HEADER)] == ENCRYPTED_FILE_HEADER and len(original) >= ENCRYPTED_FILE_OVERHEAD
     ):
         raise ImportFailed("The original file must be encrypted in the browser before it's uploaded.")
     csv_format = AnswersCsv(
-        student_id_column=student_id_column, answer_columns=answer_columns, marks_columns=marks_columns
+        student_id_column=file.student_id_column,
+        answer_columns=file.answer_columns,
+        marks_columns=file.marks_columns,
     )
     try:
         submissions = csv_format.read(csv_text)
@@ -114,21 +108,11 @@ def import_results(
     questions = assessment.question_set()
     previous_keys = set(questions)
     updated_questions = questions.updated_from([*submissions, read_answer_key(key_row or {})])
-    _store_questions(assessment, updated_questions, answer_columns)
-    file = ResultsFile.objects.create(
-        assessment=assessment,
-        name=name,
-        uploaded_by=user,
-        student_id_column=student_id_column,
-        answer_columns=answer_columns,
-        marks_columns=marks_columns,
-        student_count=len(incoming),
-        original=original,
-        sheet=sheet,
-        header_row=header_row,
-        first_row=first_row,
-        last_row=last_row,
-    )
+    _store_questions(assessment, updated_questions, file.answer_columns)
+    file.assessment = assessment
+    file.uploaded_by = user
+    file.student_count = len(incoming)
+    file.save()
     assessment.results_files.exclude(pk=file.pk).filter(original__isnull=False).update(original=None)
     assessment.save(update_fields=["updated_at"])
     changed_questions.update(

@@ -26,8 +26,8 @@ SECTIONS = {"grouping": "Grouping", "methods": "Methods", "canvas": "Canvas", "p
 class AnswerRow:
     answers: dict[str, str]
     student_count: int
-    marks: MarkRange | None
-    marks_before: MarkRange | None
+    marks: float | None
+    marks_before: float | None
     feedback: str
 
     @property
@@ -111,11 +111,8 @@ def examples() -> list[ShownExample]:
 def rows(
     example: Example, marks: list[tuple[float | None, str]], marks_before: list[tuple[float | None, str]]
 ) -> list[AnswerRow]:
-    def exact_range(mark: float | None) -> MarkRange | None:
-        return None if mark is None else MarkRange(mark, mark)
-
     return [
-        AnswerRow(answer.answers, answer.student_count, exact_range(mark), exact_range(mark_before), feedback)
+        AnswerRow(answer.answers, answer.student_count, mark, mark_before, feedback)
         for answer, (mark, feedback), (mark_before, _) in zip(example.answers, marks, marks_before, strict=True)
     ]
 
@@ -135,7 +132,7 @@ def answer_groups() -> dict[str, list[AnswerGroup]]:
 
     def group(answers: list[Answer]) -> AnswerGroup:
         before, after = zip(*(marks[answer.text] for answer in answers), strict=True)
-        return AnswerGroup(tuple(answers), MarkRange.spanning(list(before)), MarkRange.spanning(list(after)))
+        return AnswerGroup(tuple(answers), MarkRange(min(before), max(before)), MarkRange(min(after), max(after)))
 
     by_meaning: dict[str, list[Answer]] = {}
     for answer in grouping.answers:

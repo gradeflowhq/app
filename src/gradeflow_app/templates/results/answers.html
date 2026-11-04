@@ -39,7 +39,7 @@
 
   <div class="grid content-start gap-3 p-4">
     {% if not draft %}{% for notice in out_of_date_notices %}<p role="status" class="alert alert-warning alert-soft text-sm">{{ notice }}</p>{% endfor %}{% endif %}
-    {% if asks_models %}<div x-data="modelService"><p role="status" class="alert alert-info alert-soft text-sm" x-show="disconnected" x-cloak>{% icon "information-circle" %}<span>This marking uses AI, and this device isn't connected to an AI service. <a class="link" href="{% url 'integrations' %}">Connect one</a> to mark these answers.</span></p></div>{% endif %}
+    {% if asks_models %}<div x-data="modelService"><p role="status" class="alert alert-info alert-soft text-sm" x-show="!connected" x-cloak>{% icon "information-circle" %}<span>This marking uses AI, and this device isn't connected to an AI service. <a class="link" href="{% url 'integrations' %}">Connect one</a> to mark these answers.</span></p></div>{% endif %}
     {% if failed_grouping_job %}
       <div role="alert" class="alert alert-warning alert-soft">{% icon "exclamation-triangle" %}<span class="flex-1">Couldn't group by meaning, so the same answers are grouped instead.</span><button class="btn btn-sm" hx-post="{% url 'answer_grouping' question.assessment_id question.pk %}" hx-target="#answers" hx-swap="outerMorph">Try again</button></div>
     {% endif %}

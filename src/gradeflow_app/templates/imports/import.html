@@ -40,7 +40,7 @@
           <button class="btn btn-ghost" x-on:click="restart" x-show="step === 'review'">Choose another file</button>
         </div>
 
-        <c-more-options label="Check rows and columns" x-bind:open="leftOutRowCount">
+        <c-more-options label="Check rows and columns" x-bind:open="leftOutRows.length > 0">
           <div class="grid gap-3">
             <div class="flex flex-wrap items-center gap-2">
               <label for="import-header-row">Column names are in row</label>

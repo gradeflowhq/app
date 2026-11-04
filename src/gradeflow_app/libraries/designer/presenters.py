@@ -12,6 +12,7 @@ from gradeflow_core.editing import EditingError
 from gradeflow_app.editor.presenters import editor
 from gradeflow_app.libraries import method_tests
 from gradeflow_app.libraries.access import MethodAccess
+from gradeflow_app.libraries.designer.runs import tests_topic
 from gradeflow_app.libraries.designer.workspace import MethodWorkspace
 from gradeflow_app.libraries.services import dependents
 from gradeflow_app.requests import Request
@@ -50,7 +51,7 @@ def workspace_context(
     state = state_of(request, workspace) | {
         key: extra.pop(key) for key in ("question", "path", "tab", "input") if key in extra
     }
-    draft, tests_record, problems = workspace.draft, workspace.tests_record, workspace.problems
+    draft, tests_record, problems = workspace.draft, workspace.tests_record, workspace.checks.problems
     job = tests_record.last_run
     context: dict[str, Any] = {
         "access": access,
@@ -67,14 +68,14 @@ def workspace_context(
         "read_only": _read_only(workspace),
         "used_by": dependents(workspace.method, request.user),
         "first_problem_check": problems[0].check if problems else None,
-        "first_problem_label": workspace.label(problems[0].check) if problems else "",
+        "first_problem_label": workspace.checks.label(problems[0].check) if problems else "",
         "first_problem_unfilled": problems[0].is_incomplete if problems else False,
         "rows": _rows(workspace, state["question"]),
         "run": job,
         "run_out_of_date": job is not None and job.revision != tests_record.revision,
         "urls": _urls(workspace),
         "can_edit_tests": access.can_edit or not workspace.editable,
-        "topic": "method-draft" if workspace.editable else "version-tests",
+        "topic": tests_topic(tests_record),
         "problems": _problems(workspace, problems),
         "untested": workspace.untested,
         "yaml_only_reasons": workspace.yaml_only_reasons,

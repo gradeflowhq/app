@@ -15,7 +15,7 @@ from pytest_django import Settings
 from gradeflow_app.accounts.models import User
 from gradeflow_app.assessments.models import Assessment
 from gradeflow_app.jobs.models import Job
-from gradeflow_app.marking.answers.out_of_date import out_of_date_notices
+from gradeflow_app.marking.answers.column import out_of_date_notices
 from gradeflow_app.marking.checks import assessment_checks
 from gradeflow_app.marking.models import Marking
 from gradeflow_app.marking.remarks import schedule_marking

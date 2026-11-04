@@ -71,15 +71,6 @@ class ListField(forms.Field):
         return [as_number(item) for item in items] if self.is_numeric else items
 
 
-class ConditionField(forms.Field):
-    widget = ConditionWidget
-
-
-class FeedbackField(forms.Field):
-    def __init__(self, *, boxes: Sequence[tuple[str, str]], template_parts: Mapping[str, str], **kwargs: Any) -> None:
-        super().__init__(widget=FeedbackWidget(boxes, template_parts), **kwargs)
-
-
 def field_for(schema: Schema, label: str, help_text: str, defs: Mapping[str, Schema]) -> forms.Field | None:
     """A form field for a property; `field_hints` has what else the core says of it. None are required: the core
     says what is. Text shows the core's first example as its placeholder."""
@@ -108,7 +99,7 @@ def _field_for(schema: Schema, label: str, help_text: str, defs: Mapping[str, Sc
     if kind == "boolean":
         return forms.BooleanField(**kwargs)
     if hints.get("kind") == "feedback":
-        return FeedbackField(boxes=_boxes(schema, defs), template_parts=hints.get("template_parts") or {}, **kwargs)
+        return forms.Field(widget=FeedbackWidget(_boxes(schema, defs), hints.get("template_parts") or {}), **kwargs)
     if kind == "string":
         made = _text_field(hints, kwargs)
         if nullable and isinstance(made, forms.CharField):
@@ -138,7 +129,7 @@ def _text_field(hints: Mapping[str, Any], kwargs: dict[str, Any]) -> forms.Field
     """A text field as the core's hint says it is typed: a condition, code or Markdown."""
     match hints.get("kind"):
         case "condition":
-            return ConditionField(**kwargs)
+            return forms.Field(widget=ConditionWidget, **kwargs)
         case "code":
             return forms.CharField(widget=CodeInput(hints.get("language", "")), strip=False, **kwargs)
         case "markdown":

@@ -123,12 +123,14 @@ def test_the_rows_refresh_when_marks_change(client: Client, assessment: Assessme
 
 def test_overriding_how_marks_are_sent_answers_with_the_summary(client: Client, canvas_assessment: Assessment) -> None:
     url = reverse("publish_sending", args=[canvas_assessment.pk])
-    unchanged = client.post(url, {"assignment": "12", "marks_mode": "", "rounding": "", "include_feedback": "unknown"})
+    unchanged = client.post(
+        url, {"canvas_assignment": "12", "marks_mode": "", "rounding": "", "include_feedback": "unknown"}
+    )
     assert 'data-mode="percent" data-rounding="0.5" data-feedback="true"' in unchanged.text
     assert "Custom" not in unchanged.text
 
     changed = client.post(
-        url, {"assignment": "12", "marks_mode": "marks", "rounding": "0", "include_feedback": "false"}
+        url, {"canvas_assignment": "12", "marks_mode": "marks", "rounding": "0", "include_feedback": "false"}
     ).text
     assert 'data-mode="marks" data-rounding="0.0" data-feedback="false"' in changed
     assert "Marks, not rounded, without feedback" in changed

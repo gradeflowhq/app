@@ -6,21 +6,26 @@ from dataclasses import dataclass
 from functools import cached_property
 from typing import Any
 
-from django.db import transaction
 from django.template.loader import render_to_string
 from django.urls import reverse
 from gradeflow_core import GradeFlowError, Methods, ModelEndpoint, QuestionSet
-from gradeflow_core.editing import MarkingDraft, MethodDraft, RowResult
+from gradeflow_core.editing import FailedFile, LoadedFiles, MarkingDraft, MethodDraft, RowResult
 
 from gradeflow_app.accounts.models import User
 from gradeflow_app.courses.models import Course
 from gradeflow_app.editor.editing import CheckWorkspace, EditorActions
 from gradeflow_app.jobs.models import Job
 from gradeflow_app.jobs.payloads import TestRun
-from gradeflow_app.libraries.collection import OfferedMethods, files_needed_by, offers, usable
+from gradeflow_app.libraries.collection import (
+    OfferedMethods,
+    files_needed_by,
+    loaded_usable_methods,
+    offers,
+    usable,
+)
 from gradeflow_app.libraries.method_tests import MethodTests, examples_of, questions_of, rows_of
 from gradeflow_app.libraries.models import Method, MethodDraftRecord, MethodVersion, VersionTests
-from gradeflow_app.libraries.services import method_draft
+from gradeflow_app.libraries.services import method_draft, version_name
 from gradeflow_app.ui.schemaforms.forms import ObjectForm
 from gradeflow_app.ui.schemaforms.layout import unrepresentable_fields
 from gradeflow_app.ui.schemaforms.schema import labels_of, resolve, unwrap_nullable
@@ -76,8 +81,23 @@ class MethodWorkspace(CheckWorkspace):
         return questions_of(self.tests)
 
     @cached_property
+    def loaded(self) -> LoadedFiles:
+        return loaded_usable_methods(self.tests_record.user, self.course)
+
+    @cached_property
     def methods(self) -> Methods:
-        return usable(self.tests_record.user, self.course)
+        return self.loaded.methods
+
+    @property
+    def failed(self) -> FailedFile | None:
+        """Why the core can't load the version shown, if it can't."""
+        if self.draft_record or self.version is None:
+            return None
+        return self.loaded.failed.get(self.version.ref)
+
+    @cached_property
+    def failed_version_name(self) -> str:
+        return version_name(self.failed.ref) if self.failed else ""
 
     @cached_property
     def draft(self) -> MethodDraft:
@@ -119,8 +139,6 @@ class MethodWorkspace(CheckWorkspace):
         return EditorActions(
             update=self.url("method_check"),
             methods=self.url("method_choices") if self.editable else "",
-            hx_sync="#method-work:queue all",
-            hx_include="#method-state",
         )
 
     def form(self, path: str, **kwargs: Any) -> ObjectForm:
@@ -182,7 +200,7 @@ class MethodWorkspace(CheckWorkspace):
         """The settings an input fills: each one's check, and where it is. Checks labelled alike are numbered in
         order."""
         fields = [field for field in self.draft.configurable_fields() if field.bound_input == name]
-        labels = {check: self.label(check) for check in dict.fromkeys(field.check for field in fields)}
+        labels = {check: self.checks.label(check) for check in dict.fromkeys(field.check for field in fields)}
         label_counts, label_numbers = Counter(labels.values()), Counter[str]()
         for check, label in labels.items():
             if label_counts[label] > 1:
@@ -277,7 +295,6 @@ def lock_workspace(workspace: MethodWorkspace, revision: str | None) -> MethodWo
     return MethodWorkspace(workspace.method, tests_record)
 
 
-@transaction.atomic
 def start_draft(method: Method, user: User, version: MethodVersion) -> MethodDraftRecord:
     """The person's draft of the method, started from `version` if they have none, as the core reads it: without
     its examples' results. It is based on the latest version, so starting from an earlier one publishes that one
@@ -295,7 +312,6 @@ def start_draft(method: Method, user: User, version: MethodVersion) -> MethodDra
     return record
 
 
-@transaction.atomic
 def version_tests_of(version: MethodVersion, user: User) -> VersionTests:
     tests, _ = VersionTests.objects.get_or_create(
         version=version, user=user, defaults={"tests": deepcopy(version.tests)}

@@ -4,14 +4,15 @@
 import Alpine from "../vendor/alpinejs-csp-3.17.4/module.esm.min.js";
 
 const VISIBLE_MS = 6000;
+let hideTimer;
 
+// At most one toast, which a new one replaces. A list, so the toast's fields are never read once it's gone.
 Alpine.store("toasts", {
   visible: [],
-  count: 0,
   show(message, level = "error") {
-    const toast = { id: ++this.count, message, isSuccess: level === "success", alertClass: level === "error" ? "alert-error" : "alert-neutral" };
-    this.visible = [toast];
-    setTimeout(() => (this.visible = this.visible.filter((other) => other.id !== toast.id)), VISIBLE_MS);
+    this.visible = [{ message, isSuccess: level === "success", alertClass: level === "error" ? "alert-error" : "alert-neutral" }];
+    clearTimeout(hideTimer);
+    hideTimer = setTimeout(() => this.clear(), VISIBLE_MS);
   },
   clear() {
     this.visible = [];

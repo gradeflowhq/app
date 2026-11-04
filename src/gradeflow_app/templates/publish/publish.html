@@ -18,7 +18,7 @@
   <div class="contents"{% if membership.can_edit %} x-data="canvasPublisher" data-config="{{ config }}"{% endif %}>
   {% if membership.can_edit %}
   <c-card title="Canvas" x-show="!connected" x-cloak>
-    <c-canvas-connect reason="This device needs your Canvas access token to send marks." shows_error />
+    <c-canvas-connect reason="This device needs your Canvas access token to send marks." />
   </c-card>
   {% endif %}
   <div class="contents"{% if membership.can_edit %} x-show="connected" x-cloak{% endif %}>
@@ -34,18 +34,18 @@
     <div class="setting-summary-row">
       <span class="setting-summary-label">Assignment</span>
       <div class="flex min-w-0 flex-1 items-center gap-3">
-        <template x-if="assignmentCard">
-          <div class="flex min-w-0 items-center gap-3"><span class="initial-badge size-8 text-sm" aria-hidden="true" x-text="assignmentInitial"></span><span class="min-w-0"><span class="block truncate font-medium" x-text="assignmentName"></span><span class="block truncate text-sm text-muted" x-show="assignmentDetail" x-text="assignmentDetail"></span></span></div>
+        <template x-if="card('assignment').id">
+          <div class="flex min-w-0 items-center gap-3"><span class="initial-badge size-8 text-sm" aria-hidden="true" x-text="card('assignment').initial"></span><span class="min-w-0"><span class="block truncate font-medium" x-text="card('assignment').name"></span><span class="block truncate text-sm text-muted" x-show="card('assignment').detail" x-text="card('assignment').detail"></span></span></div>
         </template>
-        <span class="skeleton h-8 w-48" x-show="!assignmentCard && assignmentLoading"></span>
-        <span class="text-muted" x-show="!assignmentCard && !assignmentLoading">None chosen</span>
+        <span class="skeleton h-8 w-48" x-show="!card('assignment').id && loading('assignment')"></span>
+        <span class="text-muted" x-show="!card('assignment').id && !loading('assignment')">None chosen</span>
       </div>
-      <button type="button" class="btn btn-sm" :class="assignmentCard && 'btn-ghost -mr-3'" x-on:click="pickAssignment" x-text="assignmentCard ? 'Change' : 'Choose'"></button>
-      {% include "publish/picker_dialog.html" with key="assignment" capitalized_key="Assignment" label="Assignment" search="Search assignments" empty="No assignments match." create="New assignment" %}
+      <button type="button" class="btn btn-sm" :class="card('assignment').id && 'btn-ghost -mr-3'" x-on:click="pick('assignment')" x-text="card('assignment').id ? 'Change' : 'Choose'"></button>
+      {% include "publish/picker_dialog.html" with key="assignment" label="Assignment" search="Search assignments" empty="No assignments match." none="This course has no assignments yet." create="New assignment" %}
     </div>
     <div class="grid gap-4 py-4 sm:grid-cols-2 sm:pl-32" x-show="creating" x-cloak>
       <div class="grid content-start gap-1.5"><label class="font-medium" for="canvas-new-name">Name</label><input id="canvas-new-name" class="input w-full" x-model="newName"></div>
-      {% include "publish/picker.html" with key="group" capitalized_key="Group" label="Assignment group" choose="Choose an assignment group" search="Search assignment groups" empty="No assignment groups match." create="New assignment group" panel="publish/new_group.html" %}
+      {% include "publish/picker.html" with key="group" label="Assignment group" choose="Choose an assignment group" search="Search assignment groups" empty="No assignment groups match." none="This course has no assignment groups yet." create="New assignment group" panel="publish/new_group.html" %}
     </div>
     <details class="group/send py-3.5"{% if form.errors %} open{% endif %}>
       <summary class="setting-summary-row cursor-pointer list-none py-0">
@@ -54,7 +54,7 @@
         <span class="btn btn-ghost btn-sm -mr-3">Change{% icon "chevron-down" "size-4 transition-transform group-open/send:rotate-180" %}</span>
       </summary>
       <form class="mt-4 grid gap-4 sm:grid-cols-3 sm:pl-32" x-ref="sendSettings" hx-post="{% url 'publish_sending' assessment.pk %}" hx-trigger="change" hx-target="#send-settings" hx-swap="outerHTML">
-        <input type="hidden" name="{{ form.assignment.html_name }}" value="{{ form.assignment.value }}" :value="savedAssignment">
+        <input type="hidden" name="{{ form.canvas_assignment.html_name }}" value="{{ form.canvas_assignment.value }}" :value="savedAssignment">
         {% for field in form.visible_fields %}{{ field.as_field_group }}{% endfor %}
       </form>
     </details>

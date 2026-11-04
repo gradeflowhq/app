@@ -11,14 +11,14 @@
   {% endif %}</c-slot>
   {% if results.rows %}
   <div class="card-box overflow-hidden" x-data="studentTable">
-    <table class="table" data-students>
-      <thead><tr><th>Student ID</th><th class="text-right">Total marks</th>{% if has_adjustments %}<th class="text-right max-sm:hidden">Adjusted</th>{% endif %}</tr></thead>
+    <table class="table">
+      <thead><tr><th>Student ID</th><th class="text-right">Total marks</th>{% if results.has_adjustments %}<th class="text-right max-sm:hidden">Adjusted</th>{% endif %}</tr></thead>
       <tbody>
         {% for row in results.rows %}
         <tr hx-get="{% url 'student' assessment.pk row.student.pk %}" hx-target="#drawer-body" data-dialog="drawer">
           <td><c-student-id value="{{ row.student.encrypted_id }}" /></td>
           <td class="tabular-nums whitespace-nowrap text-right" data-order="{{ row.total }}">{{ row.total|marks }} <span class="text-muted">/ {{ results.max_marks|marks }}<span class="ml-3 inline-block w-11">{{ row.total|percent:results.max_marks }}</span></span></td>
-          {% if has_adjustments %}<td class="tabular-nums text-right max-sm:hidden" data-order="{{ row.adjusted_keys|length }}">{% if row.adjusted_keys %}{{ row.adjusted_keys|length }}{% else %}<span class="text-subtle">—</span>{% endif %}</td>{% endif %}
+          {% if results.has_adjustments %}<td class="tabular-nums text-right max-sm:hidden" data-order="{{ row.adjusted_keys|length }}">{% if row.adjusted_keys %}{{ row.adjusted_keys|length }}{% else %}<span class="text-subtle">—</span>{% endif %}</td>{% endif %}
         </tr>
         {% endfor %}
       </tbody>

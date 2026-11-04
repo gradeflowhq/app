@@ -40,14 +40,14 @@ from tests.conftest import (
 pytestmark = pytest.mark.django_db
 
 
-def save_marking(assessment: Assessment, uses: str) -> Marking:
+def save_marking(assessment: Assessment, uses: str, user: User) -> Marking:
     marking = Marking.objects.create(
         assessment=assessment,
         question=assessment.questions.get(key="Q1"),
         definition=dump_yaml({"question": "Q1", "uses": uses}),
     )
     with TestCase.captureOnCommitCallbacks(execute=True):
-        schedule_marking(marking)
+        schedule_marking(marking, user)
     marking.refresh_from_db()
     return marking
 
@@ -192,10 +192,10 @@ def test_a_marking_links_the_versions_it_needs_and_keeps_them_until_updated(
     parent = publish_parent(library, user, version)
     assert used_refs(parent) == {"bio1010/light@1"}
     assert VersionUse.objects.get(version=parent).used_version == version
-    marking = save_marking(assessment, "bio1010/parent@1")
+    marking = save_marking(assessment, "bio1010/parent@1", user)
     assert used_refs(marking) == {"bio1010/parent@1", "bio1010/light@1"}, "with what it uses in turn"
     marking.delete()
-    marking = save_marking(assessment, "bio1010/light@1")
+    marking = save_marking(assessment, "bio1010/light@1", user)
     newer = publish_version(version.method, user, method_definition(answer="chlorophyll"))
     marking.refresh_from_db()
     assert used_refs(marking) == {"bio1010/light@1"}
@@ -221,7 +221,7 @@ def test_a_version_in_use_cant_be_deleted(
     with pytest.raises(RestrictedError):
         version.delete()
     parent.method.delete()
-    save_marking(assessment, version.ref)
+    save_marking(assessment, version.ref, user)
     with pytest.raises(RestrictedError):
         version.method.delete()
 
@@ -245,7 +245,7 @@ def test_a_course_marks_with_the_core_and_the_versions_its_markings_use(
     refs_in_use = {method.ref for method in course_methods(assessment.course)}
     assert "gradeflow/key-points@1" in refs_in_use
     assert not {"bio1010/light@1", "bio1010/unused@1"} & refs_in_use
-    save_marking(assessment, version.ref)
+    save_marking(assessment, version.ref, user)
     refs_in_use = {method.ref for method in course_methods(assessment.course)}
     assert "bio1010/light@1" in refs_in_use
     assert "bio1010/unused@1" not in refs_in_use
@@ -268,7 +268,7 @@ def test_a_person_uses_their_own_their_courses_public_and_used_methods(
     assert usable_refs(user, None) >= {"ana-example-edu/mine@1", "bio1010/course@1", "bo-example-edu/public@1"}
     assert "bo-example-edu/private@1" not in usable_refs(user, course)
     assert "bio1010/course@1" not in usable_refs(bo, None)
-    save_marking(assessment, private.ref)
+    save_marking(assessment, private.ref, user)
     assert "bo-example-edu/private@1" in usable_refs(user, course), "a version the course uses"
     assert "bo-example-edu/private@1" not in usable_refs(user, None)
 
@@ -290,7 +290,7 @@ def test_the_picker_offers_saved_methods_by_where_they_come_from(
     shared = publish_light_method(bo_library, bo, name="shared", label="Shared")
     Method.objects.filter(pk=shared.method_id).update(public=True)
     publish_light_method(bo_library, bo, name="hidden", label="Hidden")
-    save_marking(assessment, used.ref)
+    save_marking(assessment, used.ref, user)
     offered = offers(user, course)
     assert offered.sections == (
         ("Used in this course", ("bo-example-edu/used",)),
@@ -313,7 +313,7 @@ def test_archived_methods_are_offered_nowhere(
     version = publish_light_method(library, user)
     publish_version(version.method, user, method_definition(answer="newer"))
     mine = publish_light_method(user.library, user, name="mine", label="Mine")
-    save_marking(assessment, version.ref)
+    save_marking(assessment, version.ref, user)
     Method.objects.filter(pk__in=[version.method_id, mine.method_id]).update(archived=True, public=True)
     offered = offers(user, course)
     assert offered.sections == ()
@@ -347,7 +347,7 @@ def test_who_opens_and_changes_a_method(
     assert not can_edit(bo, course.library)
     Member.objects.filter(user=bo).update(role=Role.EDITOR)
     assert can_edit(bo, course.library)
-    save_marking(assessment, theirs.versions.get().ref)
+    save_marking(assessment, theirs.versions.get().ref, user)
     assert "theirs" in visible_method_names(user), "a version the course uses"
     assert not can_edit(user, theirs.library)
 
@@ -385,7 +385,7 @@ def test_an_archived_method_isnt_offered_but_its_markings_still_mark(
     question = assessment.questions.get(key="Q1")
     picker = client.get(reverse("question_methods", args=[assessment.pk, question.pk])).text
     assert "Says light." not in picker
-    marking = save_marking(assessment, version.ref)
+    marking = save_marking(assessment, version.ref, user)
     job = marking.jobs.get()
     assert job.status == Job.Status.COMPLETED
     assert Result.objects.filter(question=question).count() == assessment.students.count()
@@ -404,7 +404,7 @@ def test_a_method_in_use_isnt_deleted(
 ) -> None:
     version = publish_light_method(library, user)
     parent = publish_parent(library, user, version)
-    save_marking(assessment, version.ref)
+    save_marking(assessment, version.ref, user)
     other_course_quiz = Assessment.objects.create(course=create_course(bo), name="Quiz")
     Marking.objects.create(assessment=other_course_quiz, definition=dump_yaml({"uses": version.ref}))
     with pytest.raises(ValidationError) as refused:
@@ -501,7 +501,7 @@ def test_save_as_a_method_goes_to_the_markings_course(
     assessment: Assessment,
     user: User,
 ) -> None:
-    save_marking(assessment, "gradeflow/full-marks@1")
+    save_marking(assessment, "gradeflow/full-marks@1", user)
     question = assessment.questions.get(key="Q1")
     url = reverse("method_save", args=[assessment.pk, question.pk])
     form = client.get(url).text
@@ -541,7 +541,7 @@ def test_publishing_under_a_new_name_keeps_a_used_methods_reference(
     user: User,
 ) -> None:
     used_by_marking = publish_light_method(library, user)
-    save_marking(assessment, used_by_marking.ref)
+    save_marking(assessment, used_by_marking.ref, user)
     used_by_method = publish_light_method(library, user, name="base", label="Base")
     publish_parent(library, user, used_by_method)
     for version in (used_by_marking, used_by_method):
@@ -562,7 +562,7 @@ def test_renaming_a_course_makes_its_namespace_again_while_its_methods_are_unuse
     library.refresh_from_db()
     assert library.namespace == "introductory-biology"
     assert MethodVersion.objects.get(pk=version.pk).ref == "introductory-biology/light@1"
-    save_marking(assessment, "introductory-biology/light@1")
+    save_marking(assessment, "introductory-biology/light@1", user)
     client.post(url, {"name": "Biology", "description": ""})
     library.refresh_from_db()
     assert (assessment.course.__class__.objects.get(pk=assessment.course_id).name, library.namespace) == (
@@ -587,7 +587,7 @@ def test_changing_an_email_address_makes_the_namespace_again_while_its_methods_a
 
     version = publish_light_method(user.library, user)
     assert namespace_after_making_primary("ana.lim@example.edu") == "ana-lim-example-edu"
-    save_marking(assessment, MethodVersion.objects.get(pk=version.pk).ref)
+    save_marking(assessment, MethodVersion.objects.get(pk=version.pk).ref, user)
     assert namespace_after_making_primary("ana.tan@example.edu") == "ana-lim-example-edu"
 
 

@@ -1,16 +1,17 @@
-{# The dialog that chooses `key`, driven by canvas.js's listPicker(key); `panel` is a template shown in it. #}
+{# The dialog that chooses `key`, driven by canvas.js's listPicker; `none` says there's nothing to choose, and `panel` is a template shown in it. #}
 <c-dialog id="{{ key }}-picker" title="{{ label }}" box_class="flex max-h-[80vh] max-w-lg flex-col">
-  <div class="px-6 pb-3 pt-1" x-show="!{{ key }}Creating"><c-search class="w-full" label="{{ search }}" x-model="{{ key }}Query" x-on:keydown.enter.prevent autofocus /></div>
-  <ul class="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] content-start gap-0.5 overflow-y-auto border-t border-base-300 p-2" role="listbox" aria-labelledby="{{ key }}-picker-title" x-show="!{{ key }}Creating">
-    <template x-for="item in {{ key }}Shown" :key="item.id">
-      <li><button type="button" role="option" class="flex w-full items-center gap-3 rounded-field px-3 py-2 text-left hover:bg-base-200 aria-selected:bg-base-200" :aria-selected="item.selected" :data-id="item.id" x-on:click="choose{{ capitalized_key }}">
+  <div class="px-6 pb-3 pt-1" x-show="!naming.{{ key }}"><c-search class="w-full" label="{{ search }}" x-model="queries.{{ key }}" x-on:keydown.enter.prevent autofocus /></div>
+  <ul class="grid min-h-0 flex-1 content-start gap-0.5 overflow-y-auto border-t border-base-300 p-2" role="listbox" aria-labelledby="{{ key }}-picker-title" x-show="!naming.{{ key }}">
+    <template x-for="item in shown('{{ key }}')" :key="item.id">
+      <li><button type="button" role="option" class="flex w-full items-center gap-3 rounded-field px-3 py-2 text-left hover:bg-base-200 aria-selected:bg-base-200" :aria-selected="item.selected" :data-id="item.id" x-on:click="choose('{{ key }}', $event)">
         <span class="initial-badge size-8 text-sm" aria-hidden="true" x-text="item.initial"></span>
         <span class="min-w-0 flex-1"><span class="block truncate font-medium" x-text="item.name"></span><span class="block truncate text-sm text-muted" x-show="item.detail" x-text="item.detail"></span></span>
       </button></li>
     </template>
-    <li class="px-3 py-6 text-center text-sm text-muted" x-show="{{ key }}NoMatch">{{ empty }}</li>
-    <li class="flex items-center justify-center gap-2 px-3 py-6 text-sm text-muted" x-show="{{ key }}Loading"><span class="loading loading-spinner loading-sm"></span>Loading…</li>
+    <li class="px-3 py-6 text-center text-sm text-muted" x-show="{{ key }}Items.length && !shown('{{ key }}').length">{{ empty }}</li>
+    <li class="px-3 py-6 text-center text-sm text-muted" x-show="!{{ key }}Items.length && !loading('{{ key }}') && !error">{{ none }}</li>
+    <li class="flex items-center justify-center gap-2 px-3 py-6 text-sm text-muted" x-show="loading('{{ key }}')"><span class="loading loading-spinner loading-sm"></span>Loading…</li>
   </ul>
-  {% if create %}<div class="border-t border-base-300 p-2" x-show="!{{ key }}Creating"><button type="button" class="flex w-full items-center gap-3 rounded-field px-3 py-2 text-left font-medium text-primary hover:bg-base-200" x-on:click="new{{ capitalized_key }}"><span class="grid size-8 place-items-center">{% icon "plus" "size-5" %}</span>{{ create }}</button></div>{% endif %}
+  {% if create %}<div class="border-t border-base-300 p-2" x-show="!naming.{{ key }}"><button type="button" class="flex w-full items-center gap-3 rounded-field px-3 py-2 text-left font-medium text-primary hover:bg-base-200" x-on:click="new{{ key|capfirst }}"><span class="grid size-8 place-items-center">{% icon "plus" "size-5" %}</span>{{ create }}</button></div>{% endif %}
   {% if panel %}{% include panel %}{% endif %}
 </c-dialog>

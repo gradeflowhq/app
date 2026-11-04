@@ -64,12 +64,13 @@
   </header>
 
   {% if method.archived %}<p class="banner">{% icon "archive-box" "size-4 shrink-0 text-warning" %}<span class="min-w-0 flex-1">Archived: it isn't offered for new marking, and what uses it keeps working.</span>{% if access.can_edit %}<button type="button" class="btn btn-sm" hx-post="{% url 'method_archive' method.pk %}" hx-vals='{"unarchive": "1"}'>Unarchive</button>{% endif %}</p>{% endif %}
+  {% with failed=workspace.failed %}{% if failed %}<div role="alert" class="banner items-start">{% icon "exclamation-triangle" "size-4 mt-0.5 shrink-0 text-warning" %}<div class="grid min-w-0 flex-1 gap-1"><p class="font-medium">This version isn't compatible with the current GradeFlow</p>{% if failed.ref != version.ref %}<p>It uses {{ workspace.failed_version_name }}, which has {{ failed.messages|length|pluralize:"this problem,these problems" }}:</p>{% endif %}<ul class="ml-5 list-disc">{% for problem in failed.messages %}<li>{{ problem }}</li>{% endfor %}</ul>{% if access.can_edit %}<p>Edit it to publish a fixed version.</p>{% endif %}</div></div>{% endif %}{% endwith %}
   <div id="method-notice" class="empty:hidden">{% if notice %}<p role="alert" class="banner border-error/20 bg-error/10 text-error">{{ notice }}</p>{% endif %}</div>
 
   <div class="workspace-columns min-h-0 flex-1">
     <nav id="question-list" class="workspace-questions" aria-label="Questions">
       <div class="column-head column-sticky"><h2>Questions</h2></div>
-      <ul class="grid grid-cols-[minmax(0,1fr)] gap-0.5 p-2">
+      <ul class="grid gap-0.5 p-2">
         {% for key, question in workspace.questions.items %}
         <li><button type="button" class="question-link w-full text-left" hx-get="{{ urls.page }}" hx-vals="{% hx_vals shown_question=key %}"{% if key == state.question %} aria-current="page"{% endif %}>
           <span class="min-w-0 flex-1"><span class="block truncate font-medium">{{ key }}</span><c-question-subtitle :question="question" read_only="{% if key in read_only %}1{% endif %}" class="block" /></span>
@@ -79,7 +80,7 @@
       </ul>
     </nav>
 
-    {% partialdef answers inline %}{% with draft=workspace.draft_record %}
+    {% partialdef answers inline %}{% with draft=workspace.draft_record code=selected_question|code_language %}
     <section id="method-answers" class="workspace-answers" aria-label="Test answers" hx-get="{{ urls.results }}" hx-trigger="{% listen topic workspace.tests_record.pk %}" hx-target="this" hx-swap="outerMorph" hx-sync="this:replace">
       <header class="column-sticky">
         <div class="column-head">
@@ -134,13 +135,13 @@
               <div class="min-w-0 flex-1">
                 {% if can_edit_tests %}
                 <div x-show="!editing">
-                  <div class="{% if selected_question|code_language %}rounded-box outline-hidden hover:*:border-base-content/25 focus-visible:*:border-primary focus-visible:*:ring-3 focus-visible:*:ring-primary/15{% else %}edit-in-place hover:bg-base-200/70{% endif %} cursor-text" tabindex="0" x-ref="focusReturn" x-on:click="edit" x-on:keydown.enter.prevent="edit">{% include "methods/work.html#answer_shown" %}</div>
-                  <div{% if run_out_of_date %} class="opacity-50"{% endif %}>{% include "results/answer_feedback.html" with feedback=row.result.feedback %}{% if row.result.breakdown %}{% with code=selected_question|code_language %}<c-more-options label="Breakdown" class="mt-2"><c-breakdown :check="row.result.breakdown" :language="code" /></c-more-options>{% endwith %}{% endif %}</div>
+                  <div class="{% if code %}rounded-box outline-hidden hover:*:border-base-content/25 focus-visible:*:border-primary focus-visible:*:ring-3 focus-visible:*:ring-primary/15{% else %}edit-in-place hover:bg-base-200/70{% endif %} cursor-text" tabindex="0" x-ref="focusReturn" x-on:click="edit" x-on:keydown.enter.prevent="edit">{% include "methods/work.html#answer_shown" %}</div>
+                  {% include "methods/work.html#result" %}
                 </div>
                 {% include "methods/work.html#answer_editor" with operation="save" answer=row.answer %}
                 {% else %}
                 {% include "methods/work.html#answer_shown" %}
-                <div{% if run_out_of_date %} class="opacity-50"{% endif %}>{% include "results/answer_feedback.html" with feedback=row.result.feedback %}{% if row.result.breakdown %}{% with code=selected_question|code_language %}<c-more-options label="Breakdown" class="mt-2"><c-breakdown :check="row.result.breakdown" :language="code" /></c-more-options>{% endwith %}{% endif %}</div>
+                {% include "methods/work.html#result" %}
                 {% endif %}
               </div>
               <div class="-my-1 flex shrink-0 items-center gap-1"{% if can_edit_tests %} x-show="!editing"{% endif %}>
@@ -213,7 +214,10 @@
 {% endwith %}
 
 {# A test answer as written; one of several values, value by value. #}
-{% partialdef answer_shown %}{% if row.values %}<p class="flex flex-wrap gap-1.5">{% for label, value in row.values %}<span class="badge badge-ghost font-medium" title="{{ label }}">{{ value|default:"—" }}</span>{% endfor %}</p>{% else %}{% include "results/answer_text.html" with answer=row.answer expanded=True code=selected_question|code_language %}{% endif %}{% endpartialdef %}
+{% partialdef answer_shown %}{% if row.values %}<p class="flex flex-wrap gap-1.5">{% for label, value in row.values %}<span class="badge badge-ghost font-medium" title="{{ label }}">{{ value|default:"—" }}</span>{% endfor %}</p>{% else %}{% include "results/answer_text.html" with answer=row.answer expanded=True %}{% endif %}{% endpartialdef %}
+
+{# A test answer's result in the last run, dimmed if what is here has changed since. #}
+{% partialdef result %}<div{% if run_out_of_date %} class="opacity-50"{% endif %}>{% include "results/answer_feedback.html" with feedback=row.result.feedback %}{% if row.result.breakdown %}<c-more-options label="Breakdown" class="mt-2"><c-breakdown :check="row.result.breakdown" :language="code" /></c-more-options>{% endif %}</div>{% endpartialdef %}
 
 {# A test answer to write in place, inside a `testAnswer`: `operation` "add" for a new submission's, "save" for `row`'s. The field takes the text's place exactly (`edit-in-place`), so the text doesn't move; its buttons (answer_buttons) take the row's actions' place. #}
 {% partialdef answer_editor %}
@@ -223,7 +227,7 @@
   {% with form=row.form|default:new_answer %}{% if form %}
   <div class="grid gap-2{% if form.fields|length > 1 %} sm:grid-cols-2{% endif %}" role="group" aria-label="{% if operation == "save" %}Answer of submission {{ row.number }}{% else %}New answer{% endif %}">{% for field in form %}{{ field }}{% endfor %}</div>
   {% else %}
-  <textarea name="answer" x-on:keydown.enter="submit" rows="1" class="{% if selected_question|code_language %}code-block{% else %}textarea edit-in-place block w-[calc(100%+1rem)] resize-none text-base font-medium{% endif %} field-sizing-content min-h-0" aria-label="{% if operation == "save" %}Answer of submission {{ row.number }}{% else %}New answer{% endif %}"{% if operation == "add" %} placeholder="Write an answer"{% endif %}>{{ answer }}</textarea>
+  <textarea name="answer" x-on:keydown.enter="submit" rows="1" class="{% if code %}code-block{% else %}textarea edit-in-place block w-[calc(100%+1rem)] resize-none text-base font-medium{% endif %} field-sizing-content min-h-0" aria-label="{% if operation == "save" %}Answer of submission {{ row.number }}{% else %}New answer{% endif %}"{% if operation == "add" %} placeholder="Write an answer"{% endif %}>{{ answer }}</textarea>
   {% endif %}{% endwith %}
 </form>
 {% endpartialdef %}

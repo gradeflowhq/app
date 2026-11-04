@@ -8,7 +8,7 @@ import { codeEditor } from "./code.js";
 import "./downloads.js";
 import { fileDrop } from "./drop.js";
 import { importer } from "./importer.js";
-import { answerGroup, answerGroups, canvasSend, markingExamples, studentIds } from "./landing.js";
+import { answerGroup, canvasSend, markingExamples } from "./landing.js";
 import { markdownEditor } from "./markdown.js";
 import { math } from "./math.js";
 import { modelService } from "./models.js";
@@ -45,7 +45,6 @@ document.addEventListener("htmx:after:settle", () => {
 const components = {
   adjustForm,
   answerGroup,
-  answerGroups,
   canvasConnection,
   canvasCourse,
   canvasPublisher,
@@ -64,7 +63,6 @@ const components = {
   orderedChoices,
   passphraseSettings,
   openOnLoad,
-  studentIds,
   studentTable,
   tagInput,
   testAnswer,

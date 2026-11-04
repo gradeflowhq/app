@@ -32,12 +32,10 @@ INSTALLED_APPS = [
     "django_tasks_db",
     "heroicons",
     "simple_history",
-    "gradeflow_app.ui",
     "gradeflow_app.accounts",
     "gradeflow_app.model_service",
     "gradeflow_app.courses",
     "gradeflow_app.assessments",
-    "gradeflow_app.dashboard",
     "gradeflow_app.imports",
     "gradeflow_app.questions",
     "gradeflow_app.libraries",
@@ -46,7 +44,6 @@ INSTALLED_APPS = [
     "gradeflow_app.results",
     "gradeflow_app.publish",
     "gradeflow_app.live",
-    "gradeflow_app.landing",
 ]
 
 MIDDLEWARE = [

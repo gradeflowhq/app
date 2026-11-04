@@ -156,10 +156,6 @@ def _send(request: Request, invitation: Invitation) -> None:
     send_email("invitation", invitation.email, context | {"url": url, "lifetime": INVITATION_LIFETIME})
 
 
-def _announce_role_change(request: Request, who: object, role: Role) -> None:
-    messages.success(request, f"{who}'s role is now {role.label}.")
-
-
 @require_POST
 @transaction.atomic
 @course_member(Role.OWNER)
@@ -172,7 +168,7 @@ def member_role(request: Request, member: Member, user_id: str) -> HttpResponse:
         target.role = form.cleaned_data["role"]
         target.save(update_fields=["role"])
         notify_change(topic("members", member.course_id))
-        _announce_role_change(request, target.user, form.cleaned_data["role"])
+        messages.success(request, f"{target.user}'s role is now {form.cleaned_data['role'].label}.")
         if target == member:
             return HttpResponseClientRefresh()
     return _members_partial(request, member)
@@ -219,7 +215,7 @@ def invitation_role(request: Request, member: Member, invitation_id: str) -> Htt
         invitation.role = form.cleaned_data["role"]
         invitation.save(update_fields=["role"])
         notify_change(topic("members", member.course_id))
-        _announce_role_change(request, invitation.email, form.cleaned_data["role"])
+        messages.success(request, f"{invitation.email}'s role is now {form.cleaned_data['role'].label}.")
     return _members_partial(request, member)
 
 

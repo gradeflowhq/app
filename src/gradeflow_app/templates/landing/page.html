@@ -55,12 +55,12 @@
     <article id="privacy" class="flex scroll-mt-20 flex-col gap-2.5 rounded-[1.25rem] border border-base-300 bg-base-100 p-6 sm:p-9">
       <h2 class="text-2xl font-semibold tracking-tight">Student IDs stay encrypted.</h2>
       <p class="text-muted">Only people with the passphrase can read them.</p>
-      <div class="flex-1 pt-7" x-data="studentIds">
+      <div class="flex-1 pt-7" x-data="{ isShown: false }">
         <c-card title="Students" class="flex h-full flex-col" body_class="flex flex-1 flex-col">
           <table class="table"><thead><tr><th>Student ID</th><th class="text-right">Total marks</th></tr></thead>
-            <tbody>{% for student, total in privacy_students %}<tr><td><span class="font-mono tabular-nums" x-show="isShown">{{ student }}</span><span class="font-mono tabular-nums" data-student-id-state="encrypted" x-show="!isShown" x-on:click="toggle"><span class="sr-only">Encrypted</span></span></td><td class="tabular-nums text-right">{{ total|marks }} / 60</td></tr>{% endfor %}</tbody>
+            <tbody>{% for student, total in privacy_students %}<tr><td><span class="font-mono tabular-nums" x-show="isShown">{{ student }}</span><span class="font-mono tabular-nums" data-student-id-state="encrypted" x-show="!isShown" x-on:click="isShown = true"><span class="sr-only">Encrypted</span></span></td><td class="tabular-nums text-right">{{ total|marks }} / 60</td></tr>{% endfor %}</tbody>
           </table>
-          <div class="mt-auto flex flex-wrap items-center gap-3 border-t border-base-300 px-5 py-4"><span x-show="!isShown">{% icon "lock-closed" "size-5 text-muted" %}</span><span x-show="isShown">{% icon "lock-open" "size-5 text-muted" %}</span><span x-text="status"></span><button type="button" class="btn btn-sm ml-auto" :class="buttonClass" x-on:click="toggle" x-text="buttonLabel"></button></div>
+          <div class="mt-auto flex flex-wrap items-center gap-3 border-t border-base-300 px-5 py-4"><span x-show="!isShown">{% icon "lock-closed" "size-5 text-muted" %}</span><span x-show="isShown">{% icon "lock-open" "size-5 text-muted" %}</span><span x-text="isShown ? 'Decrypted in this browser' : 'Student IDs are encrypted'"></span><button type="button" class="btn btn-sm ml-auto" :class="isShown ? '' : 'btn-primary'" x-on:click="isShown = !isShown" x-text="isShown ? 'Forget' : 'Show IDs'"></button></div>
         </c-card>
       </div>
     </article>

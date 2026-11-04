@@ -1,6 +1,6 @@
 """Stored markings as the core reads them."""
 
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable
 from typing import TYPE_CHECKING, Any
 
 from gradeflow_core import Check, GradeFlowError, Methods, QuestionSet
@@ -29,11 +29,6 @@ def check_of(definition: str, methods: Methods) -> Check | None:
         return None
 
 
-def runnable_check(check: Check | None, questions: QuestionSet) -> Check | None:
-    """`check`, if it can mark answers to `questions`."""
-    return check if check is not None and not check.problems(questions) else None
-
-
 def marking_draft(definition: str, questions: QuestionSet, key: str | None, methods: Methods) -> MarkingDraft:
     """A stored marking of the question `key`, or of a question group, as the core edits it: where each of its
     problems is."""
@@ -46,7 +41,7 @@ def accepted_checks(markings: Iterable[Marking], methods: Methods, questions: Qu
     return {
         marking: check
         for marking in markings
-        if (check := runnable_check(check_of(marking.definition, methods), questions)) is not None
+        if (check := check_of(marking.definition, methods)) is not None and not check.problems(questions)
     }
 
 
@@ -59,17 +54,13 @@ def assessment_checks(assessment: Assessment) -> dict[Marking, Check]:
 def check_for(marking: Marking) -> Check | None:
     """The marking's check, while the core accepts it."""
     assessment = marking.assessment
-    return runnable_check(check_of(marking.definition, course_methods(assessment.course)), assessment.question_set())
+    return accepted_checks([marking], course_methods(assessment.course), assessment.question_set()).get(marking)
 
 
 def methods_for(user: User, assessment: Assessment, key: str | None = None) -> Methods:
     """The methods `user` may mark the question `key` with, or else a question group."""
     position = Position(assessment.question_set(), key, in_group=key is None)
     return compatible_methods(position, methods=usable(user, assessment.course))
-
-
-def keys_marked_by(accepted: Mapping[Marking, Check]) -> set[str]:
-    return {key for check in accepted.values() for key in check.questions_marked()}
 
 
 def questions_marked(marking: Marking, check: Check | None) -> set[str]:

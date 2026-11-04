@@ -25,7 +25,7 @@
             <p class="mt-1.5 text-sm text-muted">and {{ group.other_answer_count }} other answers</p>
             <p class="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-sm">{% for check, correct in checks %}<span class="flex items-center gap-1 {% if correct %}text-success{% else %}text-error{% endif %}">{% if correct %}{% icon "check" "size-3.5" %}{% else %}{% icon "x-mark" "size-3.5" %}{% endif %}{{ check.name }}</span>{% endfor %}</p>
           </div>
-          <div><c-marks :low="marks.low" :high="marks.high" :max_marks="workspace.max_marks" /><span class="tabular-nums text-sm text-muted">{{ group.student_count }} student{{ group.student_count|pluralize }}</span></div>
+          <div><c-marks :low="marks" :high="marks" :max_marks="workspace.max_marks" /><span class="tabular-nums text-sm text-muted">{{ group.student_count }} student{{ group.student_count|pluralize }}</span></div>
         </li>
         {% endfor %}
       </ul>{% endwith %}
@@ -35,7 +35,7 @@
       <div class="grid gap-5 p-5">
         <h3 class="text-lg font-semibold">{{ workspace.method_label }}</h3>
         <p>{% with setting_label=workspace.setting_label %}<span class="font-medium">{{ setting_label.0 }}:</span> {{ setting_label.1 }}{% endwith %}</p>
-        <section class="grid gap-2"><h3 class="font-medium">Checks</h3><ul class="grid gap-2">{% for label, text in workspace.check_descriptions %}<c-landing.check :label="label" :text="text" />{% endfor %}</ul></section>
+        <section class="grid gap-2"><h3 class="font-medium">Checks</h3><ul class="grid gap-2">{% for label, text in workspace.check_descriptions %}<li class="card-box grid gap-1 p-3"><span class="font-medium">{{ label }}</span><div class="prose-core grid gap-1 text-sm text-muted">{{ text|markdown }}</div></li>{% endfor %}</ul></section>
       </div>
     </div>
   </div>

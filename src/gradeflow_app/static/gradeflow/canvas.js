@@ -4,7 +4,6 @@
 import { canvasClient, gradeFor, matchStudents } from "./canvas-api.js";
 import { decryptId } from "./crypto.js";
 import { passphraseFor } from "./passphrase.js";
-import { local } from "./storage.js";
 import { showToast } from "./toasts.js";
 import { counted, matches } from "./words.js";
 
@@ -59,7 +58,7 @@ const canvasComponent = () => ({
     const accepted = await this.load();
     this.checking = false;
     if (accepted) {
-      local.set(CANVAS_STORAGE_KEY, JSON.stringify(this.canvasConnection));
+      localStorage.setItem(CANVAS_STORAGE_KEY, JSON.stringify(this.canvasConnection));
       this.token = "";
       showToast(`Connected to ${this.canvasHost}.`, "success");
     } else {
@@ -68,7 +67,7 @@ const canvasComponent = () => ({
     }
   },
   disconnect() {
-    local.remove(CANVAS_STORAGE_KEY);
+    localStorage.removeItem(CANVAS_STORAGE_KEY);
     this.canvasConnection = null;
   },
 
@@ -93,55 +92,48 @@ const compose = (...parts) =>
 
 const loadConnection = (component) => {
   component.config = JSON.parse(component.$el.dataset.config);
-  component.canvasConnection = local.json(CANVAS_STORAGE_KEY);
+  try {
+    component.canvasConnection = JSON.parse(localStorage.getItem(CANVAS_STORAGE_KEY));
+  } catch {} // a connection that can't be read is none
 };
 
+const NO_CARD = Object.freeze({ id: "", name: "", detail: "", initial: "" });
+
 /**
- * Choosing `this[key]` from `this[key + "Items"]` (each `{id, name, detail, initial, search}`) in a dialog, shown by
- * publish/picker.html. A component may give `<key>Placeholder`, the card while its items aren't loaded or for
- * something not yet made; `<key>Creating`, while the dialog names a new one; and `afterChoose(key)`.
+ * Choosing `this[key]` from `this[key + "Items"]` (each `{id, name, detail, initial, search}`) in a dialog, for each
+ * of `keys`, shown by publish/picker.html. A component may give `<key>Placeholder`, the card while its items aren't
+ * loaded or for something not yet made, and `afterChoose(key)`. `naming[key]` is true while the dialog names a new one.
+ * With nothing chosen, the card is `NO_CARD`, so a template can read its fields without a check.
  */
-const listPicker = (key) => {
-  const capitalizedKey = key[0].toUpperCase() + key.slice(1);
-  const dialog = () => document.getElementById(`${key}-picker`);
+const listPicker = (...keys) => {
+  const dialog = (key) => document.getElementById(`${key}-picker`);
   return {
-    [`${key}Query`]: "",
-    [`${key}Creating`]: false,
-    get [`${key}Card`]() {
-      return this[`${key}Items`].find((item) => item.id === this[key]) ?? this[`${key}Placeholder`] ?? null;
+    queries: Object.fromEntries(keys.map((key) => [key, ""])),
+    naming: Object.fromEntries(keys.map((key) => [key, false])),
+    card(key) {
+      return this[`${key}Items`].find((item) => item.id === this[key]) ?? this[`${key}Placeholder`] ?? NO_CARD;
     },
-    get [`${key}Name`]() {
-      return this[`${key}Card`]?.name ?? "";
-    },
-    get [`${key}Detail`]() {
-      return this[`${key}Card`]?.detail ?? "";
-    },
-    get [`${key}Initial`]() {
-      return this[`${key}Card`]?.initial ?? "";
-    },
-    get [`${key}Shown`]() {
+    shown(key) {
       return this[`${key}Items`]
-        .filter((item) => matches(item.search, this[`${key}Query`]))
+        .filter((item) => matches(item.search, this.queries[key]))
         .map((item) => ({ ...item, selected: item.id === this[key] }));
     },
-    get [`${key}NoMatch`]() {
-      return this[`${key}Items`].length > 0 && !this[`${key}Shown`].length;
-    },
-    get [`${key}Loading`]() {
+    loading(key) {
       return this.isBusy && !this[`${key}Items`].length;
     },
-    [`pick${capitalizedKey}`]() {
-      Object.assign(this, { [`${key}Query`]: "", [`${key}Creating`]: false });
-      dialog().showModal();
-      dialog().querySelector('[aria-selected="true"]')?.scrollIntoView({ block: "nearest" });
+    pick(key) {
+      this.queries[key] = "";
+      this.naming[key] = false;
+      dialog(key).showModal();
+      dialog(key).querySelector('[aria-selected="true"]')?.scrollIntoView({ block: "nearest" });
     },
-    [`choose${capitalizedKey}`](event) {
+    choose(key, event) {
       this[key] = event.target.closest("[data-id]").dataset.id;
-      dialog().close();
+      dialog(key).close();
       this.afterChoose?.(key);
     },
-    [`close${capitalizedKey}`]() {
-      dialog().close();
+    close(key) {
+      dialog(key).close();
     },
   };
 };
@@ -170,15 +162,12 @@ const describeGroup = (group, weighted) =>
 // Assignment groups: choosing one, or naming a new one, which is made in Canvas at once. In a course that weights its
 // groups, a new one is given a share of the final grade: what the others leave, to start.
 const groups = () => ({
-  groups: [],
+  groupItems: [],
   group: "",
   weighted: false,
   groupNewName: "GradeFlow",
   groupNewWeight: 0,
 
-  get groupItems() {
-    return this.groups;
-  },
   get canCreateGroup() {
     const weight = this.groupNewWeight;
     return Boolean(this.groupNewName.trim() && !this.isBusy && (!this.weighted || (Number.isFinite(weight) && weight >= 0)));
@@ -187,26 +176,25 @@ const groups = () => ({
   async loadGroups(preferred) {
     const [course, loadedGroups] = await Promise.all([this.client.course(this.course), this.client.assignmentGroups(this.course)]);
     this.weighted = course.apply_assignment_group_weights;
-    this.groups = loadedGroups.map((group) => describeGroup(group, this.weighted));
-    if (!this.groups.some((group) => group.id === this.group)) {
-      this.group = this.groups.some((group) => group.id === preferred) ? preferred : (this.groups[0]?.id ?? "");
+    this.groupItems = loadedGroups.map((group) => describeGroup(group, this.weighted));
+    if (!this.groupItems.some((group) => group.id === this.group)) {
+      this.group = this.groupItems.some((group) => group.id === preferred) ? preferred : (this.groupItems[0]?.id ?? "");
     }
   },
   newGroup() {
-    const assignedWeight = this.groups.reduce((total, group) => total + group.weight, 0);
-    Object.assign(this, { groupCreating: true, groupNewWeight: Math.max(0, Number((100 - assignedWeight).toFixed(10))) });
-  },
-  cancelGroup() {
-    this.groupCreating = false;
+    const assignedWeight = this.groupItems.reduce((total, group) => total + group.weight, 0);
+    this.naming.group = true;
+    this.groupNewWeight = Math.max(0, Number((100 - assignedWeight).toFixed(10)));
   },
   async createGroup() {
     if (!this.canCreateGroup) return;
     const group = { name: this.groupNewName.trim(), ...(this.weighted && { group_weight: this.groupNewWeight }) };
     const createdGroup = await this.run("Creating the assignment group…", () => this.client.createAssignmentGroup(this.course, group));
     if (!createdGroup) return;
-    this.groups.push(describeGroup(createdGroup, this.weighted));
-    Object.assign(this, { group: String(createdGroup.id), groupCreating: false });
-    this.closeGroup();
+    this.groupItems.push(describeGroup(createdGroup, this.weighted));
+    this.group = String(createdGroup.id);
+    this.naming.group = false;
+    this.close("group");
     showToast(`Created the assignment group “${createdGroup.name}” in Canvas.`, "success");
     this.afterChoose?.("group");
   },
@@ -229,17 +217,14 @@ export const canvasConnection = () =>
 // A course's Canvas page: the Canvas course its marks go to, and the group new assignments go in. This device
 // connects to Canvas on the Integrations page.
 export const canvasCourse = () =>
-  compose(canvasComponent(), listPicker("course"), listPicker("group"), groups(), {
-    courses: [],
+  compose(canvasComponent(), listPicker("course", "group"), groups(), {
+    courseItems: [],
     course: "",
 
     init() {
       loadConnection(this);
       Object.assign(this, { course: this.config.course, group: this.config.assignmentGroup });
       if (this.canvasConnection) this.load();
-    },
-    get courseItems() {
-      return this.courses;
     },
     get coursePlaceholder() {
       return this.config.course && this.course === this.config.course ? pickerItem(this.course, this.config.courseName) : null;
@@ -249,7 +234,7 @@ export const canvasCourse = () =>
     },
     load() {
       return this.run("Loading courses…", async () => {
-        this.courses = (await this.client.courses()).map(describeCourse).sort(newestFirst);
+        this.courseItems = (await this.client.courses()).map(describeCourse).sort(newestFirst);
         if (this.course) await this.loadGroups(this.config.assignmentGroup);
         return true;
       });
@@ -267,8 +252,8 @@ export const canvasCourse = () =>
 export const canvasPublisher = () => {
   let students = []; // the Canvas course's, once matched
 
-  return compose(canvasComponent(), listPicker("assignment"), listPicker("group"), groups(), {
-    assignments: [],
+  return compose(canvasComponent(), listPicker("assignment", "group"), groups(), {
+    assignmentItems: [],
     assignment: "",
     newName: "",
     matched: [],
@@ -291,16 +276,14 @@ export const canvasPublisher = () => {
     get savedAssignment() {
       return this.creating ? "" : this.assignment;
     },
-    get assignmentItems() {
-      return this.assignments;
-    },
     get assignmentPlaceholder() {
       if (!this.creating) return null;
-      const detail = this.groupCard ? `New, in ${this.groupCard.name}` : "New";
+      const group = this.card("group").name;
+      const detail = group ? `New, in ${group}` : "New";
       return { ...pickerItem("new", this.newName.trim() || "New assignment", detail), initial: "+" };
     },
     get chosenAssignment() {
-      return this.assignments.find((assignment) => assignment.id === this.assignment);
+      return this.assignmentItems.find((assignment) => assignment.id === this.assignment);
     },
     get canReview() {
       return Boolean(this.assignment && !this.isBusy && (!this.creating || this.newName.trim()));
@@ -316,7 +299,7 @@ export const canvasPublisher = () => {
       return this.matched.length ? `Send ${counted(this.matched.length, "student's", "students'")} marks` : "Send marks";
     },
     get reviewTarget() {
-      return `${this.assignmentName} · ${this.config.courseName}`;
+      return `${this.card("assignment").name} · ${this.config.courseName}`;
     },
     /** Says so when marks are scaled to an assignment worth a different number of points. */
     get scaling() {
@@ -330,8 +313,8 @@ export const canvasPublisher = () => {
       return this.run("Loading assignments…", async () => {
         const loadedAssignments = await this.client.assignments(this.course);
         await this.loadGroups(this.config.assignmentGroup);
-        const groupName = (id) => this.groups.find((group) => group.id === String(id))?.name;
-        this.assignments = loadedAssignments.map((assignment) =>
+        const groupName = (id) => this.groupItems.find((group) => group.id === String(id))?.name;
+        this.assignmentItems = loadedAssignments.map((assignment) =>
           Object.assign(pickerItem(assignment.id, assignment.name, [groupName(assignment.assignment_group_id), assignment.points_possible != null && counted(assignment.points_possible, "mark")].filter(Boolean).join(" · ")), {
             pointsPossible: assignment.points_possible,
           }),
@@ -344,7 +327,7 @@ export const canvasPublisher = () => {
     },
     newAssignment() {
       this.assignment = "new";
-      this.closeAssignment();
+      this.close("assignment");
       this.changedAssignment();
     },
     changedAssignment() {
@@ -418,7 +401,7 @@ export const canvasPublisher = () => {
       const maxMarks = this.matched[0]?.row.maxMarks;
       const created = await this.client.createAssignment(this.course, { name: this.newName.trim(), points_possible: maxMarks, assignment_group_id: this.group });
       const assignment = { ...pickerItem(created.id, created.name), pointsPossible: created.points_possible };
-      this.assignments.push(assignment);
+      this.assignmentItems.push(assignment);
       this.assignment = assignment.id;
       this.changedAssignment();
       return assignment;

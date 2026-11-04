@@ -8,7 +8,7 @@
     {% if panel.mode == "summary" and membership.can_edit %}
     <c-menu id="marking-menu" button_class="btn btn-ghost btn-square btn-sm ml-auto">
       <li><button hx-get="{% url 'marking_history' question.assessment_id question.pk %}" hx-target="#drawer-body" data-dialog="drawer">{% icon "clock" "size-4" %}History</button></li>
-      {% if not panel.summary.has_problems %}<li><button hx-get="{% url 'method_save' question.assessment_id question.pk %}" hx-target="#drawer-body" data-dialog="drawer">{% icon "puzzle-piece" "size-4" %}Save as a method</button></li>{% endif %}
+      {% if not panel.summary.problems %}<li><button hx-get="{% url 'method_save' question.assessment_id question.pk %}" hx-target="#drawer-body" data-dialog="drawer">{% icon "puzzle-piece" "size-4" %}Save as a method</button></li>{% endif %}
       <li><button class="text-error" hx-post="{% url 'marking_remove' question.assessment_id question.pk %}" hx-target="#marking-panel" hx-swap="outerHTML" data-confirm="Remove the marking for {{ question.key }}?" data-confirm-detail="Students keep their imported marks. You can restore the marking from its history." data-confirm-button="Remove">{% icon "trash" "size-4" %}Remove marking</button></li>
     </c-menu>
     {% endif %}

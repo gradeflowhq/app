@@ -2,7 +2,6 @@
 
 import logging
 from functools import cache
-from typing import Protocol
 from uuid import UUID
 
 import httpx
@@ -20,16 +19,6 @@ class ExecutorUnavailable(Exception):
     """The executor can't be reached, or refused a job."""
 
 
-class Executor(Protocol):
-    def submit(self, job: Job) -> None:
-        """Hand `job` over to run; handing it over again changes nothing. Raises `ExecutorUnavailable`."""
-
-    def cancel(self, job: Job) -> None: ...
-
-    def submitted_jobs(self) -> dict[UUID, bool]:
-        """The jobs handed over, and whether each has ended. Raises `ExecutorUnavailable`."""
-
-
 class Nomad:
     """Runs a job in a Nomad batch job, which fetches its input from the app and calls back with the outcome."""
 
@@ -39,6 +28,7 @@ class Nomad:
         self.client = httpx.Client(base_url=url, headers={"X-Nomad-Token": token} if token else {}, timeout=30)
 
     def submit(self, job: Job) -> None:
+        """Hand `job` over to run; handing it over again changes nothing. Raises `ExecutorUnavailable`."""
         try:
             self.client.post(
                 "/v1/jobs", params={"namespace": self.namespace}, json={"Job": self.nomad_spec(job)}
@@ -55,6 +45,7 @@ class Nomad:
             _LOG.warning("Couldn't stop Nomad job %s", self.nomad_job_id(job))
 
     def submitted_jobs(self) -> dict[UUID, bool]:
+        """The jobs handed over, and whether each has ended. Raises `ExecutorUnavailable`."""
         try:
             response = self.client.get("/v1/jobs", params={"namespace": self.namespace, "prefix": NOMAD_JOB_PREFIX})
             response.raise_for_status()
@@ -110,6 +101,6 @@ class Nomad:
 
 
 @cache
-def executor() -> Executor:
+def executor() -> Nomad:
     nomad = settings.GRADEFLOW_NOMAD
     return Nomad(nomad["url"], nomad["token"], nomad["datacenter"], nomad["namespace"])

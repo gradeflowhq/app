@@ -8,7 +8,7 @@ from gradeflow_core.editing import dump_yaml
 from gradeflow_app.accounts.models import User
 from gradeflow_app.assessments.models import Assessment
 from gradeflow_app.jobs.models import Job
-from gradeflow_app.marking.answers.out_of_date import out_of_date_notices
+from gradeflow_app.marking.answers.column import out_of_date_notices
 from gradeflow_app.marking.checks import assessment_checks
 from gradeflow_app.marking.models import Marking
 from gradeflow_app.marking.remarks import remark, schedule_marking
@@ -62,10 +62,15 @@ def test_a_marking_that_stops_validating_schedules_nothing_and_says_so(
     )
     response = client.get(page_url)
     assert response.status_code == 200
-    assert "This marking can't mark until it's fixed" in response.text
+    heading = (
+        "This marking can't mark until it's fixed"
+        if what_breaks == "question-type"
+        else "This marking isn't compatible with the current GradeFlow"
+    )
+    assert heading in response.text
     if grouped:
         shown = client.get(reverse("question", args=[assessment.pk, assessment.questions.get(key="Q3").pk]))
-        assert "This marking can't mark until it's fixed" in shown.text, "on each question it marked"
+        assert heading in shown.text, "on each question it marked"
     if grouped:
         assert "No questions yet" not in response.text
         assert 'title="photosynthesis uses light"' in response.text

@@ -30,8 +30,7 @@ def apply_started(job: Job) -> None:
     if job.status != Job.Status.QUEUED:
         return
     job.status, job.started_at = Job.Status.RUNNING, timezone.now()
-    job.dispatched_at = job.dispatched_at or job.started_at
-    job.save(update_fields=["status", "started_at", "dispatched_at"])
+    job.save(update_fields=["status", "started_at"])
     notify_job_change(job)
 
 
@@ -87,25 +86,15 @@ def add_marked_batch(job: Job, submissions: Sequence[dict[str, Any]]) -> None:
         notify_job_change(job)
 
 
-def store_test_results(job: Job, results: object) -> None:
-    _store_result(job, _ROW_RESULTS_ADAPTER, results, only_if_current=True)
-
-
-def store_model_choice(job: Job, choice: object) -> None:
-    _store_result(job, _MODEL_CHOICE_ADAPTER, choice)
-
-
-def store_model_trials(job: Job, trials: object) -> None:
-    _store_result(job, MODEL_TRIALS_ADAPTER, trials)
-
-
 @transaction.atomic
-def _store_result(job: Job, adapter: TypeAdapter[Any], reported: object, *, only_if_current: bool = False) -> None:
-    """Keep what the job reported, as `adapter` reads it, for its result; with `only_if_current`, only while its
+def store_result(job: Job, reported: object) -> None:
+    """Keep what the job's task reported, its test results or the models it chose or tried, for its result, while its
     outcome still applies."""
     job = _locked(job)
-    if not job.is_active or (only_if_current and not handler(job).is_current(job)):
+    job_handler = handler(job)
+    if not job.is_active or not job_handler.is_current(job):
         return
+    adapter = _RESULT_ADAPTERS[job_handler.task]
     try:
         job.result = adapter.dump_python(adapter.validate_python(reported), mode="json")
     except ValidationError:
@@ -135,9 +124,12 @@ class _Choice(BaseModel):
 
 
 _PROGRESS_ADAPTER = TypeAdapter(Progress)
-_ROW_RESULTS_ADAPTER = TypeAdapter(list[RowResult])
-_MODEL_CHOICE_ADAPTER = TypeAdapter(_Choice)
 MODEL_TRIALS_ADAPTER = TypeAdapter(list[ModelTrial])
+_RESULT_ADAPTERS: dict[Task, TypeAdapter[Any]] = {
+    "test": TypeAdapter(list[RowResult]),
+    "choose": TypeAdapter(_Choice),
+    "trial": MODEL_TRIALS_ADAPTER,
+}
 
 
 @transaction.atomic

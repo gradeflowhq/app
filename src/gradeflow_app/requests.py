@@ -9,6 +9,8 @@ from gradeflow_app.accounts.models import User
 
 class HtmxRequest(HttpRequest):
     htmx: HtmxDetails
+    live_topics: set[str]
+    """The topics the page listens to, once it listens to one."""
 
 
 class Request(HtmxRequest):

@@ -31,12 +31,6 @@ class CodeInput(forms.Textarea):
 
     def __init__(self, language: str) -> None:
         super().__init__(attrs={"x-data": "codeEditor", "data-language": language})
-        self.path = ""
-
-    def get_context(self, name: str, value: Any, attrs: dict[str, Any] | None) -> dict[str, Any]:
-        context = super().get_context(name, value, attrs)
-        context["widget"]["editor_id"] = "-".join(filter(None, ["code", self.path, name])).replace(".", "-")
-        return context
 
 
 class Segmented(forms.RadioSelect):

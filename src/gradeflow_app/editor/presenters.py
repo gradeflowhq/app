@@ -59,31 +59,30 @@ def _made_by(method: CoreMethod[Any] | None, offers: OfferedMethods) -> str:
 
 def _problem_elsewhere_text(workspace: CheckWorkspace, problem: Problem, open_path: str) -> str:
     """A problem of a check other than the one at `open_path`; one not filled in yet, as what to do."""
-    label = workspace.label(problem.check) if problem.check else "The marking"
+    label = workspace.checks.label(problem.check) if problem.check else "The marking"
     return f"Finish {label}." if problem.is_incomplete else workspace.problem_text(problem, open_path)
 
 
-def _card_problem(workspace: CheckWorkspace, path: str) -> str:
-    """The first problem of the check at `path` or a check it holds, as its card says it."""
-    problem = next((each for each in workspace.problems_in(path) if not each.is_incomplete), None)
-    return workspace.problem_text(problem, path) if problem else ""
+def _card(workspace: CheckWorkspace, path: str) -> CheckCard:
+    """The check at `path` as a card, with the first problem of it or a check it holds."""
+    checks = workspace.checks
+    problems = [each for each in checks.problems if each.check == path or each.check.startswith(f"{path}.")]
+    problem = next((each for each in problems if not each.is_incomplete), None)
+    return CheckCard(
+        path=path,
+        label=checks.label(path),
+        description=checks.describe(path),
+        has_problems=bool(problems),
+        problem=workspace.problem_text(problem, path) if problem else "",
+        notes=checks.notes(path),
+    )
 
 
 def _checks_setting_view(
     workspace: CheckWorkspace, setting: ChecksSetting, errors: list[str], label_controls: str, needs_checks: bool
 ) -> ChecksSettingView:
     checks = workspace.checks
-    children = [
-        CheckCard(
-            path=child,
-            label=workspace.label(child),
-            description=checks.describe(child),
-            has_problems=workspace.has_problems(child),
-            problem=_card_problem(workspace, child),
-            notes=checks.notes(child),
-        )
-        for child in setting.checks
-    ]
+    children = [_card(workspace, child) for child in setting.checks]
     methods, unavailable_reason, questions = Methods(), "", []
     if not setting.is_full:
         group_check = question_group_check(checks, setting.new_check_path)
@@ -144,11 +143,6 @@ class Editor:
         others = "has another marking" if len(keys) == 1 else "have other markings"
         return f"{get_text_list(keys, 'and')} {others}."
 
-    @property
-    def holds_checks(self) -> bool:
-        """Whether it holds checks, shown as cards that say what its summary would."""
-        return bool(self.checks_settings)
-
 
 def editor(workspace: CheckWorkspace, path: str, *, saving: bool = False, more_open: bool = False) -> Editor:
     """The editor at `path`, or at the marking itself if that's gone; with More options open after a change inside
@@ -174,7 +168,7 @@ def _editor(workspace: CheckWorkspace, path: str, *, saving: bool, more_open: bo
         path = ""
     form = workspace.form(path)
     form.add_problems(workspace.problems_at(path, saving=saving))
-    unfilled = [problem for problem in workspace.problems if problem.check == path and problem.is_incomplete]
+    unfilled = [problem for problem in checks.problems if problem.check == path and problem.is_incomplete]
     method = checks.method(path)
     return Editor(
         actions=workspace.actions,
@@ -190,15 +184,13 @@ def _editor(workspace: CheckWorkspace, path: str, *, saving: bool, more_open: bo
             )
             for setting in checks.checks_settings(path)
         ],
-        label=workspace.label(path),
+        label=checks.label(path),
         description=checks.describe(path),
-        breadcrumbs=[(ancestor, workspace.label(ancestor)) for ancestor in _ancestor_paths(checks, path)]
-        if path
-        else [],
+        breadcrumbs=[(ancestor, checks.label(ancestor)) for ancestor in _ancestor_paths(checks, path)] if path else [],
         problems_elsewhere=[
             (problem.check, _problem_elsewhere_text(workspace, problem, path))
-            for problem in workspace.problems_elsewhere(path)
-            if saving
+            for problem in checks.problems
+            if saving and problem.check != path
         ],
         can_change_method=len(choices(checks.methods(path), workspace.offers)) > 1,
         newer_version=workspace.offers.newer_version(method, workspace.methods)

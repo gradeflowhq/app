@@ -4,7 +4,7 @@
         data-connect="{% url 'model_service_connect' %}"
         data-refused="{{ connect_error|yesno:'true,' }}">
   <c-slot name="actions"><button type="button" class="btn btn-ghost btn-square btn-sm -mr-2 text-muted" data-dialog="ai-service-guide" aria-label="How to connect an AI service">{% icon "question-mark-circle" %}</button></c-slot>
-  <div x-show="disconnected" x-cloak>
+  <div x-show="!connected" x-cloak>
     {% if providers %}
     <div class="grid gap-5 p-5">
       <div class="grid gap-1.5">
@@ -36,7 +36,7 @@
           {% elif failure_reason %}<span class="text-error">Couldn't choose automatically: {{ failure_reason }}</span>
           {% else %}Not chosen yet.{% endif %}
         </c-slot>
-        {% if models_loaded %}{% include "model_service/change.html" %}{% endif %}
+        {% if models_loaded %}<button type="button" class="btn" data-dialog="model-chooser" hx-post="{% url 'model_service_dialog' %}" hx-target="#model-chooser-body" hx-swap="innerHTML">{% if state.fast_model or choosing_job %}Change{% else %}Choose models{% endif %}</button>{% endif %}
       </c-setting-row>
       {% if models_loaded %}
         <c-setting-row label="Answers per request">

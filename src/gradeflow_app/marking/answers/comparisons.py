@@ -33,7 +33,7 @@ def store_comparison(comparison: AnswerComparison, *, core_version: str) -> None
 
 
 @transaction.atomic
-def start_grouping(assessment: Assessment, question: Question, texts: Sequence[str], user: User | None) -> Job:
+def start_grouping(assessment: Assessment, question: Question, texts: Sequence[str], user: User) -> Job:
     assessment.lock()
     job_input: dict[str, object] = {"texts": list(texts)}
     running = assessment.jobs.running().filter(kind=Job.Kind.GROUPING, question_keys=[question.key]).first()
@@ -54,7 +54,7 @@ def start_grouping(assessment: Assessment, question: Question, texts: Sequence[s
 
 register(
     Job.Kind.GROUPING,
-    Handler[AnswerComparison](
+    Handler(
         task="compare",
         topics=lambda job: [topic("grouping", job.assessment_id)],
         apply_outcome=lambda job, comparison: store_comparison(comparison, core_version=job.core_version),

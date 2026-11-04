@@ -5,15 +5,7 @@ import { showToast } from "./toasts.js";
 
 const SENDING_MS = 1400;
 
-export const answerGroups = () => ({
-  grouping: "by_meaning",
-  accepted: [],
-  init() {
-    this.accepted = JSON.parse(this.$el.dataset.accepted);
-  },
-});
-
-// One of answerGroups' groups: accepted once all its answers are.
+// One of the grouping demo's groups: accepted once all its answers are.
 export const answerGroup = () => ({
   answers: [],
   init() {
@@ -50,21 +42,5 @@ export const canvasSend = () => ({
     await new Promise((resolve) => setTimeout(resolve, SENDING_MS));
     this.sending = false;
     showToast("Sent 808 students' marks to “Final Exam”.", "success");
-  },
-});
-
-export const studentIds = () => ({
-  isShown: false,
-  toggle() {
-    this.isShown = !this.isShown;
-  },
-  get status() {
-    return this.isShown ? "Decrypted in this browser" : "Student IDs are encrypted";
-  },
-  get buttonLabel() {
-    return this.isShown ? "Forget" : "Show IDs";
-  },
-  get buttonClass() {
-    return this.isShown ? "" : "btn-primary";
   },
 });

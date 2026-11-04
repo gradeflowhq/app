@@ -141,9 +141,6 @@ export const importer = () => {
     get answerKey() {
       return this.rows.slice(this.headerRow + 1).find((row) => isAnswerKeyRow(row, this.idIndex));
     },
-    get leftOutRowCount() {
-      return this.leftOutRows.length;
-    },
     get rowsPreview() {
       if (!this.rowsInRange.length) return "No students";
       const range = `${this.rowLabel(this.rowsInRange[0])} to ${this.rowLabel(this.rowsInRange.at(-1))}`;

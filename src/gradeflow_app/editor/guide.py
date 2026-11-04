@@ -2,12 +2,12 @@
 
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
-from typing import Any, NamedTuple, Protocol
+from typing import Any, NamedTuple
 
 from django.http import Http404
 from django.utils.text import get_text_list
-from gradeflow_core import Method, Methods
-from gradeflow_core.editing import Example, MarkingDraft, QuestionType
+from gradeflow_core import Method, Methods, QuestionSet
+from gradeflow_core.editing import Example, MarkingDraft, MethodDraft, Position
 
 from gradeflow_app.libraries.collection import BUILTIN_NAMES, OfferedMethods
 from gradeflow_app.questions.models import QUESTION_TYPE_LABELS
@@ -93,21 +93,11 @@ def allows_group_methods(checks: MarkingDraft, target: str) -> bool:
     return any(method.marks_question_group for method in checks.methods(target, None))
 
 
-class MarksQuestions(Protocol):
-    """What a method, published or a draft, marks."""
-
-    @property
-    def question_types(self) -> frozenset[QuestionType]: ...
-
-    @property
-    def marks_question_group(self) -> bool: ...
-
-
 def _labels(question_types: Iterable[str]) -> list[str]:
     return [label for question_type, label in QUESTION_TYPE_LABELS.items() if question_type in question_types]
 
 
-def works_with(method: MarksQuestions) -> list[str]:
+def works_with(method: Method[Any] | MethodDraft) -> list[str]:
     """What the method marks, as labels: its question types, then question groups."""
     return _labels(method.question_types) + (["Question groups"] if method.marks_question_group else [])
 
@@ -169,5 +159,11 @@ def guide_context(
         "used_for": used_for(method),
         "is_saved_method": is_saved_method,
         "owner": owners.get(method.name, ""),
-        "setting_titles": method.setting_titles if is_saved_method else [],
+        "setting_titles": _setting_titles(method) if is_saved_method else [],
     }
+
+
+def _setting_titles(method: Method[Any]) -> list[str]:
+    """What a check of the method is set up with, by title, in order."""
+    schema = method.settings_schema(Position(QuestionSet({})))
+    return [setting.get("title", name) for name, setting in schema.get("properties", {}).items()]

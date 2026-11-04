@@ -2,5 +2,5 @@
 {# Long content shortened to about ten lines, with a button to show it all. #}
 <div x-data="collapsible">
   <div class="collapsible{% if class %} {{ class }}{% endif %}" x-ref="content" x-bind:data-overflows="overflows" x-bind:data-expanded="expanded"><div x-ref="inner">{{ slot }}</div></div>
-  <button type="button" class="text-link relative mt-1 text-sm" x-show="overflows" x-cloak x-on:click="toggle" x-text="label"></button>
+  <button type="button" class="text-link relative mt-1 text-sm" x-show="overflows" x-cloak x-on:click="expanded = !expanded" x-text="expanded ? 'Show less' : 'Show all'"></button>
 </div>

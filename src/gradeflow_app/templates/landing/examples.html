@@ -28,7 +28,7 @@
               {% else %}<p class="font-medium">{{ row.answer }}</p>{% endif %}
               {% if row.feedback %}<p class="mt-1 whitespace-pre-line text-sm text-muted">{{ row.feedback }}</p>{% endif %}
             </div>
-            <div><c-marks :low="row.marks.low" :high="row.marks.high" :previous_low="row.marks_before.low" :previous_high="row.marks_before.high" :max_marks="example.example.max_marks" /><span class="tabular-nums text-sm text-muted">{{ row.student_count }} student{{ row.student_count|pluralize }}</span></div>
+            <div><c-marks :low="row.marks" :high="row.marks" :previous_low="row.marks_before" :previous_high="row.marks_before" :max_marks="example.example.max_marks" /><span class="tabular-nums text-sm text-muted">{{ row.student_count }} student{{ row.student_count|pluralize }}</span></div>
           </li>
           {% endfor %}
         </ul>

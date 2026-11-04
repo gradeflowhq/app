@@ -4,7 +4,7 @@ import html
 import re
 from datetime import timedelta
 from html import unescape
-from html.parser import HTMLParser
+from typing import TYPE_CHECKING
 
 import pytest
 from django.core.exceptions import ValidationError
@@ -36,9 +36,11 @@ from tests.conftest import (
     post_callback,
     post_publish,
     post_to_designer,
-    post_with_revision,
     signed_in_client,
 )
+
+if TYPE_CHECKING:
+    from django.test.client import _MonkeyPatchedWSGIResponse as Response
 
 pytestmark = pytest.mark.django_db
 
@@ -89,39 +91,10 @@ def answer_rows(method: Method, number: int | None = None) -> list[tuple[str, bo
     return [(row["answers"]["Q1"], row["is_example"]) for row in saved_tests(method, number).get("rows", [])]
 
 
-CONTROL_TAGS = ("input", "select", "textarea")
-
-
-class MarkingControls(HTMLParser):
-    """The names of the controls of a page's marking form that can be changed."""
-
-    def __init__(self, page: str) -> None:
-        super().__init__()
-        self.in_marking_form, self.fieldset_disabled, self.enabled = False, [False], list[str]()
-        self.feed(page)
-
-    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
-        attributes = dict(attrs)
-        if tag == "form":
-            self.in_marking_form = attributes.get("id") == "marking-form"
-        elif tag == "fieldset":
-            self.fieldset_disabled.append(self.fieldset_disabled[-1] or "disabled" in attributes)
-        elif (
-            self.in_marking_form
-            and tag in CONTROL_TAGS
-            and attributes.get("type") != "hidden"
-            and not self.is_disabled(attributes)
-        ):
-            self.enabled.append(attributes.get("name") or tag)
-
-    def is_disabled(self, attributes: dict[str, str | None]) -> bool:
-        return "disabled" in attributes or self.fieldset_disabled[-1]
-
-    def handle_endtag(self, tag: str) -> None:
-        if tag == "form":
-            self.in_marking_form = False
-        elif tag == "fieldset":
-            self.fieldset_disabled.pop()
+def enabled_fields(page: Response) -> list[str]:
+    """The fields of a page's marking form that can be changed."""
+    form = page.context["editor"].form
+    return [name for name, field in form.fields.items() if not field.disabled]
 
 
 def test_a_new_method_starts_as_a_draft(client: Client, course: Course, method: Method) -> None:
@@ -210,7 +183,7 @@ def test_unreadable_test_results_fail_the_run(client: Client, method: Method, id
     assert (job.status, job.error) == (Job.Status.FAILED, events.UNREADABLE_RESULTS_ERROR)
     post_to_designer(client, method, "method_run")
     rerun = Job.objects.filter(kind=Job.Kind.DRAFT_TESTS).exclude(pk=job.pk).get()
-    other = {"answers": {"Q1": "other"}, "matches_expected": None, "results": {}}
+    other = {"answers": {"Q1": "other"}, "matches_expected": None, "results": {}, "max_marks": 1}
     assert post_callback(rerun, {"event": "tested", "results": [other]}) == 204
     assert post_callback(rerun, {"event": "finished"}) == 204
     rerun.refresh_from_db()
@@ -296,16 +269,37 @@ def test_an_inputs_label_help_and_default_are_saved(client: Client, method: Meth
     tab = client.get(designer_url(method, "method_inputs"), {"input": name, "tab": "inputs"})
     assert 'name="input-default"' in tab.text
     details = {"input": name, "input-title": "Words", "input-description": "What answers must say."}
-    post_with_revision(client, method, "method_inputs", None, details | {"input-default": ["sun"]})
+    post_to_designer(client, method, "method_inputs", None, **details | {"input-default": ["sun"]})
     assert core_draft(method).inputs[name] == {
         "title": "Words",
         "description": "What answers must say.",
         "default": ["sun"],
     }
-    post_with_revision(client, method, "method_values", None, {f"values-{name}": ["moon"]})
+    post_to_designer(client, method, "method_values", None, **{f"values-{name}": ["moon"]})
     assert saved_tests(method)["test_values"] == {name: ["moon"]}
     post_to_designer(client, method, "method_values", operation="reset")
     assert saved_tests(method)["test_values"] == {}
+
+
+def test_a_checks_problems_show_while_an_input_has_only_a_test_value(client: Client, method: Method) -> None:
+    definition = dump_yaml(
+        {
+            "label": "Light",
+            "summary": "Says light.",
+            "question_types": ["text"],
+            "inputs": {"points": {"title": "Points"}},
+            "checks": [
+                {"uses": "gradeflow/key-points@1", "with": {"points": "{{ inputs.points }}"}},
+                {"uses": "gradeflow/equivalent-expression@1", "with": {"answers": ["x2"]}},
+            ],
+        }
+    )
+    post_to_designer(client, method, "method_yaml", definition=definition)
+    page = client.get(designer_url(method, "method_page"))
+    assert page.context["problems"] == ["Give “Points” a test value or a default."]
+    post_to_designer(client, method, "method_values", None, **{"values-points": ["sun"]})
+    page = client.get(designer_url(method, "method_page"))
+    assert (page.context["first_problem_check"], page.context["problems"]) == ("with.checks.1", [])
 
 
 def test_every_part_of_an_inputs_declaration_is_edited(client: Client, method: Method) -> None:
@@ -317,7 +311,7 @@ def test_every_part_of_an_inputs_declaration_is_edited(client: Client, method: M
     assert 'name="input-advanced"' in tab
     assert 'name="input-choices"' in tab
     fields = {"input": name, "input-title": "Combine", "input-default": "any", "input-advanced": "True"}
-    post_with_revision(client, method, "method_inputs", None, fields | {"input-choices": ["all", "any"]})
+    post_to_designer(client, method, "method_inputs", None, **fields | {"input-choices": ["all", "any"]})
     assert core_draft(method).inputs[name] == {
         "title": "Combine",
         "default": "any",
@@ -330,7 +324,7 @@ def test_every_part_of_an_inputs_declaration_is_edited(client: Client, method: M
         "input-default": "",
         "input-advanced": "",
     }
-    post_with_revision(client, method, "method_inputs", None, cleared_fields)
+    post_to_designer(client, method, "method_inputs", None, **cleared_fields)
     assert core_draft(method).inputs[name] == {"title": "Combine"}
 
 
@@ -397,7 +391,7 @@ def test_an_inputs_choices_are_the_options_of_the_setting_it_fills(client: Clien
         "input-choices": ["exact", "spelling"],
         "input-default": "spelling",
     }
-    post_with_revision(client, method, "method_inputs", None, fields)
+    post_to_designer(client, method, "method_inputs", None, **fields)
     assert core_draft(method).inputs[name] == {
         "title": "Match",
         "default": "spelling",
@@ -416,8 +410,8 @@ def test_choices_and_examples_show_only_where_they_apply(client: Client, method_
         assert 'name="input-examples"' not in page
     name = new_input(client, method_with_length_check, MIN_LENGTH_PATH)
     assert 'name="input-choices"' not in input_form(client, method_with_length_check, name)
-    post_with_revision(
-        client, method_with_length_check, "method_inputs", None, {"input": name, "input-examples": ["2", "5"]}
+    post_to_designer(
+        client, method_with_length_check, "method_inputs", None, **{"input": name, "input-examples": ["2", "5"]}
     )
     assert core_draft(method_with_length_check).inputs[name]["examples"] == [2, 5]
 
@@ -431,7 +425,7 @@ def test_a_default_outside_the_choices_shows_on_the_default_with_what_was_typed(
         "input-choices": ["exact"],
         "input-default": "spelling",
     }
-    page = post_with_revision(client, method, "method_inputs", None, fields).text
+    page = post_to_designer(client, method, "method_inputs", None, **fields).text
     assert core_draft(method).inputs[name] == before
     assert field_error(page, "default") == "Similar spelling isn't one of the choices."
     assert 'value="How to match"' in page
@@ -444,11 +438,11 @@ def test_advanced_is_on_or_off_and_leaves_the_default_in_view(client: Client, me
     page = input_form(client, method, name)
     assert re.search(r'type="checkbox" name="input-advanced"(?![^>]*checked)', page)
     fields: dict[str, object] = {"input": name, "input-title": "Points", "input-default": ["sun"]}
-    post_with_revision(client, method, "method_inputs", None, fields | {"input-advanced": "on"})
+    post_to_designer(client, method, "method_inputs", None, **fields | {"input-advanced": "on"})
     assert core_draft(method).inputs[name]["advanced"] is True
     page = input_form(client, method, name)
     assert "More options" not in page, "the input's own default is never folded away"
-    post_with_revision(client, method, "method_inputs", None, fields)
+    post_to_designer(client, method, "method_inputs", None, **fields)
     assert "advanced" not in core_draft(method).inputs[name], "off, as the setting it fills is"
     whole_words_input = new_input(client, method, WHOLE_WORDS_PATH)
     page = input_form(client, method, whole_words_input)
@@ -459,8 +453,8 @@ def test_advanced_is_on_or_off_and_leaves_the_default_in_view(client: Client, me
 def test_a_yes_or_no_input_may_have_no_default(client: Client, method: Method) -> None:
     name = new_input(client, method, WHOLE_WORDS_PATH)
     for default, saved in (("True", {"default": True}), ("", {})):
-        post_with_revision(
-            client, method, "method_inputs", None, {"input": name, "input-default": default, "input-advanced": "on"}
+        post_to_designer(
+            client, method, "method_inputs", None, **{"input": name, "input-default": default, "input-advanced": "on"}
         )
         assert core_draft(method).inputs[name] == {"title": "Whole words only", **saved}
 
@@ -474,8 +468,8 @@ def test_an_edit_of_a_check_leaves_what_inputs_fill(client: Client, method: Meth
         "input-choices": ["exact", "spelling"],
         "input-default": "spelling",
     }
-    post_with_revision(client, method, "method_inputs", None, fields)
-    post_with_revision(client, method, "method_inputs", None, {"input": whole_words_input, "input-default": "True"})
+    post_to_designer(client, method, "method_inputs", None, **fields)
+    post_to_designer(client, method, "method_inputs", None, **{"input": whole_words_input, "input-default": "True"})
     before = core_draft(method).inputs
     page = client.get(designer_url(method, "method_page"), {"path": "with.checks.0"}).text
     for key in ("points", "match", "whole_words"):
@@ -491,8 +485,8 @@ def test_an_edit_of_a_check_leaves_what_inputs_fill(client: Client, method: Meth
 
 def test_examples_are_typed_like_the_setting(client: Client, method_with_length_check: Method) -> None:
     name = new_input(client, method_with_length_check, MIN_LENGTH_PATH)
-    page = post_with_revision(
-        client, method_with_length_check, "method_inputs", None, {"input": name, "input-examples": ["2", "abc"]}
+    page = post_to_designer(
+        client, method_with_length_check, "method_inputs", None, **{"input": name, "input-examples": ["2", "abc"]}
     )
     assert "examples" not in core_draft(method_with_length_check).inputs[name]
     text = page.text
@@ -504,8 +498,8 @@ def test_the_default_offers_the_settings_examples_not_the_inputs(
     client: Client, method_with_length_check: Method
 ) -> None:
     name = new_input(client, method_with_length_check, MIN_LENGTH_PATH)
-    post_with_revision(
-        client, method_with_length_check, "method_inputs", None, {"input": name, "input-examples": ["7"]}
+    post_to_designer(
+        client, method_with_length_check, "method_inputs", None, **{"input": name, "input-examples": ["7"]}
     )
     assert 'data-preset="7"' not in input_settings_form(input_form(client, method_with_length_check, name))
     assert 'data-preset="7"' in client.get(designer_url(method_with_length_check, "method_page")).text, (
@@ -515,14 +509,14 @@ def test_the_default_offers_the_settings_examples_not_the_inputs(
 
 def test_a_whole_number_default_is_saved_whole(client: Client, method_with_length_check: Method) -> None:
     name = new_input(client, method_with_length_check, MIN_LENGTH_PATH)
-    post_with_revision(client, method_with_length_check, "method_inputs", None, {"input": name, "input-default": "2"})
+    post_to_designer(client, method_with_length_check, "method_inputs", None, **{"input": name, "input-default": "2"})
     assert repr(core_draft(method_with_length_check).inputs[name]["default"]) == "2"
 
 
 def test_the_default_explains_the_setting_beside_the_inputs_description(client: Client, method: Method) -> None:
     name = new_input(client, method, WHOLE_WORDS_PATH)
-    post_with_revision(
-        client, method, "method_inputs", None, {"input": name, "input-description": "How close it must be."}
+    post_to_designer(
+        client, method, "method_inputs", None, **{"input": name, "input-description": "How close it must be."}
     )
     page = input_settings_form(input_form(client, method, name))
     assert page.count("How close it must be.") == 1
@@ -541,7 +535,7 @@ def test_a_check_named_by_an_input_shows_the_name_it_gets(client: Client, method
         return page
 
     assert ">Key Points</h3>" in shown("with.checks.0"), "without a default, as its method"
-    post_with_revision(client, method, "method_inputs", None, {"input": name, "input-default": "Says light"})
+    post_to_designer(client, method, "method_inputs", None, **{"input": name, "input-default": "Says light"})
     assert ">Says light</button>" in shown("")
     assert ">Says light</h3>" in shown("with.checks.0")
     assert "Says light · Name" in input_form(client, method, name)
@@ -563,12 +557,12 @@ def test_an_inputs_rows_are_added_and_removed_before_saving(client: Client, meth
         "default-0-expression": "f(1)",
         "default-0-expected": "2",
     }
-    page = post_with_revision(
-        client, method, "method_inputs", None, row | {"operation": "add_row", "target": "default"}
+    page = post_to_designer(
+        client, method, "method_inputs", None, **row | {"operation": "add_row", "target": "default"}
     )
     assert 'name="default-1-expression"' in page.text
-    page = post_with_revision(
-        client, method, "method_inputs", None, row | {"operation": "remove_row", "target": "default", "value": "0"}
+    page = post_to_designer(
+        client, method, "method_inputs", None, **row | {"operation": "remove_row", "target": "default", "value": "0"}
     )
     assert 'name="default-0-expression"' not in page.text
     assert core_draft(method).inputs[name]["default"] == [{"expression": "f(1)", "expected": "2"}], "saved only on Save"
@@ -617,12 +611,12 @@ def test_an_answer_of_several_values_is_written_value_by_value(client: Client, m
     assert all(f'placeholder="{title}"' in page for title in titles.values())
     typed = [dict(zip(titles, values, strict=True)) for values in (("2", " -3 "), ("", " "))]
     for values in typed:
-        post_with_revision(
+        post_to_designer(
             client,
             method,
             "method_answers",
             None,
-            {"operation": "add", **{f"value-{name}": value for name, value in values.items()}},
+            **{"operation": "add", **{f"value-{name}": value for name, value in values.items()}},
         )
     written = [question.answer_from(values) for values in typed]
     assert answer_rows(method) == [(answer, False) for answer in written]
@@ -635,18 +629,18 @@ def test_an_answer_of_several_values_is_written_value_by_value(client: Client, m
 def test_a_choice_answer_is_ticked_from_the_options(client: Client, method: Method) -> None:
     set_question_in_tests(method, {"type": "choice", "options": ["A", "B", "C"], "allow_multiple": True})
     question = question_in_tests(method)
-    post_with_revision(client, method, "method_answers", None, {"operation": "add", "value-options": ["c", "a"]})
+    post_to_designer(client, method, "method_answers", None, **{"operation": "add", "value-options": ["c", "a"]})
     post_to_designer(client, method, "method_answers", operation="add")
     assert answer_rows(method) == [(question.answer_from({"options": ["c", "a"]}), False), ("", False)]
-    post_with_revision(
-        client, method, "method_answers", None, {"operation": "save", "row": "0", "value-options": ["b"]}
+    post_to_designer(
+        client, method, "method_answers", None, **{"operation": "save", "row": "0", "value-options": ["b"]}
     )
     assert answer_rows(method)[0] == (question.answer_from({"options": ["b"]}), False)
 
 
 def test_an_answer_of_several_options_shows_each_option(client: Client, method: Method) -> None:
     set_question_in_tests(method, {"type": "choice", "options": ["a", "b", "c"], "allow_multiple": True})
-    post_with_revision(client, method, "method_answers", None, {"operation": "add", "value-options": ["c", "a"]})
+    post_to_designer(client, method, "method_answers", None, **{"operation": "add", "value-options": ["c", "a"]})
     page = client.get(designer_url(method, "method_page"), headers=HTMX_HEADERS).text
     shown = re.findall(r'<span class="badge[^"]*" title="[^"]+">([^<]*)</span>', page)
     assert shown == ["a", "c"]
@@ -886,7 +880,8 @@ def test_a_version_is_read_only_and_lists_the_others(client: Client, method: Met
     post_to_designer(client, method, "method_yaml", definition=method_definition(answer="sun"))
     post_publish(client, method)
     client.post(reverse("method_edit", args=[method.pk]))
-    page = client.get(designer_url(method, "method_page", 1)).text
+    version_page = client.get(designer_url(method, "method_page", 1))
+    page = version_page.text
     for target in (
         designer_url(method, "method_page"),
         designer_url(method, "method_page", 2),
@@ -895,13 +890,13 @@ def test_a_version_is_read_only_and_lists_the_others(client: Client, method: Met
         assert f'<a href="{target}" hx-boost="false"' in page
     assert ">Open draft</button>" in page
     definition = MethodDraftRecord.objects.get(method=method).definition
-    removed = post_with_revision(client, method, "method_inputs", 1, {"input": "points", "operation": "remove"})
+    removed = post_to_designer(client, method, "method_inputs", 1, input="points", operation="remove")
     assert removed.status_code == 404
     assert MethodDraftRecord.objects.get(method=method).definition == definition
-    assert MarkingControls(page).enabled == []
+    assert enabled_fields(version_page) == []
     assert 'class="flex flex-1 flex-col read-only-fields"' in page
-    draft_page = client.get(designer_url(method, "method_page"), {"path": "with.checks.0"}).text
-    assert "points" in MarkingControls(draft_page).enabled
+    draft_page = client.get(designer_url(method, "method_page"), {"path": "with.checks.0"})
+    assert "points" in enabled_fields(draft_page)
 
 
 def test_editing_an_older_version_starts_from_it_on_top_of_the_latest(client: Client, method: Method) -> None:

@@ -16,7 +16,6 @@ from gradeflow_app.libraries.collection import MethodFiles, method_files
 from gradeflow_app.live.topics import notify_change, topic
 from gradeflow_app.marking.checks import check_for, questions_involved
 from gradeflow_app.marking.models import Marking
-from gradeflow_app.model_service.endpoints import asks_models, endpoint_if_needed
 from gradeflow_app.results.models import Result
 
 
@@ -24,7 +23,7 @@ from gradeflow_app.results.models import Result
 def remark(
     assessment: Assessment,
     keys: Iterable[str],
-    user: User | None = None,
+    user: User,
     model_endpoint: ModelEndpoint | None = None,
 ) -> None:
     """Mark again with each marking that reads or marks one of the changed questions."""
@@ -36,9 +35,7 @@ def remark(
 
 
 @transaction.atomic
-def schedule_marking(
-    marking: Marking, user: User | None = None, model_endpoint: ModelEndpoint | None = None
-) -> Job | None:
+def schedule_marking(marking: Marking, user: User, model_endpoint: ModelEndpoint | None = None) -> Job | None:
     """Mark every student with the saved marking, replacing the results of earlier runs, asking language models at
     `model_endpoint`. A marking the core can't use marks nothing until it is fixed; its column says why."""
     marking.assessment.lock()
@@ -58,14 +55,14 @@ def schedule_marking(
     )
     if check is None or not marking.questions_marked:
         return None
-    endpoint = endpoint_if_needed([check], model_endpoint)
-    if endpoint is None and asks_models([check]):
+    needs_endpoint = check.needs_model_endpoint()
+    if needs_endpoint and model_endpoint is None:
         return None  # keeps the results it has; the column says it wasn't marked again
     return mark_students(
         marking.assessment,
         check,
         method_files(marking.used_versions.all()),
-        endpoint,
+        model_endpoint if needs_endpoint else None,
         kind=Job.Kind.REMARK,
         user=user,
         marking=marking,
@@ -80,7 +77,7 @@ def mark_students(
     model_endpoint: ModelEndpoint | None,
     *,
     kind: Job.Kind,
-    user: User | None,
+    user: User,
     **job_fields: Any,
 ) -> Job:
     """A job marking every student of the assessment with `check`, which uses `methods`."""
@@ -164,7 +161,7 @@ def _store_results(job: Job, submissions: Sequence[MarkedSubmission]) -> None:
 
 register(
     Job.Kind.REMARK,
-    Handler[Sequence[MarkedSubmission]](
+    Handler(
         task="mark",
         topics=lambda job: [topic("jobs", job.assessment_id)],
         lock=_lock_marking,

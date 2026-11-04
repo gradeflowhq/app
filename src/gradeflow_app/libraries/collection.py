@@ -13,6 +13,7 @@ from uuid import UUID
 from django.db.models import Q, QuerySet
 from gradeflow_core import BUILTINS, Methods
 from gradeflow_core import Method as CoreMethod
+from gradeflow_core.editing import LoadedFiles, load_method_files
 
 from gradeflow_app.accounts.models import User
 from gradeflow_app.courses.models import Course
@@ -32,9 +33,13 @@ def method_files(versions: QuerySet[MethodVersion]) -> MethodFiles:
 
 
 @lru_cache(maxsize=64)
-def load_methods(published: MethodFiles) -> Methods:
+def load_saved(published: MethodFiles) -> LoadedFiles:
     """Versions never change, so loading them once is enough."""
-    return BUILTINS.with_files(published)
+    return load_method_files(published, BUILTINS)
+
+
+def load_methods(published: MethodFiles) -> Methods:
+    return load_saved(published).methods
 
 
 def files_needed_by(refs: Iterable[str]) -> MethodFiles:
@@ -42,20 +47,28 @@ def files_needed_by(refs: Iterable[str]) -> MethodFiles:
     return method_files(MethodVersion.objects.named(refs).with_used_versions())
 
 
-def course_methods(course: Course) -> Methods:
+def loaded_course_methods(course: Course) -> LoadedFiles:
     """The core's methods and every version the course's markings use."""
-    return load_methods(
+    return load_saved(
         method_files(MethodVersion.objects.filter(markings__assessment__course=course).with_used_versions())
     )
 
 
-def usable(user: User, course: Course | None) -> Methods:
+def course_methods(course: Course) -> Methods:
+    return loaded_course_methods(course).methods
+
+
+def loaded_usable_methods(user: User, course: Course | None) -> LoadedFiles:
     """Every version `user` may mark with in `course`, archived ones too: their own and their courses' methods,
     public ones, those the course uses, and what those use in turn."""
     query = usable_methods_filter(user, "method__")
     if course is not None:
         query |= Q(markings__assessment__course=course)
-    return load_methods(method_files(MethodVersion.objects.filter(query).with_used_versions()))
+    return load_saved(method_files(MethodVersion.objects.filter(query).with_used_versions()))
+
+
+def usable(user: User, course: Course | None) -> Methods:
+    return loaded_usable_methods(user, course).methods
 
 
 @dataclass(frozen=True)

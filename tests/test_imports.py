@@ -134,15 +134,8 @@ def test_changing_columns_replaces_the_results_and_keeps_adjustments(client: Cli
 def test_an_import_returns_the_questions_whose_answers_changed(assessment: Assessment, user: User) -> None:
     def changed_by(csv: str) -> set[str]:
         columns = ["Q1", "Q2", "Q3"]
-        imported = import_results(
-            assessment,
-            user,
-            name="results.csv",
-            csv_text=csv,
-            student_id_column="StudentID",
-            answer_columns=columns,
-            marks_columns={},
-        )
+        file = ResultsFile(name="results.csv", student_id_column="StudentID", answer_columns=columns)
+        imported = import_results(assessment, user, file, csv)
         return imported.changed_questions
 
     changed = EXPORT_CSV.replace("respiration", "fermentation")

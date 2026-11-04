@@ -1,7 +1,7 @@
-<c-vars reason shows_error=False class="" />
-{# Sends the person to the Integrations page to connect this device to Canvas, saying `reason`; with `shows_error`, Canvas's error in its place. #}
-<div class="flex flex-wrap items-center gap-4{% if class %} {{ class }}{% endif %}" {{ attrs }}>
+<c-vars reason />
+{# Sends the person to the Integrations page to connect this device to Canvas, saying `reason`, or Canvas's error in its place. #}
+<div class="flex flex-wrap items-center gap-4" {{ attrs }}>
   <span class="grid size-10 shrink-0 place-items-center rounded-full bg-base-200 text-muted">{% icon "link" "size-5" %}</span>
-  <div class="min-w-0 flex-1"><p class="font-medium">Connect to Canvas</p><p class="text-sm text-muted"{% if shows_error %} x-show="!error"{% endif %}>{{ reason }}</p>{% if shows_error %}<p class="text-sm text-error" x-show="error" x-text="error" x-cloak></p>{% endif %}</div>
+  <div class="min-w-0 flex-1"><p class="font-medium">Connect to Canvas</p><p class="text-sm text-muted" x-show="!error">{{ reason }}</p><p class="text-sm text-error" x-show="error" x-text="error" x-cloak></p></div>
   <a class="btn btn-primary" href="{% url 'integrations' %}">Connect</a>
 </div>

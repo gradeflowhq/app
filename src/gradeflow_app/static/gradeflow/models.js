@@ -3,19 +3,21 @@
 // carries all but the trials in headers, since a change may start marking that asks a language model; the model
 // service's own requests carry the rest.
 
-import { local } from "./storage.js";
-
 const MODELS_STORAGE_KEY = "gradeflow:models";
 const STATE_HEADER = "X-Model-ModelServiceState";
 
 function storedModelService() {
-  const stored = local.json(MODELS_STORAGE_KEY);
-  return stored?.provider && stored?.token ? stored : null;
+  try {
+    const stored = JSON.parse(localStorage.getItem(MODELS_STORAGE_KEY));
+    return stored?.provider && stored?.token ? stored : null;
+  } catch {
+    return null; // a service that can't be read is none
+  }
 }
 
-const store = (state) => local.set(MODELS_STORAGE_KEY, JSON.stringify(state));
+const store = (state) => localStorage.setItem(MODELS_STORAGE_KEY, JSON.stringify(state));
 
-const clear = () => local.remove(MODELS_STORAGE_KEY);
+const clear = () => localStorage.removeItem(MODELS_STORAGE_KEY);
 
 export function modelHeaders() {
   const stored = storedModelService();
@@ -59,9 +61,6 @@ export const modelService = () => ({
     this.connected = Boolean(stored);
     this.provider = stored?.provider ?? "";
   },
-  get disconnected() {
-    return !this.connected;
-  },
   // Connecting the same service again, with a new token, keeps its models. The form stays until the server has
   // tried the token.
   async connect() {
@@ -70,20 +69,11 @@ export const modelService = () => ({
     const token = this.token.trim();
     store(stored?.provider === provider ? { ...stored, token } : { provider, token });
     this.connecting = true;
-    await this.send(this.$root.dataset.connect);
+    await htmx.ajax("POST", this.$root.dataset.connect, { source: this.$root, target: "#model-service", swap: "outerHTML" });
     this.connecting = false;
   },
   disconnect() {
     clear();
     this.connected = false;
-  },
-  // The card comes back in place of this one. Whether this component or a new one holds it, a refused connection is
-  // forgotten and its form shown again with the reason.
-  async send(url) {
-    await htmx.ajax("POST", url, { source: this.$root, target: "#model-service", swap: "outerHTML" });
-    if (document.getElementById("model-service")?.dataset.refused) {
-      clear();
-      this.connected = false;
-    }
   },
 });

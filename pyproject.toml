@@ -61,21 +61,6 @@ extend-exclude = ["*/migrations/*"]
 select = ["E", "F", "W", "I", "UP", "B", "C4", "SIM", "RUF", "PT", "C90", "FURB", "PERF", "PIE", "RET", "DJ", "TID", "ASYNC"]
 allowed-confusables = ["›"]  # paths such as Checks #2 › Not
 
-[tool.ruff.lint.flake8-tidy-imports.banned-api]  # the core is used only through gradeflow_core and gradeflow_core.editing
-"gradeflow_core.__main__".msg = "Import from gradeflow_core."
-"gradeflow_core.adapters".msg = "Import from gradeflow_core."
-"gradeflow_core.common".msg = "Import from gradeflow_core."
-"gradeflow_core.marking".msg = "Import from gradeflow_core."
-"gradeflow_core.methods".msg = "Import from gradeflow_core."
-"gradeflow_core.ml".msg = "Import from gradeflow_core."
-"gradeflow_core.questions".msg = "Import from gradeflow_core."
-"gradeflow_core.editing.by_example".msg = "Import from gradeflow_core.editing."
-"gradeflow_core.editing.conditions".msg = "Import from gradeflow_core.editing."
-"gradeflow_core.editing.drafts".msg = "Import from gradeflow_core.editing."
-"gradeflow_core.editing.input_schemas".msg = "Import from gradeflow_core.editing."
-"gradeflow_core.editing.method_checks".msg = "Import from gradeflow_core.editing."
-"gradeflow_core.editing.method_drafts".msg = "Import from gradeflow_core.editing."
-
 [tool.ruff.lint.per-file-ignores]
 "**/models.py" = ["RUF012"]
 "**/forms.py" = ["RUF012"]

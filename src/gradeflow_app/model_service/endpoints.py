@@ -4,7 +4,7 @@ learned of them, all in the browser. Every change sends them in headers; the ser
 from typing import Annotated, Literal
 
 from django.conf import settings
-from gradeflow_core import Check, ModelEndpoint
+from gradeflow_core import ModelEndpoint
 from gradeflow_core.editing import ModelTrial
 from pydantic import AfterValidator, BaseModel, Field, SecretStr, ValidationError
 
@@ -59,13 +59,3 @@ def endpoint(request: Request, known_state: ModelServiceState | None = None) -> 
         careful_model=device_state.careful_model or None,
         answers_per_request=device_state.answers_per_request,
     )
-
-
-def asks_models(checks: list[Check]) -> bool:
-    """Whether marking with the checks asks a language model."""
-    return any(check.needs_model_endpoint() for check in checks)
-
-
-def endpoint_if_needed(checks: list[Check], endpoint: ModelEndpoint | None) -> ModelEndpoint | None:
-    """`endpoint` when the checks ask a language model, so a job's input holds the token only when it must."""
-    return endpoint if endpoint is not None and asks_models(checks) else None

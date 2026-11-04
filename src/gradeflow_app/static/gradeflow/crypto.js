@@ -74,22 +74,17 @@ export const encryptId = async (id, passphrase, assessmentId) => {
   return `enc:v2:${saltBase64}:${iv.toBase64()}:${ciphertext.toBase64()}`;
 };
 
-const decrypt = async (encryptedId, passphrase) => {
+/**
+ * Rejects on a malformed encrypted ID and on a wrong passphrase (GCM tag mismatch).
+ * @returns {Promise<string>}
+ */
+export const decryptId = async (encryptedId, passphrase) => {
   const match = ENCRYPTED_ID.exec(encryptedId);
   if (!match) throw new Error('Invalid encrypted ID');
   const [, saltBase64, ivBase64, ciphertextBase64] = match;
   const { idKey } = await keys(saltBase64, passphrase);
   return decoder.decode(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: Uint8Array.fromBase64(ivBase64) }, idKey, Uint8Array.fromBase64(ciphertextBase64)));
 };
-
-const cachedDecrypt = memoize(decrypt);
-
-/**
- * Rejects on a malformed encrypted ID and on a wrong passphrase (GCM tag mismatch).
- * @returns {Promise<string>}
- */
-export const decryptId = (encryptedId, passphrase) =>
-  cachedDecrypt(`${passphrase}\n${encryptedId}`, encryptedId, passphrase);
 
 /** Replaces every encrypted ID in `text` with its plaintext, leaving those that fail to decrypt. */
 export const decryptText = async (text, passphrase) => {

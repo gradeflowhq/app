@@ -16,7 +16,7 @@ from gradeflow_app.marking.checks import definition_data
 from gradeflow_app.marking.models import MarkingDraftRecord
 from gradeflow_app.marking.remarks import mark_students
 from gradeflow_app.marking.workspace import MarkingWorkspace
-from gradeflow_app.model_service.endpoints import endpoint, endpoint_if_needed
+from gradeflow_app.model_service.endpoints import endpoint
 from gradeflow_app.requests import Request
 
 type PreviewResults = dict[str, dict[str, QuestionResult]]
@@ -59,7 +59,7 @@ def run_preview(request: Request, membership: AssessmentAccess, workspace: Marki
         return
     if draft.preview is not None:
         queue.cancel_jobs([draft.preview])
-    model_endpoint = endpoint_if_needed([check], endpoint(request))
+    model_endpoint = endpoint(request) if check.needs_model_endpoint() else None
     methods = files_needed_by(methods_used(check.dump()))
     draft.preview = mark_students(
         membership.assessment, check, methods, model_endpoint, kind=Job.Kind.PREVIEW, user=request.user
@@ -90,7 +90,5 @@ def _preview_input(workspace: MarkingWorkspace) -> str | None:
 
 register(
     Job.Kind.PREVIEW,
-    Handler[list[MarkedSubmission]](
-        task="mark", topics=lambda job: [topic("preview", job.assessment_id, job.created_by_id)]
-    ),
+    Handler(task="mark", topics=lambda job: [topic("preview", job.assessment_id, job.created_by_id)]),
 )

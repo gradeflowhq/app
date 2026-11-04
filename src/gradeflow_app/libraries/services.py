@@ -10,7 +10,7 @@ from typing import Any
 
 from django.core.exceptions import ValidationError
 from django.db import transaction
-from django.db.models import QuerySet, RestrictedError
+from django.db.models import QuerySet
 from django.template.defaultfilters import pluralize
 from gradeflow_core import GradeFlowError, Methods
 from gradeflow_core.editing import MethodDraft, load_yaml, method_name, methods_used
@@ -167,6 +167,12 @@ def _methods_with(version: MethodVersion) -> Methods:
     return load_methods(method_files(MethodVersion.objects.filter(pk=version.pk).with_used_versions()))
 
 
+def version_name(ref: str) -> str:
+    """The name people see for the saved version `ref`, such as “Light” version 2."""
+    version = MethodVersion.objects.named([ref]).select_related("method__library").get()
+    return f"“{label_of(version)}” version {version.number}"
+
+
 def label_of(version: MethodVersion) -> str:
     """The name people see for `version`."""
     return method_draft(version.method, version.definition, version.tests, Methods(), version=version.number).label
@@ -241,11 +247,7 @@ def delete(method: Method, user: User) -> None:
     list(method.versions.select_for_update())  # waits for what is linking them, so it's found below
     if uses := dependents(method, user):
         raise ValidationError(f"Still used by {', '.join(uses)}.")
-    try:
-        with transaction.atomic():
-            method.delete()
-    except RestrictedError:
-        raise ValidationError("Something started using it just now.") from None
+    method.delete()
 
 
 @transaction.atomic

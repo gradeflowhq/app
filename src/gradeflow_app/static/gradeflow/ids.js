@@ -1,4 +1,4 @@
-// Shows the plaintext of encrypted student IDs (c-student-id) as they come into view, with the passphrase this browser keeps.
+// Shows the plaintext of encrypted student IDs (c-student-id) as they arrive, with the passphrase this browser keeps.
 // Without one they show as encrypted, with a page's "Show student IDs" button (#show-student-ids) offering to show them; only
 // that, or clicking an encrypted ID, asks for the passphrase.
 
@@ -24,7 +24,7 @@ function showDecryptedIds(elements) {
 }
 
 async function showAll(assessment, group) {
-  const passphrase = assessment && (await knownPassphrase(assessment, group[0].dataset.studentId));
+  const passphrase = await knownPassphrase(assessment, group[0].dataset.studentId);
   await Promise.all(group.map((element) => show(element, passphrase)));
 }
 
@@ -40,26 +40,17 @@ async function show(element, passphrase) {
   }
 }
 
-const visibilityObserver = new IntersectionObserver((entries) => {
-  const visible = entries.filter((entry) => entry.isIntersecting).map((entry) => entry.target);
-  for (const element of visible) visibilityObserver.unobserve(element);
-  if (visible.length) showDecryptedIds(visible);
-});
+const NEW_IDS = "[data-student-id]:not([data-student-id-state])";
 
-function watchNewIds() {
-  for (const element of document.querySelectorAll("[data-student-id]:not([data-student-id-state])")) {
-    element.dataset.studentIdState = "waiting";
-    visibilityObserver.observe(element);
-  }
+function showNewIds() {
+  const elements = [...document.querySelectorAll(NEW_IDS)];
+  if (elements.length) showDecryptedIds(elements);
 }
 
-/** Shows every ID inside `root` now, visible or not, and resolves once each is shown or left encrypted. */
+/** Resolves once every ID inside `root` is shown or left encrypted. */
 export async function revealIn(root) {
-  const elements = [...root.querySelectorAll("[data-student-id]")];
-  const pending = elements.filter((element) => !["decrypting", "shown"].includes(element.dataset.studentIdState));
-  for (const element of pending) visibilityObserver.unobserve(element);
-  if (pending.length) showDecryptedIds(pending);
-  await Promise.all(elements.map((element) => showing.get(element)));
+  showNewIds();
+  await Promise.all([...root.querySelectorAll("[data-student-id]")].map((element) => showing.get(element)));
 }
 
 /** Shows every ID again from scratch: after the passphrase is forgotten, or entered. */
@@ -68,7 +59,7 @@ function resetStudentIds() {
     delete element.dataset.studentIdState;
     element.textContent = "…";
   }
-  watchNewIds();
+  showNewIds();
 }
 
 /** Asks for the passphrase, which shows every ID it opens. */
@@ -94,5 +85,5 @@ document.addEventListener(
 // Before any other listener, so what they reveal starts from scratch.
 for (const name of ["gradeflow:passphrase-forgotten", "gradeflow:passphrase-entered"]) document.addEventListener(name, resetStudentIds);
 
-new MutationObserver(watchNewIds).observe(document.documentElement, { childList: true, subtree: true });
-watchNewIds();
+new MutationObserver(showNewIds).observe(document.documentElement, { childList: true, subtree: true });
+showNewIds();

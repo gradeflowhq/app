@@ -99,7 +99,6 @@ def commonest_breakdown(awards: Iterable[Award]) -> GroupBreakdown | None:
 
 @dataclass
 class AnswerGroup:
-    key: str
     student_answers: list[StudentAnswer] = field(default_factory=list)
     preview: Preview | None = None
     """The draft marking's marks for the answer group, while previewing."""
@@ -239,7 +238,7 @@ def group(
             "normalized" if options.similarity == "meaning" and comparison is None else options.similarity
         )
         groups = _groups(student_answers, options, similarity, comparison)
-    return sorted(groups, key=lambda group: (-group.student_count, group.key))
+    return sorted(groups, key=lambda group: (-group.student_count, group.answer))
 
 
 def _groups(
@@ -256,8 +255,7 @@ def _groups(
         comparison = compare_answers(texts, similarity=similarity)
     groups = []
     for indices in comparison.groups(threshold=options.threshold):
-        group = AnswerGroup("", [entry for index in indices for entry in answers_by_text[texts[index]]])
-        group.key = group.answer
+        group = AnswerGroup([entry for index in indices for entry in answers_by_text[texts[index]]])
         normalized = {entry.normalized for entry in group.student_answers}
         group.joined_by_similarity = options.similarity != "exact" and len(normalized) > 1
         groups.append(group)

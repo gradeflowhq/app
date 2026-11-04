@@ -22,6 +22,7 @@ def result(answers: dict[str, str]) -> RowResult:
                 "Q1": {"proportion": 1, "max_marks": 2, "feedback": "First feedback"},
                 "Q2": {"proportion": 0.5, "max_marks": 3, "feedback": "Second feedback"},
             },
+            "max_marks": 5,
         }
     )
 

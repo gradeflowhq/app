@@ -1,6 +1,6 @@
-<c-vars check language="" note="" class="" />
+<c-vars check language="" note="" />
 {# How each check of a marking marked an answer, in the core's words. #}
-<div class="grid gap-2 text-sm{% if class %} {{ class }}{% endif %}">
+<div class="grid gap-2 text-sm">
   <p class="prose-core text-sm font-medium">{{ check.title|inline_markdown }}{% if note %} <span class="font-normal text-muted">· {{ note }}</span>{% endif %}</p>
   {% if check.details %}<div>{% include "results/breakdown_children.html#details" %}</div>{% endif %}
   {% include "results/breakdown_children.html" with children=check.children %}

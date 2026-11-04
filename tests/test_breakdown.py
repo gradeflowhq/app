@@ -11,9 +11,9 @@ from gradeflow_app.assessments.models import Assessment
 from gradeflow_app.marking.answers.answer_groups import GroupBreakdown, commonest_breakdown
 from gradeflow_app.marking.models import Marking
 from gradeflow_app.marking.remarks import schedule_marking
-from gradeflow_app.results.breakdown import Table, breakdown_blocks
 from gradeflow_app.results.marks import Award
 from gradeflow_app.results.models import Result
+from gradeflow_app.results.templatetags.results import Table, breakdown_blocks
 from tests.conftest import make_code_question
 
 LIGHT_IN_AT_MOST_THREE_WORDS = {

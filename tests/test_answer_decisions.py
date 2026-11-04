@@ -93,7 +93,7 @@ def test_mixed_feedback_group_cannot_overwrite_an_existing_decision(client: Clie
     assert definition_tree(draft) == before
     assert draft.question_id is not None
     question = assessment.questions.get(pk=draft.question_id)
-    group = answer_groups.AnswerGroup(key="same feedback", student_answers=answer_groups.student_answers(question))
+    group = answer_groups.AnswerGroup(student_answers=answer_groups.student_answers(question))
     _set_group_decisions(question, MarkingWorkspace(MarkingDraftRecord.objects.get(pk=draft.pk)), [group])
     assert [label for label, _ in group.decisions] == [DECISIONS["full_marks"]]
     assert group.has_mixed_decisions, "a partly reviewed group must not be labelled simply Full marks"

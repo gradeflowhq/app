@@ -154,6 +154,12 @@ def test_a_removed_marking_can_be_restored_from_its_history(
     assert history in client.get(reverse("question", args=[assessment.pk, question.pk])).text
 
 
+def test_typing_in_a_check_says_the_draft_is_saved(client: Client, assessment: Assessment) -> None:
+    url, _ = start_marking(client, assessment, "Q2", "gradeflow/accepted-answers@1")
+    response = client.post(url, {"path": "", "fields_posted": "1", "answers": ["42"]})
+    assert '<span id="editor-status" hx-swap-oob="true" class="text-sm text-muted">Draft saved</span>' in response.text
+
+
 def test_restoring_a_version_drops_the_preview_of_the_draft_it_replaces(client: Client, assessment: Assessment) -> None:
     url, draft = start_marking(client, assessment, "Q2", "gradeflow/accepted-answers@1")
     client.post(url, {"path": "", "fields_posted": "1", "answers": ["42"]})
@@ -311,7 +317,7 @@ def test_a_saved_marking_the_core_now_rejects_opens_and_says_so(
     question = marking.question
     assert question is not None
     page = client.get(reverse("question", args=[assessment.pk, question.pk])).text
-    assert "This marking can't mark until it's fixed" in page
+    assert "This marking isn't compatible with the current GradeFlow" in page
     settings_url = reverse("question_settings", args=[assessment.pk, question.pk])
     with django_capture_on_commit_callbacks(execute=True):
         saved = client.post(settings_url, {"question_type": "text", "save": "1", "max_marks": "2"})

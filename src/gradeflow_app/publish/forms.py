@@ -42,18 +42,17 @@ class CourseCanvasForm(forms.ModelForm[CourseCanvas]):
 class AssessmentCanvasForm(forms.ModelForm[AssessmentCanvas]):
     """An assessment's Canvas assignment, and how its marks are sent where that differs from its course."""
 
-    assignment = forms.CharField(max_length=50, required=False, widget=forms.HiddenInput)
     rounding = rounding_field()
 
     class Meta:
         model = AssessmentCanvas
-        fields = ("marks_mode", "rounding", "include_feedback")
+        fields = ("canvas_assignment", "marks_mode", "rounding", "include_feedback")
         labels = CANVAS_FORM_LABELS
+        widgets = {"canvas_assignment": forms.HiddenInput}
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         course = CourseCanvas.of(self.instance.assessment.course)
-        self.initial.setdefault("assignment", self.instance.canvas_assignment)
         as_course = "As the course ({})".format
         mode = as_course(course.get_marks_mode_display().lower())
         self.fields["marks_mode"].widget = forms.Select(choices=[("", mode), *MarksMode.choices])
@@ -68,10 +67,6 @@ class AssessmentCanvasForm(forms.ModelForm[AssessmentCanvas]):
         self.fields["rounding"].widget.attrs["placeholder"] = rounding
         for name in self.Meta.fields:
             self.fields[name].initial = ""  # Not "(optional)": each falls back to the course.
-
-    def save(self, commit: bool = True) -> AssessmentCanvas:
-        self.instance.canvas_assignment = self.cleaned_data["assignment"]
-        return super().save(commit)
 
 
 class SentMarksForm(forms.ModelForm[SentMarks]):
