@@ -1,10 +1,10 @@
-{# The settings page's model service: which of the server's AI services this device uses, the token it keeps for marking that asks a language model, and the models chosen for them. #}
+{# The settings page's model service: which of the server's AI services the person uses, their token for marking that asks a language model, and the models chosen for them. #}
 {% partialdef card inline %}
 <c-card id="model-service" title="AI service" body_class="" x-data="modelService"
         data-connect="{% url 'model_service_connect' %}"
         data-refused="{{ connect_error|yesno:'true,' }}">
   <c-slot name="actions"><button type="button" class="btn btn-ghost btn-square btn-sm -mr-2 text-muted" data-dialog="ai-service-guide" aria-label="How to connect an AI service">{% icon "question-mark-circle" %}</button></c-slot>
-  <div x-show="!connected" x-cloak>
+  <div x-show="loaded && !connected" x-cloak>
     {% if providers %}
     <div class="grid gap-5 p-5">
       <div class="grid gap-1.5">
@@ -17,17 +17,17 @@
       </div>
       {% if connect_error %}<c-alert>{{ connect_error }}</c-alert>{% endif %}
     </div>
-    <footer class="flex flex-wrap items-center gap-3 border-t border-base-300 px-5 py-4"><span class="flex items-center gap-1.5 text-sm text-muted">{% icon "lock-closed" "size-4" %}Kept on this device only</span><button type="button" class="btn btn-primary ml-auto" x-on:click="connect" :disabled="connecting"><span class="loading loading-spinner loading-xs" x-show="connecting" x-cloak></span>Connect</button></footer>
+    <footer class="flex flex-wrap items-center gap-3 border-t border-base-300 px-5 py-4"><span class="flex items-center gap-1.5 text-sm text-muted">{% icon "lock-closed" "size-4" %}Stored encrypted</span><button type="button" class="btn btn-primary ml-auto" x-on:click="connect" :disabled="connecting"><span class="loading loading-spinner loading-xs" x-show="connecting" x-cloak></span>Connect</button></footer>
     {% else %}
     <p class="p-5 text-muted">This server offers no AI service.</p>
     {% endif %}
   </div>
   <div class="setting-rows" x-show="connected" x-cloak>
-    <c-connected-service label="Service" host_property="provider" confirm="Disconnect this device?" confirm_detail="It forgets the token. Marking that uses AI waits until you connect again." />
-    {# Only the models refresh as tests go on, so what someone is typing above stays. The page doesn't know which service the device uses, so they load with the service it names. #}
+    <c-connected-service label="Service" host_property="provider" confirm="Disconnect the AI service?" confirm_detail="It forgets the token. Marking that uses AI waits until you connect again." />
+    {# Only the models refresh as tests go on, so what someone is typing above stays. The page doesn't know which service the person uses, so they load once the browser has read their secret (models.js). #}
     {% partialdef models inline %}
     {% url 'model_service_dialog' as dialog_url %}
-    <div id="model-service-models" class="divide-y divide-base-300"{% if out_of_band %} hx-swap-oob="outerMorph"{% endif %} hx-post="{% url 'model_service' %}" hx-trigger="{% if not models_loaded %}load, {% endif %}{% listen 'models' request.user.pk %}" hx-swap="outerHTML">
+    <div id="model-service-models" class="divide-y divide-base-300"{% if out_of_band %} hx-swap-oob="outerMorph"{% endif %} hx-post="{% url 'model_service' %}" hx-trigger="{% if not models_loaded %}models-read, {% endif %}{% listen 'models' request.user.pk %}" hx-swap="outerHTML">
       <c-setting-row label="Models">
         <c-slot name="detail">
           {% if not models_loaded %}<span class="skeleton mt-1 block h-4 w-56"></span>

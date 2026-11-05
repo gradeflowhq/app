@@ -23,7 +23,7 @@ from gradeflow_app.results.models import Result
 REMARK = "remark"
 _SUBMISSIONS_ADAPTER = TypeAdapter(list[MarkedSubmission])
 NO_MODEL_SERVICE = "no-model-service"
-"""A marking's failure when the change came from a device without an AI service, so it wasn't marked again."""
+"""A marking's failure when the change came from someone without an AI service, so it wasn't marked again."""
 
 
 @transaction.atomic

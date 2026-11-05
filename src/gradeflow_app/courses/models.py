@@ -64,6 +64,17 @@ class Member(models.Model):
         return self.role == Role.OWNER
 
 
+class CourseKey(models.Model):
+    """The course's key, which encrypts its student IDs, encrypted_key to a member's public key by a member who has it
+    (courses/keys.py)."""
+
+    member = models.OneToOneField(Member, on_delete=models.CASCADE, related_name="key")
+    encrypted_key = models.CharField(max_length=108)
+
+    def __str__(self) -> str:
+        return f"Course key of {self.member}"
+
+
 class Invitation(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid7, editable=False)
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name="invitations")

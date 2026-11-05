@@ -1,13 +1,14 @@
-// Canvas from the browser: the Canvas address and token never leave this device, and to send marks the app only
-// gives encrypted IDs and totals (#export-rows); IDs are decrypted and matched to Canvas users here.
+// Canvas from the browser. The address and token are an encrypted secret (secrets.js). To send marks, the server gives
+// encrypted IDs and totals (#export-rows); the browser decrypts the IDs and matches them to Canvas users.
 
 import { canvasClient, gradeFor, matchStudents } from "./canvas-api.js";
+import { assessmentKeysFor, missingCourseKeyMessage } from "./course-keys.js";
 import { decryptId } from "./crypto.js";
-import { passphraseFor } from "./passphrase.js";
+import { deleteSecret, readSecret, saveSecret } from "./secrets.js";
 import { showToast } from "./toasts.js";
 import { counted, matches } from "./words.js";
 
-const CANVAS_STORAGE_KEY = "gradeflow:canvas";
+const SECRET = "canvas";
 const POLL_MS = 2000;
 const POLL_LIMIT_MS = 5 * 60_000;
 const SENDING = "Sending marks…";
@@ -21,10 +22,11 @@ const errorMessage = (error, host) => {
   return error.message || "Canvas can't be reached.";
 };
 
-// What every Canvas component shares: this device's connection to Canvas. A component's `load` fetches what it
-// needs from Canvas, which also proves a new connection works.
+// What every Canvas component shares: the Canvas connection. A component's `load` fetches what it needs from Canvas,
+// which also tests a new connection.
 const canvasComponent = () => ({
   canvasConnection: null,
+  loaded: false,
   checking: false,
   baseUrl: "",
   token: "",
@@ -60,7 +62,7 @@ const canvasComponent = () => ({
     const accepted = await this.load();
     this.checking = false;
     if (accepted) {
-      localStorage.setItem(CANVAS_STORAGE_KEY, JSON.stringify(this.canvasConnection));
+      await saveSecret(SECRET, this.canvasConnection);
       this.token = "";
       showToast(`Connected to ${this.canvasHost}.`, "success");
     } else {
@@ -68,8 +70,8 @@ const canvasComponent = () => ({
       if (this.error !== TOKEN_REFUSED) this.error = `Couldn't connect to Canvas at ${baseUrl}. Check the address.`;
     }
   },
-  disconnect() {
-    localStorage.removeItem(CANVAS_STORAGE_KEY);
+  async disconnect() {
+    await deleteSecret(SECRET);
     this.canvasConnection = null;
   },
 
@@ -92,11 +94,10 @@ const canvasComponent = () => ({
 const compose = (...parts) =>
   Object.defineProperties({}, Object.assign({}, ...parts.map(Object.getOwnPropertyDescriptors)));
 
-const loadConnection = (component) => {
+const loadConnection = async (component) => {
   component.config = JSON.parse(component.$el.dataset.config);
-  try {
-    component.canvasConnection = JSON.parse(localStorage.getItem(CANVAS_STORAGE_KEY));
-  } catch {} // a connection that can't be read is none
+  component.canvasConnection = await readSecret(SECRET);
+  component.loaded = true;
 };
 
 const NO_CARD = Object.freeze({ id: "", name: "", detail: "", initial: "" });
@@ -202,11 +203,11 @@ const groups = () => ({
   },
 });
 
-// The Integrations page's Canvas card: connecting this device, which lists its courses to prove the token works.
+// The Integrations page's Canvas card. Connecting lists the user's courses to test the token.
 export const canvasConnection = () =>
   compose(canvasComponent(), {
     init() {
-      loadConnection(this);
+      return loadConnection(this);
     },
     load() {
       return this.run("Connecting…", async () => {
@@ -216,15 +217,15 @@ export const canvasConnection = () =>
     },
   });
 
-// A course's Canvas page: the Canvas course its marks go to, and the group new assignments go in. This device
-// connects to Canvas on the Integrations page.
+// A course's Canvas page: the Canvas course its marks go to, and the group new assignments go in. Connecting is on
+// the Integrations page.
 export const canvasCourse = () =>
   compose(canvasComponent(), listPicker("course", "group"), groups(), {
     courseItems: [],
     course: "",
 
-    init() {
-      loadConnection(this);
+    async init() {
+      await loadConnection(this);
       Object.assign(this, { course: this.config.course, group: this.config.assignmentGroup });
       if (this.canvasConnection) this.load();
     },
@@ -263,8 +264,8 @@ export const canvasExport = () => {
     reviewing: false,
     isMatched: false,
 
-    init() {
-      loadConnection(this);
+    async init() {
+      await loadConnection(this);
       Object.assign(this, { assignment: this.config.assignment, newName: this.config.name });
       if (this.canvasConnection) this.load();
     },
@@ -340,9 +341,10 @@ export const canvasExport = () => {
     async match() {
       const rows = JSON.parse(document.getElementById("export-rows-data").textContent);
       if (!rows.length) throw new Error("There are no marks to send yet.");
-      const passphrase = await passphraseFor(this.config.assessment, rows[0].studentId);
-      if (!passphrase) throw new Error("Enter the student ID passphrase to match students.");
-      const decryptedRows = await Promise.all(rows.map(async (row) => ({ ...row, studentId: await decryptId(row.studentId, passphrase) })));
+      const assessmentElement = this.$root.closest("[data-assessment]");
+      const keys = await assessmentKeysFor(assessmentElement);
+      if (!keys) throw new Error(missingCourseKeyMessage(assessmentElement));
+      const decryptedRows = await Promise.all(rows.map(async (row) => ({ ...row, studentId: await decryptId(row.studentId, keys) })));
       Object.assign(this, matchStudents(decryptedRows, students));
     },
     async review() {

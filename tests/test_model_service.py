@@ -67,7 +67,7 @@ def request_with_model_service(user: User) -> Request:
 
 
 def post_model_service(client: Client, name: str, data: dict[str, Any] | None = None) -> HttpResponse:
-    """A request from a device connected to the provider, and the runs it starts or stops once it commits."""
+    """A request connected to the provider, and the runs it starts or stops once it commits."""
     with TestCase.captureOnCommitCallbacks(execute=True):
         return cast(HttpResponse, client.post(reverse(name), data or {}, headers=MODEL_SERVICE_HEADERS))
 
@@ -105,7 +105,7 @@ def criteria_marking(assessment: Assessment) -> Marking:
 
 
 def mark_with_criteria(assessment: Assessment, user: User) -> str:
-    """The ID of the run marking Q3 with Answer Criteria, from a device connected to the provider."""
+    """The ID of the run marking Q3 with Answer Criteria, from someone connected to the provider."""
     with TestCase.captureOnCommitCallbacks(execute=True):
         run = schedule_marking(criteria_marking(assessment), user, endpoint(request_with_model_service(user)))
     assert run is not None
@@ -413,11 +413,11 @@ def test_marking_that_asks_no_model_leaves_the_token_out(
     assert endpoint_sent(idle_runner, run.id) is None
 
 
-def test_a_change_from_a_device_without_a_model_service_keeps_the_decisions(user: User, assessment: Assessment) -> None:
+def test_a_change_without_a_model_service_keeps_the_decisions(user: User, assessment: Assessment) -> None:
     marking = criteria_marking(assessment)
     assert schedule_marking(marking, user) is None
     assert out_of_date_notices(assessment_checks(assessment), ["Q3"]) == [
-        "Not marked again: the change came from a device without an AI service. The marks shown are from before."
+        "Not marked again: the change came from someone without an AI service. The marks shown are from before."
     ]
 
 
@@ -471,6 +471,6 @@ def test_choosing_again_leaves_the_running_choice(client: Client, idle_runner: F
     assert len(runs.active("model-choice")) == 1
 
 
-def test_choosing_without_a_connected_device_says_so(client: Client) -> None:
+def test_choosing_without_a_connected_service_says_so(client: Client) -> None:
     response = client.post(reverse("model_service_choose"))
     assert "connected to an AI service." in response.text

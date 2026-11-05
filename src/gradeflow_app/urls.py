@@ -2,6 +2,7 @@ from django.urls import URLPattern, URLResolver, include, path
 
 from gradeflow_app.accounts import views as accounts
 from gradeflow_app.assessments import views as assessments
+from gradeflow_app.courses import keys as course_keys
 from gradeflow_app.courses import views as courses
 from gradeflow_app.dashboard import views as dashboard
 from gradeflow_app.editor import picker
@@ -94,7 +95,9 @@ method_workspace_urls: list[URLPattern] = [
 
 course_urls = [
     path("", courses.course, name="course"),
+    path("key/", course_keys.create_course_key, name="create_course_key"),
     path("members/", courses.members, name="members"),
+    path("members/<uuid:user_id>/key/", course_keys.share_course_key, name="share_course_key"),
     path("members/<uuid:user_id>/role/", courses.member_role, name="member_role"),
     path("members/<uuid:user_id>/remove/", courses.member_remove, name="member_remove"),
     path("leave/", courses.leave_course, name="leave_course"),
@@ -124,10 +127,12 @@ method_urls: list[URLPattern | URLResolver] = [
 
 urlpatterns = [
     path("", landing.landing, name="landing"),
+    path("accounts/kdf-salt/", accounts.kdf_salt, name="kdf_salt"),
     path("accounts/", include("allauth.urls")),
     path("settings/", accounts.account_settings, name="settings"),
     path("settings/devices/<int:session_id>/sign-out/", accounts.sign_out_device, name="sign_out_device"),
     path("settings/integrations/", accounts.integrations, name="integrations"),
+    path("settings/secrets/<str:name>/", accounts.secret, name="secret"),
     path("settings/model-service/", model_service.models, name="model_service"),
     path("settings/model-service/connect/", model_service.connect, name="model_service_connect"),
     path("settings/model-service/models/", model_service.models_dialog, name="model_service_dialog"),

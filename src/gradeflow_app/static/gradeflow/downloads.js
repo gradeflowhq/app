@@ -1,7 +1,7 @@
 // A form marked `data-decrypt` downloads its file with every encrypted student ID replaced by its plaintext.
 
+import { assessmentKeysFor, missingCourseKeyMessage } from "./course-keys.js";
 import { decryptText, ENCRYPTED_IDS } from "./crypto.js";
-import { passphraseFor } from "./passphrase.js";
 import { showToast } from "./toasts.js";
 
 document.addEventListener("submit", async (event) => {
@@ -16,11 +16,11 @@ document.addEventListener("submit", async (event) => {
     if (!response.ok) throw new Error(response.statusText);
     // Kept whole: text() drops a byte order mark, which spreadsheets need to read the file as UTF-8.
     let text = new TextDecoder("utf-8", { ignoreBOM: true }).decode(await response.arrayBuffer());
-    const encryptedId = text.match(ENCRYPTED_IDS)?.[0];
-    if (encryptedId) {
-      const passphrase = await passphraseFor(form.dataset.decrypt, encryptedId);
-      if (!passphrase) return showToast("Not downloaded: the student IDs need the passphrase.");
-      text = await decryptText(text, passphrase);
+    if (text.search(ENCRYPTED_IDS) >= 0) {
+      const assessmentElement = form.closest("[data-assessment]");
+      const keys = await assessmentKeysFor(assessmentElement).catch(() => null);
+      if (!keys) return showToast(missingCourseKeyMessage(assessmentElement));
+      text = await decryptText(text, keys);
     }
     const disposition = response.headers.get("Content-Disposition") ?? "";
     const encoded = /filename\*=utf-8''([^;]+)/i.exec(disposition)?.[1];

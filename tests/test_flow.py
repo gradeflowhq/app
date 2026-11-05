@@ -39,6 +39,7 @@ from tests.conftest import (
     code_draft,
     create_assessment,
     encrypted_id,
+    new_account_fields,
     save_draft,
     signed_in_client,
     start_marking,
@@ -424,34 +425,17 @@ def test_signing_in_and_up_speak_plainly() -> None:
     signup = visitor.get(reverse("account_signup")).text
     assert "At least 8 characters." in signup
     assert "commonly used" not in signup
-    for page in ("account_signup", "account_login", "account_reset_password", "account_request_login_code"):
+    assert 'minlength="8"' in signup
+    for page in ("account_signup", "account_login", "account_reset_password"):
         assert "placeholder=" not in visitor.get(reverse(page)).text, page
 
 
-def test_the_sign_in_code_page_is_titled_like_the_others(user: User) -> None:
+def test_a_code_page_sends_a_new_code(mailoutbox: list[EmailMessage]) -> None:
     visitor = Client()
-    visitor.post(reverse("account_request_login_code"), {"email": user.email})
-    page = visitor.get(reverse("account_confirm_login_code")).text
-    assert "<title>Enter your sign-in code · GradeFlow</title>" in page
-    assert f"We sent a code to {user.email}." in page
-
-
-@pytest.mark.parametrize(
-    ("start", "data", "page"),
-    [
-        ("account_request_login_code", {"email": "ana@example.edu"}, "account_confirm_login_code"),
-        (
-            "account_signup",
-            {"name": "Bo Lim", "email": "bo@example.edu", "password1": "another-password"},
-            "account_email_verification_sent",
-        ),
-    ],
-)
-def test_a_code_page_sends_a_new_code(
-    user: User, mailoutbox: list[EmailMessage], start: str, data: dict[str, str], page: str
-) -> None:
-    visitor = Client()
-    visitor.post(reverse(start), data)
+    page = "account_email_verification_sent"
+    visitor.post(
+        reverse("account_signup"), {"name": "Bo Lim", "email": "bo@example.edu"} | new_account_fields("bo-password")
+    )
     first_code = emailed_code(mailoutbox)
     assert "Send a new code" in visitor.get(reverse(page)).text
     cache.clear()  # allauth's limit of one email to an address every 10 seconds
@@ -478,9 +462,7 @@ def test_resetting_a_password_ends_with_signing_in(user: User, mailoutbox: list[
     assert "<title>Reset your password · GradeFlow</title>" in page
     assert "Change Password" not in page
     password_changed_page = visitor.post(
-        reverse("account_complete_password_reset"),
-        {"password1": "a-new-password-2026", "password2": "a-new-password-2026"},
-        follow=True,
+        reverse("account_complete_password_reset"), new_account_fields("a-new-password-2026"), follow=True
     ).text
     assert "Password changed" in password_changed_page
     assert f'href="{reverse("account_login")}"' in password_changed_page

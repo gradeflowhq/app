@@ -6,10 +6,10 @@
 <div id="students" hx-get="{% url 'students' assessment.pk %}" hx-trigger="{% listen 'marks' assessment.pk %}" hx-swap="outerHTML">
 <c-page title="Students" subtitle="{% if results.rows %}{{ results.rows|length }} student{{ results.rows|length|pluralize }} · average {{ results.statistics.mean|marks }} / {{ results.max_marks|marks }}{% endif %}">
   <c-slot name="actions">{% if results.rows %}
-    <button type="button" id="show-student-ids" class="btn" data-ask-passphrase hidden>{% icon "lock-closed" "size-4" %}Show student IDs</button>
     <button type="button" class="btn" data-dialog="download">{% icon "arrow-down-tray" "size-4" %}Download</button>
   {% endif %}</c-slot>
   {% if results.rows %}
+  {% if access.course_key.unavailable_reason %}<p role="status" class="alert alert-info alert-soft text-sm">{% icon "lock-closed" %}<span>{{ access.course_key.unavailable_reason }}</span></p>{% endif %}
   <div class="card-box overflow-hidden" x-data="studentTable">
     <table class="table">
       <thead><tr><th>Student ID</th><th class="text-right">Total marks</th>{% if results.has_adjustments %}<th class="text-right max-sm:hidden">Adjusted</th>{% endif %}</tr></thead>

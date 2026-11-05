@@ -78,7 +78,6 @@ def send_marks(request: Request, access: AssessmentAccess) -> HttpResponse:
             "canvas_rows": _canvas_rows(access),
             "config": _canvas_config(
                 course_canvas,
-                assessment=str(assessment.pk),
                 name=assessment.name,
                 assignment=assessment_canvas.canvas_assignment,
                 sentUrl=reverse("export_record", args=[assessment.pk]),

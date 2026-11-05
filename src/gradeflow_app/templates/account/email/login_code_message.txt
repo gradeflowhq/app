@@ -1,6 +1,0 @@
-{% extends "account/email/base_message.txt" %}
-{% block content %}Your code to sign in to GradeFlow is:
-
-{{ code }}
-
-If you didn't ask for it, ignore this email.{% endblock content %}

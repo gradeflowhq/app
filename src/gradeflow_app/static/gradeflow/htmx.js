@@ -1,6 +1,7 @@
 // htmx on every page: the headers its requests carry, what their responses say, and how pages swap in.
 
 import { modelHeaders } from "./models.js";
+import { csrfToken } from "./requests.js";
 import { showToast } from "./toasts.js";
 
 const LIVE_REFRESH = "X-Live-Refresh";
@@ -13,9 +14,6 @@ if (!document.cookie.split("; ").includes(`tz=${timeZone}`)) {
   document.cookie = `tz=${timeZone}; path=/; max-age=31536000; samesite=lax`;
 }
 
-// Signing in rotates the CSRF token, and boosted pages keep the first page's <body>, so each request reads the
-// token from its cookie.
-const csrfToken = () => document.cookie.match(/(?:^|; )csrftoken=([^;]+)/)?.[1] ?? "";
 // A live refresh (live/topics.py starts its event names with TOPIC_PREFIX) leaves the messages to the page the person
 // goes to. A change may start marking that asks this device's AI service, so it names the service and carries its
 // token.

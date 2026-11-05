@@ -1,4 +1,5 @@
 {% extends "layouts/course.html" %}
+{% load courses %}
 {% block page_title %}Members · {% endblock %}
 {% block page %}
 {% partialdef role %}
@@ -61,11 +62,10 @@
     {% csrf_token %}
     <div class="grid gap-5 px-6 pt-2">
       {{ form }}
-      <p class="text-sm text-muted">Share the student ID passphrase with them yourself.</p>
     </div>
     <c-dialog.footer submit="Invite" />
   </form>
-  {% if out_of_band %}{% partial members %}{% endif %}
+  {% if out_of_band %}{% partial members %}{% pending_course_key_shares out_of_band=True %}{% endif %}
   {% endpartialdef %}
 </c-dialog>
 {% endif %}

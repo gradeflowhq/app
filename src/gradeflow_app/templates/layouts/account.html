@@ -7,7 +7,7 @@
   <c-sidebar-link href="{% url 'integrations' %}" icon="link" label="Integrations" sections="integrations" />
   <c-sidebar-group title="Security" />
   <c-sidebar-link href="{% url 'account_email' %}" icon="envelope" label="Email" sections="account_email" />
-  <c-sidebar-link href="{% url 'account_change_password' %}" icon="key" label="Password" sections="account_change_password account_set_password" />
+  <c-sidebar-link href="{% url 'account_change_password' %}" icon="key" label="Password" sections="account_change_password" />
   <c-sidebar-link href="{% url 'mfa_index' %}" icon="finger-print" label="Passkeys and 2FA" sections="mfa_index mfa_activate_totp mfa_deactivate_totp mfa_list_webauthn mfa_add_webauthn mfa_edit_webauthn mfa_remove_webauthn mfa_view_recovery_codes mfa_generate_recovery_codes" />
   <c-sidebar-link href="{% url 'usersessions_list' %}" icon="computer-desktop" label="Signed-in devices" sections="usersessions_list" />
 {% endblock %}

@@ -20,6 +20,10 @@ class User(AbstractBaseUser):
     name = models.CharField(max_length=150, blank=True)
     is_active = models.BooleanField(default=True)
     date_joined = models.DateTimeField(default=timezone.now)
+    kdf_salt = models.CharField(max_length=24)
+    public_key = models.CharField(max_length=44)
+    wrapped_private_key = models.CharField(max_length=104)
+    """Wrapped with the wrapping key derived from the password, which only the browser has."""
 
     USERNAME_FIELD = "email"
     EMAIL_FIELD = "email"
@@ -29,3 +33,21 @@ class User(AbstractBaseUser):
 
     def __str__(self) -> str:
         return self.name or self.email
+
+
+class Secret(models.Model):
+    """A connection's credentials, such as a Canvas token, encrypted in the browser for the user's public key."""
+
+    class Name(models.TextChoices):
+        CANVAS = "canvas"
+        AI_SERVICE = "ai-service"
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="secrets")
+    name = models.CharField(max_length=20, choices=Name)
+    encrypted_value = models.TextField()
+
+    class Meta:
+        constraints = (models.UniqueConstraint(fields=("user", "name"), name="one_secret_per_user_name"),)
+
+    def __str__(self) -> str:
+        return f"{self.user}'s {self.name}"

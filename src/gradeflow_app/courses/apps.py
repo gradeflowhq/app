@@ -6,4 +6,4 @@ class Config(AppConfig):
     label = "courses"
 
     def ready(self) -> None:
-        from gradeflow_app.courses import invitations  # noqa: F401 - connects its receiver
+        from gradeflow_app.courses import invitations, keys  # noqa: F401 - connect their receivers

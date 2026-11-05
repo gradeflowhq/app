@@ -17,9 +17,7 @@ def assessment_settings(request: Request, access: AssessmentAccess) -> HttpRespo
         form.save()
         messages.success(request, "Saved.")
         return redirect("assessment_settings", access.assessment.pk)
-    sample_encrypted_id = access.assessment.students.values_list("encrypted_id", flat=True).first()
-    context = {"access": access, "form": form, "sample_encrypted_id": sample_encrypted_id}
-    return render(request, "assessments/settings.html", context)
+    return render(request, "assessments/settings.html", {"access": access, "form": form})
 
 
 @require_POST

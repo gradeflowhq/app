@@ -6,13 +6,7 @@
   {% url 'account_login' as login_url %}
   {% element form form=form method="post" action=login_url tags="entrance,login" %}
     {% slot body %}{% csrf_token %}{% element fields form=form unlabeled=True %}{% endelement %}{{ redirect_field }}{% endslot %}
-    {% slot actions %}{% element button type="submit" tags="prominent,login" %}Sign in{% endelement %}{% endslot %}
+    {% slot actions %}{% element button type="submit" tags="prominent,login" disabled_until_script=True %}Sign in{% endelement %}{% endslot %}
   {% endelement %}
-  <div class="divider my-0 text-sm text-muted">or</div>
-  <div class="grid gap-2">
-    {% element button type="submit" form="mfa_login" id="passkey_login" tags="login,outline" %}{% icon "finger-print" "size-5" %}Sign in with a passkey{% endelement %}
-    {% element button href=request_login_code_url tags="login,outline" %}{% icon "envelope" "size-5" %}Email me a sign-in code{% endelement %}
-  </div>
 {% endblock %}
 {% block links %}<a class="secondary-link" href="{% url 'account_reset_password' %}">Forgot your password?</a>{% endblock %}
-{% block extra_body %}{% include "mfa/webauthn/snippets/login_script.html" with button_id="passkey_login" %}{% endblock %}

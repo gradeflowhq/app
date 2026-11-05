@@ -1,5 +1,6 @@
 import uuid
 from dataclasses import dataclass
+from functools import cached_property
 from typing import TYPE_CHECKING
 from uuid import UUID
 
@@ -8,6 +9,7 @@ from django.shortcuts import get_object_or_404
 from gradeflow_core import QuestionSet
 from simple_history.models import HistoricalRecords
 
+from gradeflow_app.courses.keys import MemberCourseKey, member_course_key
 from gradeflow_app.courses.models import Course, Member
 
 if TYPE_CHECKING:
@@ -54,6 +56,10 @@ class AssessmentAccess:
     @property
     def is_owner(self) -> bool:
         return self.member.is_owner
+
+    @cached_property
+    def course_key(self) -> MemberCourseKey:
+        return member_course_key(self.member)
 
     def question(self, question_id: UUID) -> Question:
         """One of the assessment's questions; "not found" for any other."""

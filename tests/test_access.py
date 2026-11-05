@@ -260,7 +260,7 @@ def test_signing_in_to_accept_keeps_the_address_whole(client: Client) -> None:
 VIEWER_MAY_POST = {
     *("overview", "activity", "questions", "question_list", "question", "answers", "marking", "marking_history"),
     *("question_group", "question_group_answers", "students", "student", "export", "course_methods"),
-    *("answer_grouping", "download", "leave_course"),
+    *("answer_grouping", "download", "leave_course", "share_course_key"),
 }
 """The assessment and course routes that don't refuse a viewer's post: pages that only show, which take it as a
 visit, and the changes a viewer may make."""

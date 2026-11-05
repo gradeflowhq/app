@@ -428,7 +428,7 @@
   }
 }
 
-/* A student ID this browser can't open yet, as a lock and masked digits; clicking it asks for the passphrase (ids.js).
+/* A student ID this browser can't open, as a lock and masked digits (ids.js).
    Its text, "Encrypted", is for assistive technology only. */
 [data-student-id-state="encrypted"] {
   @apply inline-flex cursor-pointer items-center gap-1.5 text-subtle hover:text-muted;

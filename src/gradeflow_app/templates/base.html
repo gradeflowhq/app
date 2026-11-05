@@ -1,4 +1,4 @@
-{% load static tailwind_cli %}<!doctype html>
+{% load accounts courses static tailwind_cli %}<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -43,6 +43,7 @@
     <form method="dialog"><c-dialog.footer><button class="btn btn-primary">Done</button></c-dialog.footer></form>
   </c-dialog>
   <template id="code-expand"><button type="button" class="btn btn-ghost btn-square btn-sm absolute right-4 top-1.5 z-10 bg-base-100/80" aria-label="Expand" title="Expand">{% icon "arrows-pointing-out" "size-4" %}</button></template>
+  {% if user.is_authenticated %}{% account_keys %}{% pending_course_key_shares %}{% endif %}
   {% live_stream %}
   {% block extra_body %}{% endblock %}
 </body>

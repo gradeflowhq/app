@@ -9,16 +9,6 @@ let savedTableState = null;
 export const studentTable = () => ({
   table: null,
   async init() {
-    await this.build();
-    // The table keeps its own copy of the rows, so IDs shown later need a fresh one.
-    this.onPassphraseEntered = () => this.rebuild();
-    document.addEventListener("gradeflow:passphrase-entered", this.onPassphraseEntered);
-  },
-  async rebuild() {
-    this.table?.destroy();
-    await this.build();
-  },
-  async build() {
     const element = this.$root.querySelector("table");
     await Promise.all([revealIn(element), loadScript("simple-datatables-10.3.0/simple-datatables.js")]);
     if (!element.isConnected) return;
@@ -47,7 +37,6 @@ export const studentTable = () => ({
     if (page > 1) this.table.page(page);
   },
   destroy() {
-    document.removeEventListener("gradeflow:passphrase-entered", this.onPassphraseEntered);
     if (this.table) {
       const search = this.table.wrapperDOM.querySelector(".datatable-input")?.value ?? "";
       savedTableState = { path: location.pathname, sort: this.table.columns._state.sort, search, page: this.table._currentPage };

@@ -3,7 +3,7 @@
 {% block content %}
 {% with assessment=access.assessment %}
 <c-page title="Import">
-  <div class="contents" x-data="importer" data-assessment-id="{{ assessment.pk }}" data-original-url="{% url 'import_original' assessment.pk %}" data-sample-encrypted-id="{{ assessment.students.first.encrypted_id|default:'' }}">
+  <div class="contents" x-data="importer" data-original-url="{% url 'import_original' assessment.pk %}">
     <form x-ref="upload" action="{% url 'import_upload' assessment.pk %}" method="post" enctype="multipart/form-data" hidden>{% csrf_token %}</form>
     {{ questions|json_script:"import-questions" }}
     {% if import_settings %}{{ import_settings|json_script:"import-settings" }}{% endif %}
@@ -79,19 +79,6 @@
             </table>
           </div>
         </c-more-options>
-
-        <div class="grid gap-4 rounded-box bg-base-200 p-5" x-show="needsPassphrase && !fileProblem">
-          <div>
-            <p class="font-semibold" x-text="isFirstImport ? 'Set a student ID passphrase' : 'Enter the student ID passphrase'"></p>
-            <p class="mt-1 text-sm text-muted" x-show="isFirstImport">Co-markers need it to see student IDs. It can't be recovered.</p>
-            <p class="mt-1 text-sm text-muted" x-show="!isFirstImport">Use the passphrase the first submissions file was imported with.</p>
-          </div>
-          <div class="grid gap-4 sm:grid-cols-2">
-            <label class="grid gap-1.5"><span class="font-medium">Passphrase</span><input type="password" class="input w-full" x-model="passphrase" autocomplete="new-password"></label>
-            <label class="grid gap-1.5" x-show="isFirstImport"><span class="font-medium">Type it again</span><input type="password" class="input w-full" x-model="confirmation" autocomplete="new-password"></label>
-          </div>
-          <label class="flex cursor-pointer items-center gap-3"><input type="checkbox" class="checkbox checkbox-sm checkbox-primary" x-model="remember"><span>Remember on this device</span></label>
-        </div>
 
         <div class="flex flex-wrap items-center justify-end gap-3">
           <p class="mr-auto flex items-center gap-1.5 text-sm text-error" x-show="fileProblem" x-cloak>{% icon "exclamation-circle" "size-4" %}<span x-text="fileProblem"></span></p>

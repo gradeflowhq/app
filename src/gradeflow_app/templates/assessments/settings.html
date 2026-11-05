@@ -6,15 +6,6 @@
   <div class="settings">
     <c-form-card id="assessment-details" title="Details">{{ form }}</c-form-card>
     <c-card body_class="setting-rows">
-      {% if sample_encrypted_id %}
-      <div x-data="passphraseSettings" data-assessment-id="{{ assessment.pk }}" data-sample-encrypted-id="{{ sample_encrypted_id }}">
-        <c-setting-row label="Student ID passphrase">
-          <c-slot name="detail"><span x-text="status">Not remembered on this device</span></c-slot>
-          <button type="button" class="btn" x-show="!isKnown" x-on:click="enter">Enter passphrase</button>
-          <button type="button" class="btn btn-error btn-outline" x-show="isKnown" x-cloak x-on:click="forget" data-confirm="Forget the passphrase on this device?" data-confirm-detail="Student IDs show as encrypted here until it's entered again." data-confirm-button="Forget">Forget</button>
-        </c-setting-row>
-      </div>
-      {% endif %}
       <c-setting-row label="Delete assessment">
         <form method="post" action="{% url 'delete_assessment' assessment.pk %}">{% csrf_token %}<button class="btn btn-error btn-outline" data-confirm="Delete “{{ assessment.name }}”?" data-confirm-detail="Its answers, marking and marks are deleted for everyone. This can't be undone." data-confirm-button="Delete">Delete assessment</button></form>
       </c-setting-row>

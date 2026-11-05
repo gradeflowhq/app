@@ -1,7 +1,7 @@
-{# The Integrations page's Canvas card: connecting this device to Canvas to send marks, and disconnecting it. #}
+{# The Integrations page's Canvas card: connecting to Canvas to send marks, and disconnecting. #}
 <c-card title="Canvas" body_class="" x-data="canvasConnection" data-config="{{ canvas_config }}">
   <c-slot name="actions"><button type="button" class="btn btn-ghost btn-square btn-sm -mr-2 text-muted" data-dialog="canvas-guide" aria-label="How to connect Canvas">{% icon "question-mark-circle" %}</button></c-slot>
-  <div x-show="!connected" x-cloak>
+  <div x-show="loaded && !connected" x-cloak>
     <div class="grid gap-5 p-5">
       <div class="grid gap-1.5"><label class="font-medium" for="canvas-address">Address</label><input id="canvas-address" type="url" class="input w-full" x-model="baseUrl" placeholder="https://canvas.example.edu"></div>
       <div class="grid gap-1.5">
@@ -11,11 +11,11 @@
       <c-alert x-show="error" x-cloak><span x-text="error"></span></c-alert>
     </div>
     <footer class="flex flex-wrap items-center gap-3 border-t border-base-300 px-5 py-4">
-      <span class="flex items-center gap-1.5 text-sm text-muted">{% icon "lock-closed" "size-4" %}Kept on this device only</span>
+      <span class="flex items-center gap-1.5 text-sm text-muted">{% icon "lock-closed" "size-4" %}Stored encrypted</span>
       <button type="button" class="btn btn-primary ml-auto" x-on:click="connect" :disabled="isBusy"><span class="loading loading-spinner loading-xs" x-show="isBusy" x-cloak></span>Connect</button>
     </footer>
   </div>
   <div class="setting-rows" x-show="connected" x-cloak>
-    <c-connected-service label="Address" host_property="canvasHost" confirm="Disconnect this device from Canvas?" confirm_detail="It forgets the access token. Sending marks again needs a new one." />
+    <c-connected-service label="Address" host_property="canvasHost" confirm="Disconnect from Canvas?" confirm_detail="It forgets the access token. Sending marks again needs a new one." />
   </div>
 </c-card>

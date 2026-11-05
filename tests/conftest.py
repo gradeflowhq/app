@@ -44,7 +44,25 @@ if TYPE_CHECKING:
 def encrypted_id(student_id: str) -> str:
     """A stand-in for an encrypted student ID: the server only checks its shape."""
     digest = base64.b64encode(hashlib.sha256(student_id.encode()).digest()).decode()
-    return f"enc:v2:{digest[:24]}:{digest[24:40]}:{digest[:20]}"
+    return f"enc:v1:{digest[:16]}:{digest[16:40]}"
+
+
+def auth_key(password: str) -> str:
+    """A stand-in for the authentication key the browser derives from `password`; the server only checks its shape."""
+    return hashlib.sha256(password.encode()).hexdigest()
+
+
+def new_account_fields(password: str) -> dict[str, str]:
+    """What the browser sends in place of a new password: its authentication key, KDF salt and a new key pair."""
+    key = auth_key(password)
+    seed = hashlib.sha256(f"keys:{password}".encode()).digest()
+    return {
+        "password1": key,
+        "password2": key,
+        "kdf_salt": base64.b64encode(seed[:16]).decode(),
+        "public_key": base64.b64encode(seed).decode(),
+        "wrapped_private_key": base64.b64encode((seed * 2)[:60]).decode(),
+    }
 
 
 EXAM_ROWS = [

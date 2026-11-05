@@ -3,5 +3,5 @@
 
 Open it: {{ url }}
 
-The invitation expires in {{ lifetime.days }} days. Ask {{ inviter }} for the student ID passphrase to see student IDs.
+The invitation expires in {{ lifetime.days }} days.
 {% endautoescape %}

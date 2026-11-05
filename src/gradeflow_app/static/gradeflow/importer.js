@@ -3,15 +3,14 @@
 // can be changed later; names and every other column stay unreadable to the server.
 
 import { detectColumns, detectHeaderRow, detectStudentRows, isAnswerKeyRow } from "./columns.js";
+import { assessmentKeysFor, missingCourseKeyMessage } from "./course-keys.js";
 import { decryptFile, encryptFile, encryptId } from "./crypto.js";
 import { dropZone } from "./drop.js";
 import { loadScript } from "./vendor.js";
-import { modelHeaders } from "./models.js";
-import { isRemembered, passphraseFor, passphraseOpens, remember, storedPassphrase } from "./passphrase.js";
+import { readModelHeaders } from "./models.js";
 import { counted } from "./words.js";
 
 const ROLES = { id: "Student ID", answer: "Answer", marks: "Marks", unused: "Not used" };
-const MIN_PASSPHRASE = 8;
 const LEFT_OUT_ROWS_LISTED = 3;
 
 const cellText = (cell) => String(cell ?? "").trim();
@@ -60,23 +59,14 @@ export const importer = () => {
     header: [],
     rowsInRange: [],
     columns: [],
-    passphrase: "",
-    isPassphraseKnown: false,
-    confirmation: "",
-    remember: true,
     progress: 0,
     ...dropZone(function (files) {
       if (files[0]) this.read(files[0]);
     }),
 
     init() {
-      const { assessmentId, sampleEncryptedId, originalUrl } = this.$el.dataset;
-      Object.assign(this, { assessmentId, sampleEncryptedId, originalUrl, isFirstImport: !sampleEncryptedId });
       savedSettings = JSON.parse(document.getElementById("import-settings")?.textContent ?? "null");
       questions = JSON.parse(document.getElementById("import-questions")?.textContent ?? "[]");
-      this.passphrase = (sampleEncryptedId && storedPassphrase(assessmentId)) || "";
-      this.isPassphraseKnown = Boolean(this.passphrase);
-      if (this.isPassphraseKnown) this.remember = isRemembered(assessmentId);
     },
 
     get roles() {
@@ -149,10 +139,6 @@ export const importer = () => {
       const more = leftOutLabels.length > LEFT_OUT_ROWS_LISTED ? ` and ${leftOutLabels.length - LEFT_OUT_ROWS_LISTED} more` : "";
       return `${range}. Not included: ${leftOutLabels.slice(0, LEFT_OUT_ROWS_LISTED).join(", ")}${more}`;
     },
-    get needsPassphrase() {
-      return this.isFirstImport || !this.isPassphraseKnown;
-    },
-
     /** A row as people would recognise it: its student ID, or else its first value. */
     rowLabel(row) {
       if (isAnswerKeyRow(row, this.idIndex)) return "answer key";
@@ -178,18 +164,24 @@ export const importer = () => {
         this.error = "That file couldn't be read. Choose a CSV or Excel file.";
       }
     },
+    /** Null after showing why the keys are missing. */
+    async keys(options = {}) {
+      const assessmentElement = this.$root.closest("[data-assessment]");
+      const keys = await assessmentKeysFor(assessmentElement, options).catch(() => null);
+      if (!keys) this.error = missingCourseKeyMessage(assessmentElement);
+      return keys;
+    },
     /** Reopens the current submissions file from the server's encrypted copy, with the choices it was imported with. */
     async reopenFile() {
       this.error = "";
       this.opening = true;
       try {
-        const passphrase = await passphraseFor(this.assessmentId, this.sampleEncryptedId);
-        if (!passphrase) return;
-        const response = await fetch(this.originalUrl);
+        const keys = await this.keys();
+        if (!keys) return;
+        const response = await fetch(this.$root.dataset.originalUrl);
         if (!response.ok) throw new Error(response.statusText);
         const encrypted = new Uint8Array(await response.arrayBuffer());
-        this.open(savedSettings.name, await readRows(savedSettings.name, await decryptFile(encrypted, passphrase)), savedSettings);
-        Object.assign(this, { passphrase, isPassphraseKnown: true, remember: isRemembered(this.assessmentId) });
+        this.open(savedSettings.name, await readRows(savedSettings.name, await decryptFile(encrypted, keys)), savedSettings);
         fileContents = { encrypted };
         this.$root.querySelector("details").open = true;
       } catch {
@@ -274,24 +266,11 @@ export const importer = () => {
       Object.assign(this, { step: "choose", error: "", fileName: "", columns: [], header: [], rowsInRange: [] });
     },
 
-    passphraseProblem() {
-      if (this.isFirstImport) {
-        if (this.passphrase.length < MIN_PASSPHRASE) return `Use a passphrase of at least ${MIN_PASSPHRASE} characters.`;
-        if (this.passphrase !== this.confirmation) return "The passphrases don't match.";
-      } else if (!this.passphrase) {
-        return "Enter the student ID passphrase.";
-      }
-      return "";
-    },
-
     async submit() {
-      this.error = this.fileProblem || this.passphraseProblem();
+      this.error = this.fileProblem;
       if (this.error) return;
-      if (!this.isFirstImport && !(await passphraseOpens(this.passphrase, this.sampleEncryptedId))) {
-        this.error = "That passphrase doesn't match the one used for this assessment.";
-        this.isPassphraseKnown = false;
-        return;
-      }
+      const keys = await this.keys({ create: true });
+      if (!keys) return;
       this.step = "uploading";
       try {
         const idIndex = this.idIndex;
@@ -299,11 +278,11 @@ export const importer = () => {
         const rows = [];
         let encryptedCount = 0;
         for (const row of this.studentRows) {
-          const encrypted = await encryptId(cellText(row[idIndex]), this.passphrase, this.assessmentId);
+          const encrypted = await encryptId(cellText(row[idIndex]), keys);
           rows.push(uploadedColumns.map((index) => (index === idIndex ? encrypted : String(row[index] ?? ""))));
           this.progress = Math.round((++encryptedCount / this.studentCount) * 100);
         }
-        const original = fileContents.encrypted ?? (await encryptFile(fileContents.bytes, this.passphrase, this.assessmentId));
+        const original = fileContents.encrypted ?? (await encryptFile(fileContents.bytes, keys));
         await loadScript("papaparse-5.7.0.min.js");
         const marksColumns = Object.fromEntries(
           this.columns.filter((column) => column.role === "marks" && column.marksFor).map((column) => [column.marksFor, column.name]),
@@ -324,10 +303,9 @@ export const importer = () => {
         body.set("header_row", this.headerRow);
         body.set("first_row", this.firstRow);
         body.set("last_row", this.lastRow);
-        const response = await fetch(form.action, { method: "POST", body, headers: modelHeaders() });
+        const response = await fetch(form.action, { method: "POST", body, headers: await readModelHeaders() });
         // A refusal says why in plain text; an error page doesn't.
         if (!response.ok) throw new Error(response.headers.get("Content-Type")?.startsWith("text/plain") ? await response.text() : "");
-        remember(this.assessmentId, this.passphrase, this.remember);
         location.assign(response.headers.get("HX-Redirect"));
       } catch (error) {
         this.error = error.message || "The import failed. Try again.";

@@ -1,5 +1,5 @@
-"""The settings page's AI service: the models marking asks, and testing them. The device names its service and sends
-its token in headers (`endpoints`); the rest is the person's, kept on the server."""
+"""The settings page's AI service: the models marking asks, and testing them. The service and token arrive in headers
+(`endpoints`)."""
 
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -26,7 +26,7 @@ from gradeflow_app.model_service.models import (
 )
 from gradeflow_app.requests import Request
 
-NOT_CONNECTED_ERROR = "This device isn't connected to an AI service."
+NOT_CONNECTED_ERROR = "You aren't connected to an AI service."
 ROLES = ModelTest.Role.choices
 SEARCHABLE_MODELS = 8
 """The most models the table lists without a search box."""
@@ -67,7 +67,7 @@ def models(request: Request) -> HttpResponse:
 
 @require_POST
 def connect(request: Request) -> HttpResponse:
-    """The card for the AI service this device just service, or why it couldn't. Listing the service's models
+    """The card for the AI service the person just connected, or why it couldn't. Listing the service's models
     proves the token works."""
     service = connected_service(request)
     if service is None or (model_endpoint := endpoint(request, service)) is None:

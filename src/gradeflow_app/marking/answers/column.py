@@ -269,8 +269,7 @@ def out_of_date_notices(accepted: Mapping[Marking, Check], question_keys: Iterab
             continue
         if marking.failure == NO_MODEL_SERVICE:
             messages.append(
-                "Not marked again: the change came from a device without an AI service. The marks shown are "
-                "from before."
+                "Not marked again: the change came from someone without an AI service. The marks shown are from before."
             )
         elif marking.failure:
             messages.append(f"Marking failed: {marking.failure} The marks shown are from before.")

@@ -1,5 +1,4 @@
-"""The AI service a device is connected to, from its headers: which of the server's services, and the token only the
-device keeps."""
+"""The AI service and token a request names in its headers. The browser reads them from the user's encrypted secret."""
 
 from django.conf import settings
 from gradeflow_core import ModelEndpoint
@@ -13,7 +12,7 @@ TOKEN_HEADER = "X-Model-Token"
 
 
 def connected_service(request: Request) -> ModelService | None:
-    """The person's use of the AI service the device names; None when it names none the server offers."""
+    """The person's use of the AI service the request names; None when it names none the server offers."""
     url = settings.GRADEFLOW_MODEL_PROVIDERS.get(request.headers.get(SERVICE_HEADER, ""))
     if url is None:
         return None
@@ -21,7 +20,7 @@ def connected_service(request: Request) -> ModelService | None:
 
 
 def endpoint(request: Request, service: ModelService | None = None) -> ModelEndpoint | None:
-    """The device's model endpoint with the models in use; None without a connection."""
+    """The request's model endpoint with the models in use; None without a connection."""
     service, token = service or connected_service(request), request.headers.get(TOKEN_HEADER, "")
     if service is None or not token:
         return None

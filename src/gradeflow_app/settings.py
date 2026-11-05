@@ -110,10 +110,7 @@ AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",
     "allauth.account.auth_backends.AuthenticationBackend",
 ]
-AUTH_PASSWORD_VALIDATORS = [
-    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
-    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
-]
+AUTH_PASSWORD_VALIDATORS = [{"NAME": "gradeflow_app.accounts.passwords.AuthKeyValidator"}]
 LOGIN_URL = "account_login"
 LOGIN_REDIRECT_URL = "courses"
 
@@ -128,11 +125,8 @@ ACCOUNT_FORMS = {
         "signup": "SignupForm",
         "add_email": "AddEmailForm",
         "change_password": "ChangePasswordForm",
-        "set_password": "SetPasswordForm",
         "reset_password": "ResetPasswordForm",
         "reset_password_from_key": "ResetPasswordKeyForm",
-        "request_login_code": "RequestLoginCodeForm",
-        "confirm_login_code": "ConfirmLoginCodeForm",
         "confirm_email_verification_code": "ConfirmEmailVerificationCodeForm",
         "confirm_password_reset_code": "ConfirmPasswordResetCodeForm",
         "reauthenticate": "ReauthenticateForm",
@@ -140,8 +134,6 @@ ACCOUNT_FORMS = {
 }
 ACCOUNT_EMAIL_VERIFICATION = "mandatory"
 ACCOUNT_EMAIL_VERIFICATION_BY_CODE_ENABLED = True
-ACCOUNT_LOGIN_BY_CODE_ENABLED = True
-ACCOUNT_LOGIN_BY_CODE_SUPPORTS_RESEND = True
 ACCOUNT_EMAIL_VERIFICATION_SUPPORTS_RESEND = True
 ACCOUNT_PASSWORD_RESET_BY_CODE_ENABLED = True
 ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION = True
@@ -149,7 +141,6 @@ ACCOUNT_EMAIL_CONFIRMATION_AUTHENTICATED_REDIRECT_URL = reverse_lazy("account_em
 ACCOUNT_SESSION_REMEMBER = True
 ACCOUNT_EMAIL_SUBJECT_PREFIX = ""
 MFA_SUPPORTED_TYPES = ["totp", "recovery_codes", "webauthn"]
-MFA_PASSKEY_LOGIN_ENABLED = True
 MFA_WEBAUTHN_ALLOW_INSECURE_ORIGIN = DEBUG
 USERSESSIONS_TRACK_ACTIVITY = True
 ALLAUTH_TRUSTED_CLIENT_IP_HEADER = os.environ.get("GRADEFLOW_CLIENT_IP_HEADER") or None

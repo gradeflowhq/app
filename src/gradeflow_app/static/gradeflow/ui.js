@@ -6,6 +6,7 @@ import { histogram } from "./charts.js";
 import { collapsible } from "./collapsible.js";
 import { codeEditor } from "./code.js";
 import "./downloads.js";
+import "./password-forms.js";
 import { fileDrop } from "./drop.js";
 import { importer } from "./importer.js";
 import { answerGroup, canvasSend, markingExamples } from "./landing.js";
@@ -14,7 +15,6 @@ import { math } from "./math.js";
 import { modelService } from "./models.js";
 import { orderedChoices } from "./ordered.js";
 import { choiceList, methodPicker, searchList } from "./picker.js";
-import { passphraseSettings } from "./passphrase.js";
 import { adjustForm } from "./student.js";
 import { studentTable } from "./table.js";
 import { tagInput } from "./tags.js";
@@ -61,7 +61,6 @@ const components = {
   methodPicker,
   modelService,
   orderedChoices,
-  passphraseSettings,
   openOnLoad,
   searchList,
   studentTable,

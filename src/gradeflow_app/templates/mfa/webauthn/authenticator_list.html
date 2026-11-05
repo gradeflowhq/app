@@ -8,7 +8,7 @@
       {% for authenticator in authenticators %}
       <li class="account-list-row">
         <div class="min-w-0 flex-1">
-          <p class="flex items-center gap-2 font-medium"><span class="min-w-0 truncate">{{ authenticator }}</span>{% if authenticator.wrap.is_passwordless is False %}<span class="badge badge-ghost badge-sm">2FA only</span>{% endif %}</p>
+          <p class="flex items-center gap-2 font-medium"><span class="min-w-0 truncate">{{ authenticator }}</span></p>
           <p class="text-sm text-muted">{% if authenticator.last_used_at %}Last used {{ authenticator.last_used_at|ago }}{% else %}Not used yet{% endif %}</p>
         </div>
         <c-menu id="passkey-menu-{{ authenticator.pk }}" label="Actions for {{ authenticator }}">

@@ -17,8 +17,8 @@
   {% else %}
   <div class="contents"{% if access.can_edit %} x-data="canvasExport" data-config="{{ config }}"{% endif %}>
   {% if access.can_edit %}
-  <c-card title="Canvas" x-show="!connected" x-cloak>
-    <c-canvas-connect reason="This device needs your Canvas access token to send marks." />
+  <c-card title="Canvas" x-show="loaded && !connected" x-cloak>
+    <c-canvas-connect reason="Sending marks needs your Canvas access token." />
   </c-card>
   {% endif %}
   <div class="contents"{% if access.can_edit %} x-show="connected" x-cloak{% endif %}>

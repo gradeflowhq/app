@@ -10,8 +10,7 @@ ANSWERS_PER_REQUEST_LIMITS = ModelEndpoint.model_json_schema()["properties"]["an
 
 
 class ModelService(models.Model):
-    """A person's use of one of the server's AI services: the models marking asks and how they were chosen. Each
-    device keeps its own token."""
+    """A user's models on one of the server's AI services, and how they were chosen. The token is a `Secret`."""
 
     class ChosenBy(models.TextChoices):
         NOT_YET = ""
