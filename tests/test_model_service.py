@@ -295,7 +295,12 @@ def test_a_model_the_service_failed_on_can_be_tried_again(
     client: Client, user: User, idle_runner: FakeRunner, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     errored = ModelTrial(
-        model="decider", role="fast", rows_matched=0, rows_tried=0, seconds=0.1, failure="The AI service answered 503."
+        model="decider",
+        role="fast",
+        rows_matched=0,
+        rows_tried=None,
+        seconds=0.1,
+        failure="The AI service answered 503.",
     )
     model_service(user, errored)
     monkeypatch.setattr(views, "list_models", lambda endpoint: ["decider"])

@@ -16,11 +16,11 @@ def apply(workspace: CheckWorkspace, data: QueryDict, path: str) -> str:
     if not workspace.checks.is_check(path):
         return ""
     name = str(data.get("operation", ""))
-    if "fields_posted" in data and name not in ("open", "change_method"):
-        form = workspace.form(path, data=data)
-        form.full_clean()
-        workspace.checks.update(path, form.values())
     try:
+        if "fields_posted" in data and name not in ("open", "change_method"):
+            form = workspace.form(path, data=data)
+            form.full_clean()
+            workspace.checks.update(path, form.values())
         return _operate(workspace, name, data, path)
     except EditingError:
         return path

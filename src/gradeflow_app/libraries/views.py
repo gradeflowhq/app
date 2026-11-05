@@ -87,7 +87,9 @@ def _library_method(
     if (method_version := loaded.methods.by_ref.get(ref)) is None:
         saved_version = method.versions.get(number=number)
         draft = services.method_draft(method, saved_version.definition, saved_version.tests, Methods(), version=number)
-        at_fault = services.version_name(loaded.failed[ref].ref)
+        # A file whose version can't be read fails under its name, and is at fault itself.
+        failed = loaded.failed.get(ref)
+        at_fault = services.version_name(failed.ref if failed else ref)
         return LibraryMethod(
             method, number, draft.label, draft.summary, [], marking_count, incompatible_version=at_fault
         )
