@@ -4,8 +4,14 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from typing import Any
 
-from gradeflow_app.jobs.nomad.client import Job, JobState, NomadClient, NomadUnavailable
+from gradeflow_app.jobs.nomad.client import JOB_VARIABLE_PATH, Job, JobState, NomadClient, NomadUnavailable
 from gradeflow_app.jobs.runner import RUN_ID_PREFIX, Ending, Launch, Listener, Run, RunnerUnavailable, State, id_prefix
+
+ENVIRONMENT_TEMPLATE = (
+    f'{{{{ with nomadVar (print "{JOB_VARIABLE_PATH}" (env "NOMAD_JOB_ID")) }}}}'
+    "{{ range .Tuples }}{{ .K }}={{ .V | toJSON }}\n{{ end }}{{ end }}"
+)
+"""The task's environment, from the job's variable."""
 
 
 class NomadRunner:
@@ -18,6 +24,7 @@ class NomadRunner:
     def start(self, run: Run, launch: Launch) -> None:
         with _runner_errors():
             self.client.register(self._spec(run, launch))
+            self.client.put_variable(run.id, launch.environment())
 
     def stop(self, kind: str, owner: object) -> None:
         with _runner_errors():
@@ -42,6 +49,15 @@ class NomadRunner:
         with _runner_errors():
             for jobs in self.client.watch(RUN_ID_PREFIX):
                 known = self._tell(listener, known, jobs)
+                self._delete_leftover_variables()
+
+    def _delete_leftover_variables(self) -> None:
+        """Delete the variables of jobs that ended or are gone, left by a failed `forget`."""
+        # Listed before the jobs, since a variable is put only after its job is registered.
+        job_ids = self.client.variable_ids(RUN_ID_PREFIX)
+        active = {job.id for job in self.client.jobs(RUN_ID_PREFIX) if job.state is not JobState.ENDED}
+        for job_id in set(job_ids) - active:
+            self.client.delete_variable(job_id)
 
     def _tell(self, listener: Listener, known: dict[str, JobState], jobs: list[Job]) -> dict[str, JobState]:
         """Tell `listener` what changed in `jobs` since `known`, and return their states now."""
@@ -86,7 +102,10 @@ class NomadRunner:
                                 "args": ["/app/sandbox.py", launch.task],
                                 "security_opt": ["no-new-privileges"],
                             },
-                            "Env": launch.environment(),
+                            # Anyone who can read jobs can read a job's Env; only the job can read its variable.
+                            "Templates": [
+                                {"EmbeddedTmpl": ENVIRONMENT_TEMPLATE, "DestPath": "secrets/env", "Envvars": True}
+                            ],
                             "Resources": {"CPU": 1000, "MemoryMB": 1024},
                         }
                     ],

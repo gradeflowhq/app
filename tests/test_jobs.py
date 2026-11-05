@@ -216,7 +216,7 @@ def test_callbacks_are_signed_and_fit_their_run(
     assert post_callback(run_id, {"event": "finished", "outcome": []}, secret="forged") == 403
     assert post_callback(run_id, {"event": "tried", "trial": {}}) == 400
     assert (
-        Client().post(reverse("job_callback", args=["gf.unknown.1.1.1"]), "{}", "application/json").status_code == 404
+        Client().post(reverse("job_callback", args=["gf_unknown_1_1_1"]), "{}", "application/json").status_code == 404
     )
 
 

@@ -127,7 +127,20 @@ CI publishes two images for each push to `main` (tag `main`) and each `v*` tag (
 
 The Nomad cluster must run Nomad 2.0.3 or later, which stops each job at its time limit. Its Docker driver must be able to pull the sandbox image, and its jobs must reach `GRADEFLOW_APP_URL_FOR_JOBS`. Jobs call back to `/jobs/`, which is exempt from the HTTPS redirect, so the job URL can be plain HTTP on a private network.
 
-Each person connects one of the `GRADEFLOW_MODEL_PROVIDERS` in Settings. The token stays in their browser and reaches a job only while it runs: it's in the Nomad job's environment, which the app purges once the job ends. Neither the app nor its jobs contact any other endpoint, so the cluster's network policy can limit jobs to the app and those hosts.
+Give GradeFlow a Nomad namespace of its own (`GRADEFLOW_NOMAD_NAMESPACE`), and `GRADEFLOW_NOMAD_TOKEN` a policy that reaches only its jobs and their variables:
+
+```hcl
+namespace "gradeflow" {
+  capabilities = ["submit-job", "read-job", "list-jobs"]
+  variables {
+    path "nomad/jobs/gf_*" {
+      capabilities = ["write", "list", "destroy"]
+    }
+  }
+}
+```
+
+Each person connects one of the `GRADEFLOW_MODEL_PROVIDERS` in Settings. The token stays in their browser and reaches a job only while it runs: it's in the job's Nomad variable, which only the job can read, and the app deletes it once the job ends. Neither the app nor its jobs contact any other endpoint, so the cluster's network policy can limit jobs to the app and those hosts.
 
 ## Methods
 

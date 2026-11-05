@@ -8,7 +8,7 @@ from typing import Literal, Protocol, Self
 type Task = Literal["mark", "test", "compare", "choose", "trial"]
 """What the sandbox runs: submissions marked, a method's test answers marked, texts compared by meaning, a model
 endpoint's models chosen, or some of them tried."""
-RUN_ID_PREFIX = "gf."
+RUN_ID_PREFIX = "gf_"
 
 
 @dataclass(frozen=True)
@@ -23,11 +23,12 @@ class Run:
 
     @property
     def id(self) -> str:
-        return f"{id_prefix(self.kind, self.owner)}{self.key}.{self.nonce}"
+        """Its parts joined by _, so it fits in a path."""
+        return f"{id_prefix(self.kind, self.owner)}{self.key}_{self.nonce}"
 
     @classmethod
     def parse(cls, run_id: str) -> Self | None:
-        match run_id.removeprefix(RUN_ID_PREFIX).split("."):
+        match run_id.removeprefix(RUN_ID_PREFIX).split("_"):
             case [kind, owner, key, nonce] if run_id.startswith(RUN_ID_PREFIX):
                 return cls(kind, owner, key, nonce)
             case _:
@@ -36,7 +37,7 @@ class Run:
 
 def id_prefix(kind: str, owner: object = "") -> str:
     """The start of the IDs of `kind`'s runs, or of those for `owner`."""
-    return f"{RUN_ID_PREFIX}{kind}.{owner}." if owner != "" else f"{RUN_ID_PREFIX}{kind}."
+    return f"{RUN_ID_PREFIX}{kind}_{owner}_" if owner != "" else f"{RUN_ID_PREFIX}{kind}_"
 
 
 class State(StrEnum):

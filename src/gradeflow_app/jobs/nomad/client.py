@@ -12,6 +12,8 @@ import httpx
 _LOG = logging.getLogger(__name__)
 WATCH_WAIT = "5m"
 """How long a watch waits for a change before asking again."""
+JOB_VARIABLE_PATH = "nomad/jobs/"
+"""The path of each job's variable, before the job's ID."""
 
 
 class NomadUnavailable(Exception):
@@ -56,9 +58,21 @@ class NomadClient:
     def register(self, spec: dict[str, Any]) -> None:
         self._request("POST", "/v1/jobs", json={"Job": spec})
 
+    def put_variable(self, job_id: str, items: dict[str, str]) -> None:
+        self._request("PUT", f"/v1/var/{JOB_VARIABLE_PATH}{job_id}", json={"Items": items})
+
     def stop(self, job_id: str) -> None:
-        """Stop the job and purge it."""
+        """Stop the job and purge it with its variable."""
         self._request("DELETE", f"/v1/job/{job_id}", params={"purge": "true"})
+        self.delete_variable(job_id)
+
+    def delete_variable(self, job_id: str) -> None:
+        self._request("DELETE", f"/v1/var/{JOB_VARIABLE_PATH}{job_id}")
+
+    def variable_ids(self, prefix: str) -> list[str]:
+        """The job IDs starting with `prefix` that have a variable, even if the job is gone."""
+        response = self._request("GET", "/v1/vars", params={"prefix": JOB_VARIABLE_PATH + prefix})
+        return [variable["Path"].removeprefix(JOB_VARIABLE_PATH) for variable in response.json()]
 
     def jobs(self, prefix: str) -> list[Job]:
         return _jobs(self._request("GET", "/v1/jobs", params={"prefix": prefix}))
