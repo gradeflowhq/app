@@ -11,7 +11,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.crypto import salted_hmac
 from django.views.decorators.http import require_http_methods, require_POST
 
-from gradeflow_app.accounts.forms import ProfileForm, SecretForm
+from gradeflow_app.accounts.forms import ProfileForm, RecoveryKeyForm, SecretForm
 from gradeflow_app.accounts.models import Secret, User
 from gradeflow_app.requests import Request
 from gradeflow_app.ui.templatetags.ui import browser
@@ -51,12 +51,21 @@ def sign_out_device(request: Request, session_id: int) -> HttpResponse:
 @login_not_required
 @require_POST
 def kdf_salt(request: HttpRequest) -> JsonResponse:
-    """An unknown email gets a stable dummy salt, so the response doesn't reveal which emails have accounts. POST keeps
-    emails out of access logs."""
+    """The KDF salt for an email. An unknown email gets a dummy salt, so the response doesn't reveal who has an
+    account."""
     email = request.POST.get("email", "")
     user = User.objects.filter(emailaddress__email__iexact=email).first()
     dummy_salt = salted_hmac("gradeflow.kdf-salt", email.lower(), algorithm="sha256").digest()[:16]
     return JsonResponse({"kdfSalt": user.kdf_salt if user else base64.b64encode(dummy_salt).decode()})
+
+
+@require_POST
+def save_recovery_key(request: Request) -> HttpResponse:
+    form = RecoveryKeyForm(request.POST, instance=request.user)
+    if not form.is_valid():
+        return HttpResponse(status=400)
+    form.save()
+    return HttpResponse(status=204)
 
 
 @require_http_methods(["POST", "DELETE"])

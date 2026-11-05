@@ -12,6 +12,14 @@ class ProfileForm(forms.ModelForm[User]):
         fields = ("name",)
 
 
+class RecoveryKeyForm(forms.ModelForm[User]):
+    recovery_wrapped_private_key = forms.CharField(max_length=104)
+
+    class Meta:
+        model = User
+        fields = ("recovery_wrapped_private_key",)
+
+
 class SecretForm(forms.ModelForm[Secret]):
     class Meta:
         model = Secret

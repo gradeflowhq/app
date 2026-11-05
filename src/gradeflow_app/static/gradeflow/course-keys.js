@@ -1,6 +1,4 @@
-// Course keys (courses/keys.py): each course has a random key that encrypts its student IDs, and each member holds it
-// encrypted for their public key. Assessment pages carry the member's encrypted course key
-// (`data-encrypted-course-key`), or why they have none (`data-course-key-unavailable-reason`).
+// Course keys (courses/keys.py). Assessment pages carry the member's encrypted course key, or why they have none.
 
 import { loadKeyPair, signedInAccount } from "./account.js";
 import { decryptWithKeyPair, encryptForPublicKey } from "./account-crypto.js";
@@ -12,10 +10,7 @@ const courseKeyContext = (courseId, userId) => `gradeflow:course-key:${courseId}
 const decryptCourseKey = (keyPair, courseId, encryptedCourseKey) =>
   decryptWithKeyPair(keyPair, encryptedCourseKey, courseKeyContext(courseId, signedInAccount().userId));
 
-/**
- * The keys of the assessment that `assessmentElement` (its `[data-assessment]` element) shows; null when this browser
- * can't load the key pair or the member has no course key. With `create`, a course without a key gets one.
- */
+/** The assessment's keys, or null without a key pair or course key. With `create`, creates the course key if none. */
 export async function assessmentKeysFor(assessmentElement, { create = false } = {}) {
   const { course, assessment, encryptedCourseKey, courseKeyUnavailableReason } = assessmentElement.dataset;
   const keyPair = await loadKeyPair();
@@ -28,7 +23,7 @@ export async function assessmentKeysFor(assessmentElement, { create = false } = 
 export const missingCourseKeyMessage = (assessmentElement) =>
   assessmentElement.dataset.courseKeyUnavailableReason || "Reload the page to see student IDs.";
 
-/** Creates the course's key, encrypted for this member; empty when another member created one first. */
+/** The new course key, encrypted for this member; empty when another member created one first. */
 async function createCourseKey(assessmentElement) {
   const courseId = assessmentElement.dataset.course;
   const { publicKey, userId } = signedInAccount();
@@ -38,10 +33,7 @@ async function createCourseKey(assessmentElement) {
   return response.ok ? (assessmentElement.dataset.encryptedCourseKey = encryptedKey) : "";
 }
 
-/**
- * Encrypts the course keys this member has for the members who don't (#pending-course-key-shares), which the server
- * renders on each page and sends again after an invite. Emptied once read, so each list is shared once.
- */
+/** Shares this member's course keys with members who don't have them (#pending-course-key-shares). */
 async function shareCourseKeys() {
   const element = document.getElementById("pending-course-key-shares");
   const pendingShares = JSON.parse(element?.textContent || "[]");
@@ -52,7 +44,7 @@ async function shareCourseKeys() {
   for (const { courseId, userId, publicKey, encryptedCourseKey } of pendingShares) {
     const courseKey = await decryptCourseKey(keyPair, courseId, encryptedCourseKey);
     const encryptedKey = await encryptForPublicKey(publicKey, courseKey, courseKeyContext(courseId, userId));
-    // 404: the member left, or reset their password, after this page was rendered.
+    // 404: the member left or reset their password since the page loaded.
     await send(`/courses/${courseId}/members/${userId}/key/`, { values: { public_key: publicKey, encrypted_key: encryptedKey }, allowed: [404] });
   }
 }

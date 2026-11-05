@@ -1,4 +1,4 @@
-"""The settings page's AI service: the models marking asks, and testing them. The service and token arrive in headers
+"""The settings page's AI service: the models marking asks, and testing them. The service and token come in headers
 (`endpoints`)."""
 
 from collections.abc import Sequence

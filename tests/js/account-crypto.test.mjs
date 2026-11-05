@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { argon2Sync, hkdfSync } from 'node:crypto';
 import { test } from 'node:test';
 
-import { decryptWithKeyPair, deriveKeysFromPassword, encryptForPublicKey, generateKdfSalt, generateKeyPair, rewrapPrivateKey, unwrapKeyPair } from '../../src/gradeflow_app/static/gradeflow/account-crypto.js';
+import { decryptWithKeyPair, deriveKeysFromPassword, encryptForPublicKey, generateKdfSalt, generateKeyPair, generateRecoveryKey, importRecoveryKey, rewrapPrivateKey, unwrapKeyPair } from '../../src/gradeflow_app/static/gradeflow/account-crypto.js';
 import { Aes128Gcm, CipherSuite, DhkemX25519HkdfSha256, HkdfSha256 } from '../../src/gradeflow_app/static/vendor/hpke-core-1.9.0/hpke.min.js';
 
 const KDF_SALT = Buffer.alloc(16, 1).toString('base64');
@@ -32,6 +32,24 @@ test('the private key unwraps only with its wrapping key, and can be rewrapped w
   const encrypted = await encryptForPublicKey(keys.publicKey, new Uint8Array([9]), 'context');
   assert.deepEqual(await decryptWithKeyPair(await unwrapKeyPair(rewrapped, newWrappingKey), encrypted, 'context'), new Uint8Array([9]));
   await assert.rejects(rewrapPrivateKey(keys.wrappedPrivateKey, newWrappingKey, wrappingKey));
+});
+
+test('a recovery key unwraps a copy of the private key, and a wrong one does not', async () => {
+  const recoveryKey = generateRecoveryKey();
+  assert.match(recoveryKey, /^[0-9a-f]{4}(-[0-9a-f]{4}){7}$/);
+  const { wrappingKey } = await deriveKeysFromPassword('a password', KDF_SALT);
+  const { wrappingKey: newWrappingKey } = await deriveKeysFromPassword('a new password', KDF_SALT);
+  const keys = await generateKeyPair(wrappingKey);
+  const recoveryWrappedPrivateKey = await rewrapPrivateKey(keys.wrappedPrivateKey, wrappingKey, await importRecoveryKey(recoveryKey));
+
+  const typed = ` ${recoveryKey.toUpperCase().replaceAll('-', ' ')} `;
+  const wrappedPrivateKey = await rewrapPrivateKey(recoveryWrappedPrivateKey, await importRecoveryKey(typed), newWrappingKey);
+  const encrypted = await encryptForPublicKey(keys.publicKey, new Uint8Array([7]), 'context');
+  assert.deepEqual(await decryptWithKeyPair(await unwrapKeyPair({ ...keys, wrappedPrivateKey }, newWrappingKey), encrypted, 'context'), new Uint8Array([7]));
+
+  await assert.rejects(rewrapPrivateKey(recoveryWrappedPrivateKey, await importRecoveryKey(generateRecoveryKey()), newWrappingKey));
+  await assert.rejects(importRecoveryKey('not-a-key'));
+  await assert.rejects(importRecoveryKey('abcd'));
 });
 
 test('data encrypted for a public key decrypts only with its key pair and the same context', async () => {

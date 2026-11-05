@@ -1,9 +1,9 @@
-// allauth's password forms send the authentication key derived from a password (account-crypto.js), never the
-// password. Forms that set a password also send its KDF salt and the private key wrapped with its wrapping key: the
-// account's key pair, rewrapped, when the current password is given; a new key pair otherwise.
+// allauth's password forms send the authentication key instead of the password (account-crypto.js). Forms that set a
+// password also send its KDF salt and the private key wrapped with its wrapping key: the same key pair, given the
+// current password or the recovery key, or else a new one.
 
 import { signedInAccount, storeWrappingKey } from "./account.js";
-import { deriveKeysFromPassword, generateKdfSalt, generateKeyPair, rewrapPrivateKey } from "./account-crypto.js";
+import { deriveKeysFromPassword, generateKdfSalt, generateKeyPair, importRecoveryKey, rewrapPrivateKey } from "./account-crypto.js";
 import { send } from "./requests.js";
 import { showToast } from "./toasts.js";
 
@@ -22,10 +22,7 @@ function showFieldError(field, message) {
   return null;
 }
 
-/**
- * The fields to send in place of the form's passwords, and the wrapping key to store once the server accepts them;
- * null after showing an error the browser can find itself.
- */
+/** The fields to send in place of the passwords, and the wrapping key to store; null after showing an error. */
 async function derivePasswordFields(form) {
   const { password, oldpassword, password1, password2 } = form.elements;
   const account = signedInAccount();
@@ -44,11 +41,19 @@ async function derivePasswordFields(form) {
     if (!wrappedPrivateKey) return showFieldError(oldpassword, "Wrong password.");
     return { fields: { ...fields, oldpassword: old.authKey, wrapped_private_key: wrappedPrivateKey }, wrappingKey };
   }
+  const recoveryKeyField = form.elements.recovery_key;
+  if (recoveryKeyField?.value.trim()) {
+    const { publicKey, recoveryWrappedPrivateKey } = recoveryKeyField.dataset;
+    const recoveryWrappingKey = await importRecoveryKey(recoveryKeyField.value).catch(() => null);
+    const wrappedPrivateKey = recoveryWrappingKey && (await rewrapPrivateKey(recoveryWrappedPrivateKey, recoveryWrappingKey, wrappingKey).catch(() => null));
+    if (!wrappedPrivateKey) return showFieldError(recoveryKeyField, "Wrong recovery key.");
+    return { fields: { ...fields, public_key: publicKey, wrapped_private_key: wrappedPrivateKey }, wrappingKey };
+  }
   const { publicKey, wrappedPrivateKey } = await generateKeyPair(wrappingKey);
   return { fields: { ...fields, public_key: publicKey, wrapped_private_key: wrappedPrivateKey }, wrappingKey };
 }
 
-// The buttons of these forms render disabled, so no form can submit a password before this script can replace it.
+// The buttons render disabled, so no form can send a password before this script loads.
 const enableSubmitButtons = () => document.querySelectorAll("[data-disabled-until-script]").forEach((button) => (button.disabled = false));
 enableSubmitButtons();
 document.addEventListener("htmx:after:settle", enableSubmitButtons);

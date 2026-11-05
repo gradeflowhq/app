@@ -1,5 +1,4 @@
-// The account's secrets (accounts/models.py Secret), such as the Canvas token: encrypted for the account's public key
-// in the browser and stored on the server, so only the account owner can decrypt them, on any device.
+// The account's secrets, such as the Canvas token, encrypted for its public key (accounts/models.py Secret).
 
 import { loadKeyPair, signedInAccount } from "./account.js";
 import { decryptWithKeyPair, encryptForPublicKey } from "./account-crypto.js";
@@ -9,7 +8,7 @@ const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 const secretContext = (name, userId) => `gradeflow:secret:${name}:${userId}`;
 
-/** The secret named `name`, or null when there is none or this browser can't load the key pair. */
+/** Null when there is none, or this browser can't load the key pair. */
 export async function readSecret(name) {
   const encryptedValue = signedInAccount()?.encryptedSecrets[name];
   const keyPair = encryptedValue && (await loadKeyPair());

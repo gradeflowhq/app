@@ -24,7 +24,7 @@
   </div>
   <div class="setting-rows" x-show="connected" x-cloak>
     <c-connected-service label="Service" host_property="provider" confirm="Disconnect the AI service?" confirm_detail="It forgets the token. Marking that uses AI waits until you connect again." />
-    {# Only the models refresh as tests go on, so what someone is typing above stays. The page doesn't know which service the person uses, so they load once the browser has read their secret (models.js). #}
+    {# Only the models refresh as tests go on, so what someone is typing above stays. They load once the browser has decrypted which service the person uses (models.js). #}
     {% partialdef models inline %}
     {% url 'model_service_dialog' as dialog_url %}
     <div id="model-service-models" class="divide-y divide-base-300"{% if out_of_band %} hx-swap-oob="outerMorph"{% endif %} hx-post="{% url 'model_service' %}" hx-trigger="{% if not models_loaded %}models-read, {% endif %}{% listen 'models' request.user.pk %}" hx-swap="outerHTML">

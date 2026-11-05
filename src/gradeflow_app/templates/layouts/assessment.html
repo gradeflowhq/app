@@ -21,7 +21,7 @@
   {% endwith %}
 {% endblock %}
 {% block page %}
-  {# Student IDs anywhere inside, drawers too, decrypt with the course key (course-keys.js). #}
+  {# Student IDs anywhere inside, drawers too, decrypt with the course key. #}
   <div data-assessment="{{ access.assessment.pk }}" data-course="{{ access.course.pk }}" data-encrypted-course-key="{{ access.course_key.encrypted_key }}" data-course-key-unavailable-reason="{{ access.course_key.unavailable_reason }}" class="contents">
     {% block content %}{% endblock %}
     <c-workspace-dialogs />

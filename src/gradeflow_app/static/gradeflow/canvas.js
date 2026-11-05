@@ -1,5 +1,5 @@
-// Canvas from the browser. The address and token are an encrypted secret (secrets.js). To send marks, the server gives
-// encrypted IDs and totals (#export-rows); the browser decrypts the IDs and matches them to Canvas users.
+// Canvas, called from the browser with the address and token from a secret (secrets.js). Sending marks decrypts the
+// student IDs in #export-rows and matches them to Canvas users.
 
 import { canvasClient, gradeFor, matchStudents } from "./canvas-api.js";
 import { assessmentKeysFor, missingCourseKeyMessage } from "./course-keys.js";
@@ -22,8 +22,7 @@ const errorMessage = (error, host) => {
   return error.message || "Canvas can't be reached.";
 };
 
-// What every Canvas component shares: the Canvas connection. A component's `load` fetches what it needs from Canvas,
-// which also tests a new connection.
+// The Canvas connection. Each component's `load` fetches what it needs, which also tests a new connection.
 const canvasComponent = () => ({
   canvasConnection: null,
   loaded: false,
@@ -203,7 +202,7 @@ const groups = () => ({
   },
 });
 
-// The Integrations page's Canvas card. Connecting lists the user's courses to test the token.
+// The Integrations page's Canvas card.
 export const canvasConnection = () =>
   compose(canvasComponent(), {
     init() {
@@ -217,8 +216,7 @@ export const canvasConnection = () =>
     },
   });
 
-// A course's Canvas page: the Canvas course its marks go to, and the group new assignments go in. Connecting is on
-// the Integrations page.
+// An assessment's Canvas page: the Canvas course marks go to, and the group new assignments go in.
 export const canvasCourse = () =>
   compose(canvasComponent(), listPicker("course", "group"), groups(), {
     courseItems: [],

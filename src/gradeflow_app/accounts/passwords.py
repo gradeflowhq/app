@@ -8,11 +8,11 @@ AUTH_KEY = re.compile(r"[0-9a-f]{64}")
 
 
 class AuthKeyValidator:
-    """Accepts only an authentication key derived in the browser (account-crypto.js), so no password is stored."""
+    """Accepts only an authentication key (account-crypto.js), never a password."""
 
     def validate(self, password: str, user: User | None = None) -> None:
         if not AUTH_KEY.fullmatch(password):
-            raise ValidationError("GradeFlow needs JavaScript to set a password.", code="not_a_login_key")
+            raise ValidationError("GradeFlow needs JavaScript to set a password.", code="not_an_auth_key")
 
     def get_help_text(self) -> str:
         return ""

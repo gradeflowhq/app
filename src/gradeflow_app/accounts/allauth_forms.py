@@ -1,5 +1,4 @@
-"""allauth's forms with plain labels. Password fields hold the authentication key the browser derives from the password
-(password-forms.js)."""
+"""allauth's forms with plain labels. The browser sends authentication keys instead of passwords (password-forms.js)."""
 
 from typing import Any, ClassVar
 
@@ -8,9 +7,10 @@ from django import forms
 from django.http import HttpRequest
 
 from gradeflow_app.accounts.models import User
+from gradeflow_app.accounts.signals import key_pair_replaced
 
 MIN_PASSWORD_LENGTH = 8
-"""Enforced by the browser, as the server never receives the password."""
+"""Checked in the browser, since the server never sees the password."""
 
 
 class PlainLabelsMixin:
@@ -41,7 +41,7 @@ def _hidden_user_field(name: str) -> forms.Field:
 
 
 class RewrappedPrivateKeyForm(forms.Form):
-    """The new password's KDF salt and the private key rewrapped with its wrapping key."""
+    """The new password's KDF salt and the private key wrapped with its wrapping key."""
 
     kdf_salt = _hidden_user_field("kdf_salt")
     wrapped_private_key = _hidden_user_field("wrapped_private_key")
@@ -91,13 +91,18 @@ class ResetPasswordForm(PlainLabelsMixin, allauth.ResetPasswordForm):
 
 
 class ResetPasswordKeyForm(PlainLabelsMixin, NewKeyPairForm, allauth.ResetPasswordKeyForm):
-    """Without the old password the old private key can't be unwrapped, so a reset replaces the key pair and deletes
-    the secrets encrypted for it. Course keys are deleted in courses/keys.py."""
+    """A reset with the recovery key keeps the key pair. Without it, the account gets a new key pair, and its secrets
+    and course keys are deleted, as the new key pair can't decrypt them."""
 
     def save(self) -> None:
+        new_key_pair = self.cleaned_data["public_key"] != self.user.public_key
         self.save_keys_to(self.user)
+        if new_key_pair:
+            self.user.recovery_wrapped_private_key = ""
         super().save()
-        self.user.secrets.all().delete()
+        if new_key_pair:
+            self.user.secrets.all().delete()
+            key_pair_replaced.send(sender=User, user=self.user)
 
 
 class ConfirmEmailVerificationCodeForm(PlainLabelsMixin, allauth.ConfirmEmailVerificationCodeForm):

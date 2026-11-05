@@ -23,7 +23,9 @@ class User(AbstractBaseUser):
     kdf_salt = models.CharField(max_length=24)
     public_key = models.CharField(max_length=44)
     wrapped_private_key = models.CharField(max_length=104)
-    """Wrapped with the wrapping key derived from the password, which only the browser has."""
+    """Wrapped with the key derived from the password."""
+    recovery_wrapped_private_key = models.CharField(max_length=104, blank=True)
+    """Wrapped with the key derived from the recovery key; empty without one."""
 
     USERNAME_FIELD = "email"
     EMAIL_FIELD = "email"
@@ -36,7 +38,7 @@ class User(AbstractBaseUser):
 
 
 class Secret(models.Model):
-    """A connection's credentials, such as a Canvas token, encrypted in the browser for the user's public key."""
+    """A connection's credentials, such as a Canvas token, encrypted for the user's public key."""
 
     class Name(models.TextChoices):
         CANVAS = "canvas"

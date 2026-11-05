@@ -15,6 +15,7 @@ import { math } from "./math.js";
 import { modelService } from "./models.js";
 import { orderedChoices } from "./ordered.js";
 import { choiceList, methodPicker, searchList } from "./picker.js";
+import { recoveryKeyCard } from "./recovery-key.js";
 import { adjustForm } from "./student.js";
 import { studentTable } from "./table.js";
 import { tagInput } from "./tags.js";
@@ -62,6 +63,7 @@ const components = {
   modelService,
   orderedChoices,
   openOnLoad,
+  recoveryKeyCard,
   searchList,
   studentTable,
   tagInput,

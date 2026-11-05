@@ -1,5 +1,4 @@
-// Decrypts student IDs (c-student-id) as they appear on the page. Without the course key they stay encrypted, and the
-// Students page says why.
+// Decrypts student IDs (c-student-id) as they appear. Without the course key they stay encrypted.
 
 import { assessmentKeysFor } from "./course-keys.js";
 import { decryptId } from "./crypto.js";

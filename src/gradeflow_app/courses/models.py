@@ -65,8 +65,7 @@ class Member(models.Model):
 
 
 class CourseKey(models.Model):
-    """The course's key, which encrypts its student IDs, encrypted_key to a member's public key by a member who has it
-    (courses/keys.py)."""
+    """The course key, encrypted for the member's public key (courses/keys.py)."""
 
     member = models.OneToOneField(Member, on_delete=models.CASCADE, related_name="key")
     encrypted_key = models.CharField(max_length=108)

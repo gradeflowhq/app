@@ -81,25 +81,65 @@ def test_changing_the_password_keeps_the_key_pair_under_the_new_one(user: User) 
     )
 
 
-def test_resetting_the_password_starts_the_keys_again(user: User, bo: User, mailoutbox: list[EmailMessage]) -> None:
-    course = Course.objects.create(name="BIO1010")
-    member = Member.objects.create(course=course, user=user, role=Role.OWNER)
-    CourseKey.objects.create(member=member, encrypted_key=ENCRYPTED_KEY)
-    Secret.objects.create(user=user, name=Secret.Name.CANVAS, encrypted_value=ENCRYPTED_KEY)
+def reset_password(user: User, mailoutbox: list[EmailMessage], fields: dict[str, str]) -> str:
+    """Resets the password by emailed code, sending `fields`. Returns the page that asks for the new password."""
     visitor = Client()
     visitor.post(reverse("account_reset_password"), {"email": user.email})
     code = re.findall(r"\b[A-Z0-9]{4}-[A-Z0-9]{4}\b", str(mailoutbox[-1].body))[0]
-    visitor.post(reverse("account_confirm_password_reset_code"), {"code": code})
-    fields = new_account_fields("a-new-password")
+    page = visitor.post(reverse("account_confirm_password_reset_code"), {"code": code}, follow=True).text
     visitor.post(reverse("account_complete_password_reset"), fields)
-    user.refresh_from_db()
-    assert (user.kdf_salt, user.public_key, user.wrapped_private_key) == (
+    return page
+
+
+@pytest.fixture
+def user_with_keys(user: User) -> User:
+    """`user`, holding a course key and a secret, with a recovery key."""
+    user.public_key, user.recovery_wrapped_private_key = "public", "recovery-wrapped"
+    user.save()
+    member = Member.objects.create(course=Course.objects.create(name="BIO1010"), user=user, role=Role.OWNER)
+    CourseKey.objects.create(member=member, encrypted_key=ENCRYPTED_KEY)
+    Secret.objects.create(user=user, name=Secret.Name.CANVAS, encrypted_value=ENCRYPTED_KEY)
+    return user
+
+
+def test_resetting_the_password_without_the_recovery_key_starts_the_keys_again(
+    user_with_keys: User, mailoutbox: list[EmailMessage]
+) -> None:
+    fields = new_account_fields("a-new-password")
+    reset_password(user_with_keys, mailoutbox, fields)
+    user_with_keys.refresh_from_db()
+    assert (user_with_keys.kdf_salt, user_with_keys.public_key, user_with_keys.wrapped_private_key) == (
         fields["kdf_salt"],
         fields["public_key"],
         fields["wrapped_private_key"],
     )
+    assert user_with_keys.recovery_wrapped_private_key == "", "it wraps the old private key"
     assert not CourseKey.objects.exists()
-    assert not user.secrets.exists()
+    assert not user_with_keys.secrets.exists()
+
+
+def test_resetting_the_password_with_the_recovery_key_keeps_the_key_pair(
+    user_with_keys: User, mailoutbox: list[EmailMessage]
+) -> None:
+    fields = new_account_fields("a-new-password") | {"public_key": "public"}
+    page = reset_password(user_with_keys, mailoutbox, fields)
+    assert 'data-recovery-wrapped-private-key="recovery-wrapped"' in page
+    user_with_keys.refresh_from_db()
+    assert (user_with_keys.wrapped_private_key, user_with_keys.recovery_wrapped_private_key) == (
+        fields["wrapped_private_key"],
+        "recovery-wrapped",
+    )
+    assert CourseKey.objects.exists()
+    assert user_with_keys.secrets.exists()
+
+
+def test_a_recovery_key_replaces_the_last_one(client: Client, user: User) -> None:
+    url = reverse("save_recovery_key")
+    assert client.post(url, {"recovery_wrapped_private_key": "first"}).status_code == 204
+    assert client.post(url, {"recovery_wrapped_private_key": "second"}).status_code == 204
+    assert client.post(url, {"recovery_wrapped_private_key": ""}).status_code == 400
+    user.refresh_from_db()
+    assert user.recovery_wrapped_private_key == "second"
 
 
 def test_pages_carry_the_signed_in_persons_keys_and_secrets(client: Client, user: User) -> None:

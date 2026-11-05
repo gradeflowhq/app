@@ -133,6 +133,7 @@ urlpatterns = [
     path("settings/devices/<int:session_id>/sign-out/", accounts.sign_out_device, name="sign_out_device"),
     path("settings/integrations/", accounts.integrations, name="integrations"),
     path("settings/secrets/<str:name>/", accounts.secret, name="secret"),
+    path("settings/recovery-key/", accounts.save_recovery_key, name="save_recovery_key"),
     path("settings/model-service/", model_service.models, name="model_service"),
     path("settings/model-service/connect/", model_service.connect, name="model_service_connect"),
     path("settings/model-service/models/", model_service.models_dialog, name="model_service_dialog"),

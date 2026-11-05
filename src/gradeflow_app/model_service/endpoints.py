@@ -1,4 +1,4 @@
-"""The AI service and token a request names in its headers. The browser reads them from the user's encrypted secret."""
+"""The AI service and token a request sends in its headers. The browser decrypts them from the user's secret."""
 
 from django.conf import settings
 from gradeflow_core import ModelEndpoint
