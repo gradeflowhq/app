@@ -1,0 +1,76 @@
+{# A zip's pattern, shown on example paths, and the question each file answers. #}
+<c-more-options label="Check students and files" x-bind:open="isReviewOpen" x-on:toggle="isReviewOpen = $el.open">
+  <section class="grid gap-3" aria-labelledby="import-students-heading">
+    <h3 id="import-students-heading" class="font-semibold">Students</h3>
+    <div class="grid divide-y divide-base-300 rounded-box border border-base-300 font-mono text-sm">
+      <template x-for="example in source.examples" :key="example.exampleIndex">
+        <p class="flex flex-wrap items-center gap-y-1 px-3 py-2.5" :aria-label="example.path">
+          <template x-for="run in example.runs" :key="run.key">
+            <span class="inline-flex flex-wrap items-center py-0.5" :class="run.role === 'student' ? 'rounded-selector bg-secondary px-1 font-medium text-secondary-content' : run.role === 'file' ? 'rounded-selector bg-base-300/70 px-1' : 'text-muted'">
+              <template x-for="token in run.tokens" :key="token.key">
+                <span>
+                  <span class="px-px" x-show="token.isSeparator" x-text="token.text"></span>
+                  <button type="button" class="cursor-pointer break-all rounded-selector decoration-dotted underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-primary" x-show="!token.isSeparator" x-text="token.text" :popovertarget="'token-menu-' + token.key" :style="'anchor-name: --token-' + token.key"></button>
+                  <div popover class="dropdown mt-1 w-60 rounded-box border border-base-300 bg-base-100 font-sans text-base-content shadow-lg" :id="'token-menu-' + token.key" :style="'position-anchor: --token-' + token.key">
+                    <ul class="menu w-full p-1">
+                      <li><button type="button" class="justify-between" x-on:click="source.setStudentToken(token.exampleIndex, token.index)">The student<span class="text-primary" x-show="token.role === 'student'">{% icon "check" "size-4" %}</span></button></li>
+                      <li :class="token.canStartFile || token.isFileStart ? '' : 'menu-disabled'"><button type="button" class="justify-between" x-on:click="source.setFileStart(token.exampleIndex, token.index)" :disabled="!token.canStartFile && !token.isFileStart">Where the file starts<span class="text-primary" x-show="token.isFileStart">{% icon "check" "size-4" %}</span></button></li>
+                    </ul>
+                  </div>
+                </span>
+              </template>
+            </span>
+          </template>
+        </p>
+      </template>
+    </div>
+    <p class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted">
+      <span class="flex items-center gap-1.5"><span class="size-3 rounded-sm bg-secondary ring-1 ring-primary/40"></span>Student</span>
+      <span class="flex items-center gap-1.5"><span class="size-3 rounded-sm bg-base-300/70 ring-1 ring-base-300"></span>File</span>
+      <span>Click a part to change it.</span>
+    </p>
+    <div class="flex flex-wrap items-center gap-x-3 gap-y-2" x-show="!source.isEditingPattern">
+      <span class="text-sm text-muted">Pattern</span>
+      <code class="min-w-0 break-all font-mono text-sm" x-text="source.pattern"></code>
+      <button type="button" class="btn btn-ghost btn-square btn-sm" x-on:click="source.editPattern()" aria-label="Edit pattern" title="Edit pattern">{% icon "pencil-square" "size-4" %}</button>
+      <button type="button" class="ml-auto flex items-center gap-1.5 text-sm text-warning hover:underline" x-show="source.unmatchedNote" x-on:click="source.isShowingUnmatched = !source.isShowingUnmatched" :aria-expanded="source.isShowingUnmatched">{% icon "exclamation-triangle" "size-4" %}<span x-text="source.unmatchedNote"></span></button>
+    </div>
+    <form class="grid gap-2" x-show="source.isEditingPattern" x-on:submit.prevent="source.savePattern()" x-cloak>
+      <div class="flex flex-wrap items-center gap-2">
+        <label for="import-pattern" class="text-sm text-muted">Pattern</label>
+        <input id="import-pattern" class="input input-sm min-w-0 flex-1 basis-64 font-mono" x-model="source.patternDraft" x-on:keydown.escape="source.cancelPattern()" spellcheck="false" autocomplete="off">
+        <button class="btn btn-sm">Apply</button>
+        <button type="button" class="btn btn-ghost btn-sm" x-on:click="source.cancelPattern()">Cancel</button>
+      </div>
+      <p class="text-sm text-error" x-show="source.patternError" x-text="source.patternError"></p>
+      <p class="text-sm text-muted">{student} names the student, or {student:number} if it's digits in a file name. {file} starts the file. * matches anything and {number} any number.</p>
+    </form>
+    <div class="rounded-box bg-base-200 px-3 py-2" x-show="source.isShowingUnmatched && source.unmatchedNote" x-cloak>
+      <p class="text-sm text-muted">Left out, as they don't fit the pattern:</p>
+      <ul class="mt-1 grid gap-0.5 font-mono text-xs"><template x-for="path in source.shownUnmatchedPaths" :key="path"><li class="break-all" x-text="path"></li></template></ul>
+    </div>
+  </section>
+
+  <section class="grid gap-3" aria-labelledby="import-files-heading">
+    <h3 id="import-files-heading" class="font-semibold">Files</h3>
+    <div class="overflow-x-auto rounded-box border border-base-300">
+      <table class="table table-sm">
+        <thead><tr><th>File or folder</th><th class="w-24 text-right">Students</th><th class="w-56">Question</th></tr></thead>
+        <tbody>
+          <template x-for="row in source.commonFileRows" :key="row.name">{% include "imports/file_row.html" %}</template>
+        </tbody>
+        <tbody x-show="source.noQuestionRows.length > 0">
+          <tr><th colspan="3" class="bg-base-200 text-warning">No question yet</th></tr>
+          <template x-for="row in source.noQuestionRows" :key="row.name">{% include "imports/file_row.html" %}</template>
+        </tbody>
+        <tbody x-show="source.otherFileRows.length > 0">
+          <tr><th colspan="3" class="bg-base-200"><button type="button" class="flex items-center gap-1.5 font-medium text-muted hover:text-base-content" x-on:click="source.isShowingOtherFiles = !source.isShowingOtherFiles" :aria-expanded="source.isShowingOtherFiles"><span class="transition-transform" :class="source.isShowingOtherFiles ? 'rotate-90' : ''">{% icon "chevron-right" "size-4" %}</span><span x-text="source.otherFilesLabel"></span></button></th></tr>
+        </tbody>
+        <tbody x-show="source.isShowingOtherFiles">
+          <template x-for="row in source.otherFileRows" :key="row.name">{% include "imports/file_row.html" %}</template>
+        </tbody>
+      </table>
+    </div>
+    <p class="text-sm text-muted" x-show="source.skippedNote" x-text="source.skippedNote"></p>
+  </section>
+</c-more-options>

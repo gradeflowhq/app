@@ -1,0 +1,17 @@
+{# A row of the zip's files table. #}
+<tr>
+  <td>
+    <div class="flex items-center gap-2">
+      <span class="text-muted" x-show="row.isFolder">{% icon "folder" "size-4" %}</span>
+      <span class="text-muted" x-show="!row.isFolder">{% icon "document" "size-4" %}</span>
+      <span class="font-mono text-sm" x-text="row.name"></span>
+    </div>
+  </td>
+  <td class="text-right tabular-nums" x-text="row.studentCount"></td>
+  <td>
+    <select class="select select-sm w-full" :data-name="row.name" x-on:change="source.setQuestion($event)" :aria-label="'Question ' + row.name + ' answers'">
+      <option value="" :selected="!row.question">Leave out</option>
+      <template x-for="question in source.questionsFor(row.name)" :key="question"><option :value="question" x-text="question" :selected="question === row.question"></option></template>
+    </select>
+  </td>
+</tr>

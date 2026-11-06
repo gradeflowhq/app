@@ -1,0 +1,31 @@
+{# Replacing the submissions file's student IDs with others from a CSV. #}
+<c-more-options label="Map student IDs" x-bind:open="!!idMapping.mapping">
+  <template x-if="!idMapping.mapping">
+    <div class="flex flex-wrap items-center gap-3">
+      <p class="min-w-0 flex-1 basis-64 text-sm text-muted">Use other IDs from a CSV, such as emails for lab accounts.</p>
+      <label class="btn">{% icon "document-plus" "size-4" %}Choose a CSV<input type="file" class="sr-only" accept=".csv,.txt" x-on:change="chooseIdMapping"></label>
+    </div>
+  </template>
+  <template x-if="idMapping.mapping">
+    <div class="grid gap-4">
+      <div class="flex flex-wrap items-center gap-3">
+        <span class="grid size-9 place-items-center rounded-field bg-base-200 text-muted">{% icon "table-cells" "size-5" %}</span>
+        <div class="min-w-0 flex-1">
+          <p class="truncate font-medium" x-text="idMapping.mapping.fileName"></p>
+          <p class="text-sm text-muted" x-text="idMapping.rowCount"></p>
+        </div>
+        <button type="button" class="btn btn-ghost btn-sm" x-on:click="idMapping.remove()">Remove</button>
+      </div>
+      <div class="grid gap-3 sm:grid-cols-2">
+        <label class="grid gap-1.5"><span class="text-sm font-medium">Submissions file's IDs are in</span>
+          <select class="select w-full" data-column="matchColumn" x-on:change="idMapping.setColumn($event)"><template x-for="name in idMapping.mapping.header" :key="name"><option :value="name" x-text="name" :selected="name === idMapping.mapping.matchColumn"></option></template></select>
+        </label>
+        <label class="grid gap-1.5"><span class="text-sm font-medium">Replace them with</span>
+          <select class="select w-full" data-column="idColumn" x-on:change="idMapping.setColumn($event)"><template x-for="name in idMapping.mapping.header" :key="name"><option :value="name" x-text="name" :selected="name === idMapping.mapping.idColumn"></option></template></select>
+        </label>
+      </div>
+      <p class="font-mono text-sm" x-show="idMapping.example" x-text="idMapping.example"></p>
+      <p class="text-sm" :class="idMapping.unmappedIds.length ? 'text-warning' : 'text-muted'" x-text="idMapping.summary"></p>
+    </div>
+  </template>
+</c-more-options>

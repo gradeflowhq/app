@@ -19,6 +19,9 @@ const NON_ANSWER_HEADER = /^(?:(?:first|last|full|given|preferred|sur)?name|emai
 
 const MARKS_SUFFIX = '[\\s_-]*(?:pts|points?|marks?|score)$';
 
+/** A cell's text, trimmed. */
+export const cellText = (cell) => String(cell ?? '').trim();
+
 const normalize = (header) => header.toLowerCase().replace(/[^a-z\d]/g, '');
 const columnValues = (rows, index) => rows.map((row) => (row[index] ?? '').trim());
 

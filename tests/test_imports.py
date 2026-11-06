@@ -78,10 +78,59 @@ def test_keeps_the_encrypted_original_and_the_import_settings(client: Client) ->
         "student_id_column": "StudentID",
         "answer_columns": ["Q1", "Q2", "Q3"],
         "marks_columns": {"Q1": "Q1 Pts"},
+        "file_pattern": "",
+        "file_questions": {},
+        "id_mapping": None,
     }
     fetched = client.get(reverse("import_original", args=[assessment.pk]))
     assert fetched.status_code == 200
     assert fetched.content == ENCRYPTED_FILE
+
+
+def test_keeps_a_zips_pattern_and_file_questions(client: Client) -> None:
+    assessment = create_assessment(client)
+    file_questions = {"game.py": "game", "board.py": "game", "test.py": ""}
+    zip_fields = {"file_pattern": "*_{student:number}_{number}_{file}", "file_questions": json.dumps(file_questions)}
+    assert upload(client, assessment, original=encrypted_original(), **zip_fields).status_code == 200
+
+    page = client.get(reverse("import", args=[assessment.pk]))
+    settings = page.context["import_settings"]
+    assert (settings["file_pattern"], settings["file_questions"]) == (
+        "*_{student:number}_{number}_{file}",
+        file_questions,
+    )
+    assert b"Check students and files" in page.content
+    assert b"Question document" not in page.content, "ExamSoft's question document is for its exports, not zips"
+
+
+def test_keeps_the_encrypted_id_mapping_file_and_its_columns(client: Client) -> None:
+    assessment = create_assessment(client)
+    id_mapping = {"file_name": "ids.csv", "match_column": "plab ID", "id_column": "Email"}
+    mapping_file = SimpleUploadedFile("id_mapping_file", ENCRYPTED_FILE, "application/octet-stream")
+    response = upload(
+        client,
+        assessment,
+        original=encrypted_original(),
+        id_mapping=json.dumps(id_mapping),
+        id_mapping_file=mapping_file,
+    )
+    assert response.status_code == 200
+
+    assert client.get(reverse("import", args=[assessment.pk])).context["import_settings"]["id_mapping"] == id_mapping
+    fetched = client.get(reverse("import_id_mapping_file", args=[assessment.pk]))
+    assert fetched.content == ENCRYPTED_FILE
+
+    upload(client, assessment, original=encrypted_original())
+    assert client.get(reverse("import_id_mapping_file", args=[assessment.pk])).status_code == 404
+
+
+def test_an_id_mapping_file_that_isnt_encrypted_is_refused(client: Client) -> None:
+    assessment = create_assessment(client)
+    plaintext = SimpleUploadedFile("id_mapping_file", b"plab ID,Email\nplab1001,a@example.edu\n" * 4)
+    id_mapping = json.dumps({"file_name": "ids.csv", "match_column": "plab ID", "id_column": "Email"})
+    response = upload(client, assessment, id_mapping=id_mapping, id_mapping_file=plaintext)
+    assert response.status_code == 400
+    assert b"encrypted" in response.content
 
 
 def test_an_original_that_isnt_encrypted_is_refused(client: Client) -> None:

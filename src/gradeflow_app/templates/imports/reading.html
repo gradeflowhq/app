@@ -1,0 +1,7 @@
+{# The file being read, in place of the drop zone. #}
+<div class="flex flex-col items-center gap-3 rounded-box border-2 border-dashed border-base-300 px-6 py-10 text-center" role="status" x-show="isReading" x-cloak>
+  <span class="grid size-10 place-items-center rounded-full bg-secondary text-secondary-content">{% icon "document-text" %}</span>
+  <span class="max-w-full truncate font-semibold" x-text="fileName"></span>
+  <div class="contents" x-show="readProgress.total">{% include "imports/progress_bar.html" with percent="readPercent" label="Reading the file" %}</div>
+  <span class="text-sm text-muted tabular-nums" x-text="readStatus"></span>
+</div>

@@ -1,0 +1,2 @@
+{# A bar filled to `percent`, an Alpine expression; a div, since Safari paints a styled <progress> late. #}
+<div class="h-2 w-64 max-w-full overflow-hidden rounded-box bg-base-content/15" role="progressbar" aria-valuemin="0" aria-valuemax="100" :aria-valuenow="{{ percent }}" aria-label="{{ label }}"><div class="h-full rounded-box bg-primary" :style="{ width: {{ percent }} + '%' }"></div></div>

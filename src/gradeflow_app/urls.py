@@ -29,6 +29,7 @@ assessment_urls = [
     path("import/", imports.import_page, name="import"),
     path("import/upload/", imports.upload, name="import_upload"),
     path("import/original/", imports.original, name="import_original"),
+    path("import/id-mapping-file/", imports.id_mapping_file, name="import_id_mapping_file"),
     path("import/question-document/", imports.question_document, name="question_document"),
     path("questions/", marking.questions, name="questions"),
     path("questions/list/", marking.question_list, name="question_list"),

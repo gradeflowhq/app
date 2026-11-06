@@ -46,14 +46,11 @@ def import_submissions(
 
     Questions already set up keep their settings but accept the new answers, such as a choice's new options; new ones
     are worked out from the answers. Both read the answers and `key_row`, the file's answer key row by answer column.
-    `file` is unsaved and holds the choices made reading the file, so they can be changed later, and its `original`,
-    the whole file encrypted in the browser.
+    `file` is unsaved and holds the choices made reading the file, so they can be changed later, its `original`, the
+    whole file encrypted in the browser, and any ID mapping file, encrypted too.
     """
-    original = file.original
-    if original is not None and not (
-        original[: len(ENCRYPTED_FILE_HEADER)] == ENCRYPTED_FILE_HEADER and len(original) >= ENCRYPTED_FILE_OVERHEAD
-    ):
-        raise ImportFailed("The original file must be encrypted in the browser before it's uploaded.")
+    if not all(map(_is_absent_or_encrypted, (file.original, file.id_mapping_file))):
+        raise ImportFailed("Files must be encrypted in the browser before they're uploaded.")
     csv_format = AnswersCsv(
         student_id_column=file.student_id_column,
         answer_columns=file.answer_columns,
@@ -110,7 +107,7 @@ def import_submissions(
     file.uploaded_by = user
     file.student_count = len(incoming)
     file.save()
-    assessment.submissions_files.exclude(pk=file.pk).filter(original__isnull=False).update(original=None)
+    assessment.submissions_files.exclude(pk=file.pk).update(original=None, id_mapping_file=None)
     assessment.save(update_fields=["updated_at"])
     notify_change(topic("questions", assessment.pk))
 
@@ -135,6 +132,12 @@ def import_submissions(
         changed_students=changed_students,
         first_import=first_import,
         changed_questions=changed_questions,
+    )
+
+
+def _is_absent_or_encrypted(data: bytes | memoryview | None) -> bool:
+    return data is None or (
+        data[: len(ENCRYPTED_FILE_HEADER)] == ENCRYPTED_FILE_HEADER and len(data) >= ENCRYPTED_FILE_OVERHEAD
     )
 
 

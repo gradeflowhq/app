@@ -1,148 +1,124 @@
-// Importing a submissions file: read in the browser, rows and columns detected and checked, student IDs encrypted, and
-// only the ID, answer and marks columns uploaded in the clear. The whole file is uploaded encrypted, so its columns
-// can be changed later; names and every other column stay unreadable to the server.
+// Importing a submissions file. It's read in the browser; only the encrypted student IDs and the answers are uploaded
+// readable, as CSV, and the whole file encrypted, to be reopened. The file under review is `source`, a spreadsheet
+// (import-table.js) or a zip (import-zip.js).
 
-import { detectColumns, detectHeaderRow, detectStudentRows, isAnswerKeyRow } from "./columns.js";
+import { cellText } from "./columns.js";
 import { assessmentKeysFor, missingCourseKeyMessage } from "./course-keys.js";
 import { decryptFile, encryptFile, encryptId } from "./crypto.js";
+import { confirmAction } from "./dialogs.js";
 import { dropZone } from "./drop.js";
-import { loadScript } from "./vendor.js";
+import { idMapping } from "./import-ids.js";
+import { isEmptyTable, readTable, tableSource } from "./import-table.js";
+import { zipSource } from "./import-zip.js";
 import { readModelHeaders } from "./models.js";
-import { counted } from "./words.js";
+import { loadScript } from "./vendor.js";
+import { counted, formatList } from "./words.js";
+import { readZip } from "./zip-files.js";
 
-const ROLES = { id: "Student ID", answer: "Answer", marks: "Marks", unused: "Not used" };
-const LEFT_OUT_ROWS_LISTED = 3;
+/** Resolves once the page has drawn a frame. */
+const nextFrame = () => new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve)));
 
-const cellText = (cell) => String(cell ?? "").trim();
-const isBlankRow = (row) => !row.some(cellText);
-
-const ZIP_SIGNATURE = [0x50, 0x4b, 0x03, 0x04];
-
-/** Rows by sheet name ("" for CSV), blank rows included so row numbers match the spreadsheet. Throws for a file that
- * isn't what its name says: text with NUL bytes, or a newer Excel file that isn't a zip, which SheetJS would read as
- * text. */
-async function readRows(name, bytes) {
-  if (/\.(csv|txt)$/i.test(name)) {
-    const contents = new TextDecoder().decode(bytes);
-    if (contents.includes("\0")) throw new Error("not text");
-    await loadScript("papaparse-5.7.0.min.js");
-    // Not "|", which ExamSoft's answer key row is full of: a short file would be split on it.
-    const { data } = Papa.parse(contents, { delimitersToGuess: [",", "\t", ";"] });
-    return { sheets: [], rows: { "": data } };
-  }
-  if (/\.xls[xmb]$/i.test(name) && !ZIP_SIGNATURE.every((byte, index) => bytes[index] === byte)) throw new Error("not a workbook");
-  await loadScript("xlsx-0.20.3/xlsx.full.min.js");
-  const workbook = XLSX.read(bytes, { dense: true });
-  const options = { header: 1, raw: false, defval: "", blankrows: true, range: 0 };
-  const rows = Object.fromEntries(workbook.SheetNames.map((sheet) => [sheet, XLSX.utils.sheet_to_json(workbook.Sheets[sheet], options)]));
-  return { sheets: workbook.SheetNames, rows };
-}
+/** A zip's files or a spreadsheet's rows. */
+const readSubmissions = async (name, bytes, onProgress) =>
+  /\.zip$/i.test(name) ? { zip: await readZip(bytes, onProgress) } : { table: await readTable(name, bytes) };
 
 export const importer = () => {
-  // Kept out of Alpine's reactive proxies: the file's bytes, or the server's encrypted copy, and its saved settings.
+  // Kept out of Alpine's proxies: the file's bytes, or the server's encrypted copy, and its saved settings.
   let fileContents = null;
   let savedSettings = null;
-  let questions = [];
+  let reopenedSnapshot = null; // a reopened file's choices as it opened; null for a new file
+  let skipLeaveWarning = false;
 
   return {
     step: "choose",
     error: "",
     opening: false,
+    isReading: false,
+    readProgress: { done: 0, total: 0 },
+    isFindingStudents: false,
     replacing: false,
     fileName: "",
-    sheets: [],
-    sheet: "",
-    rowsBySheet: {},
-    headerRow: 0,
-    firstRow: 0,
-    lastRow: -1,
-    header: [],
-    rowsInRange: [],
-    columns: [],
+    isReviewOpen: false,
     progress: 0,
+    questionKeys: [],
+    /** The file under review: `tableSource` or `zipSource`. */
+    source: null,
+    idMapping: null,
     ...dropZone(function (files) {
       if (files[0]) this.read(files[0]);
     }),
 
     init() {
       savedSettings = JSON.parse(document.getElementById("import-settings")?.textContent ?? "null");
-      questions = JSON.parse(document.getElementById("import-questions")?.textContent ?? "[]");
+      this.questionKeys = JSON.parse(document.getElementById("import-questions")?.textContent ?? "[]");
+      this.idMapping = idMapping(() => this.fileIds);
     },
-
-    get roles() {
-      return Object.entries(ROLES);
+    get isZip() {
+      return this.source?.isZip ?? false;
     },
-    get rows() {
-      return this.rowsBySheet[this.sheet] ?? [];
+    get importedQuestions() {
+      return this.source?.importedQuestions ?? [];
     },
-    get studentColumn() {
-      return this.columns.find((column) => column.role === "id")?.name ?? "";
-    },
-    get idIndex() {
-      return this.header.indexOf(this.studentColumn);
-    },
-    get answerColumns() {
-      return this.columns.filter((column) => column.role === "answer").map((column) => column.name);
-    },
-    get studentCount() {
-      return this.studentRows.length;
-    },
-    /** The rows imported as students: those with an ID, never the answer key. */
-    get studentRows() {
-      return this.rowsInRange.filter((row) => cellText(row[this.idIndex]) && !isAnswerKeyRow(row, this.idIndex));
+    /** The student IDs in the file, before any mapping. */
+    get fileIds() {
+      return this.source?.ids ?? [];
     },
     get summary() {
-      const counts = `${counted(this.studentCount, "student")}, ${counted(this.answerColumns.length, "question")}`;
-      return this.answerKey ? `${counts}, answer key` : counts;
+      const counts = `${counted(this.fileIds.length, "student")}, ${counted(this.importedQuestions.length, "question")}`;
+      const extras = [this.source?.extrasSummary, this.idMapping?.note].filter(Boolean).join(" · ");
+      return [!this.isZip && this.source?.answerKey ? `${counts}, answer key` : counts, extras].filter(Boolean).join(" · ");
     },
-    /** Why the rows and columns chosen can't be imported, if they can't. */
+    /** Why the choices made can't be imported, if they can't. */
     get fileProblem() {
-      if (!this.studentColumn) return "Choose the column with student IDs.";
-      if (!this.studentCount) return "No student IDs in these rows. Check the rows and columns.";
-      if (!this.answerColumns.length) return "Choose at least one answer column.";
-      const ids = this.studentRows.map((row) => cellText(row[this.idIndex]));
-      if (new Set(ids).size !== ids.length) return "Some student IDs appear more than once. Check the student ID column.";
+      if (!this.source) return "";
+      if (this.source.problem) return this.source.problem;
+      const ids = this.fileIds.map((id) => this.idMapping.mappedId(id));
+      if (new Set(ids).size !== ids.length) {
+        return this.idMapping.mapping ? "Some students map to the same ID. Check the ID mapping." : "Some student IDs appear more than once. Check the student ID column.";
+      }
       return "";
     },
-    get marksSummary() {
-      const marksColumnCount = this.columns.filter((column) => column.role === "marks").length;
-      return marksColumnCount ? `${marksColumnCount} with marks from the file` : "No marks columns";
-    },
-    /** What replacing the submissions file removes: the questions set up that aren't among the answer columns. */
+    /** What replacing the submissions file removes: the questions set up that aren't imported. */
     get removedQuestionsNote() {
-      const keys = questions.filter((key) => !this.answerColumns.includes(key));
+      const keys = this.questionKeys.filter((key) => !this.importedQuestions.includes(key));
       if (!keys.length) return "";
-      const names = new Intl.ListFormat("en").format(keys);
-      return keys.length === 1 ? `${names} isn't imported, so it's removed with any marking.` : `${names} aren't imported, so they're removed with any marking.`;
+      return keys.length === 1 ? `${formatList(keys)} isn't imported, so it's removed with any marking.` : `${formatList(keys)} aren't imported, so they're removed with any marking.`;
     },
     get replaceDetail() {
       const marking = this.removedQuestionsNote ? `${this.removedQuestionsNote} Other marking is kept.` : "Marking is kept.";
       return `Students' answers and imported marks are replaced. ${marking} Students not in the new file are removed, with their adjustments.`;
     },
-    get headerPreview() {
-      const names = this.header.filter(Boolean);
-      return names.slice(0, 4).join(", ") + (names.length > 4 ? ", …" : "");
+    get readPercent() {
+      const { done, total } = this.readProgress;
+      return total ? Math.round((done / total) * 100) : 0;
     },
-    /** Rows with values that aren't counted as students, such as "Average" rows, which people should see. */
-    get leftOutRows() {
-      return [...this.rows.slice(this.headerRow + 1, this.firstRow), ...this.rows.slice(this.lastRow + 1)].filter((row) => !isBlankRow(row));
+    get readStatus() {
+      const { done, total } = this.readProgress;
+      if (this.isFindingStudents) return "Finding students and files…";
+      return total ? `Reading ${done.toLocaleString("en")} of ${counted(total, "file")}…` : "Reading the file…";
     },
-    /** The row ExamSoft adds with the answer key, if the file has one. */
-    get answerKey() {
-      return this.rows.slice(this.headerRow + 1).find((row) => isAnswerKeyRow(row, this.idIndex));
+
+    /** The choices made, to tell whether a reopened file changed. */
+    get choicesSnapshot() {
+      return JSON.stringify([this.source?.formFields(), this.idMapping?.columns]);
     },
-    get rowsPreview() {
-      if (!this.rowsInRange.length) return "No students";
-      const range = `${this.rowLabel(this.rowsInRange[0])} to ${this.rowLabel(this.rowsInRange.at(-1))}`;
-      const leftOutLabels = this.leftOutRows.map((row) => this.rowLabel(row));
-      if (!leftOutLabels.length) return range;
-      const more = leftOutLabels.length > LEFT_OUT_ROWS_LISTED ? ` and ${leftOutLabels.length - LEFT_OUT_ROWS_LISTED} more` : "";
-      return `${range}. Not included: ${leftOutLabels.slice(0, LEFT_OUT_ROWS_LISTED).join(", ")}${more}`;
+    /** Whether leaving now loses a new file or changes to a reopened one. */
+    get hasUnsavedChanges() {
+      if (skipLeaveWarning || this.step === "choose") return false;
+      return this.step === "uploading" || reopenedSnapshot === null || this.choicesSnapshot !== reopenedSnapshot;
     },
-    /** A row as people would recognise it: its student ID, or else its first value. */
-    rowLabel(row) {
-      if (isAnswerKeyRow(row, this.idIndex)) return "answer key";
-      return cellText(row[this.idIndex]) || row.map(cellText).find(Boolean) || "";
+    warnOnUnload(event) {
+      if (this.hasUnsavedChanges) event.preventDefault();
+    },
+    /** Asks before an in-app link replaces this page with changes unsaved, and follows it if confirmed. */
+    async askBeforeNavigating(event) {
+      const { ctx } = event.detail;
+      if (!this.hasUnsavedChanges || ctx.request.headers["HX-Request-Type"] !== "full") return;
+      event.preventDefault();
+      const detail = this.step === "uploading" ? "The import stops." : "Your choices for this file are lost.";
+      if (!(await confirmAction("Leave without importing?", detail, "Leave"))) return;
+      skipLeaveWarning = true;
+      ctx.sourceElement.click();
     },
 
     fileChosen(event) {
@@ -150,18 +126,37 @@ export const importer = () => {
       if (file) this.read(file);
     },
     async read(file) {
-      this.error = "";
+      const maxBytes = Number(this.$root.dataset.maxFileBytes);
+      if (file.size > maxBytes) {
+        this.error = `That file is too large to import. The limit is ${maxBytes / 2 ** 20} MB.`;
+        return;
+      }
+      Object.assign(this, { error: "", fileName: file.name, isReading: true, readProgress: { done: 0, total: 0 }, isFindingStudents: false });
       try {
-        const bytes = new Uint8Array(await file.arrayBuffer());
-        const spreadsheet = await readRows(file.name, bytes);
-        if (!Object.values(spreadsheet.rows).some((rows) => rows.some((row) => !isBlankRow(row)))) {
+        const bytes = await file.bytes();
+        const contents = await readSubmissions(file.name, bytes, (done, total) => {
+          this.readProgress = { done, total };
+          return nextFrame();
+        });
+        if (contents.zip) {
+          this.isFindingStudents = true;
+          await nextFrame(); // the work that follows blocks the page
+        }
+        if (contents.table && isEmptyTable(contents.table)) {
           this.error = "That file has no rows.";
           return;
         }
-        this.open(file.name, spreadsheet);
+        if (contents.zip && !contents.zip.texts.size) {
+          this.error = "That zip has no text files.";
+          return;
+        }
+        this.open(file.name, contents);
         fileContents = { bytes };
+        reopenedSnapshot = null;
       } catch {
-        this.error = "That file couldn't be read. Choose a CSV or Excel file.";
+        this.error = "That file couldn't be read. Choose a CSV, Excel or zip file.";
+      } finally {
+        this.isReading = false;
       }
     },
     /** Null after showing why the keys are missing. */
@@ -178,92 +173,45 @@ export const importer = () => {
       try {
         const keys = await this.keys();
         if (!keys) return;
-        const response = await fetch(this.$root.dataset.originalUrl);
-        if (!response.ok) throw new Error(response.statusText);
-        const encrypted = new Uint8Array(await response.arrayBuffer());
-        this.open(savedSettings.name, await readRows(savedSettings.name, await decryptFile(encrypted, keys)), savedSettings);
+        const encrypted = await this.fetchBytes(this.$root.dataset.originalUrl);
+        this.open(savedSettings.name, await readSubmissions(savedSettings.name, await decryptFile(encrypted, keys)), savedSettings);
         fileContents = { encrypted };
-        this.$root.querySelector("details").open = true;
+        if (savedSettings.id_mapping) await this.idMapping.reopen(await this.fetchBytes(this.$root.dataset.idMappingUrl), keys, savedSettings.id_mapping);
+        this.isReviewOpen = true;
+        reopenedSnapshot = this.choicesSnapshot;
       } catch {
-        this.error = "The file couldn't be opened. Upload it again to change columns.";
+        this.error = "The file couldn't be opened. Upload it again to change your choices.";
       } finally {
         this.opening = false;
       }
     },
-    open(name, { sheets, rows }, choices = null) {
-      Object.assign(this, { fileName: name, sheets, rowsBySheet: rows });
-      this.sheet = sheets.includes(choices?.sheet) ? choices.sheet : (sheets[0] ?? "");
-      if (!choices || !this.restore(choices)) this.detect();
+    async fetchBytes(url) {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(response.statusText);
+      return response.bytes();
+    },
+    open(name, contents, settings = null) {
+      this.fileName = name;
+      this.idMapping.remove();
+      this.source = contents.zip ? zipSource(contents.zip, settings, this.questionKeys) : tableSource(contents.table, settings);
+      this.isReviewOpen = this.source.needsReview;
       this.step = "review";
-    },
-    restore({ header_row, first_row, last_row, student_id_column, answer_columns, marks_columns }) {
-      if (header_row === null || !(header_row < first_row && first_row <= last_row && last_row < this.rows.length)) return false;
-      this.headerRow = header_row;
-      this.header = this.rows[header_row].map(cellText);
-      this.setRows(first_row, last_row);
-      this.assign({ studentId: student_id_column, answers: answer_columns, marks: marks_columns });
-      return true;
-    },
-    detect(headerRow = detectHeaderRow(this.rows)) {
-      this.headerRow = headerRow;
-      this.header = (this.rows[headerRow] ?? []).map(cellText);
-      const below = this.rows.slice(headerRow + 1).filter((row) => !isBlankRow(row));
-      const { studentId } = detectColumns(this.header, below);
-      this.setRows(...detectStudentRows(this.rows, headerRow + 1, this.header.indexOf(studentId)));
-      this.assign(detectColumns(this.header, this.rowsInRange));
-    },
-    setRows(first, last) {
-      Object.assign(this, { firstRow: first, lastRow: last });
-      this.rowsInRange = this.rows.slice(first, last + 1).filter((row) => !isBlankRow(row));
-      for (const column of this.columns) column.firstValues = this.firstValuesOf(column.index);
-    },
-    /** Gives each column its role: `marks` maps answer columns to their marks columns. */
-    assign({ studentId, answers, marks }) {
-      const marksFor = new Map(Object.entries(marks).map(([answer, column]) => [column, answer]));
-      this.columns = this.header.map((name, index) => ({
-        index,
-        name,
-        role: name === studentId ? "id" : answers.includes(name) ? "answer" : marksFor.has(name) ? "marks" : "unused",
-        marksFor: marksFor.get(name) ?? "",
-        firstValues: this.firstValuesOf(index),
-      }));
-    },
-    firstValuesOf(index) {
-      return this.rowsInRange.slice(0, 3).map((row) => cellText(row[index])).join(", ");
-    },
-
-    pickSheet(event) {
-      this.sheet = event.target.value;
-      this.detect();
-    },
-    /** The 0-based row an input's row number names, kept within [min, max] and shown corrected. */
-    rowNumber(event, min, max) {
-      const typed = Number.parseInt(event.target.value, 10) - 1;
-      const row = Number.isNaN(typed) ? min : Math.min(Math.max(typed, min), max);
-      event.target.value = row + 1;
-      return row;
-    },
-    setHeaderRow(event) {
-      this.detect(this.rowNumber(event, 0, this.rows.length - 1));
-    },
-    setFirstRow(event) {
-      this.setRows(this.rowNumber(event, this.headerRow + 1, this.lastRow), this.lastRow);
-    },
-    setLastRow(event) {
-      this.setRows(this.firstRow, this.rowNumber(event, this.firstRow, this.rows.length - 1));
-    },
-    setRole(event) {
-      const column = this.columns[Number(event.target.dataset.index)];
-      column.role = event.target.value;
-      if (column.role === "id") for (const other of this.columns) if (other !== column && other.role === "id") other.role = "unused";
-      if (column.role === "marks" && !column.marksFor) column.marksFor = this.answerColumns[0] ?? "";
-    },
-    setMarksFor(event) {
-      this.columns[Number(event.target.dataset.index)].marksFor = event.target.value;
     },
     restart() {
       fileContents = null;
-      Object.assign(this, { step: "choose", error: "", fileName: "", columns: [], header: [], rowsInRange: [] });
+      this.idMapping.remove();
+      Object.assign(this, { step: "choose", error: "", fileName: "", source: null });
+    },
+    async chooseIdMapping(event) {
+      const [file] = event.target.files;
+      event.target.value = "";
+      if (!file) return;
+      this.error = "";
+      try {
+        await this.idMapping.open(file);
+      } catch {
+        this.error = "That ID mapping file couldn't be read. Choose a CSV file.";
+      }
     },
 
     async submit() {
@@ -273,39 +221,30 @@ export const importer = () => {
       if (!keys) return;
       this.step = "uploading";
       try {
-        const idIndex = this.idIndex;
-        const uploadedColumns = this.columns.filter((column) => column.role !== "unused").map((column) => column.index);
-        const rows = [];
+        const { header, rows } = this.source.answersTable();
         let encryptedCount = 0;
-        for (const row of this.studentRows) {
-          const encrypted = await encryptId(cellText(row[idIndex]), keys);
-          rows.push(uploadedColumns.map((index) => (index === idIndex ? encrypted : String(row[index] ?? ""))));
-          this.progress = Math.round((++encryptedCount / this.studentCount) * 100);
+        for (const row of rows) {
+          row[0] = await encryptId(this.idMapping.mappedId(cellText(row[0])), keys);
+          this.progress = Math.round((++encryptedCount / rows.length) * 100);
         }
         const original = fileContents.encrypted ?? (await encryptFile(fileContents.bytes, keys));
         await loadScript("papaparse-5.7.0.min.js");
-        const marksColumns = Object.fromEntries(
-          this.columns.filter((column) => column.role === "marks" && column.marksFor).map((column) => [column.marksFor, column.name]),
-        );
         const form = this.$refs.upload;
         const body = new FormData(form);
-        body.set("name", this.fileName);
-        body.set("answers_csv", new Blob([Papa.unparse([uploadedColumns.map((index) => this.header[index]), ...rows])], { type: "text/csv" }), "answers.csv");
-        body.set("student_id_column", this.studentColumn);
-        body.set("answer_columns", JSON.stringify(this.answerColumns));
-        body.set("marks_columns", JSON.stringify(marksColumns));
-        if (this.answerKey) {
-          const key = this.answerColumns.map((name) => [name, String(this.answerKey[this.header.indexOf(name)] ?? "")]);
-          body.set("answer_key", JSON.stringify(Object.fromEntries(key)));
-        }
-        body.set("original", new Blob([original]), "original");
-        body.set("sheet", this.sheet);
-        body.set("header_row", this.headerRow);
-        body.set("first_row", this.firstRow);
-        body.set("last_row", this.lastRow);
+        const fields = {
+          name: this.fileName,
+          answers_csv: new Blob([Papa.unparse([header, ...rows])], { type: "text/csv" }),
+          student_id_column: header[0],
+          answer_columns: JSON.stringify(this.importedQuestions),
+          original: new Blob([original]),
+          ...this.source.formFields(),
+          ...(await this.idMapping.formFields(keys)),
+        };
+        for (const [field, value] of Object.entries(fields)) body.set(field, value);
         const response = await fetch(form.action, { method: "POST", body, headers: await readModelHeaders() });
         // A refusal says why in plain text; an error page doesn't.
         if (!response.ok) throw new Error(response.headers.get("Content-Type")?.startsWith("text/plain") ? await response.text() : "");
+        skipLeaveWarning = true;
         location.assign(response.headers.get("HX-Redirect"));
       } catch (error) {
         this.error = error.message || "The import failed. Try again.";

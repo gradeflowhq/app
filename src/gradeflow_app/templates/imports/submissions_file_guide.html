@@ -1,19 +1,95 @@
-<c-guide.dialog id="submissions-file-guide" title="Submissions file" intro="A CSV or Excel file with a row per student: their ID, answers and any marks.">
-  <c-guide.section title="From ExamSoft">
-    <ol class="grid gap-4">
-      <c-guide.step number="1"><p>Open the assessment, then <c-guide.path :steps="['Reporting/Scoring', 'List of Exam Takers’ Scores']" /></p></c-guide.step>
-      <c-guide.step number="2">
-        <p>Tick these, then click <b>View Report</b></p>
-        <ul class="flex flex-wrap gap-1.5">
-          <c-guide.checked-option>Responses Selected</c-guide.checked-option>
-          <c-guide.checked-option>Answer Key in First Row</c-guide.checked-option>
-          <c-guide.checked-option>FITB Ans &amp; Key</c-guide.checked-option>
-          <c-guide.checked-option>Score (# points)</c-guide.checked-option>
+<c-guide.dialog id="submissions-file-guide" title="Submissions file" intro="A spreadsheet with a row per student, or a zip of students' files.">
+  <div class="grid gap-5" x-data="{ platform: 'examsoft', platforms: [['examsoft', 'ExamSoft'], ['canvas', 'Canvas'], ['moodle', 'Moodle'], ['blackboard', 'Blackboard'], ['other', 'Other']] }">
+    <div class="overflow-x-auto">
+      <div class="segmented" role="tablist" aria-label="Where the file comes from">
+        <template x-for="[value, label] in platforms" :key="value">
+          <button type="button" class="segment" role="tab" :aria-selected="platform === value" x-on:click="platform = value" x-text="label"></button>
+        </template>
+      </div>
+    </div>
+
+    <div class="grid gap-5" role="tabpanel" x-show="platform === 'examsoft'">
+      <c-guide.section title="Exam answers">
+        <ol class="grid gap-4">
+          <c-guide.step number="1"><p>Open the assessment, then <c-guide.path :steps="['Reporting/Scoring', 'Exam Taker Results']" /></p></c-guide.step>
+          <c-guide.step number="2">
+            <p>Tick these, then click <b>View Report</b></p>
+            <ul class="flex flex-wrap gap-1.5">
+              <c-guide.checked-option>StudentID</c-guide.checked-option>
+              <c-guide.checked-option>Responses Selected</c-guide.checked-option>
+              <c-guide.checked-option>Answer Key in First Row</c-guide.checked-option>
+              <c-guide.checked-option>FITB/Matching Ans &amp; Key</c-guide.checked-option>
+              <c-guide.checked-option>Score (# points)</c-guide.checked-option>
+            </ul>
+          </c-guide.step>
+          <c-guide.step number="3"><p>Click the CSV icon at the top right of the report and drop the file here</p></c-guide.step>
+        </ol>
+      </c-guide.section>
+    </div>
+
+    <div class="grid gap-5" role="tabpanel" x-show="platform === 'canvas'" x-cloak>
+      <c-guide.section title="Quiz answers (Classic Quizzes)">
+        <ol class="grid gap-4">
+          <c-guide.step number="1"><p>Open the quiz, then <c-guide.path :steps="['Quiz Statistics', 'Student Analysis']" /></p></c-guide.step>
+          <c-guide.step number="2"><p>Download the CSV and drop it here</p></c-guide.step>
+        </ol>
+        <p class="text-muted">The file has a row per attempt. If students could retake the quiz, keep one row each.</p>
+      </c-guide.section>
+      <c-guide.section title="File uploads">
+        <ol class="grid gap-4">
+          <c-guide.step number="1"><p>Open the assignment, then <b>Download Submissions</b></p></c-guide.step>
+          <c-guide.step number="2"><p>Once it's ready, click <b>Click here to download</b> and drop the zip here</p></c-guide.step>
+          <c-guide.step number="3"><p>The zip names students by their Canvas user ID. For SIS IDs, export the gradebook with <c-guide.path :steps="['Grades', 'Export', 'Export Entire Gradebook']" /> and add it under <b>Map student IDs</b></p></c-guide.step>
+        </ol>
+        <p class="text-muted">The zip has each student's latest submission. Text entries come as HTML files.</p>
+      </c-guide.section>
+    </div>
+
+    <div class="grid gap-5" role="tabpanel" x-show="platform === 'moodle'" x-cloak>
+      <c-guide.section title="Quiz answers">
+        <ol class="grid gap-4">
+          <c-guide.step number="1"><p>Open the quiz, then <c-guide.path :steps="['Results', 'Responses']" /></p></c-guide.step>
+          <c-guide.step number="2"><p>Tick <b>Show at most one finished attempt per user</b>, then click <b>Show report</b></p></c-guide.step>
+          <c-guide.step number="3"><p>Download the table as <b>Comma separated values (.csv)</b> and drop the file here</p></c-guide.step>
+        </ol>
+        <p class="text-muted">Students are identified by the fields your site shows, usually their email address.</p>
+      </c-guide.section>
+      <c-guide.section title="File submissions">
+        <ol class="grid gap-4">
+          <c-guide.step number="1"><p>Open the assignment, then <b>Submissions</b>. Leave <b>Download submissions in folders</b> ticked</p></c-guide.step>
+          <c-guide.step number="2"><p>Click <c-guide.path :steps="['Actions', 'Download all submissions']" /> and drop the zip here</p></c-guide.step>
+          <c-guide.step number="3"><p>The zip names students by participant number. For emails, turn on <b>Offline grading worksheet</b> in the assignment's feedback types, download it with <c-guide.path :steps="['Actions', 'Download grading worksheet']" /> and add it under <b>Map student IDs</b></p></c-guide.step>
+        </ol>
+        <p class="text-muted">In Moodle 4.4 and earlier, both downloads are on <b>View all submissions</b>.</p>
+      </c-guide.section>
+    </div>
+
+    <div class="grid gap-5" role="tabpanel" x-show="platform === 'blackboard'" x-cloak>
+      <c-guide.section title="Test answers">
+        <ul class="grid gap-2">
+          <li><b>Ultra:</b> in the Gradebook, open the test, then <b>Download results</b>, and choose <b>.csv</b>, <b>By student</b> and the attempts used for the grade</li>
+          <li><b>Original:</b> in the Grade Center, open the test column's menu, then <b>Download Results</b>, and choose <b>Comma</b>, <b>By User</b> and <b>Only Valid Attempts</b></li>
         </ul>
-      </c-guide.step>
-      <c-guide.step number="3"><p>Click the CSV icon above the results and drop the file here</p></c-guide.step>
-    </ol>
-  </c-guide.section>
+        <p class="text-muted">Each question has several columns. Under <b>Check rows and columns</b>, mark only the answers as <b>Answer</b>.</p>
+      </c-guide.section>
+      <c-guide.section title="Assignment files">
+        <ul class="grid gap-2">
+          <li><b>Ultra:</b> open the assignment's <b>Submissions</b>, then the <b>⋯</b> menu, <b>Download all</b>, <b>Create ZIP File</b> and <b>Send</b>. Download the zip from the link in your messages</li>
+          <li><b>Original:</b> in the Grade Center, open the assignment column's menu, then <b>Assignment File Download</b>. Select all students, click <b>Submit</b>, then <b>Download assignments now</b></li>
+        </ul>
+        <p class="text-muted">Files are named with each student's username. For student IDs, download the gradebook (Ultra: <b>Download grades</b>, Original: <b>Work Offline</b> then <b>Download</b>) and add it under <b>Map student IDs</b>.</p>
+      </c-guide.section>
+    </div>
+
+    <div class="grid gap-5" role="tabpanel" x-show="platform === 'other'" x-cloak>
+      <c-guide.section title="A spreadsheet">
+        <p>A row per student, with a column for their ID and a column per question. A column named like <b>Q1 Pts</b> holds marks already given for Q1.</p>
+      </c-guide.section>
+      <c-guide.section title="A zip">
+        <p>A folder or file name per student, such as <code>u1001/q1.py</code> or <code>u1001_q1.py</code>. Each file or folder most students have becomes a question. When several files answer a question, <code>main.py</code> or the file named after the question runs, and can import the others.</p>
+      </c-guide.section>
+    </div>
+  </div>
   <c-slot name="notes">
     <c-guide.note icon="arrow-path">A new submissions file replaces answers and marks. Question settings stay.</c-guide.note>
   </c-slot>

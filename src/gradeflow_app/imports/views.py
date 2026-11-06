@@ -12,7 +12,7 @@ from django_htmx.http import HttpResponseClientRedirect
 from gradeflow_app.assessments.access import assessment_member
 from gradeflow_app.assessments.models import AssessmentAccess
 from gradeflow_app.courses.models import Role
-from gradeflow_app.imports.forms import QuestionDocumentForm, UploadForm
+from gradeflow_app.imports.forms import MAX_FILE_BYTES, QuestionDocumentForm, UploadForm
 from gradeflow_app.imports.models import SubmissionsFile
 from gradeflow_app.imports.services import ImportFailed, apply_question_document, import_submissions
 from gradeflow_app.marking.remarks import remark
@@ -29,6 +29,9 @@ IMPORT_SETTINGS = (
     "student_id_column",
     "answer_columns",
     "marks_columns",
+    "file_pattern",
+    "file_questions",
+    "id_mapping",
 )
 """What the importer needs to reopen a submissions file as it was imported."""
 
@@ -46,6 +49,7 @@ def import_page(request: Request, access: AssessmentAccess) -> HttpResponse:
                 model_to_dict(latest_file, fields=IMPORT_SETTINGS) if latest_file and latest_file.has_original else None
             ),
             "questions": list(access.assessment.questions.values_list("key", flat=True)),
+            "max_file_bytes": MAX_FILE_BYTES,
         },
     )
 
@@ -54,7 +58,18 @@ def import_page(request: Request, access: AssessmentAccess) -> HttpResponse:
 @assessment_member(Role.EDITOR)
 def original(request: Request, access: AssessmentAccess) -> HttpResponse:
     """The latest submissions file, as the browser encrypted it."""
-    data = access.assessment.submissions_files.values_list("original", flat=True).first()
+    return _encrypted_file(access, "original")
+
+
+@require_GET
+@assessment_member(Role.EDITOR)
+def id_mapping_file(request: Request, access: AssessmentAccess) -> HttpResponse:
+    """The latest submissions file's ID mapping file, as the browser encrypted it."""
+    return _encrypted_file(access, "id_mapping_file")
+
+
+def _encrypted_file(access: AssessmentAccess, field: str) -> HttpResponse:
+    data = access.assessment.submissions_files.values_list(field, flat=True).first()
     if data is None:
         raise Http404
     return HttpResponse(bytes(data), content_type="application/octet-stream")
@@ -79,7 +94,12 @@ def upload(request: Request, access: AssessmentAccess) -> HttpResponse:
     except ImportFailed as error:
         return _import_error(str(error))
     if summary.first_import:
-        messages.success(request, f"Imported {summary.student_count} students and {summary.question_count} questions.")
+        student_count, question_count = summary.student_count, summary.question_count
+        messages.success(
+            request,
+            f"Imported {student_count} student{pluralize(student_count)} and "
+            f"{question_count} question{pluralize(question_count)}.",
+        )
     else:
         student_changes = [
             f"{count} {change}"

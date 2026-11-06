@@ -3,7 +3,7 @@
 {% block content %}
 {% with assessment=access.assessment %}
 <c-page title="Import">
-  <div class="contents" x-data="importer" data-original-url="{% url 'import_original' assessment.pk %}">
+  <div class="contents" x-data="importer" x-on:beforeunload.window="warnOnUnload" x-on:htmx:before:request.document="askBeforeNavigating" data-original-url="{% url 'import_original' assessment.pk %}" data-id-mapping-url="{% url 'import_id_mapping_file' assessment.pk %}" data-max-file-bytes="{{ max_file_bytes }}">
     <form x-ref="upload" action="{% url 'import_upload' assessment.pk %}" method="post" enctype="multipart/form-data" hidden>{% csrf_token %}</form>
     {{ questions|json_script:"import-questions" }}
     {% if import_settings %}{{ import_settings|json_script:"import-settings" }}{% endif %}
@@ -17,82 +17,48 @@
             <p class="truncate font-medium">{{ latest_file.name }}</p>
             <p class="text-sm text-muted">{{ latest_file.student_count }} student{{ latest_file.student_count|pluralize }} · imported {{ latest_file.uploaded_at|ago }}{% if latest_file.uploaded_by %} by {{ latest_file.uploaded_by }}{% endif %}</p>
           </div>
-          {% if import_settings %}<button class="btn" x-on:click="reopenFile" :disabled="opening"><span class="loading loading-spinner loading-sm" x-show="opening" x-cloak></span>Check columns</button>{% endif %}
+          {% if import_settings %}<button class="btn" x-on:click="reopenFile" :disabled="opening"><span class="loading loading-spinner loading-sm" x-show="opening" x-cloak></span>{% if latest_file.file_pattern %}Check students and files{% else %}Check columns{% endif %}</button>{% endif %}
           <button class="btn" x-on:click="replacing = true" x-show="!replacing">Replace</button>
         </div>
         {% endif %}
-        <div{% if latest_file %} x-show="replacing" x-cloak{% endif %}>{% include "imports/drop.html" with title=latest_file|yesno:"Drop the new submissions file here,Drop the submissions file here" file_types="CSV or Excel" accept=".csv,.txt,.xls,.xlsx,.xlsm,.xlsb" %}<p class="mt-4 flex items-center justify-center gap-2 text-sm text-muted">{% icon "lock-closed" "size-4" %}The file is encrypted on this computer. GradeFlow can read only its answers and marks.</p></div>
+        <div{% if latest_file %} x-show="replacing" x-cloak{% endif %}><div x-show="!isReading">{% include "imports/drop.html" with title=latest_file|yesno:"Drop the new submissions file here,Drop the submissions file here" file_types="CSV, Excel or zip" accept=".csv,.txt,.xls,.xlsx,.xlsm,.xlsb,.zip" %}</div>{% include "imports/reading.html" %}<p class="mt-4 flex items-center justify-center gap-2 text-sm text-muted">{% icon "lock-closed" "size-4" %}The file is encrypted on this computer. GradeFlow can read only its answers and marks.</p></div>
       </div>
 
-      <div x-show="step !== 'choose'" x-cloak class="grid gap-6">
+      <template x-if="source">
+      <div class="grid gap-6">
         <div class="flex flex-wrap items-center gap-4">
           <span class="grid size-10 place-items-center rounded-field bg-secondary text-secondary-content">{% icon "document-check" %}</span>
           <div class="min-w-0 flex-1 basis-48">
             <p class="truncate font-semibold" x-text="fileName"></p>
-            <p class="text-muted"><span x-text="summary"></span> · <span x-text="marksSummary"></span></p>
+            <p class="text-muted" x-text="summary"></p>
             <p class="text-sm text-warning" x-show="removedQuestionsNote" x-text="removedQuestionsNote" x-cloak></p>
           </div>
-          <template x-if="sheets.length > 1">
+          <template x-if="!isZip && source.sheets.length > 1">
             <div class="flex items-center gap-2 text-sm"><label for="import-sheet" class="text-muted">Sheet</label>
-              <select id="import-sheet" class="select select-sm w-44" x-on:change="pickSheet"><template x-for="name in sheets" :key="name"><option :value="name" x-text="name" :selected="name === sheet"></option></template></select>
+              <select id="import-sheet" class="select select-sm w-44" x-on:change="source.pickSheet($event)"><template x-for="name in source.sheets" :key="name"><option :value="name" x-text="name" :selected="name === source.sheet"></option></template></select>
             </div>
           </template>
           <button class="btn btn-ghost" x-on:click="restart" x-show="step === 'review'">Choose another file</button>
         </div>
 
-        <c-more-options label="Check rows and columns" x-bind:open="leftOutRows.length > 0">
-          <div class="grid gap-3">
-            <div class="flex flex-wrap items-center gap-2">
-              <label for="import-header-row">Column names are in row</label>
-              <input id="import-header-row" type="number" class="input input-sm w-20 tabular-nums" min="1" :max="rows.length" :value="headerRow + 1" x-on:change="setHeaderRow">
-              <span class="min-w-0 flex-1 truncate text-sm text-muted" x-text="headerPreview"></span>
-            </div>
-            <div class="flex flex-wrap items-center gap-2">
-              <label for="import-first-row">Students are in rows</label>
-              <input id="import-first-row" type="number" class="input input-sm w-20 tabular-nums" min="1" :max="rows.length" :value="firstRow + 1" x-on:change="setFirstRow">
-              <label for="import-last-row">to</label>
-              <input id="import-last-row" type="number" class="input input-sm w-20 tabular-nums" min="1" :max="rows.length" :value="lastRow + 1" x-on:change="setLastRow">
-              <span class="line-clamp-2 min-w-0 flex-1 wrap-break-word text-sm text-muted" x-text="rowsPreview"></span>
-            </div>
-          </div>
-          <div class="overflow-x-auto rounded-box border border-base-300">
-            <table class="table table-sm">
-              <thead><tr><th>Column</th><th>Sample values</th><th class="w-44">Use as</th><th class="w-44">Marks for</th></tr></thead>
-              <tbody>
-                <template x-for="column in columns" :key="column.index">
-                  <tr>
-                    <td class="font-medium" x-text="column.name"></td>
-                    <td class="max-w-72 truncate text-muted" x-text="column.firstValues"></td>
-                    <td>
-                      <select class="select select-sm w-full" :data-index="column.index" x-on:change="setRole" :aria-label="'Use of ' + column.name">
-                        <template x-for="role in roles" :key="role[0]"><option :value="role[0]" x-text="role[1]" :selected="role[0] === column.role"></option></template>
-                      </select>
-                    </td>
-                    <td>
-                      <select class="select select-sm w-full" x-show="column.role === 'marks'" :data-index="column.index" x-on:change="setMarksFor" :aria-label="'Question ' + column.name + ' gives marks for'">
-                        <template x-for="name in answerColumns" :key="name"><option :value="name" x-text="name" :selected="name === column.marksFor"></option></template>
-                      </select>
-                    </td>
-                  </tr>
-                </template>
-              </tbody>
-            </table>
-          </div>
-        </c-more-options>
+        <template x-if="isZip">{% include "imports/zip_files.html" %}</template>
+        <template x-if="!isZip">{% include "imports/table_columns.html" %}</template>
+        {% include "imports/id_mapping.html" %}
 
         <div class="flex flex-wrap items-center justify-end gap-3">
           <p class="mr-auto flex items-center gap-1.5 text-sm text-error" x-show="fileProblem" x-cloak>{% icon "exclamation-circle" "size-4" %}<span x-text="fileProblem"></span></p>
-          <template x-if="step === 'uploading'"><span class="flex items-center gap-3 text-sm text-muted"><span class="loading loading-spinner loading-sm"></span>Encrypting student IDs… <span class="tabular-nums" x-text="progress + '%'"></span></span></template>
+          <template x-if="step === 'uploading'"><span class="flex items-center gap-3 text-sm text-muted" role="status">Encrypting student IDs…{% include "imports/progress_bar.html" with percent="progress" label="Encrypting student IDs" %}</span></template>
           <button class="btn btn-primary" x-on:click="submit" :disabled="step === 'uploading' || !!fileProblem"{% if latest_file %} data-confirm="Replace the submissions file?" :data-confirm-detail="replaceDetail" data-confirm-button="Replace"{% endif %}>{% icon "arrow-up-tray" "size-4" %}{% if latest_file %}Replace submissions{% else %}Import submissions{% endif %}</button>
         </div>
       </div>
+      </template>
     </c-card>
 
     <c-alert x-show="error" x-cloak><span x-text="error"></span></c-alert>
   </div>
 
   {% include "imports/submissions_file_guide.html" %}
-  {% if latest_file %}
+  {% if latest_file and not latest_file.file_pattern %}
   {% include "imports/question_document.html" %}
   {% include "imports/document_guide.html" %}
   {% endif %}

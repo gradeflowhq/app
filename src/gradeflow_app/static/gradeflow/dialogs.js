@@ -45,29 +45,33 @@ document.addEventListener("htmx:after:request", (event) => {
   if (response?.status < 400 && sourceElement?.matches("[data-close-on-success]")) sourceElement.closest("dialog")?.close();
 });
 
-// A `data-confirm` button asks first, in the confirm dialog (base.html); confirming clicks it again.
+/** Asks `question` in the confirm dialog (base.html), with `detail` under it and `buttonLabel` on its button;
+ * resolves whether it was confirmed. */
+export function confirmAction(question, detail, buttonLabel) {
+  const dialog = document.getElementById("confirm");
+  const detailElement = dialog.querySelector("[data-detail]");
+  dialog.querySelector("h2").textContent = question;
+  detailElement.textContent = detail;
+  detailElement.hidden = !detail;
+  dialog.querySelector("[value=confirm]").textContent = buttonLabel;
+  dialog.returnValue = "";
+  dialog.showModal();
+  return new Promise((resolve) => (dialog.onclose = () => resolve(dialog.returnValue === "confirm")));
+}
+
+// A `data-confirm` button asks first; confirming clicks it again.
 const confirmed = new WeakSet();
 document.addEventListener(
   "click",
-  (event) => {
+  async (event) => {
     const button = event.target.closest("[data-confirm]");
     if (!button || confirmed.delete(button)) return;
     event.preventDefault();
     event.stopImmediatePropagation();
-    const dialog = document.getElementById("confirm");
-    const detail = dialog.querySelector("[data-detail]");
-    const confirmButton = dialog.querySelector("[value=confirm]");
-    dialog.querySelector("h2").textContent = button.dataset.confirm;
-    detail.textContent = button.dataset.confirmDetail ?? "";
-    detail.hidden = !detail.textContent;
-    confirmButton.textContent = button.dataset.confirmButton ?? button.textContent.trim();
-    dialog.returnValue = "";
-    dialog.onclose = () => {
-      if (dialog.returnValue !== "confirm") return;
-      confirmed.add(button);
-      button.click();
-    };
-    dialog.showModal();
+    const { confirm, confirmDetail = "", confirmButton = button.textContent.trim() } = button.dataset;
+    if (!(await confirmAction(confirm, confirmDetail, confirmButton))) return;
+    confirmed.add(button);
+    button.click();
   },
   true,
 );

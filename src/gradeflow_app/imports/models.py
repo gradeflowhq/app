@@ -10,7 +10,7 @@ from gradeflow_app.assessments.models import Assessment
 
 class SubmissionsFileManager(models.Manager["SubmissionsFile"]):
     def get_queryset(self) -> models.QuerySet[SubmissionsFile]:
-        return super().get_queryset().defer("original")
+        return super().get_queryset().defer("original", "id_mapping_file")
 
 
 class SubmissionsFile(models.Model):
@@ -36,6 +36,14 @@ class SubmissionsFile(models.Model):
     header_row = models.PositiveIntegerField(null=True)
     first_row = models.PositiveIntegerField(null=True)
     last_row = models.PositiveIntegerField(null=True)
+    file_pattern = models.CharField(max_length=255, blank=True)
+    """The pattern finding a zip's students and files."""
+    file_questions = models.JSONField(default=dict)
+    """Question by a zip's top-level file or folder name; "" for none."""
+    id_mapping = models.JSONField(null=True)
+    """The ID mapping file's `file_name`, the `match_column` with the file's IDs and the `id_column` replacing them."""
+    id_mapping_file = models.BinaryField(null=True, editable=False)
+    """The ID mapping file, encrypted in the browser like `original`."""
 
     objects = SubmissionsFileManager()
 

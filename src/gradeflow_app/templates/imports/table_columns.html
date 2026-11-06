@@ -1,0 +1,40 @@
+{# A spreadsheet's header row, student rows and column roles. #}
+<c-more-options label="Check rows and columns" x-bind:open="isReviewOpen" x-on:toggle="isReviewOpen = $el.open">
+  <div class="grid gap-3">
+    <div class="flex flex-wrap items-center gap-2">
+      <label for="import-header-row">Column names are in row</label>
+      <input id="import-header-row" type="number" class="input input-sm w-20 tabular-nums" min="1" :max="source.rows.length" :value="source.headerRow + 1" x-on:change="source.setHeaderRow($event)">
+      <span class="min-w-0 flex-1 truncate text-sm text-muted" x-text="source.headerPreview"></span>
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+      <label for="import-first-row">Students are in rows</label>
+      <input id="import-first-row" type="number" class="input input-sm w-20 tabular-nums" min="1" :max="source.rows.length" :value="source.firstRow + 1" x-on:change="source.setFirstRow($event)">
+      <label for="import-last-row">to</label>
+      <input id="import-last-row" type="number" class="input input-sm w-20 tabular-nums" min="1" :max="source.rows.length" :value="source.lastRow + 1" x-on:change="source.setLastRow($event)">
+      <span class="line-clamp-2 min-w-0 flex-1 wrap-break-word text-sm text-muted" x-text="source.rowsPreview"></span>
+    </div>
+  </div>
+  <div class="overflow-x-auto rounded-box border border-base-300">
+    <table class="table table-sm">
+      <thead><tr><th>Column</th><th>Sample values</th><th class="w-44">Use as</th><th class="w-44">Marks for</th></tr></thead>
+      <tbody>
+        <template x-for="column in source.columns" :key="column.index">
+          <tr>
+            <td class="font-medium" x-text="column.name"></td>
+            <td class="max-w-72 truncate text-muted" x-text="column.sampleValues"></td>
+            <td>
+              <select class="select select-sm w-full" :data-index="column.index" x-on:change="source.setRole($event)" :aria-label="'Use of ' + column.name">
+                <template x-for="role in source.roles" :key="role[0]"><option :value="role[0]" x-text="role[1]" :selected="role[0] === column.role"></option></template>
+              </select>
+            </td>
+            <td>
+              <select class="select select-sm w-full" x-show="column.role === 'marks'" :data-index="column.index" x-on:change="source.setMarksFor($event)" :aria-label="'Question ' + column.name + ' gives marks for'">
+                <template x-for="name in importedQuestions" :key="name"><option :value="name" x-text="name" :selected="name === column.marksFor"></option></template>
+              </select>
+            </td>
+          </tr>
+        </template>
+      </tbody>
+    </table>
+  </div>
+</c-more-options>

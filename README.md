@@ -148,7 +148,7 @@ A check names one version of a method, such as `gradeflow/key-points@1`. The cor
 
 ## Third-party code
 
-`src/gradeflow_app/static/vendor/` holds browser libraries under their own licenses: Alpine.js, Chart.js, @hpke/core, KaTeX, markdown-toolbar-element, Monaco Editor, @noble/hashes and Papa Parse (MIT), htmx (0BSD), Simple-DataTables (LGPL-3.0), Tom Select and SheetJS Community Edition (Apache-2.0), and the Inter font (SIL Open Font License).
+`src/gradeflow_app/static/vendor/` holds browser libraries under their own licenses: Alpine.js, Chart.js, @hpke/core, KaTeX, markdown-toolbar-element, Monaco Editor, @noble/hashes and Papa Parse (MIT), zip.js (BSD-3-Clause), htmx (0BSD), Simple-DataTables (LGPL-3.0), Tom Select and SheetJS Community Edition (Apache-2.0), and the Inter font (SIL Open Font License).
 
 ## License
 

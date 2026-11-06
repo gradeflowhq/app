@@ -7,7 +7,7 @@ MAX_FILE_BYTES = 20 * 2**20
 
 class UploadForm(forms.Form):
     """What importer.js uploads: the chosen columns as CSV with IDs encrypted, the answer key row if there is one,
-    and the original file encrypted."""
+    and the original file and any ID mapping file encrypted."""
 
     name = forms.CharField(max_length=255)
     answers_csv = forms.FileField()
@@ -20,6 +20,10 @@ class UploadForm(forms.Form):
     header_row = forms.IntegerField(required=False, min_value=0)
     first_row = forms.IntegerField(required=False, min_value=0)
     last_row = forms.IntegerField(required=False, min_value=0)
+    file_pattern = forms.CharField(required=False, strip=False, max_length=255)
+    file_questions = forms.JSONField(required=False)
+    id_mapping = forms.JSONField(required=False)
+    id_mapping_file = forms.FileField(required=False)
 
     def clean_answers_csv(self) -> str:
         try:
@@ -52,6 +56,14 @@ class UploadForm(forms.Form):
     def clean_original(self) -> bytes | None:
         file = self.cleaned_data["original"]
         return None if file is None else _read_upload(file, "The file is too large to store.")
+
+    def clean_file_questions(self) -> dict[str, str]:
+        file_questions: dict[str, str] = self.cleaned_data["file_questions"] or {}
+        return file_questions
+
+    def clean_id_mapping_file(self) -> bytes | None:
+        file = self.cleaned_data["id_mapping_file"]
+        return None if file is None else _read_upload(file, "The ID mapping file is too large to store.")
 
 
 class QuestionDocumentForm(forms.Form):
