@@ -155,7 +155,7 @@ def test_versions_an_earlier_core_saved_say_so_and_the_rest_load(
         assert bullets(page) == OLD_PROBLEMS
     assert "compatible" not in client.get(reverse("method_page", args=[light.pk, 1])).text
     loaded = loaded_usable_methods(course.members.get().user, course)
-    assert MethodVersion.objects.get(method=light, number=1).ref in loaded.methods.by_ref
+    loaded.methods.find(MethodVersion.objects.get(method=light, number=1).ref)
 
 
 def test_versions_an_earlier_core_saved_are_logged_once(

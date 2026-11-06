@@ -78,7 +78,7 @@ class AnswerGroup:
 
 def other_methods() -> list[str]:
     """The names of the methods without an example, simplest first."""
-    with_examples = {BUILTINS.by_ref[example.method].label for example in landing_content().examples.values()}
+    with_examples = {BUILTINS.find(example.method).label for example in landing_content().examples.values()}
     by_level = sorted(compatible_landing_methods(), key=lambda method: method.level != "basic")
     return list(dict.fromkeys(method.label for method in by_level if method.label not in with_examples))
 
@@ -93,7 +93,7 @@ def examples() -> list[ShownExample]:
         ShownExample(
             key,
             example,
-            BUILTINS.by_ref[example.method],
+            BUILTINS.find(example.method),
             initial_values[key],
             [
                 SettingVariant(

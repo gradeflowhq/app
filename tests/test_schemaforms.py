@@ -29,8 +29,8 @@ def names(sections: list[tuple[str, list[Any]]]) -> list[str]:
 
 CHECK_SCHEMA = object_schema(
     combine={"type": "string", "enum": ["all", "sum"], "default": "all"},
-    max_marks=hinted({"type": "number"}, advanced=True, applies_when={"combine": "sum"}),
-    strict=hinted({"type": "boolean", "default": False}, advanced=True, applies_when={"combine": "all"}),
+    max_marks=hinted({"type": "number"}, advanced=True, applies_when={"combine": ["sum"]}),
+    strict=hinted({"type": "boolean", "default": False}, advanced=True, applies_when={"combine": ["all"]}),
     points={"type": "array", "items": {"type": "string"}},
     whole_words=hinted({"type": "boolean", "default": False}, advanced=True),
 )
@@ -57,7 +57,7 @@ def test_groups_keep_their_place_among_the_fields() -> None:
 def test_a_field_following_a_rarely_changed_choice_waits_with_it() -> None:
     schema = object_schema(
         model=hinted({"type": "string", "enum": ["fast", "careful"], "default": "fast"}, advanced=True),
-        careful_effort=hinted({"type": "string"}, advanced=True, applies_when={"model": "careful"}),
+        careful_effort=hinted({"type": "string"}, advanced=True, applies_when={"model": ["careful"]}),
     )
     form = ObjectForm(schema, {})
     assert (names(form.basic_sections), names(form.advanced_sections)) == ([], ["model", "careful_effort"])
@@ -66,7 +66,7 @@ def test_a_field_following_a_rarely_changed_choice_waits_with_it() -> None:
 def test_a_field_shows_only_while_its_condition_holds() -> None:
     shown = ObjectForm(CHECK_SCHEMA, {"combine": "sum"}, prefix="check")
     hidden = ObjectForm(CHECK_SCHEMA, {"combine": "all"})
-    assert json.loads(shown["max_marks"].visible_when) == {"check-combine": "sum"}
+    assert json.loads(shown["max_marks"].visible_when) == {"check-combine": ["sum"]}
     assert not shown["max_marks"].starts_hidden
     assert hidden["max_marks"].starts_hidden
 
@@ -85,7 +85,7 @@ def test_a_condition_listing_values_holds_for_any_of_them(match: str, starts_hid
 def test_a_field_hidden_until_its_condition_holds_still_points_at_its_help_and_errors() -> None:
     schema = object_schema(
         combine={"type": "string", "enum": ["all", "sum"]},
-        max_marks=hinted({"type": "number", "description": "At most this many."}, applies_when={"combine": "sum"}),
+        max_marks=hinted({"type": "number", "description": "At most this many."}, applies_when={"combine": ["sum"]}),
     )
     form = ObjectForm(schema, {"combine": "all"})
     form.add_error("max_marks", "Must be 0 or more.")

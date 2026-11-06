@@ -1,5 +1,5 @@
-// Tom Select over a `<select multiple>`: removable values, the most common answers as suggestions (their
-// count in `data-data`), and any new value typed in.
+// Tom Select over a `<select multiple>`: removable values dragged into order, the most common answers as
+// suggestions (their count in `data-data`), and any new value typed in.
 
 import { loadScript } from "./vendor.js";
 
@@ -30,7 +30,7 @@ export const tagInput = () => ({
       closeAfterSelect: true,
       persist: false,
       maxOptions: 100,
-      plugins: ["remove_button"],
+      plugins: ["remove_button", "drag_drop"],
       wrapperClass: "ts-wrapper input w-full",
       sortField: [{ field: "count", direction: "desc" }, { field: "$order" }],
       render: {

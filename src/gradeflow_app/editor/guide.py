@@ -6,7 +6,7 @@ from typing import Any, NamedTuple
 
 from django.http import Http404
 from django.utils.text import get_text_list
-from gradeflow_core import Method, Methods, QuestionSet
+from gradeflow_core import GradeFlowError, Method, Methods, QuestionSet
 from gradeflow_core.editing import Example, MarkingDraft, MethodDraft, Position
 
 from gradeflow_app.libraries.collection import BUILTIN_NAMES, OfferedMethods
@@ -144,9 +144,10 @@ def guide_context(
 ) -> dict[str, Any]:
     """A method's guide, its examples that show a result with those rows, of marking questions of `question_type`
     first; for a saved method, who made it (from `owners`, by name) and what using it asks for."""
-    method = methods.by_ref.get(ref)
-    if method is None:
-        raise Http404
+    try:
+        method = methods.find(ref)
+    except GradeFlowError:
+        raise Http404 from None
     examples_with_rows = [(example, rows) for example in method.examples if (rows := expected_rows(example))]
     examples = sorted(
         examples_with_rows,

@@ -65,7 +65,10 @@ class HintedField(BoundField):
 
     @property
     def starts_hidden(self) -> bool:
-        return not all(_matches(self.form[key].value(), value) for key, value in self._conditions.items())
+        return not all(
+            any(_matches(self.form[key].value(), option) for option in options)
+            for key, options in self._conditions.items()
+        )
 
     @property
     def _hints(self) -> FieldHints:
@@ -362,10 +365,7 @@ def with_row_edit(form: ObjectForm, values: dict[str, Any], data: Mapping[str, A
 
 
 def _matches(value: Any, expected: Any) -> bool:
-    """Whether a field's value is the one a condition expects, or one of a list of them, compared as the browser
-    compares them (fields.js)."""
-    if isinstance(expected, list):
-        return any(_matches(value, option) for option in expected)
+    """Whether a field's value is `expected`, compared as the browser compares them (fields.js)."""
     return bool(value) is expected if isinstance(expected, bool) else str(value) == str(expected)
 
 

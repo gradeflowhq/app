@@ -507,7 +507,13 @@
 /* Values as long as a sentence, such as key points, wrap rather than run out of the field. */
 /* Tom Select's stylesheet isn't layered, so its colours win without `!`. */
 .ts-wrapper.multi .ts-control > .item {
-  @apply inline-flex max-w-full items-center gap-1 rounded-selector bg-base-200! px-2 py-0.5 text-sm wrap-break-word text-base-content! ring-1 ring-base-300;
+  @apply inline-flex max-w-full cursor-grab items-center gap-1 rounded-selector bg-base-200! px-2 py-0.5 text-sm wrap-break-word text-base-content! ring-1 ring-base-300;
+  &.ts-dragging {
+    @apply opacity-50;
+  }
+  &.ts-drag-over {
+    @apply ring-primary;
+  }
 }
 .ts-wrapper .item .remove {
   @apply shrink-0 border-base-300! text-muted! hover:text-error!;

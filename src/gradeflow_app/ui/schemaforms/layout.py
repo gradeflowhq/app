@@ -134,9 +134,7 @@ def _depends_on_basic_choice(
     wanted = hint(property_schema).get("applies_when") or {}
     choices = [(resolve(properties.get(name, {}), defs), values) for name, values in wanted.items()]
     return bool(wanted) and all(
-        not hint(choice).get("advanced")
-        and choice.get("default") not in (values if isinstance(values, list) else [values])
-        for choice, values in choices
+        not hint(choice).get("advanced") and choice.get("default") not in values for choice, values in choices
     )
 
 

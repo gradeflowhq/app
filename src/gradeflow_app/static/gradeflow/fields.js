@@ -34,13 +34,13 @@ document.addEventListener("htmx:finally:request", ({ detail: { ctx } }) => {
   if (ctx.response?.status < 400 && ctx.request.submitter?.hasAttribute("data-resets")) ctx.request.form?.reset();
 });
 
-// A field with `data-visible-when` shows only while the fields it names have the values it wants, or one of a list
-// of them, as the server decided when it rendered them (schemaforms.HintedField).
+// A field with `data-visible-when` shows only while each field it names has one of the values listed for it, as the
+// server decided when it rendered them (schemaforms.HintedField).
 const currentValue = (control) => (control?.type === "checkbox" ? control.checked : control?.value);
 const same = (value, wanted) => (typeof wanted === "boolean" ? Boolean(value) === wanted : String(value) === String(wanted));
 const meetsCondition = (form, [name, wanted]) => {
   const value = currentValue(form.elements.namedItem(name));
-  return [wanted].flat().some((option) => same(value, option));
+  return wanted.some((option) => same(value, option));
 };
 document.addEventListener("change", ({ target: { form } }) => {
   for (const field of form?.querySelectorAll("[data-visible-when]") ?? []) {

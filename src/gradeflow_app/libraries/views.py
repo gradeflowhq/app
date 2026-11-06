@@ -84,7 +84,9 @@ def _library_method(
 ) -> LibraryMethod:
     """The list row for `method`'s version `number`."""
     ref = method_ref(method.full_name, number)
-    if (method_version := loaded.methods.by_ref.get(ref)) is None:
+    try:
+        method_version = loaded.methods.find(ref)
+    except GradeFlowError:
         saved_version = method.versions.get(number=number)
         draft = services.method_draft(method, saved_version.definition, saved_version.tests, Methods(), version=number)
         # A file whose version can't be read fails under its name, and is at fault itself.

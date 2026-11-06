@@ -97,7 +97,7 @@ class Workspace(LandingModel):
     @property
     def questions_with_methods(self) -> list[tuple[WorkspaceQuestion, str | None]]:
         """Each question, with the name of the method that marks it."""
-        return [(question, question.method and BUILTINS.by_ref[question.method].label) for question in self.questions]
+        return [(question, question.method and BUILTINS.find(question.method).label) for question in self.questions]
 
     @property
     def max_marks(self) -> float:

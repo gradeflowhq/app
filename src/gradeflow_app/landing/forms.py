@@ -25,7 +25,7 @@ class ExampleSettingsForm(forms.Form):
     example = forms.ChoiceField(
         widget=Segmented,
         initial=next(iter(_EXAMPLES)),
-        choices={key: BUILTINS.by_ref[example.method].label for key, example in _EXAMPLES.items()},
+        choices={key: BUILTINS.find(example.method).label for key, example in _EXAMPLES.items()},
     )
     combination = forms.ChoiceField(widget=Segmented, initial="0.5", choices=_EXAMPLES["combination"].choices)
     conditional = forms.BooleanField(initial=True, widget=forms.CheckboxInput(attrs={"class": "toggle toggle-primary"}))
