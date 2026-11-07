@@ -61,7 +61,7 @@
 
 {% partialdef column_notices %}
 {% if not draft %}{% for notice in out_of_date_notices %}<p role="status" class="alert alert-warning alert-soft text-sm">{{ notice }}</p>{% endfor %}{% endif %}
-{% if asks_models %}<div x-data="modelService"><p role="status" class="alert alert-info alert-soft text-sm" x-show="loaded && !connected" x-cloak>{% icon "information-circle" %}<span>This marking uses AI, and you aren't connected to an AI service. <a class="link" href="{% url 'integrations' %}">Connect one</a> to mark these answers.</span></p></div>{% endif %}
+{% if asks_models %}<div x-data="modelServiceNotice"><p role="status" class="alert alert-info alert-soft text-sm" x-show="loaded && !connected" x-cloak>{% icon "information-circle" %}<span>This marking uses AI, and you aren't connected to an AI service. <a class="link" href="{% url 'integrations' %}">Connect one</a> to mark these answers.</span></p></div>{% endif %}
 {% endpartialdef %}
 
 {% partialdef preview_bar %}

@@ -23,8 +23,8 @@ class BoundField(forms.BoundField):
 
 
 class MarkdownInput(forms.Textarea):
-    """Markdown people write, with formatting buttons and a preview (markdown.js). Disabled, it shows as pages show
-    it."""
+    """Markdown people write, with formatting buttons and a preview (components/markdown-editor.js). Disabled, it shows
+    as pages show it."""
 
     template_name = "forms/markdown.html"
 

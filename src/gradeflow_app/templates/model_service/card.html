@@ -1,6 +1,6 @@
 {# The settings page's model service: which of the server's AI services the person uses, their token for marking that asks a language model, and the models chosen for them. #}
 {% partialdef card inline %}
-<c-card id="model-service" title="AI service" body_class="" x-data="modelService"
+<c-card id="model-service" title="AI service" body_class="" x-data="modelServiceCard"
         data-connect="{% url 'model_service_connect' %}"
         data-refused="{{ connect_error|yesno:'true,' }}">
   <c-slot name="actions"><button type="button" class="btn btn-ghost btn-square btn-sm -mr-2 text-muted" data-dialog="ai-service-guide" aria-label="How to connect an AI service">{% icon "question-mark-circle" %}</button></c-slot>
@@ -24,7 +24,7 @@
   </div>
   <div class="setting-rows" x-show="connected" x-cloak>
     <c-connected-service label="Service" host_property="provider" confirm="Disconnect the AI service?" confirm_detail="It forgets the token. Marking that uses AI waits until you connect again." />
-    {# Only the models refresh as tests go on, so what someone is typing above stays. They load once the browser has decrypted which service the person uses (models.js). #}
+    {# Only the models refresh as tests go on, so what someone is typing above stays. They load once the browser has decrypted which service the person uses (services/model-service.js). #}
     {% partialdef models inline %}
     {% url 'model_service_dialog' as dialog_url %}
     <div id="model-service-models" class="divide-y divide-base-300"{% if out_of_band %} hx-swap-oob="outerMorph"{% endif %} hx-post="{% url 'model_service' %}" hx-trigger="{% if not models_loaded %}models-read, {% endif %}{% listen 'models' request.user.pk %}" hx-swap="outerHTML">

@@ -24,8 +24,8 @@ class DecimalInput(forms.NumberInput):
 
 
 class CodeInput(forms.Textarea):
-    """A code editor (code.js). Redrawing the object it belongs to leaves the editor alone, so it keeps its size and
-    the column its scroll position."""
+    """A code editor (components/code-editor.js). Redrawing the object it belongs to leaves the editor alone, so it
+    keeps its size and the column its scroll position."""
 
     template_name = "forms/widgets/code.html"
 
@@ -38,7 +38,7 @@ class Segmented(forms.RadioSelect):
 
 
 class OrderedChoices(forms.SelectMultiple):
-    """Choices in order, where one may repeat: a numbered select for each (ordered.js)."""
+    """Choices in order, where one may repeat: a numbered select for each (components/ordered-choices.js)."""
 
     template_name = "forms/widgets/ordered.html"
 
@@ -58,7 +58,7 @@ class OrderedChoices(forms.SelectMultiple):
 
 
 class TagsWidget(forms.SelectMultiple):
-    """Tom Select tags (tags.js) for any values, offering suggestions with their counts."""
+    """Tom Select tags (components/tag-input.js) for any values, offering suggestions with their counts."""
 
     template_name = "forms/widgets/tags.html"
 

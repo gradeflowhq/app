@@ -207,7 +207,7 @@ def listen(context: template.Context, *about: object) -> str:
 
 @register.simple_tag(takes_context=True)
 def page_messages(context: template.Context) -> str:
-    """The page's messages, for toasts.js to show."""
+    """The page's messages, for behaviours/messages.js to show."""
     toast_list = toasts(context.get("messages") or ())
     return json_script(toast_list, "messages") if toast_list else ""
 

@@ -59,7 +59,8 @@ class HintedField(BoundField):
 
     @property
     def visible_when(self) -> str:
-        """The fields, by HTML name, and values it is shown for, as JSON for fields.js to apply as they change."""
+        """The fields, by HTML name, and values it is shown for, as JSON for behaviours/forms.js to apply as they
+        change."""
         conditions = self._conditions
         return json.dumps({self.form.add_prefix(key): value for key, value in conditions.items()}) if conditions else ""
 
@@ -365,7 +366,7 @@ def with_row_edit(form: ObjectForm, values: dict[str, Any], data: Mapping[str, A
 
 
 def _matches(value: Any, expected: Any) -> bool:
-    """Whether a field's value is `expected`, compared as the browser compares them (fields.js)."""
+    """Whether a field's value is `expected`, compared as the browser compares them (behaviours/forms.js)."""
     return bool(value) is expected if isinstance(expected, bool) else str(value) == str(expected)
 
 

@@ -1,0 +1,42 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.3.8/schema.json",
+  "files": {
+    "includes": ["src/gradeflow_app/static/gradeflow/**/*.js", "tests/js/**/*.mjs"]
+  },
+  "formatter": {
+    "indentStyle": "space",
+    "lineWidth": 120
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "double"
+    },
+    "globals": [
+      "htmx",
+      "Papa",
+      "XLSX",
+      "Chart",
+      "katex",
+      "monaco",
+      "TomSelect",
+      "simpleDatatables",
+      "require",
+      "define"
+    ]
+  },
+  "linter": {
+    "rules": {
+      "recommended": true,
+      "suspicious": {
+        "noDocumentCookie": "off"
+      }
+    }
+  },
+  "assist": {
+    "actions": {
+      "source": {
+        "organizeImports": "on"
+      }
+    }
+  }
+}

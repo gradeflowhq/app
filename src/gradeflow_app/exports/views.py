@@ -25,7 +25,7 @@ from gradeflow_app.ui.templatetags.ui import marks
 
 
 def _canvas_config(course: CourseCanvas, **assessment_fields: object) -> str:
-    """What canvas.js needs to reach the course's Canvas course, as `data-config`."""
+    """What components/canvas/ needs to reach the course's Canvas course, as `data-config`."""
     return json.dumps(
         {
             "proxy": settings.GRADEFLOW_CORS_PROXY_URL,

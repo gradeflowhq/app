@@ -32,7 +32,7 @@ from tests.conftest import (
 pytestmark = pytest.mark.django_db
 
 GOLDEN = json.loads((Path(__file__).parent / "fixtures" / "encrypted.json").read_text())
-"""What crypto.js writes, which tests/js/crypto.test.mjs checks it still does."""
+"""What lib/assessment-crypto.js writes, which tests/js/assessment-crypto.test.mjs checks it still does."""
 ENCRYPTED_FILE = base64.b64decode(GOLDEN["encrypted_file"])
 FILE_SETTINGS = {"sheet": "Results", "header_row": "2", "first_row": "3", "last_row": "5"}
 

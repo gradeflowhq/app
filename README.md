@@ -36,9 +36,10 @@ uv run mypy
 uv run manage.py makemigrations --check --dry-run
 uv run pytest
 node --test tests/js/*.test.mjs
+npx @biomejs/biome@2.3.8 check
 ```
 
-Tests run jobs in-process, so they need PostgreSQL but not Nomad. pytest keeps its test database between runs: pass `--create-db` after adding a migration, and set `GRADEFLOW_TEST_DATABASE` to give a parallel run its own. `uvx pre-commit install` formats and checks each commit with ruff.
+Tests run jobs in-process, so they need PostgreSQL but not Nomad. pytest keeps its test database between runs: pass `--create-db` after adding a migration, and set `GRADEFLOW_TEST_DATABASE` to give a parallel run its own. `uvx pre-commit install` formats and checks each commit with ruff and Biome.
 
 ### Nomad
 

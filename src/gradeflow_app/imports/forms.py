@@ -6,8 +6,8 @@ MAX_FILE_BYTES = 20 * 2**20
 
 
 class UploadForm(forms.Form):
-    """What importer.js uploads: the chosen columns as CSV with IDs encrypted, the answer key row if there is one,
-    and the original file and any ID mapping file encrypted."""
+    """What components/import/importer.js uploads: the chosen columns as CSV with IDs encrypted, the answer key row if
+    there is one, and the original file and any ID mapping file encrypted."""
 
     name = forms.CharField(max_length=255)
     answers_csv = forms.FileField()

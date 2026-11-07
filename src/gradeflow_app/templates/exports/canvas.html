@@ -12,13 +12,13 @@
     <c-form-card id="canvas-course" title="Course" x-show="connected" x-cloak>
       <c-alert x-show="error" x-cloak><span x-text="error"></span></c-alert>
       {% include "exports/picker.html" with key="course" label="Canvas course" choose="Choose a course" search="Search your courses" empty="No courses match." none="You have no Canvas courses." %}
-      <input type="hidden" name="canvas_course" value="{{ form.instance.canvas_course }}" :value="course">
-      <input type="hidden" name="canvas_course_name" value="{{ form.instance.canvas_course_name }}" :value="card('course').name">
-      <div class="grid gap-3" x-show="course">
+      <input type="hidden" name="canvas_course" value="{{ form.instance.canvas_course }}" :value="course.id">
+      <input type="hidden" name="canvas_course_name" value="{{ form.instance.canvas_course_name }}" :value="course.card.name">
+      <div class="grid gap-3" x-show="course.id">
         {% include "exports/picker.html" with key="group" label="New assignments go in" choose="Choose an assignment group" search="Search assignment groups" empty="No assignment groups match." none="This course has no assignment groups yet." create="New assignment group" panel="exports/new_group.html" %}
       </div>
-      <input type="hidden" name="canvas_assignment_group" value="{{ form.instance.canvas_assignment_group }}" :value="group">
-      <input type="hidden" name="canvas_assignment_group_name" value="{{ form.instance.canvas_assignment_group_name }}" :value="card('group').name">
+      <input type="hidden" name="canvas_assignment_group" value="{{ form.instance.canvas_assignment_group }}" :value="group.id">
+      <input type="hidden" name="canvas_assignment_group_name" value="{{ form.instance.canvas_assignment_group_name }}" :value="group.card.name">
       <c-more-options label="How marks are sent" :open="form.errors">
         {{ form.marks_mode.as_field_group }}
         {{ form.rounding.as_field_group }}

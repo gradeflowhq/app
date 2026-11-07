@@ -1,4 +1,4 @@
-# The project's own ruff, so hooks and CI agree.
+# The project's own ruff, and CI's Biome, so hooks and CI agree.
 repos:
   - repo: local
     hooks:
@@ -12,3 +12,8 @@ repos:
         entry: uv run ruff format --force-exclude
         language: system
         types: [python]
+      - id: biome-check
+        name: biome check
+        entry: npx --yes @biomejs/biome@2.3.8 check --write --files-ignore-unknown=true --no-errors-on-unmatched
+        language: system
+        types_or: [javascript]

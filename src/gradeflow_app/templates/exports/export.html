@@ -34,13 +34,13 @@
     <div class="setting-summary-row">
       <span class="setting-summary-label">Assignment</span>
       <div class="flex min-w-0 flex-1 items-center gap-3">
-        <template x-if="card('assignment').id">
-          <div class="flex min-w-0 items-center gap-3"><span class="initial-badge size-8 text-sm" aria-hidden="true" x-text="card('assignment').initial"></span><span class="min-w-0"><span class="block truncate font-medium" x-text="card('assignment').name"></span><span class="block truncate text-sm text-muted" x-show="card('assignment').detail" x-text="card('assignment').detail"></span></span></div>
+        <template x-if="assignment.card.id">
+          <div class="flex min-w-0 items-center gap-3"><span class="initial-badge size-8 text-sm" aria-hidden="true" x-text="assignment.card.initial"></span><span class="min-w-0"><span class="block truncate font-medium" x-text="assignment.card.name"></span><span class="block truncate text-sm text-muted" x-show="assignment.card.detail" x-text="assignment.card.detail"></span></span></div>
         </template>
-        <span class="skeleton h-8 w-48" x-show="!card('assignment').id && loading('assignment')"></span>
-        <span class="text-muted" x-show="!card('assignment').id && !loading('assignment')">None chosen</span>
+        <span class="skeleton h-8 w-48" x-show="!assignment.card.id && isBusy && !assignment.items.length"></span>
+        <span class="text-muted" x-show="!assignment.card.id && !(isBusy && !assignment.items.length)">None chosen</span>
       </div>
-      <button type="button" class="btn btn-sm" :class="card('assignment').id && 'btn-ghost -mr-3'" x-on:click="pick('assignment')" x-text="card('assignment').id ? 'Change' : 'Choose'"></button>
+      <button type="button" class="btn btn-sm" :class="assignment.card.id && 'btn-ghost -mr-3'" x-on:click="assignment.open()" x-text="assignment.card.id ? 'Change' : 'Choose'"></button>
       {% include "exports/picker_dialog.html" with key="assignment" label="Assignment" search="Search assignments" empty="No assignments match." none="This course has no assignments yet." create="New assignment" %}
     </div>
     <div class="grid gap-4 py-4 sm:grid-cols-2 sm:pl-32" x-show="creating" x-cloak>

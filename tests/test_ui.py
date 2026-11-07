@@ -241,11 +241,11 @@ def test_the_inline_script_carries_the_pages_nonce(client: Client) -> None:
 @pytest.mark.parametrize(
     ("name", "value", "script"),
     [
-        ("SERVICE_HEADER", SERVICE_HEADER, "models.js"),
-        ("TOKEN_HEADER", TOKEN_HEADER, "models.js"),
-        ("LIVE_REFRESH", LIVE_REFRESH, "htmx.js"),
-        ("MESSAGES_HEADER", MESSAGES_HEADER, "htmx.js"),
-        ("TOPIC_PREFIX", TOPIC_PREFIX, "htmx.js"),
+        ("SERVICE_HEADER", SERVICE_HEADER, "services/model-service.js"),
+        ("TOKEN_HEADER", TOKEN_HEADER, "services/model-service.js"),
+        ("LIVE_REFRESH", LIVE_REFRESH, "behaviours/htmx.js"),
+        ("MESSAGES_HEADER", MESSAGES_HEADER, "behaviours/messages.js"),
+        ("TOPIC_PREFIX", TOPIC_PREFIX, "behaviours/htmx.js"),
     ],
 )
 def test_the_browser_uses_the_names_the_server_reads_and_sends(name: str, value: str, script: str) -> None:

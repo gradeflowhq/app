@@ -31,7 +31,8 @@ class SubmissionsFile(models.Model):
     """Marks column name by answer column name."""
     student_count = models.PositiveIntegerField()
     original = models.BinaryField(null=True, editable=False)
-    """The whole original file, encrypted in the browser (crypto.js encryptFile); only the latest file keeps it."""
+    """The whole original file, encrypted in the browser (lib/assessment-crypto.js encryptFile); only the latest file
+    keeps it."""
     sheet = models.CharField(max_length=255, blank=True)
     header_row = models.PositiveIntegerField(null=True)
     first_row = models.PositiveIntegerField(null=True)

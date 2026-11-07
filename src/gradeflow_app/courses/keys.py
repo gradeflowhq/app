@@ -1,5 +1,5 @@
 """Course keys. Each course has a random key that encrypts its student IDs, stored encrypted for each member's public
-key. Only browsers see the key itself (course-keys.js)."""
+key. Only browsers see the key itself (services/course-keys.js)."""
 
 from dataclasses import dataclass
 from typing import Any

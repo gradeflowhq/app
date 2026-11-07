@@ -14,7 +14,7 @@ from gradeflow_app.requests import HtmxRequest
 NAVIGATION_HEADERS = ("HX-Location", "HX-Redirect", "HX-Refresh")
 """Headers that have htmx load another page, which shows the messages itself."""
 LIVE_REFRESH = "X-Live-Refresh"
-"""Marks a request a page sends by itself as something changed (htmx.js): the page may be on its way to another."""
+"""Marks a refresh a page sends by itself after a change (behaviours/htmx.js). Its messages wait for the next page."""
 MESSAGES_HEADER = "X-Messages"
 
 
@@ -29,9 +29,9 @@ class CompressionMiddleware(GZipMiddleware):
 
 
 class HtmxMessagesMiddleware:
-    """Sends messages added during an in-page request with its response, in an `X-Messages` header that htmx.js shows
-    as toasts, rather than leaving them for whichever page loads next. Responses that go to another page, redirects
-    included, keep them for it, as do live refreshes."""
+    """Sends messages added during an in-page request with its response, in an `X-Messages` header that
+    behaviours/messages.js shows as toasts, rather than leaving them for whichever page loads next. Responses that go to
+    another page, redirects included, keep them for it, as do live refreshes."""
 
     def __init__(self, get_response: Callable[[HttpRequest], HttpResponse]) -> None:
         self.get_response = get_response
@@ -52,7 +52,7 @@ class HtmxMessagesMiddleware:
 
 
 class TimezoneMiddleware:
-    """Shows times in the time zone of the browser, which htmx.js keeps in a `tz` cookie; UTC until it does."""
+    """Shows times in the browser's time zone, from the `tz` cookie behaviours/timezone.js sets; UTC without it."""
 
     def __init__(self, get_response: Callable[[HttpRequest], HttpResponse]) -> None:
         self.get_response = get_response
@@ -66,5 +66,5 @@ class TimezoneMiddleware:
 
 
 def toasts(messages: Iterable[Message]) -> list[dict[str, str]]:
-    """Messages as toasts.js shows them."""
+    """Messages as behaviours/messages.js shows them."""
     return [{"level": message.level_tag, "text": str(message)} for message in messages]

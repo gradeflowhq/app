@@ -13,7 +13,7 @@ from gradeflow_app.questions.models import Question
 ENCRYPTED_ID = re.compile(r"^enc:v1:[A-Za-z0-9+/=]+:[A-Za-z0-9+/=]+$")
 ENCRYPTED_FILE_HEADER = b"GFF\x01"
 ENCRYPTED_FILE_OVERHEAD = 32
-"""A 16-byte header and a 16-byte tag; see crypto.js."""
+"""A 16-byte header and a 16-byte tag; see lib/assessment-crypto.js."""
 
 
 class ImportFailed(ValueError):

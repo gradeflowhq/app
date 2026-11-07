@@ -256,7 +256,7 @@
   @apply flex min-h-12 items-center gap-2 border-t border-base-300 bg-secondary/60 px-4 py-2;
 }
 
-/* Long content shortened to about ten lines and faded at the end, until shown in full (collapsible.js). */
+/* Long content shortened to about ten lines and faded at the end, until shown in full (components/collapsible.js). */
 @utility collapsible {
   @apply max-h-64 overflow-hidden;
   &[data-overflows] {
@@ -415,7 +415,7 @@
   }
 }
 
-/* A student ID this browser can't open, as a lock and masked digits (ids.js).
+/* A student ID this browser can't open, as a lock and masked digits (behaviours/student-ids.js).
    Its text, "Encrypted", is for assistive technology only. */
 [data-student-id-state="encrypted"] {
   @apply inline-flex cursor-pointer items-center gap-1.5 text-subtle hover:text-muted;
@@ -458,7 +458,7 @@
   }
 }
 
-/* The loading bar htmx.js shows while a page opens: a quarter of the way in a moment, then slowing towards 90%, and
+/* The loading bar behaviours/page-loading.js shows while a page opens: a quarter of the way in a moment, then slowing towards 90%, and
    on arrival the rest of the way before it fades. Transitions, unlike animations, carry on from where they stop.
    Tailwind's scale-x-* set `scale`, which would multiply with this `transform`. */
 #page-loading-bar {
@@ -476,11 +476,11 @@
       opacity 300ms ease 200ms;
   }
 }
-/* What an opening page replaces (htmx.js), once it has kept someone waiting. A `contents` box has no opacity. */
+/* What an opening page replaces (behaviours/page-loading.js), once it has kept someone waiting. A `contents` box has no opacity. */
 :is([aria-busy="true"]:not(.contents, .btn, .method-choice), .contents[aria-busy="true"] > *) {
   @apply opacity-50 transition-opacity delay-100 duration-200;
 }
-/* A pressed button whose request takes a moment (htmx.js) shows a spinner in place of its label, at the same size; a
+/* A pressed button whose request takes a moment (behaviours/busy-buttons.js) shows a spinner in place of its label, at the same size; a
    method choice, in place of its About button. */
 .btn[data-spinner] {
   @apply relative;

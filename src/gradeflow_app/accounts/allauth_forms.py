@@ -1,4 +1,5 @@
-"""allauth's forms with plain labels. The browser sends authentication keys instead of passwords (password-forms.js)."""
+"""allauth's forms with plain labels. The browser sends authentication keys instead of passwords
+(behaviours/password-forms.js)."""
 
 from typing import Any, ClassVar
 
