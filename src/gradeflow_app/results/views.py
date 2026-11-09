@@ -18,12 +18,7 @@ from gradeflow_app.ui.fragments import fragment_of, is_fragment
 @assessment_member()
 def students(request: Request, access: AssessmentAccess) -> HttpResponse:
     template = "results/students.html#students" if is_fragment(request) else "results/students.html"
-    context = {
-        "access": access,
-        "results": assessment_results(access.assessment),
-        "download_form": download_form(),
-    }
-    return render(request, template, context)
+    return render(request, template, {"access": access, "results": assessment_results(access.assessment)})
 
 
 @assessment_member()

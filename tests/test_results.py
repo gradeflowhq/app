@@ -93,10 +93,9 @@ def test_downloads_open_as_utf8_in_spreadsheets(client: Client, assessment: Asse
 
 def test_there_is_nothing_to_download_before_an_import(client: Client) -> None:
     assessment = create_assessment(client)
-    for name in ("students", "export"):
-        page = client.get(reverse(name, args=[assessment.pk])).text
-        assert 'data-dialog="download"' not in page
-        assert "data-decrypt" not in page
+    page = client.get(reverse("export", args=[assessment.pk])).text
+    assert 'data-dialog="download"' not in page
+    assert "data-decrypt" not in page
 
 
 def test_a_result_keeps_a_long_method_label(assessment: Assessment) -> None:
@@ -336,5 +335,4 @@ def test_a_run_of_changes_to_a_questions_adjustments_shows_once(client: Client, 
 
 def test_downloads_are_only_posted_from_the_dialog(client: Client, assessment: Assessment) -> None:
     assert client.get(reverse("download", args=[assessment.pk])).status_code == 405
-    for name in ("students", "export"):
-        assert 'data-dialog="download"' in client.get(reverse(name, args=[assessment.pk])).text, name
+    assert 'data-dialog="download"' in client.get(reverse("export", args=[assessment.pk])).text
