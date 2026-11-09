@@ -42,7 +42,7 @@ TRIALS = [
     },
 ]
 MODEL_TRIALS = [ModelTrial.model_validate(trial) for trial in TRIALS]
-CRITERIA = {"criteria": [{"criterion": "Says ice floats", "marks": 1}]}
+CRITERIA = {"criteria": [{"text": "Says ice floats", "marks": 1}]}
 
 
 @pytest.fixture(autouse=True)
