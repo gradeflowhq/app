@@ -399,8 +399,8 @@ def test_a_method_test_run_asks_models_when_its_test_values_do(user: User) -> No
             "label": "Supplied",
             "summary": "Marks with the checks given.",
             "question_types": ["text"],
-            "inputs": {"checks": {"default": [{"uses": "gradeflow/full-marks@1"}]}},
-            "checks": [{"uses": "gradeflow/combination@1", "with": {"checks": "{{ inputs.checks }}"}}],
+            "settings": {"checks": {"default": [{"uses": "gradeflow/full-marks@1"}]}},
+            "steps": [{"uses": "gradeflow/workflow@1", "with": {"steps": "{{ settings.checks }}"}}],
         }
     )
     workspace = MethodWorkspace(method, create_method_draft(method, user, definition))
@@ -461,7 +461,7 @@ def test_a_question_groups_answers_column_asks_to_connect_when_marking_asks_a_mo
         {"question": "Q3", "uses": "gradeflow/answer-criteria@1", "with": CRITERIA},
         {"question": "Q1", "uses": "gradeflow/full-marks@1"},
     ]
-    definition = {"uses": "gradeflow/combination@1", "with": {"checks": parts}}
+    definition = {"uses": "gradeflow/workflow@1", "with": {"steps": parts}}
     marking = Marking.objects.create(
         assessment=assessment, definition=dump_yaml(definition), questions_marked=["Q1", "Q3"]
     )

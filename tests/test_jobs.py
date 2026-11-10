@@ -508,10 +508,10 @@ def test_a_preview_counts_the_students_whose_marks_change(client: Client, assess
 
 def test_editing_back_to_the_previewed_marking_shows_its_preview_again(client: Client, assessment: Assessment) -> None:
     url, draft = start_marking(client, assessment, "Q1", "gradeflow/key-points@1")
-    previewed_fields = {"path": "", "fields_posted": "1", "points": ["light"], "combine": "all"}
+    previewed_fields = {"path": "", "fields_posted": "1", "points": ["light"], "marks_by": "all_correct"}
     client.post(url, previewed_fields)
     preview_draft(client, draft)
-    assert "Marking changed" in client.post(url, previewed_fields | {"combine": "any"}).text
+    assert "Marking changed" in client.post(url, previewed_fields | {"marks_by": "any_correct"}).text
     page = client.post(url, previewed_fields).text
     preview_bar = page[page.index('id="preview-bar"') :][:1500]
     assert "Marking changed" not in preview_bar

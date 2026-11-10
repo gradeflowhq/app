@@ -31,7 +31,7 @@ def test_the_sandbox_gives_a_result_for_each_test_answer() -> None:
         "methods": [],
         "questions": {"Q1": {"type": "text"}},
         "question": "Q1",
-        "inputs": {"answers": ["light"]},
+        "settings": {"answers": ["light"]},
         "rows": rows,
     }
     outcome = sandbox_tasks(lambda event: None)["test"](test_request)

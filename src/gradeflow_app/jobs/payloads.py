@@ -25,7 +25,7 @@ class TestRun(BaseModel):
     methods: list[tuple[str, str]]
     questions: QuestionSet
     question: str | None
-    inputs: dict[str, Any]
+    settings: dict[str, Any]
     rows: list[ExampleRow]
 
 

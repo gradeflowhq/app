@@ -6,7 +6,7 @@ import logging
 from contextlib import suppress
 from dataclasses import dataclass
 from functools import cache
-from typing import Any, Literal
+from typing import Any, Literal, TypedDict, Unpack
 
 from django.conf import settings
 from django.core.cache import cache as django_cache
@@ -33,6 +33,11 @@ ENDING_REASONS = {
 ENDED_LIFETIME = 24 * 60 * 60
 """Seconds an ended run's late callbacks are ignored for."""
 _LOG = logging.getLogger(__name__)
+
+
+class Progress(TypedDict, total=False):
+    progress: float
+    progress_text: str
 
 
 @dataclass(frozen=True)
@@ -136,7 +141,7 @@ def apply_event(run: Run, event: dict[str, Any]) -> None:
     notify(run)
 
 
-def record_progress(run: Run, **progress: str | float) -> None:
+def record_progress(run: Run, **progress: Unpack[Progress]) -> None:
     """Keep how far the run has got, such as its `progress` or what it waits on as `progress_text`."""
     key = _progress_key(run)
     django_cache.set(key, django_cache.get(key, {}) | progress, timeout=settings.GRADEFLOW_MODEL_JOB_TIME_LIMIT)
@@ -193,7 +198,7 @@ def _launch(run: Run, model_endpoint: ModelEndpoint | None) -> Launch:
 
 
 def _running_state(run: Run, state: State) -> RunState:
-    progress: dict[str, Any] = django_cache.get(_progress_key(run), {})
+    progress: Progress = django_cache.get(_progress_key(run), {})
     return RunState("running" if state is State.RUNNING else "queued", **progress)
 
 

@@ -19,9 +19,9 @@ from tests.conftest import make_code_question
 
 LIGHT_IN_AT_MOST_THREE_WORDS = {
     "question": "Q1",
-    "uses": "gradeflow/combination@1",
+    "uses": "gradeflow/workflow@1",
     "with": {
-        "checks": [
+        "steps": [
             {"uses": "gradeflow/key-point@1", "with": {"point": "light"}},
             {"uses": "gradeflow/length@1", "with": {"max_length": 3, "unit": "words"}},
         ]

@@ -32,7 +32,7 @@ OLD_DEFINITION = dump_yaml(
         "label": "Light",
         "summary": "Says light.",
         "question_types": ["text"],
-        "checks": [
+        "steps": [
             {"uses": "gradeflow/key-points@1", "with": {"points": ["light"], "evaluate_expected": False}},
             {"uses": "gradeflow/best-answer@1"},
         ],
@@ -69,7 +69,7 @@ def wrapper(course: Course, user: User, light: Method) -> Method:
             "label": "Wrapper",
             "summary": "Uses Light.",
             "question_types": ["text"],
-            "checks": [{"uses": old_light.ref}],
+            "steps": [{"uses": old_light.ref}],
         }
     )
     version = MethodVersion.objects.create(

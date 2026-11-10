@@ -197,7 +197,7 @@ def test_a_code_editor_outlives_redraws_of_its_own_field_only() -> None:
         return found[1]
 
     assert editor_id("", "a") == editor_id("", "b"), "typing keeps the editor"
-    assert editor_id("", "a") != editor_id("with.checks.0", "a"), "another check's code gets its own editor"
+    assert editor_id("", "a") != editor_id("with.steps.0", "a"), "another check's code gets its own editor"
 
 
 def test_a_choice_of_numbers_is_posted_back_as_a_number() -> None:
@@ -230,10 +230,10 @@ def test_a_few_short_choices_sit_side_by_side_and_others_are_listed() -> None:
     assert widget(MAX_SEGMENTS, "Neighbours in order ").input_type == "select", "too long for one row"
 
 
-def test_checks_held_in_a_check_are_shown_as_cards() -> None:
-    check = hinted({"type": "object"}, kind="check")
-    schema = object_schema(check=check, checks={"type": "array", "items": check})
-    assert unrepresentable_fields(schema, {"check": {"uses": "a"}, "checks": [{"uses": "b"}]}) == []
+def test_steps_held_in_a_step_are_shown_as_cards() -> None:
+    step = hinted({"type": "object"}, kind="step")
+    schema = object_schema(step=step, steps={"type": "array", "items": step})
+    assert unrepresentable_fields(schema, {"step": {"uses": "a"}, "steps": [{"uses": "b"}]}) == []
 
 
 def test_what_fills_a_field_shows_in_its_place_and_the_post_leaves_it_alone() -> None:

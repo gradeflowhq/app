@@ -121,7 +121,7 @@ def test_a_preview_goes_stale_when_a_question_it_marked_changes(
     if grouped:
         client.post(reverse("question_group_new", args=[assessment.pk]), {"method": "gradeflow/answer-sets@1"})
         draft = MarkingDraftRecord.objects.get()
-        answer_set = {"name": "Correct", "uses": "gradeflow/combination@1", "with": {"checks": [q1_check]}}
+        answer_set = {"name": "Correct", "uses": "gradeflow/workflow@1", "with": {"steps": [q1_check]}}
         draft.definition = dump_yaml({"uses": "gradeflow/answer-sets@1", "with": {"sets": [answer_set]}})
         answers_url = reverse("question_group_draft_answers", args=[assessment.pk, draft.pk])
     else:

@@ -1,4 +1,4 @@
-"""A user's draft of a marking, as the core edits it, with the forms of its checks and the answers they suggest; and
+"""A user's draft of a marking, as the core edits it, with the forms of its steps and the answers they suggest; and
 starting, saving and discarding it."""
 
 from collections import Counter
@@ -16,12 +16,12 @@ from gradeflow_core.editing import MarkingDraft, Position, dump_yaml
 from gradeflow_app.accounts.models import User
 from gradeflow_app.assessments.models import Assessment, AssessmentAccess
 from gradeflow_app.courses.models import Course
-from gradeflow_app.editor.editing import CheckWorkspace, Conflict, EditorActions
+from gradeflow_app.editor.editing import Conflict, EditorActions, StepWorkspace
 from gradeflow_app.imports.models import answer_expression, has_imported_marks
 from gradeflow_app.jobs import runs
 from gradeflow_app.libraries.collection import OfferedMethods, offers, usable
 from gradeflow_app.live.topics import notify_change, topic
-from gradeflow_app.marking.checks import marking_draft
+from gradeflow_app.marking.checks import marking_draft_of
 from gradeflow_app.marking.models import Marking, MarkingDraftRecord, MarkingSubject
 from gradeflow_app.marking.remarks import schedule_marking
 from gradeflow_app.requests import Request
@@ -33,7 +33,7 @@ PREVIEW = "preview"
 
 
 @dataclass
-class MarkingWorkspace(CheckWorkspace):
+class MarkingWorkspace(StepWorkspace):
     """Build one per request: it reads every student's answer."""
 
     draft: MarkingDraftRecord
@@ -99,14 +99,16 @@ class MarkingWorkspace(CheckWorkspace):
         return usable(self.draft.user, self.course)
 
     @cached_property
-    def checks(self) -> MarkingDraft:
-        return marking_draft(self.draft.definition, self.questions, self.subject.key, self.methods)
+    def marking_draft(self) -> MarkingDraft:
+        return marking_draft_of(self.draft.definition, self.questions, self.subject.key, self.methods)
 
     def save(self) -> None:
         """Saves the draft; once it is finished, as the core writes it, without what it leaves at defaults."""
-        if not self.checks.data:
+        if not self.marking_draft.data:
             return
-        self.draft.definition = dump_yaml(self.checks.data if self.checks.problems else self.checks.finalized().dump())
+        self.draft.definition = dump_yaml(
+            self.marking_draft.data if self.marking_draft.problems else self.marking_draft.finalized().dump()
+        )
         self.draft.save(update_fields=["definition"])
 
     def save_marking(self, model_endpoint: ModelEndpoint | None) -> Marking:
@@ -140,7 +142,7 @@ class MarkingWorkspace(CheckWorkspace):
         return dict(counts.most_common(MAX_SUGGESTIONS))
 
     def suggestions_at(self, position: Position) -> dict[str, int]:
-        """What a check at `position` reads of the commonest answers, with how many gave each."""
+        """What a step at `position` reads of the commonest answers, with how many gave each."""
         if position.question != self.subject.key:
             return {}
         if position.value is None:

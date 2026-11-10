@@ -140,7 +140,7 @@ def comment(request: Request, access: AssessmentAccess) -> HttpResponse:
 class Sending:
     """How an assessment's marks go to Canvas, and how many of its course's settings it overrides."""
 
-    mode: str
+    mode: MarksMode
     rounding: float | None
     include_feedback: bool
     override_count: int
@@ -160,7 +160,7 @@ class Sending:
 def effective_sending(assessment: AssessmentCanvas, course: CourseCanvas) -> Sending:
     mode, rounding, feedback = assessment.marks_mode, assessment.rounding, assessment.include_feedback
     return Sending(
-        mode=mode or course.marks_mode,
+        mode=MarksMode(mode or course.marks_mode),
         rounding=course.rounding if rounding is None else rounding,
         include_feedback=course.include_feedback if feedback is None else feedback,
         override_count=sum(value not in ("", None) for value in (mode, rounding, feedback)),

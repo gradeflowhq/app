@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from itertools import groupby
 from typing import Any, Literal
+from uuid import UUID
 
 from django.template.defaultfilters import pluralize
 from django.urls import reverse
@@ -50,7 +51,7 @@ class _Change:
 
     occurred_at: datetime
     user: User | None
-    subject: object
+    subject: UUID
     """The question or question group changed."""
     kind: Literal["marking", "adjustments"]
     subject_name: str
@@ -58,7 +59,7 @@ class _Change:
     url: str
     action: str
     """What the change did: "added", "changed" or "removed" a marking; "adjusted" or "cleared" a student."""
-    student: object = None
+    student: UUID | None = None
 
 
 def overview_context(access: AssessmentAccess) -> dict[str, Any]:
@@ -155,7 +156,7 @@ def _changes(assessment: Assessment) -> list[_Change]:
     questions = dict(assessment.questions.values_list("pk", "key"))
     groups = set(assessment.markings.filter(question=None).values_list("pk", flat=True))
 
-    def question_url(question_id: object) -> str:
+    def question_url(question_id: UUID) -> str:
         return reverse("question", args=[assessment.pk, question_id]) if question_id in questions else ""
 
     versions = Marking.history.filter(assessment_id=assessment.pk).select_related("history_user")[:MAX_CHANGES_READ]

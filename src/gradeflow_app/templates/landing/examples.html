@@ -5,8 +5,8 @@
     <div class="grid md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]" x-show="example === '{{ example.key }}'"{% if not forloop.first %} x-cloak{% endif %}>
       <div class="grid content-start gap-5 p-5">
         <p class="text-muted">{{ example.method.summary }}</p>
-        {% if example.key == "combination" %}
-        <fieldset class="grid gap-1.5"><legend class="mb-1.5 font-medium">Marks for g = 10</legend><div class="landing-choices">{{ settings.combination }}</div></fieldset>
+        {% if example.key == "workflow" %}
+        <fieldset class="grid gap-1.5"><legend class="mb-1.5 font-medium">Marks for g = 10</legend><div class="landing-choices">{{ settings.workflow }}</div></fieldset>
         {% elif example.key == "conditional" %}
         <label class="flex cursor-pointer items-center gap-3 font-medium">{{ settings.conditional }}Depends on Q4a</label>
         {% elif example.key == "custom_code" %}

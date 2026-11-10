@@ -20,7 +20,7 @@ from gradeflow_core import GradeFlowError, InvalidError, QuestionSet
 from gradeflow_core.editing import QUESTION_TYPES, EditingError, new_question
 
 from gradeflow_app.editor import operations
-from gradeflow_app.editor.picker import PickerForm, check_picker
+from gradeflow_app.editor.picker import PickerForm, step_picker
 from gradeflow_app.libraries import method_tests
 from gradeflow_app.libraries.access import MethodAccess, method_viewer
 from gradeflow_app.libraries.designer import presenters
@@ -154,8 +154,7 @@ def answers(request: Request, access: MethodAccess, number: int | None = None) -
 @method_viewer()
 @transaction.atomic
 def values(request: Request, access: MethodAccess, number: int | None = None) -> HttpResponse:
-    """Change the values the inputs have in a draft's test runs, or go back to their defaults. A published
-    version's are those it was published with."""
+    """Change a draft's test values, or go back to the defaults."""
 
     def change(workspace: MethodWorkspace) -> dict[str, Any] | None:
         _draft_only(workspace)
@@ -202,8 +201,8 @@ def results(request: Request, access: MethodAccess, number: int | None = None) -
 @require_POST
 @method_viewer()
 @transaction.atomic
-def check(request: Request, access: MethodAccess, number: int | None = None) -> HttpResponse:
-    """Open a check of the marking; in a draft, also change it as the editor's form says. The whole workspace
+def step(request: Request, access: MethodAccess, number: int | None = None) -> HttpResponse:
+    """Open a step of the marking; in a draft, also change it as the editor's form says. The whole workspace
     answers, even the form's own edits, so the page always holds the revision it shows."""
     workspace = _workspace(request, access, number)
     if not workspace.editable:
@@ -225,24 +224,29 @@ def check(request: Request, access: MethodAccess, number: int | None = None) -> 
 
 @method_viewer(edit=True)
 def method_choices(request: Request, access: MethodAccess) -> HttpResponse:
-    """The method picker for the check at `target` of the draft."""
+    """The method picker for the step at `target` of the draft."""
     workspace = _workspace(request, access, None)
     picker_form = PickerForm(
-        action=workspace.url("method_check"),
+        action=workspace.url("method_step"),
         target="#method-work",
         swap="outerMorph",
         include="#method-state",
     )
-    return check_picker(
-        request, workspace.checks, workspace.offers, workspace.course, picker_form, workspace.url("method_choices")
+    return step_picker(
+        request,
+        workspace.marking_draft,
+        workspace.offers,
+        workspace.course,
+        picker_form,
+        workspace.url("method_choices"),
     )
 
 
 @require_POST
 @method_viewer(edit=True)
 @transaction.atomic
-def fill_setting(request: Request, access: MethodAccess) -> HttpResponse:
-    """Fill a setting with a fixed value, a new input, or an existing one."""
+def fill_field(request: Request, access: MethodAccess) -> HttpResponse:
+    """Fill a field with a fixed value, a new setting, or an existing one."""
 
     def change(workspace: MethodWorkspace) -> dict[str, Any]:
         field_path = request.POST.get("field", "")
@@ -252,60 +256,61 @@ def fill_setting(request: Request, access: MethodAccess) -> HttpResponse:
         match request.POST.get("operation"):
             case "unbind":
                 workspace.draft.unbind(field_path)
-            case "new_input":
-                workspace.draft.bind_new_input(field_path)
+            case "bind_new_setting":
+                workspace.draft.bind_new_setting(field_path)
             case "bind":
-                workspace.draft.bind(field_path, request.POST.get("input", ""))
+                workspace.draft.bind(field_path, request.POST.get("setting", ""))
             case _:
                 raise Http404
         workspace.save()
-        return {"path": field.check}
+        return {"path": field.step_path}
 
     return _edit(request, access, None, change)
 
 
 @method_viewer()
 @transaction.atomic
-def inputs(request: Request, access: MethodAccess, number: int | None = None) -> HttpResponse:
-    """The inputs tab, or one input's settings; posting changes or removes the input."""
+def settings_tab(request: Request, access: MethodAccess, number: int | None = None) -> HttpResponse:
+    """The settings tab, or one declared setting; posting changes or removes it."""
     if request.method != "POST":
         workspace = _workspace(request, access, number)
-        return _render_workspace(request, access, workspace, tab="inputs")
+        return _render_workspace(request, access, workspace, tab="settings")
 
     def change(workspace: MethodWorkspace) -> dict[str, Any] | None:
         _draft_only(workspace)
-        name = request.POST.get("input", "")
+        name = request.POST.get("setting", "")
         if request.POST.get("operation") == "remove":
-            workspace.draft.remove_input(name)
+            workspace.draft.remove_declared_setting(name)
             workspace.save()
-            return {"tab": "inputs", "input": ""}
-        input_view = presenters.input_view(workspace, name, request.POST)
-        if input_view is None:
-            raise GradeFlowError("This input is no longer there.")
-        form = input_view.form
+            return {"tab": "settings", "setting": ""}
+        declared_setting_view = presenters.declared_setting_view(workspace, name, request.POST)
+        if declared_setting_view is None:
+            raise GradeFlowError("This setting is no longer there.")
+        showing_form = {"tab": "settings", "setting": name, "declared_setting_view": declared_setting_view}
+        form = declared_setting_view.form
         form.full_clean()
         values = form.values()
         if (edited := with_row_edit(form, values, request.POST)) is not None:
             return {
-                "tab": "inputs",
-                "input": name,
-                "input_view": presenters.input_view(workspace, name, initial_object=edited),
+                "tab": "settings",
+                "setting": name,
+                "declared_setting_view": presenters.declared_setting_view(workspace, name, initial_object=edited),
             }
         if not form.is_valid():
-            return {"tab": "inputs", "input": name, "input_view": input_view}
+            return showing_form
         declaration = {key: value for key, value in values.items() if value not in EMPTY_VALUES}
-        if declaration.get("advanced") == input_view.advanced:
+        if declaration.get("advanced") == declared_setting_view.advanced:
             del declaration["advanced"]
         try:
-            workspace.draft.update_input(name, declaration)
+            workspace.draft.update_declared_setting(name, declaration)
         except InvalidError as error:
             form.add_problems(error.problems)
-            return {"tab": "inputs", "input": name, "input_view": input_view}
+            return showing_form
         except EditingError as error:
             form.add_problem((), str(error))
-            return {"tab": "inputs", "input": name, "input_view": input_view}
+            return showing_form
         workspace.save()
-        return {"tab": "inputs", "input": ""}
+        return {"tab": "settings", "setting": ""}
 
     return _edit(request, access, number, change)
 

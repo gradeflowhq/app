@@ -64,7 +64,7 @@ def test_importing_results_infers_questions_and_keeps_imported_marks(client: Cli
 
 def test_marking_a_question_with_key_points(client: Client, assessment: Assessment) -> None:
     url, draft = start_marking(client, assessment, "Q1", "gradeflow/key-points@1")
-    response = client.post(url, {"path": "", "fields_posted": "1", "points": ["light"], "combine": "proportional"})
+    response = client.post(url, {"path": "", "fields_posted": "1", "points": ["light"], "marks_by": "proportional"})
     assert response.status_code == 200
     assert b'id="preview-bar"' in response.content, "a changed draft offers to preview it"
     assert b"Finish the marking to preview" not in response.content
@@ -84,17 +84,17 @@ def test_saving_an_incomplete_marking_shows_what_is_missing(client: Client, asse
     response = client.post(reverse("draft_save", args=[assessment.pk, draft.pk]), {"path": "", "operation": "save"})
     assert response.status_code == 200
     assert not Marking.objects.exists()
-    missing = [escape(problem.message) for problem in MarkingWorkspace(draft).checks.problems]
+    missing = [escape(problem.message) for problem in MarkingWorkspace(draft).marking_draft.problems]
     assert missing
     assert all(message in response.text for message in missing)
 
 
-def test_combining_checks(client: Client, assessment: Assessment) -> None:
-    url, draft = start_marking(client, assessment, "Q1", "gradeflow/combination@1")
-    client.post(url, {"path": "", "operation": "add", "target": "with.checks.0", "method": "gradeflow/key-points@1"})
+def test_a_step_added_to_a_workflow_saves(client: Client, assessment: Assessment) -> None:
+    url, draft = start_marking(client, assessment, "Q1", "gradeflow/workflow@1")
+    client.post(url, {"path": "", "operation": "add", "target": "with.steps.0", "method": "gradeflow/key-points@1"})
     draft.refresh_from_db()
-    assert definition_data(draft.definition)["with"]["checks"] == [{"uses": "gradeflow/key-points@1", "with": {}}]
-    client.post(url, {"path": "with.checks.0", "fields_posted": "1", "points": ["light"], "combine": "all"})
+    assert definition_data(draft.definition)["with"]["steps"] == [{"uses": "gradeflow/key-points@1", "with": {}}]
+    client.post(url, {"path": "with.steps.0", "fields_posted": "1", "points": ["light"], "marks_by": "all_correct"})
     client.post(reverse("draft_save", args=[assessment.pk, draft.pk]), {"path": "", "operation": "save"})
     assert Marking.objects.filter(question=draft.question).exists()
 
@@ -246,7 +246,7 @@ def test_a_methods_guide_leaves_out_examples_without_a_result() -> None:
             "label": "Light",
             "summary": "Says light.",
             "question_types": ["text"],
-            "checks": [check],
+            "steps": [check],
             "examples": [blank_example],
         }
     )
@@ -265,10 +265,10 @@ def test_a_saved_methods_guide_says_what_using_it_asks_for() -> None:
             "label": "Terms",
             "summary": "Says the terms.",
             "question_types": ["text"],
-            "inputs": {"terms": {"title": "Terms"}, "limit_to_three_words": {"default": False}},
-            "checks": [
-                {"for_each": "{{ inputs.terms }}", "uses": "gradeflow/key-point@1", "with": {"point": "{{ item }}"}},
-                {"if": "{{ inputs.limit_to_three_words }}", "uses": "gradeflow/length@1", "with": {"max_length": 3}},
+            "settings": {"terms": {"title": "Terms"}, "limit_to_three_words": {"default": False}},
+            "steps": [
+                {"for_each": "{{ settings.terms }}", "uses": "gradeflow/key-point@1", "with": {"point": "{{ item }}"}},
+                {"if": "{{ settings.limit_to_three_words }}", "uses": "gradeflow/length@1", "with": {"max_length": 3}},
             ],
         }
     )
@@ -286,9 +286,9 @@ def test_a_question_group_with_answer_sets(client: Client, assessment: Assessmen
     draft = MarkingDraftRecord.objects.get()
     url = reverse("draft", args=[assessment.pk, draft.pk])
     assert definition_data(draft.definition)["with"]["sets"] == [
-        {"name": "Expected", "uses": "gradeflow/combination@1", "with": {"checks": []}}
+        {"name": "Expected", "uses": "gradeflow/workflow@1", "with": {"steps": []}}
     ], "starting with one answer_set"
-    target = "with.sets.0.with.checks.0"
+    target = "with.sets.0.with.steps.0"
     response = client.post(
         url,
         {
@@ -301,7 +301,7 @@ def test_a_question_group_with_answer_sets(client: Client, assessment: Assessmen
     )
     assert response.status_code == 200
     draft.refresh_from_db()
-    assert definition_data(draft.definition)["with"]["sets"][0]["with"]["checks"] == [
+    assert definition_data(draft.definition)["with"]["sets"][0]["with"]["steps"] == [
         {"question": "Q1", "uses": "gradeflow/key-points@1", "with": {}}
     ], "a question group's check reads the question chosen with its method"
 
@@ -489,18 +489,18 @@ def test_complete_answer_sets_say_what_they_check(client: Client, assessment: As
     client.post(reverse("question_group_new", args=[assessment.pk]), {"method": "gradeflow/answer-sets@1"})
     draft = MarkingDraftRecord.objects.get()
     q1_check = {"question": "Q1", "uses": "gradeflow/accepted-answers@1", "with": {"answers": ["light"]}}
-    answer_set = {"name": "Correct", "uses": "gradeflow/combination@1", "with": {"checks": [q1_check]}}
+    answer_set = {"name": "Correct", "uses": "gradeflow/workflow@1", "with": {"steps": [q1_check]}}
     draft.definition = dump_yaml({"uses": "gradeflow/answer-sets@1", "with": {"sets": [answer_set]}})
     draft.save()
     page = client.get(reverse("question_group_draft", args=[assessment.pk, draft.pk])).text
-    assert markdown(MarkingWorkspace(draft).checks.describe("with.sets.0")) in page
+    assert markdown(MarkingWorkspace(draft).marking_draft.describe("with.sets.0")) in page
     assert "Not set up yet" not in page
 
 
-def test_an_empty_combination_inside_another_needs_setting_up(client: Client, assessment: Assessment) -> None:
-    _, draft = start_marking(client, assessment, "Q1", "gradeflow/combination@1")
-    inner = {"uses": "gradeflow/combination@1", "with": {}}
-    draft.definition = dump_yaml({"question": "Q1", "uses": "gradeflow/combination@1", "with": {"checks": [inner]}})
+def test_an_empty_workflow_inside_another_needs_setting_up(client: Client, assessment: Assessment) -> None:
+    _, draft = start_marking(client, assessment, "Q1", "gradeflow/workflow@1")
+    inner = {"uses": "gradeflow/workflow@1", "with": {}}
+    draft.definition = dump_yaml({"question": "Q1", "uses": "gradeflow/workflow@1", "with": {"steps": [inner]}})
     draft.save()
     page = client.get(reverse("question", args=[assessment.pk, draft.question_id])).text
     assert "All of these:" not in page
@@ -698,11 +698,15 @@ def test_choosing_a_checks_question_redraws_its_form(client: Client, assessment:
     assert "HX-Retarget" not in unchanged_redraw
 
 
-def test_another_method_replaces_the_checks(client: Client, assessment: Assessment) -> None:
+def test_changing_to_a_workflow_keeps_the_old_method_as_its_first_step(client: Client, assessment: Assessment) -> None:
     url, draft = start_marking(client, assessment, "Q1", "gradeflow/key-points@1")
-    client.post(url, {"path": "", "operation": "change_method", "target": "", "method": "gradeflow/combination@1"})
+    client.post(url, {"path": "", "operation": "change_method", "target": "", "method": "gradeflow/workflow@1"})
     draft.refresh_from_db()
-    assert definition_data(draft.definition)["uses"] == "gradeflow/combination@1"
+    assert definition_data(draft.definition) == {
+        "question": "Q1",
+        "uses": "gradeflow/workflow@1",
+        "with": {"steps": [{"uses": "gradeflow/key-points@1", "with": {}}]},
+    }
 
 
 def test_more_options_hold_only_the_advanced_fields(client: Client, assessment: Assessment) -> None:

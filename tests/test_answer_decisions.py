@@ -56,7 +56,7 @@ def test_decisions_lock_until_cancelled(client: Client, assessment: Assessment, 
     cancelled = client.post(url, {"answer": ["42.0"], "decision": "cancel"}, headers=HTMX_HEADERS)
     assert cancelled.status_code == 200
     draft.refresh_from_db()
-    assert MarkingWorkspace(draft).checks.answer_decisions() == {}
+    assert MarkingWorkspace(draft).marking_draft.answer_decisions() == {}
     card = answer_card(cancelled.text, "42")
     assert 'name="decision" value="full_marks"' in card
     assert 'value="cancel"' not in card

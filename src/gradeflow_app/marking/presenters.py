@@ -20,7 +20,7 @@ from gradeflow_app.marking.checks import (
     assessment_checks,
     check_of,
     definition_data,
-    marking_draft,
+    marking_draft_of,
     methods_for,
     questions_involved,
     questions_marked,
@@ -55,7 +55,7 @@ def summary_of(check: Check) -> MarkingSummary:
 def saved_summary(definition: str, key: str | None, loaded: LoadedFiles, questions: QuestionSet) -> MarkingSummary:
     """A saved marking of the question `key`, or of a question group, which can stop marking when the core or its
     questions change."""
-    draft = marking_draft(definition, questions, key, loaded.methods)
+    draft = marking_draft_of(definition, questions, key, loaded.methods)
     if not (problems := draft.problems):
         return summary_of(draft.finalized())
     method = draft.method("")
@@ -227,14 +227,14 @@ def question_list(
     ]
     for draft in drafts:
         if draft.question_id is None and draft.marking_id is None:
-            checks = parsed[draft.pk]
+            marking_draft = parsed[draft.pk]
             try:
-                marked_keys = sorted(checks.finalized().questions_marked())
+                marked_keys = sorted(marking_draft.finalized().questions_marked())
             except EditingError:
                 marked_keys = []
             url = reverse("question_group_draft", args=[assessment.pk, draft.pk])
             question_groups.append(
-                QuestionGroup(url, marked_keys, drafted_method(checks), True, str(draft.pk) == shown_id)
+                QuestionGroup(url, marked_keys, drafted_method(marking_draft), True, str(draft.pk) == shown_id)
             )
     return QuestionList(shown_id, listed, question_groups)
 
@@ -246,14 +246,14 @@ def _parsed_drafts(access: AssessmentAccess, drafts: list[MarkingDraftRecord]) -
     questions = access.assessment.question_set()
     methods = usable(access.member.user, access.course)
     return {
-        draft.pk: marking_draft(draft.definition, questions, draft.question.key if draft.question else None, methods)
+        draft.pk: marking_draft_of(draft.definition, questions, draft.question.key if draft.question else None, methods)
         for draft in drafts
     }
 
 
-def drafted_method(checks: MarkingDraft) -> str:
+def drafted_method(marking_draft: MarkingDraft) -> str:
     """The method of a draft, as far as it has one."""
-    return checks.label("") if checks.is_check("") else ""
+    return marking_draft.label("") if marking_draft.is_step("") else ""
 
 
 @dataclass(frozen=True)
@@ -283,7 +283,6 @@ class Panel:
     """The marking column of a question no one is editing: its saved marking, the question group marking it, or
     methods to choose from."""
 
-    mode: Literal["summary", "question_group", "choose"]
     question_group: SavedGroup | None
     summary: MarkingSummary | None
     choices: Choices | None
@@ -292,6 +291,10 @@ class Panel:
     has_history: bool
     archived: bool
     """Whether the marking's method is archived."""
+
+    @property
+    def mode(self) -> Literal["summary", "question_group", "choose"]:
+        return "question_group" if self.question_group else "summary" if self.summary else "choose"
 
 
 def panel(
@@ -312,7 +315,6 @@ def panel(
     choosing = marking is None and group_marking is None and access.can_edit
     user = access.member.user
     return Panel(
-        mode="summary" if marking else "question_group" if group else "choose",
         question_group=group,
         summary=_summary(marking, check, assessment) if marking else group.summary if group else None,
         choices=choices(methods_for(user, assessment, question.key), offers(user, assessment.course))

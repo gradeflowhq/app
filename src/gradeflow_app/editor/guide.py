@@ -27,26 +27,28 @@ PICKER_TABS = {"builtin": "Built-in", "yours": "Yours", "public": "Public"}
 
 @dataclass(frozen=True)
 class Choices:
-    """The latest version of each method to choose from: the everyday built-in ones, the person's saved ones, then
-    the advanced ones under "Advanced" if there are everyday ones too."""
+    """The latest version of each method to choose from."""
 
     everyday: list[Method[Any]]
+    transforms: list[Method[Any]]
     saved: list[Method[Any]]
     advanced: list[Method[Any]]
 
     def __len__(self) -> int:
-        return len(self.everyday) + len(self.saved) + len(self.advanced)
+        return len(self.everyday) + len(self.transforms) + len(self.saved) + len(self.advanced)
 
 
 def choices(methods: Methods, offers: OfferedMethods) -> Choices:
     available = {method.name: method for method in methods.latest()}
     builtin = [method for name, method in available.items() if name in BUILTIN_NAMES]
-    everyday = [method for method in builtin if method.level == "basic"]
-    advanced = [method for method in builtin if method.level != "basic"]
+    transforms = [method for method in builtin if not method.gives_marks({})]
+    marking_methods = [method for method in builtin if method.gives_marks({})]
+    everyday = [method for method in marking_methods if method.level == "basic"]
+    advanced = [method for method in marking_methods if method.level != "basic"]
     if not everyday:
         everyday, advanced = advanced, []
     saved = [available[name] for _, names in offers.sections for name in names if name in available]
-    return Choices(everyday, saved, advanced)
+    return Choices(everyday, transforms, saved, advanced)
 
 
 def sections_of(methods: Methods, offers: OfferedMethods) -> list[Section]:
@@ -60,37 +62,37 @@ def sections_of(methods: Methods, offers: OfferedMethods) -> list[Section]:
 
     return [
         Section("", [(method, "") for method in method_choices.everyday]),
+        Section("Transform the answer", [(method, "") for method in method_choices.transforms]),
         Section("Advanced", [(method, "") for method in method_choices.advanced]),
         *(Section(label, with_owners(names), "yours") for label, names in offers.sections),
         Section("Public", with_owners(offers.public), "public"),  # labelled only among search results
     ]
 
 
-class QuestionGroupCheck(NamedTuple):
+class QuestionChoice(NamedTuple):
     questions: list[str]
     """The questions it may read."""
     question: str | None
     """The one it reads; none for a method of several questions."""
 
 
-def question_group_check(
-    checks: MarkingDraft, target: str, chosen_question: str | None = None
-) -> QuestionGroupCheck | None:
-    """For a check added at `target` of a question group, which names the question it reads: `chosen_question`,
-    by default the first, or none, chosen as `""`, where methods of several questions can go. None for any other
-    check."""
-    position = checks.position(target)
+def question_choice(
+    marking_draft: MarkingDraft, target: str, chosen_question: str | None = None
+) -> QuestionChoice | None:
+    """The questions a step added at `target` of a question group may read, and the one it reads: `chosen_question`
+    or the first; none if it is `""` and methods of several questions can go there. None for any other step."""
+    position = marking_draft.position(target)
     if not position.in_group or position.question is not None:
         return None
-    keys = list(checks.questions)
-    if chosen_question == "" and allows_group_methods(checks, target):
-        return QuestionGroupCheck(keys, None)
-    return QuestionGroupCheck(keys, chosen_question if chosen_question in keys else next(iter(keys), None))
+    keys = list(marking_draft.questions)
+    if chosen_question == "" and allows_group_methods(marking_draft, target):
+        return QuestionChoice(keys, None)
+    return QuestionChoice(keys, chosen_question if chosen_question in keys else next(iter(keys), None))
 
 
-def allows_group_methods(checks: MarkingDraft, target: str) -> bool:
+def allows_group_methods(marking_draft: MarkingDraft, target: str) -> bool:
     """Whether methods of several questions can go at `target`."""
-    return any(method.marks_question_group for method in checks.methods(target, None))
+    return any(method.marks_question_group for method in marking_draft.methods(target, None))
 
 
 def _labels(question_types: Iterable[str]) -> list[str]:
@@ -165,6 +167,6 @@ def guide_context(
 
 
 def _setting_titles(method: Method[Any]) -> list[str]:
-    """What a check of the method is set up with, by title, in order."""
+    """What a step using the method is set up with, by title, in order."""
     schema = method.settings_schema(Position(QuestionSet({})))
     return [setting.get("title", name) for name, setting in schema.get("properties", {}).items()]

@@ -137,7 +137,7 @@ def _text_field(hints: Mapping[str, Any], kwargs: dict[str, Any]) -> forms.Field
     return forms.CharField(strip=False, **kwargs)
 
 
-def _type_of(options: Sequence[Any]) -> type:
+def _type_of(options: Sequence[Any]) -> type[int | float | str]:
     """The type a choice among `options` is posted back as: a number's options are numbers."""
     kinds = {type(option) for option in options}
     return kinds.pop() if len(kinds) == 1 and kinds <= {int, float} else str

@@ -1,4 +1,4 @@
-"""How an object's schema is edited: its fields, groups, rows, maps of tagged values and settings that hold checks."""
+"""How an object's schema is edited: its fields, groups, rows, maps of tagged values and settings that hold steps."""
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field, replace
@@ -11,7 +11,7 @@ from gradeflow_app.ui.schemaforms.fields import field_for
 from gradeflow_app.ui.schemaforms.schema import (
     Schema,
     hint,
-    holds_checks,
+    holds_steps,
     is_editable,
     resolve,
     title_of,
@@ -41,7 +41,7 @@ class Tag:
 
 @dataclass(frozen=True)
 class TaggedMap:
-    """A map of named, tagged values, like a check's parameters."""
+    """A map of named, tagged values, like Custom Code's parameters."""
 
     tags: list[Tag]
     item: str
@@ -73,7 +73,7 @@ class FieldHints:
     required: bool = False
     visible_when: Mapping[str, Any] = field(default_factory=dict)
     """Show it only while these fields of the same form have these values."""
-    presets: tuple[Any, ...] = ()
+    presets: tuple[float, ...] = ()
     """The core's examples of a number, to pick at a click beside the field."""
 
 
@@ -104,8 +104,8 @@ class Layout:
     """Maps of tagged values by name."""
     headings: dict[str, tuple[str, str]] = field(default_factory=dict)
     """The label and help of each list of rows and map, by name."""
-    checks_settings: list[str] = field(default_factory=list)
-    """The names of the fields that hold checks."""
+    settings_holding_steps: list[str] = field(default_factory=list)
+    """The names of the fields that hold steps."""
     advanced: set[str] = field(default_factory=set)
     """Fields, rows, maps and groups most people leave as they are, by name."""
 
@@ -152,8 +152,8 @@ def layout(schema: Schema, defs: Mapping[str, Schema] | None = None) -> Layout:
             property_schema, schema["properties"], defs
         ):
             result.advanced.add(name)
-        if holds_checks(property_schema):
-            result.checks_settings.append(name)
+        if holds_steps(property_schema):
+            result.settings_holding_steps.append(name)
         elif property_schema.get("type") == "object" and "properties" in property_schema:
             result.add_group(name, label, layout(property_schema, defs))
         elif (
@@ -203,12 +203,12 @@ def unrepresentable_fields(schema: Schema, values: Mapping[str, Any]) -> list[st
         {name.split(NESTED_SEPARATOR, 1)[0] for name in form_layout.fields}
         | set(form_layout.rows)
         | set(form_layout.tagged)
-        | set(form_layout.checks_settings)
+        | set(form_layout.settings_holding_steps)
     )
     found = []
     for name, raw in schema.get("properties", {}).items():
         property_schema = resolve(raw, defs)
-        if not is_editable(property_schema) or name in form_layout.checks_settings:
+        if not is_editable(property_schema) or name in form_layout.settings_holding_steps:
             continue
         title, value = property_schema.get("title", name), values.get(name)
         if name not in represented:

@@ -2,5 +2,5 @@
 
 An object's scalar and list fields become form fields; its nested objects become prefixed fields of the same
 form; its lists of plain objects become rows; maps of tagged values become name, type and value rows. Settings that
-hold checks are not fields: the editor shows their checks as cards.
+hold steps are not fields: the editor shows their steps as cards.
 """

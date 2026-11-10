@@ -29,7 +29,7 @@ def check_of(definition: str, methods: Methods) -> Check | None:
         return None
 
 
-def marking_draft(definition: str, questions: QuestionSet, key: str | None, methods: Methods) -> MarkingDraft:
+def marking_draft_of(definition: str, questions: QuestionSet, key: str | None, methods: Methods) -> MarkingDraft:
     """A stored marking of the question `key`, or of a question group, as the core edits it: where each of its
     problems is."""
     return MarkingDraft(definition_data(definition), questions, key, methods=methods)

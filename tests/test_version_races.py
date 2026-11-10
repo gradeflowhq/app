@@ -148,11 +148,11 @@ def invalid_check(course: Course) -> dict[str, Any]:
         """label: Text input
 summary: A text input that rejects nontext settings.
 question_types: [text]
-inputs:
+settings:
   threshold: {default: light}
-checks:
+steps:
   - uses: gradeflow/key-point@1
-    with: {point: "{{ inputs.threshold }}"}
+    with: {point: "{{ settings.threshold }}"}
 """,
     )
     return {"question": "Q1", "uses": version.ref, "with": {"threshold": ["abc"]}}
@@ -164,13 +164,13 @@ def test_generated_invalid_settings_remain_a_repairable_draft(
 ) -> None:
     draft = _create_draft(course, user)
     definition_tree = (
-        {"uses": "gradeflow/combination@1", "with": {"checks": [invalid_check]}} if in_question_group else invalid_check
+        {"uses": "gradeflow/workflow@1", "with": {"steps": [invalid_check]}} if in_question_group else invalid_check
     )
     draft.definition = dump_yaml(definition_tree)
     if in_question_group:
         draft.question = None
     draft.save()
-    assert MarkingWorkspace(draft).checks.problems
+    assert MarkingWorkspace(draft).marking_draft.problems
     url = (
         reverse("question_group_draft", args=[draft.assessment_id, draft.pk])
         if in_question_group
@@ -187,7 +187,7 @@ def test_saved_invalid_questions_groups_and_history_remain_readable(
 ) -> None:
     draft = _create_draft(course, user)
     definition_tree = (
-        {"uses": "gradeflow/combination@1", "with": {"checks": [invalid_check]}} if in_question_group else invalid_check
+        {"uses": "gradeflow/workflow@1", "with": {"steps": [invalid_check]}} if in_question_group else invalid_check
     )
     marking = Marking.objects.create(
         assessment=draft.assessment,
@@ -221,7 +221,7 @@ def test_an_invalid_saved_question_group_can_be_removed_without_losing_adjustmen
     assert draft.question is not None
     marking = Marking.objects.create(
         assessment=draft.assessment,
-        definition=dump_yaml({"uses": "gradeflow/combination@1", "with": {"checks": [invalid_check]}}),
+        definition=dump_yaml({"uses": "gradeflow/workflow@1", "with": {"steps": [invalid_check]}}),
         questions_marked=["Q1"],
     )
     student = Student.objects.create(assessment=draft.assessment, encrypted_id="student", answers={"Q1": "x"})
@@ -239,7 +239,7 @@ def test_an_invalid_question_group_keeps_its_questions_when_another_draft_is_sav
     client: Client, course: Course, user: User, invalid_check: dict[str, Any], fake_runner: FakeRunner
 ) -> None:
     draft = _create_draft(course, user)
-    original = dump_yaml({"uses": "gradeflow/combination@1", "with": {"checks": [invalid_check]}})
+    original = dump_yaml({"uses": "gradeflow/workflow@1", "with": {"steps": [invalid_check]}})
     owning_marking = Marking.objects.create(assessment=draft.assessment, definition=original, questions_marked=["Q1"])
     response = client.post(reverse("draft_save", args=[draft.assessment_id, draft.pk]), {})
     assert response.status_code == 200

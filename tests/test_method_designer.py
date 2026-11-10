@@ -80,8 +80,8 @@ def core_draft(method: Method) -> MethodDraft:
     return MethodWorkspace(method, draft(method)).draft
 
 
-def input_name_at(core: MethodDraft, path: str) -> str | None:
-    return next(field.bound_input for field in core.configurable_fields() if field.path == path)
+def setting_name_at(method_draft: MethodDraft, path: str) -> str | None:
+    return next(field.bound_setting for field in method_draft.configurable_fields() if field.path == path)
 
 
 def answer_rows(method: Method, number: int | None = None) -> list[tuple[str, bool]]:
@@ -153,7 +153,7 @@ def test_running_the_tests_shows_the_marks_until_the_answers_change(
     assert "Results are up to date" in page
     results = client.get(designer_url(method, "method_results")).text
     assert "Results are up to date" in results
-    post_to_designer(client, method, "method_check", operation="open", target="with.checks.0")
+    post_to_designer(client, method, "method_step", operation="open", target="with.steps.0")
     assert "Results are up to date" in client.get(designer_url(method, "method_results")).text, "only looked"
     post_to_designer(client, method, "method_answers", operation="add", answer="lights")
     assert "Changed since the last run" in client.get(designer_url(method, "method_results")).text
@@ -193,31 +193,35 @@ def test_unreadable_test_results_fail_the_run(
     assert "don't match the test answers" in tests.failure
 
 
-FIRST_POINTS_PATH, SECOND_POINTS_PATH = "with.checks.0.with.points", "with.checks.1.with.points"
+FIRST_POINTS_PATH, SECOND_POINTS_PATH = "with.steps.0.with.points", "with.steps.1.with.points"
 
 
-def test_a_setting_is_filled_from_an_input_or_fixed(client: Client, method: Method) -> None:
+def test_a_field_is_filled_from_a_setting_or_fixed(client: Client, method: Method) -> None:
     two_checks = dump_yaml(
         {
             "name": "Light",
             "summary": "Says light.",
             "question_types": ["text"],
-            "checks": [
+            "steps": [
                 {"uses": "gradeflow/key-points@1", "with": {"points": ["light"]}},
                 {"uses": "gradeflow/key-points@1", "with": {"points": ["sun"]}},
             ],
         }
     )
     post_to_designer(client, method, "method_yaml", definition=two_checks)
-    post_to_designer(client, method, "method_field", operation="new_input", field=FIRST_POINTS_PATH)
-    name = input_name_at(core_draft(method), FIRST_POINTS_PATH)
-    assert name in core_draft(method).inputs
-    post_to_designer(client, method, "method_field", operation="bind", field=SECOND_POINTS_PATH, input=name)
-    assert input_name_at(core_draft(method), SECOND_POINTS_PATH) == name
+    post_to_designer(client, method, "method_field", operation="bind_new_setting", field=FIRST_POINTS_PATH)
+    name = setting_name_at(core_draft(method), FIRST_POINTS_PATH)
+    assert name in core_draft(method).declared_settings
+    post_to_designer(client, method, "method_field", operation="bind", field=SECOND_POINTS_PATH, setting=name)
+    assert setting_name_at(core_draft(method), SECOND_POINTS_PATH) == name
     post_to_designer(client, method, "method_field", operation="unbind", field=FIRST_POINTS_PATH)
     post_to_designer(client, method, "method_field", operation="unbind", field=SECOND_POINTS_PATH)
-    core = core_draft(method)
-    assert (input_name_at(core, FIRST_POINTS_PATH), input_name_at(core, SECOND_POINTS_PATH), core.inputs) == (
+    method_draft = core_draft(method)
+    assert (
+        setting_name_at(method_draft, FIRST_POINTS_PATH),
+        setting_name_at(method_draft, SECOND_POINTS_PATH),
+        method_draft.declared_settings,
+    ) == (
         None,
         None,
         {},
@@ -225,55 +229,57 @@ def test_a_setting_is_filled_from_an_input_or_fixed(client: Client, method: Meth
 
 
 def menu_items(page: str) -> list[tuple[str, bool]]:
-    """The choices of the menus beside settings an input can fill, and whether each is what fills it."""
-    found = re.findall(r'role="menuitemradio" aria-checked="(true|false)"[^>]*>\s*([^<]+?)\s*<', page)
-    return [(label, checked == "true") for checked, label in found]
+    """Each source menu item's label, and whether it is selected."""
+    menu_item_matches = re.findall(r'role="menuitemradio" aria-checked="(true|false)"[^>]*>\s*([^<]+?)\s*<', page)
+    return [(label, checked == "true") for checked, label in menu_item_matches]
 
 
-def test_a_settings_menu_marks_what_fills_it(client: Client, method: Method) -> None:
-    first_check_query = {"path": "with.checks.0"}
+def test_a_fields_source_menu_marks_what_fills_it(client: Client, method: Method) -> None:
+    first_check_query = {"path": "with.steps.0"}
     page = client.get(designer_url(method, "method_page"), first_check_query).text
     assert menu_items(page)[0] == ("Fixed value", True)
-    post_to_designer(client, method, "method_field", operation="new_input", field=FIRST_POINTS_PATH)
-    page_with_input = client.get(designer_url(method, "method_page"), first_check_query).text
-    [declaration] = core_draft(method).inputs.values()
-    assert menu_items(page_with_input)[:2] == [("Fixed value", False), (declaration["title"], True)]
-    assert page_with_input.count("New input") == page.count("New input") - 1
+    post_to_designer(client, method, "method_field", operation="bind_new_setting", field=FIRST_POINTS_PATH)
+    page_with_setting = client.get(designer_url(method, "method_page"), first_check_query).text
+    [declaration] = core_draft(method).declared_settings.values()
+    assert menu_items(page_with_setting)[:2] == [("Fixed value", False), (declaration["title"], True)]
+    assert page_with_setting.count("New setting") == page.count("New setting") - 1
 
 
-def test_checks_of_a_method_share_an_input(client: Client, method: Method) -> None:
-    name = new_input(client, method, FIRST_POINTS_PATH)
+def test_checks_of_a_method_share_a_setting(client: Client, method: Method) -> None:
+    name = bind_new_setting(client, method, FIRST_POINTS_PATH)
     post_to_designer(
         client,
         method,
-        "method_check",
+        "method_step",
         path="",
         operation="add",
-        target="with.checks.1",
+        target="with.steps.1",
         method="gradeflow/key-points@1",
     )
-    post_to_designer(client, method, "method_field", operation="bind", field=SECOND_POINTS_PATH, input=name)
-    assert input_name_at(core_draft(method), SECOND_POINTS_PATH) == name
-    input_page = input_form(client, method, name)
+    post_to_designer(client, method, "method_field", operation="bind", field=SECOND_POINTS_PATH, setting=name)
+    assert setting_name_at(core_draft(method), SECOND_POINTS_PATH) == name
+    setting_page = declared_setting_page(client, method, name)
     label = BUILTINS.find("gradeflow/key-points@1").label
-    assert f"{label} 1 · Points" in input_page
-    assert f"{label} 2 · Points" in input_page
-    post_to_designer(client, method, "method_field", operation="new_input", field=SECOND_POINTS_PATH)
-    core = core_draft(method)
-    second_input = input_name_at(core, SECOND_POINTS_PATH)
-    assert second_input not in (None, name), "an input of its own"
-    assert set(core.inputs) == {name, second_input}
+    assert f"{label} 1 · Points" in setting_page
+    assert f"{label} 2 · Points" in setting_page
+    second_step_page = client.get(designer_url(method, "method_page"), {"path": "with.steps.1"}).text
+    assert "New setting" in second_step_page, "a field sharing a setting can have its own"
+    post_to_designer(client, method, "method_field", operation="bind_new_setting", field=SECOND_POINTS_PATH)
+    method_draft = core_draft(method)
+    second_setting = setting_name_at(method_draft, SECOND_POINTS_PATH)
+    assert second_setting not in (None, name), "a setting of its own"
+    assert set(method_draft.declared_settings) == {name, second_setting}
 
 
-def test_an_inputs_label_help_and_default_are_saved(client: Client, method: Method) -> None:
-    post_to_designer(client, method, "method_field", operation="new_input", field=FIRST_POINTS_PATH)
-    name = input_name_at(core_draft(method), FIRST_POINTS_PATH)
+def test_the_label_help_and_default_of_a_setting_are_saved(client: Client, method: Method) -> None:
+    post_to_designer(client, method, "method_field", operation="bind_new_setting", field=FIRST_POINTS_PATH)
+    name = setting_name_at(core_draft(method), FIRST_POINTS_PATH)
     assert name is not None
-    tab = client.get(designer_url(method, "method_inputs"), {"input": name, "tab": "inputs"})
-    assert 'name="input-default"' in tab.text
-    details = {"input": name, "input-title": "Words", "input-description": "What answers must say."}
-    post_to_designer(client, method, "method_inputs", None, **details | {"input-default": ["sun"]})
-    assert core_draft(method).inputs[name] == {
+    tab = client.get(designer_url(method, "method_settings"), {"setting": name, "tab": "settings"})
+    assert 'name="setting-default"' in tab.text
+    details = {"setting": name, "setting-title": "Words", "setting-description": "What answers must say."}
+    post_to_designer(client, method, "method_settings", None, **details | {"setting-default": ["sun"]})
+    assert core_draft(method).declared_settings[name] == {
         "title": "Words",
         "description": "What answers must say.",
         "default": ["sun"],
@@ -284,15 +290,15 @@ def test_an_inputs_label_help_and_default_are_saved(client: Client, method: Meth
     assert saved_tests(method)["test_values"] == {}
 
 
-def test_a_checks_problems_show_while_an_input_has_only_a_test_value(client: Client, method: Method) -> None:
+def test_a_checks_problems_show_while_a_setting_has_only_a_test_value(client: Client, method: Method) -> None:
     definition = dump_yaml(
         {
             "label": "Light",
             "summary": "Says light.",
             "question_types": ["text"],
-            "inputs": {"points": {"title": "Points"}},
-            "checks": [
-                {"uses": "gradeflow/key-points@1", "with": {"points": "{{ inputs.points }}"}},
+            "settings": {"points": {"title": "Points"}},
+            "steps": [
+                {"uses": "gradeflow/key-points@1", "with": {"points": "{{ settings.points }}"}},
                 {"uses": "gradeflow/equivalent-expression@1", "with": {"answers": ["x2"]}},
             ],
         }
@@ -302,274 +308,295 @@ def test_a_checks_problems_show_while_an_input_has_only_a_test_value(client: Cli
     assert page.context["problems"] == ["Give “Points” a test value or a default."]
     post_to_designer(client, method, "method_values", None, **{"values-points": ["sun"]})
     page = client.get(designer_url(method, "method_page"))
-    assert (page.context["first_problem_check"], page.context["problems"]) == ("with.checks.1", [])
+    assert (page.context["first_problem_step"], page.context["problems"]) == ("with.steps.1", [])
 
 
-def test_every_part_of_an_inputs_declaration_is_edited(client: Client, method: Method) -> None:
-    combine_path = "with.checks.0.with.combine"
-    post_to_designer(client, method, "method_field", operation="new_input", field=combine_path)
-    name = input_name_at(core_draft(method), combine_path)
+def test_every_part_of_a_setting_declaration_is_edited(client: Client, method: Method) -> None:
+    marks_by_path = "with.steps.0.with.marks_by"
+    post_to_designer(client, method, "method_field", operation="bind_new_setting", field=marks_by_path)
+    name = setting_name_at(core_draft(method), marks_by_path)
     assert name is not None
-    tab = client.get(designer_url(method, "method_inputs"), {"input": name, "tab": "inputs"}).text
-    assert 'name="input-advanced"' in tab
-    assert 'name="input-choices"' in tab
-    fields = {"input": name, "input-title": "Combine", "input-default": "any", "input-advanced": "True"}
-    post_to_designer(client, method, "method_inputs", None, **fields | {"input-choices": ["all", "any"]})
-    assert core_draft(method).inputs[name] == {
-        "title": "Combine",
-        "default": "any",
+    tab = client.get(designer_url(method, "method_settings"), {"setting": name, "tab": "settings"}).text
+    assert 'name="setting-advanced"' in tab
+    assert 'name="setting-choices"' in tab
+    fields = {
+        "setting": name,
+        "setting-title": "How points count",
+        "setting-default": "any_correct",
+        "setting-advanced": "True",
+    }
+    post_to_designer(
+        client, method, "method_settings", None, **fields | {"setting-choices": ["all_correct", "any_correct"]}
+    )
+    assert core_draft(method).declared_settings[name] == {
+        "title": "How points count",
+        "default": "any_correct",
         "advanced": True,
-        "choices": ["all", "any"],
+        "choices": ["all_correct", "any_correct"],
     }
     cleared_fields: dict[str, object] = {
-        "input": name,
-        "input-title": "Combine",
-        "input-default": "",
-        "input-advanced": "",
+        "setting": name,
+        "setting-title": "How points count",
+        "setting-default": "",
+        "setting-advanced": "",
     }
-    post_to_designer(client, method, "method_inputs", None, **cleared_fields)
-    assert core_draft(method).inputs[name] == {"title": "Combine"}
+    post_to_designer(client, method, "method_settings", None, **cleared_fields)
+    assert core_draft(method).declared_settings[name] == {"title": "How points count"}
 
 
-MATCH_PATH, WHOLE_WORDS_PATH = (f"with.checks.0.with.{key}" for key in ("match", "whole_words"))
-MIN_LENGTH_PATH = "with.checks.1.with.min_length"
+MATCH_PATH, WHOLE_WORDS_PATH = (f"with.steps.0.with.{key}" for key in ("match", "whole_words"))
+MIN_LENGTH_PATH = "with.steps.1.with.min_length"
 
 
 @pytest.fixture
 def method_with_length_check(client: Client, method: Method) -> Method:
     """`method` with a second check, on the answer's length."""
     checks = [{"uses": "gradeflow/key-points@1", "with": {"points": ["light"]}}, {"uses": "gradeflow/length@1"}]
-    text = dump_yaml({"label": "Light", "summary": "Says light.", "question_types": ["text"], "checks": checks})
+    text = dump_yaml({"label": "Light", "summary": "Says light.", "question_types": ["text"], "steps": checks})
     assert post_to_designer(client, method, "method_yaml", definition=text).status_code == 200
     return method
 
 
-def new_input(client: Client, method: Method, field: str) -> str:
-    post_to_designer(client, method, "method_field", operation="new_input", field=field)
-    name = input_name_at(core_draft(method), field)
+def bind_new_setting(client: Client, method: Method, field: str) -> str:
+    post_to_designer(client, method, "method_field", operation="bind_new_setting", field=field)
+    name = setting_name_at(core_draft(method), field)
     assert name is not None
     return name
 
 
-def input_form(client: Client, method: Method, name: str) -> str:
-    return client.get(designer_url(method, "method_inputs"), {"input": name, "tab": "inputs"}).text
+def declared_setting_page(client: Client, method: Method, name: str) -> str:
+    return client.get(designer_url(method, "method_settings"), {"setting": name, "tab": "settings"}).text
 
 
-def input_settings_form(page: str) -> str:
-    """The input form of a page showing one input."""
-    found = re.search(r'<form class="grid gap-4[^"]*" hx-post="[^"]*/inputs/">(.*?)</form>', page, re.DOTALL)
-    assert found
-    return found.group(1)
+def setting_declaration_form(page: str) -> str:
+    """The form of a page showing one setting."""
+    form_match = re.search(r'<form class="grid gap-4[^"]*" hx-post="[^"]*/settings/">(.*?)</form>', page, re.DOTALL)
+    assert form_match
+    return form_match.group(1)
 
 
 def options_of(page: str, name: str) -> list[tuple[str, str]]:
-    """The options of the input form's `name` control, by value and label: its buttons, or a list's options."""
-    if listed := re.search(rf'<select name="input-{name}".*?</select>', page, re.DOTALL):
-        return re.findall(r'<option value="([^"]*)"[^>]*>\s*([^<]+?)\s*<', listed.group(0))
-    return re.findall(rf'name="input-{name}" value="([^"]*)"[^>]*>\s*(?:<span[^>]*>)?\s*([^<]+?)\s*<', page)
+    """The options of the setting form's `name` control, by value and label."""
+    if select_match := re.search(rf'<select name="setting-{name}".*?</select>', page, re.DOTALL):
+        return re.findall(r'<option value="([^"]*)"[^>]*>\s*([^<]+?)\s*<', select_match.group(0))
+    return re.findall(rf'name="setting-{name}" value="([^"]*)"[^>]*>\s*(?:<span[^>]*>)?\s*([^<]+?)\s*<', page)
 
 
 def field_error(page: str, name: str) -> str:
-    found = re.search(rf'id="id_input-{name}_error">(.*?)</div>', page, re.DOTALL)
-    return unescape(re.sub(r"<[^>]+>", "", found.group(1))).strip() if found else ""
+    error_match = re.search(rf'id="id_setting-{name}_error">(.*?)</div>', page, re.DOTALL)
+    return unescape(re.sub(r"<[^>]+>", "", error_match.group(1))).strip() if error_match else ""
 
 
-def test_an_inputs_default_comes_before_advanced_when_it_is_a_table(client: Client, method: Method) -> None:
+def test_a_table_default_of_a_setting_comes_before_advanced(client: Client, method: Method) -> None:
     check = {"uses": "gradeflow/custom-code@1", "with": {"code": "correct = True\n"}}
-    text = dump_yaml({"label": "Light", "summary": "Code.", "question_types": ["text"], "checks": [check]})
+    text = dump_yaml({"label": "Light", "summary": "Code.", "question_types": ["text"], "steps": [check]})
     post_to_designer(client, method, "method_yaml", definition=text)
-    page = input_form(client, method, new_input(client, method, "with.checks.0.with.parameters"))
-    assert page.index('name="default-posted"') < page.index('name="input-advanced"')
+    page = declared_setting_page(client, method, bind_new_setting(client, method, "with.steps.0.with.parameters"))
+    assert page.index('name="default-posted"') < page.index('name="setting-advanced"')
 
 
-def test_an_inputs_choices_are_the_options_of_the_setting_it_fills(client: Client, method: Method) -> None:
-    name = new_input(client, method, MATCH_PATH)
-    page = input_form(client, method, name)
+def test_the_choices_of_a_setting_are_the_options_of_the_field_it_fills(client: Client, method: Method) -> None:
+    name = bind_new_setting(client, method, MATCH_PATH)
+    page = declared_setting_page(client, method, name)
     options = [("exact", "Exactly"), ("spelling", "Similar spelling"), ("meaning", "Same meaning")]
     assert options_of(page, "choices") == options
-    assert 'name="input-examples"' not in page, "a setting with fixed options has nothing to suggest"
+    assert 'name="setting-examples"' not in page, "a setting with fixed options has nothing to suggest"
     fields: dict[str, object] = {
-        "input": name,
-        "input-title": "Match",
-        "input-choices": ["exact", "spelling"],
-        "input-default": "spelling",
+        "setting": name,
+        "setting-title": "Match",
+        "setting-choices": ["exact", "spelling"],
+        "setting-default": "spelling",
     }
-    post_to_designer(client, method, "method_inputs", None, **fields)
-    assert core_draft(method).inputs[name] == {
+    post_to_designer(client, method, "method_settings", None, **fields)
+    assert core_draft(method).declared_settings[name] == {
         "title": "Match",
         "default": "spelling",
         "choices": ["exact", "spelling"],
     }
-    page = input_form(client, method, name)
+    page = declared_setting_page(client, method, name)
     assert [value for value, _ in options_of(page, "default")] == ["", "exact", "spelling"]
-    listing = client.get(designer_url(method, "method_inputs"), {"tab": "inputs"}).text
+    listing = client.get(designer_url(method, "method_settings"), {"tab": "settings"}).text
     assert "Default: Similar spelling" in listing
 
 
 def test_choices_and_examples_show_only_where_they_apply(client: Client, method_with_length_check: Method) -> None:
     for field in (FIRST_POINTS_PATH, WHOLE_WORDS_PATH):
-        page = input_form(client, method_with_length_check, new_input(client, method_with_length_check, field))
-        assert 'name="input-choices"' not in page
-        assert 'name="input-examples"' not in page
-    name = new_input(client, method_with_length_check, MIN_LENGTH_PATH)
-    assert 'name="input-choices"' not in input_form(client, method_with_length_check, name)
+        page = declared_setting_page(
+            client, method_with_length_check, bind_new_setting(client, method_with_length_check, field)
+        )
+        assert 'name="setting-choices"' not in page
+        assert 'name="setting-examples"' not in page
+    name = bind_new_setting(client, method_with_length_check, MIN_LENGTH_PATH)
+    assert 'name="setting-choices"' not in declared_setting_page(client, method_with_length_check, name)
     post_to_designer(
-        client, method_with_length_check, "method_inputs", None, **{"input": name, "input-examples": ["2", "5"]}
+        client, method_with_length_check, "method_settings", None, **{"setting": name, "setting-examples": ["2", "5"]}
     )
-    assert core_draft(method_with_length_check).inputs[name]["examples"] == [2, 5]
+    assert core_draft(method_with_length_check).declared_settings[name]["examples"] == [2, 5]
 
 
 def test_a_default_outside_the_choices_shows_on_the_default_with_what_was_typed(client: Client, method: Method) -> None:
-    name = new_input(client, method, MATCH_PATH)
-    before = core_draft(method).inputs[name]
+    name = bind_new_setting(client, method, MATCH_PATH)
+    before = core_draft(method).declared_settings[name]
     fields: dict[str, object] = {
-        "input": name,
-        "input-title": "How to match",
-        "input-choices": ["exact"],
-        "input-default": "spelling",
+        "setting": name,
+        "setting-title": "How to match",
+        "setting-choices": ["exact"],
+        "setting-default": "spelling",
     }
-    page = post_to_designer(client, method, "method_inputs", None, **fields).text
-    assert core_draft(method).inputs[name] == before
+    page = post_to_designer(client, method, "method_settings", None, **fields).text
+    assert core_draft(method).declared_settings[name] == before
     assert field_error(page, "default") == "Similar spelling isn't one of the choices."
     assert 'value="How to match"' in page
-    assert re.search(r'name="input-choices" value="exact"[^>]*checked', page)
-    assert not re.search(r'name="input-choices" value="spelling"[^>]*checked', page)
+    assert re.search(r'name="setting-choices" value="exact"[^>]*checked', page)
+    assert not re.search(r'name="setting-choices" value="spelling"[^>]*checked', page)
 
 
 def test_advanced_is_on_or_off_and_leaves_the_default_in_view(client: Client, method: Method) -> None:
-    name = new_input(client, method, FIRST_POINTS_PATH)
-    page = input_form(client, method, name)
-    assert re.search(r'type="checkbox" name="input-advanced"(?![^>]*checked)', page)
-    fields: dict[str, object] = {"input": name, "input-title": "Points", "input-default": ["sun"]}
-    post_to_designer(client, method, "method_inputs", None, **fields | {"input-advanced": "on"})
-    assert core_draft(method).inputs[name]["advanced"] is True
-    page = input_form(client, method, name)
-    assert "More options" not in page, "the input's own default is never folded away"
-    post_to_designer(client, method, "method_inputs", None, **fields)
-    assert "advanced" not in core_draft(method).inputs[name], "off, as the setting it fills is"
-    whole_words_input = new_input(client, method, WHOLE_WORDS_PATH)
-    page = input_form(client, method, whole_words_input)
-    assert re.search(r'type="checkbox" name="input-advanced"[^>]*checked', page), "as the setting it fills is"
+    name = bind_new_setting(client, method, FIRST_POINTS_PATH)
+    page = declared_setting_page(client, method, name)
+    assert re.search(r'type="checkbox" name="setting-advanced"(?![^>]*checked)', page)
+    fields: dict[str, object] = {"setting": name, "setting-title": "Points", "setting-default": ["sun"]}
+    post_to_designer(client, method, "method_settings", None, **fields | {"setting-advanced": "on"})
+    assert core_draft(method).declared_settings[name]["advanced"] is True
+    page = declared_setting_page(client, method, name)
+    assert "More options" not in page, "the setting's own default is never folded away"
+    post_to_designer(client, method, "method_settings", None, **fields)
+    assert "advanced" not in core_draft(method).declared_settings[name], "off, as the field it fills is"
+    whole_words_setting = bind_new_setting(client, method, WHOLE_WORDS_PATH)
+    page = declared_setting_page(client, method, whole_words_setting)
+    assert re.search(r'type="checkbox" name="setting-advanced"[^>]*checked', page), "as the field it fills is"
     assert "More options" not in page
 
 
-def test_a_yes_or_no_input_may_have_no_default(client: Client, method: Method) -> None:
-    name = new_input(client, method, WHOLE_WORDS_PATH)
+def test_a_yes_or_no_setting_may_have_no_default(client: Client, method: Method) -> None:
+    name = bind_new_setting(client, method, WHOLE_WORDS_PATH)
     for default, saved in (("True", {"default": True}), ("", {})):
         post_to_designer(
-            client, method, "method_inputs", None, **{"input": name, "input-default": default, "input-advanced": "on"}
+            client,
+            method,
+            "method_settings",
+            None,
+            **{"setting": name, "setting-default": default, "setting-advanced": "on"},
         )
-        assert core_draft(method).inputs[name] == {"title": "Whole words only", **saved}
+        assert core_draft(method).declared_settings[name] == {"title": "Whole words only", **saved}
 
 
-def test_an_edit_of_a_check_leaves_what_inputs_fill(client: Client, method: Method) -> None:
-    points_input, match_input, whole_words_input = (
-        new_input(client, method, field) for field in (FIRST_POINTS_PATH, MATCH_PATH, WHOLE_WORDS_PATH)
+def test_editing_a_check_keeps_the_fields_filled_by_settings(client: Client, method: Method) -> None:
+    points_setting, match_setting, whole_words_setting = (
+        bind_new_setting(client, method, field) for field in (FIRST_POINTS_PATH, MATCH_PATH, WHOLE_WORDS_PATH)
     )
     fields: dict[str, object] = {
-        "input": match_input,
-        "input-choices": ["exact", "spelling"],
-        "input-default": "spelling",
+        "setting": match_setting,
+        "setting-choices": ["exact", "spelling"],
+        "setting-default": "spelling",
     }
-    post_to_designer(client, method, "method_inputs", None, **fields)
-    post_to_designer(client, method, "method_inputs", None, **{"input": whole_words_input, "input-default": "True"})
-    before = core_draft(method).inputs
-    page = client.get(designer_url(method, "method_page"), {"path": "with.checks.0"}).text
-    for key in ("points", "match", "whole_words"):
-        assert f'id="input-fill-with.checks.0.with.{key}"' in page
-        assert f'name="{key}"' not in page
-    assert 'Default <span class="text-base-content">Similar spelling</span>' in page
+    post_to_designer(client, method, "method_settings", None, **fields)
     post_to_designer(
-        client, method, "method_check", path="with.checks.0", fields="1", strictness="lenient", match="meaning"
+        client, method, "method_settings", None, **{"setting": whole_words_setting, "setting-default": "True"}
     )
-    assert core_draft(method).inputs == before
-    assert before[points_input]["default"] == ["light"]
+    before = core_draft(method).declared_settings
+    page = client.get(designer_url(method, "method_page"), {"path": "with.steps.0"}).text
+    for key in ("points", "match", "whole_words"):
+        assert f'id="field-filled-by-setting-with.steps.0.with.{key}"' in page
+        assert f'name="{key}"' not in page
+    assert '<span class="min-w-0 flex-1 truncate text-muted">Similar spelling</span>' in page
+    post_to_designer(
+        client, method, "method_step", path="with.steps.0", fields="1", strictness="lenient", match="meaning"
+    )
+    assert core_draft(method).declared_settings == before
+    assert before[points_setting]["default"] == ["light"]
 
 
 def test_examples_are_typed_like_the_setting(client: Client, method_with_length_check: Method) -> None:
-    name = new_input(client, method_with_length_check, MIN_LENGTH_PATH)
+    name = bind_new_setting(client, method_with_length_check, MIN_LENGTH_PATH)
     page = post_to_designer(
-        client, method_with_length_check, "method_inputs", None, **{"input": name, "input-examples": ["2", "abc"]}
+        client, method_with_length_check, "method_settings", None, **{"setting": name, "setting-examples": ["2", "abc"]}
     )
-    assert "examples" not in core_draft(method_with_length_check).inputs[name]
+    assert "examples" not in core_draft(method_with_length_check).declared_settings[name]
     text = page.text
     assert field_error(text, "examples") == "Must be a whole number."
     assert '<option value="abc" selected>' in text
 
 
-def test_the_default_offers_the_settings_examples_not_the_inputs(
+def test_the_default_offers_the_examples_of_the_field_not_of_the_setting(
     client: Client, method_with_length_check: Method
 ) -> None:
-    name = new_input(client, method_with_length_check, MIN_LENGTH_PATH)
+    name = bind_new_setting(client, method_with_length_check, MIN_LENGTH_PATH)
     post_to_designer(
-        client, method_with_length_check, "method_inputs", None, **{"input": name, "input-examples": ["7"]}
+        client, method_with_length_check, "method_settings", None, **{"setting": name, "setting-examples": ["7"]}
     )
-    assert 'data-preset="7"' not in input_settings_form(input_form(client, method_with_length_check, name))
+    assert 'data-preset="7"' not in setting_declaration_form(
+        declared_setting_page(client, method_with_length_check, name)
+    )
     assert 'data-preset="7"' in client.get(designer_url(method_with_length_check, "method_page")).text, (
         "where it's filled in"
     )
 
 
 def test_a_whole_number_default_is_saved_whole(client: Client, method_with_length_check: Method) -> None:
-    name = new_input(client, method_with_length_check, MIN_LENGTH_PATH)
-    post_to_designer(client, method_with_length_check, "method_inputs", None, **{"input": name, "input-default": "2"})
-    assert repr(core_draft(method_with_length_check).inputs[name]["default"]) == "2"
-
-
-def test_the_default_explains_the_setting_beside_the_inputs_description(client: Client, method: Method) -> None:
-    name = new_input(client, method, WHOLE_WORDS_PATH)
+    name = bind_new_setting(client, method_with_length_check, MIN_LENGTH_PATH)
     post_to_designer(
-        client, method, "method_inputs", None, **{"input": name, "input-description": "How close it must be."}
+        client, method_with_length_check, "method_settings", None, **{"setting": name, "setting-default": "2"}
     )
-    page = input_settings_form(input_form(client, method, name))
+    assert repr(core_draft(method_with_length_check).declared_settings[name]["default"]) == "2"
+
+
+def test_the_default_explains_the_field_beside_the_description_of_the_setting(client: Client, method: Method) -> None:
+    name = bind_new_setting(client, method, WHOLE_WORDS_PATH)
+    post_to_designer(
+        client, method, "method_settings", None, **{"setting": name, "setting-description": "How close it must be."}
+    )
+    page = setting_declaration_form(declared_setting_page(client, method, name))
     assert page.count("How close it must be.") == 1
-    core = core_draft(method)
-    field = next(field for field in core.configurable_fields() if field.path == WHOLE_WORDS_PATH)
-    setting = core.checks.schema(field.check)["properties"][field.key]
+    method_draft = core_draft(method)
+    field = next(field for field in method_draft.configurable_fields() if field.path == WHOLE_WORDS_PATH)
+    setting = method_draft.steps_draft.schema(field.step_path)["properties"][field.key]
     assert html.unescape(setting["description"]) in html.unescape(page)
 
 
-def test_a_check_named_by_an_input_shows_the_name_it_gets(client: Client, method: Method) -> None:
-    name = new_input(client, method, "with.checks.0.name")
+def test_a_check_named_by_a_setting_shows_the_name_it_gets(client: Client, method: Method) -> None:
+    name = bind_new_setting(client, method, "with.steps.0.name")
 
-    def shown(path: str) -> str:
+    def page_at(path: str) -> str:
         page = client.get(designer_url(method, "method_page"), {"path": path}).text
-        assert "{{ inputs." not in page
+        assert "{{ settings." not in page
         return page
 
     label = BUILTINS.find("gradeflow/key-points@1").label
-    assert f">{label}</h3>" in shown("with.checks.0"), "without a default, as its method"
-    post_to_designer(client, method, "method_inputs", None, **{"input": name, "input-default": "Says light"})
-    assert ">Says light</button>" in shown("")
-    assert ">Says light</h3>" in shown("with.checks.0")
-    assert "Says light · Name" in input_form(client, method, name)
+    assert f">{label}</h3>" in page_at("with.steps.0"), "without a default, as its method"
+    post_to_designer(client, method, "method_settings", None, **{"setting": name, "setting-default": "Says light"})
+    assert ">Says light</button>" in page_at("")
+    assert ">Says light</h3>" in page_at("with.steps.0")
+    assert "Says light · Name" in declared_setting_page(client, method, name)
 
 
-def test_an_inputs_rows_are_added_and_removed_before_saving(client: Client, method: Method) -> None:
+def test_rows_of_a_setting_are_added_and_removed_before_saving(client: Client, method: Method) -> None:
     check = {"uses": "gradeflow/code-tests@1", "with": {"tests": [{"expression": "f(1)", "expected": "2"}]}}
     code_tests_yaml = dump_yaml(
-        {"name": "Light", "summary": "Says light.", "question_types": ["text"], "checks": [check]}
+        {"name": "Light", "summary": "Says light.", "question_types": ["text"], "steps": [check]}
     )
     post_to_designer(client, method, "method_yaml", definition=code_tests_yaml)
-    tests = "with.checks.0.with.tests"
-    post_to_designer(client, method, "method_field", operation="new_input", field=tests)
-    name = input_name_at(core_draft(method), tests)
+    tests = "with.steps.0.with.tests"
+    post_to_designer(client, method, "method_field", operation="bind_new_setting", field=tests)
+    name = setting_name_at(core_draft(method), tests)
     assert name is not None
     row: dict[str, object] = {
-        "input": name,
+        "setting": name,
         "default-posted": "1",
         "default-0-expression": "f(1)",
         "default-0-expected": "2",
     }
     page = post_to_designer(
-        client, method, "method_inputs", None, **row | {"operation": "add_row", "target": "default"}
+        client, method, "method_settings", None, **row | {"operation": "add_row", "target": "default"}
     )
     assert 'name="default-1-expression"' in page.text
     page = post_to_designer(
-        client, method, "method_inputs", None, **row | {"operation": "remove_row", "target": "default", "value": "0"}
+        client, method, "method_settings", None, **row | {"operation": "remove_row", "target": "default", "value": "0"}
     )
     assert 'name="default-0-expression"' not in page.text
-    assert core_draft(method).inputs[name]["default"] == [{"expression": "f(1)", "expected": "2"}], "saved only on Save"
+    assert core_draft(method).declared_settings[name]["default"] == [{"expression": "f(1)", "expected": "2"}], (
+        "saved only on Save"
+    )
 
 
 def test_questions_are_added_and_removed_with_their_answers(client: Client, method: Method) -> None:
@@ -586,17 +613,17 @@ def test_questions_are_added_and_removed_with_their_answers(client: Client, meth
 
 def test_a_second_question_keeps_the_checks_on_the_first(client: Client, method: Method) -> None:
     post_to_designer(client, method, "method_question", save="1", type="number", max_marks="2")
-    core = core_draft(method)
-    assert core.question is None
-    assert {core.checks.data["with"]["checks"][0].get("question")} == {"Q1"}
-    assert core.problems == []
+    method_draft = core_draft(method)
+    assert method_draft.question is None
+    assert {method_draft.steps_draft.data["with"]["steps"][0].get("question")} == {"Q1"}
+    assert method_draft.problems == []
 
 
 def set_question_in_tests(method: Method, question: dict[str, object]) -> None:
     """Make Q1 of the method's tests `question`."""
-    method_draft = draft(method)
-    method_draft.tests["questions"]["Q1"] = question
-    method_draft.save()
+    draft_record = draft(method)
+    draft_record.tests["questions"]["Q1"] = question
+    draft_record.save()
 
 
 def question_in_tests(method: Method) -> Question:
@@ -687,7 +714,7 @@ def test_details_saved_as_shown_leave_the_definition_as_it_was(client: Client, m
 
 def test_yaml_the_core_cant_read_leaves_the_draft_as_it_was(client: Client, method: Method) -> None:
     before = draft(method).definition
-    response = post_to_designer(client, method, "method_yaml", definition="checks: [")
+    response = post_to_designer(client, method, "method_yaml", definition="steps: [")
     assert response.status_code == 422
     assert 'role="alert"' in response.text
     assert draft(method).definition == before
@@ -698,15 +725,15 @@ def test_yaml_the_core_cant_read_leaves_the_draft_as_it_was(client: Client, meth
 
 
 def test_an_edit_from_an_older_page_changes_nothing(client: Client, method: Method) -> None:
-    method_draft = designer_record(method, None)
+    draft_record = designer_record(method, None)
     response = client.post(
         designer_url(method, "method_answers"),
-        {"revision": method_draft.revision - 1, "operation": "add", "answer": "x"},
+        {"revision": draft_record.revision - 1, "operation": "add", "answer": "x"},
         headers=HTMX_HEADERS,
     )
     assert response.status_code == 409
     assert "This method changed in another tab." in response.text
-    publish_response = client.post(designer_url(method, "method_publish"), {"revision": method_draft.revision - 1})
+    publish_response = client.post(designer_url(method, "method_publish"), {"revision": draft_record.revision - 1})
     assert publish_response.status_code == 409
     assert answer_rows(method) == []
     assert not method.versions.exists()
@@ -840,7 +867,7 @@ def test_a_version_is_tried_on_ones_own_answers_and_reset(
         post_to_designer(client, method, "method_run", 1)
     assert run_state(designer_record(method, 1)) == (COMPLETED, False)
     assert post_to_designer(client, method, "method_answers", 1, operation="example", row="0").status_code == 404
-    assert post_to_designer(client, method, "method_yaml", 1, definition="checks: [").status_code == 200
+    assert post_to_designer(client, method, "method_yaml", 1, definition="steps: [").status_code == 200
     version = method.versions.get()
     assert version.tests["rows"] == [{"answers": {"Q1": "light"}, "is_example": False}]
     post_to_designer(client, method, "method_answers", 1, operation="reset")
@@ -866,7 +893,7 @@ def test_viewers_try_versions_but_change_no_method(client: Client, course: Cours
     assert [row["answers"] for row in VersionTests.objects.get(user=bo).tests["rows"]] == [{"Q1": "x"}]
     revision = VersionTests.objects.get(user=bo).revision
     values = viewer.post(designer_url(method, "method_values", 1), {"revision": revision, "operation": "reset"})
-    assert values.status_code == 404, "a version's input values are those it was published with"
+    assert values.status_code == 404, "a version's test values are those it was published with"
     assert viewer.post(reverse("method_edit", args=[method.pk])).status_code == 403
     client.post(reverse("method_edit", args=[method.pk]))
     revision = designer_record(method, None).revision
@@ -896,12 +923,12 @@ def test_a_version_is_read_only_and_lists_the_others(client: Client, method: Met
         assert f'<a href="{target}" hx-boost="false"' in page
     assert ">Open draft</button>" in page
     definition = MethodDraftRecord.objects.get(method=method).definition
-    removed = post_to_designer(client, method, "method_inputs", 1, input="points", operation="remove")
-    assert removed.status_code == 404
+    remove_response = post_to_designer(client, method, "method_settings", 1, setting="points", operation="remove")
+    assert remove_response.status_code == 404
     assert MethodDraftRecord.objects.get(method=method).definition == definition
     assert enabled_fields(version_page) == []
     assert 'class="flex flex-1 flex-col read-only-fields"' in page
-    draft_page = client.get(designer_url(method, "method_page"), {"path": "with.checks.0"})
+    draft_page = client.get(designer_url(method, "method_page"), {"path": "with.steps.0"})
     assert "points" in enabled_fields(draft_page)
 
 
@@ -916,8 +943,8 @@ def test_editing_an_older_version_starts_from_it_on_top_of_the_latest(client: Cl
     assert "sun" not in started.definition
     assert post_publish(client, method).headers["HX-Redirect"] == designer_url(method, "method_page", 3)
     assert (
-        definition_data(method.versions.get(number=3).definition)["checks"]
-        == definition_data(method.versions.get(number=1).definition)["checks"]
+        definition_data(method.versions.get(number=3).definition)["steps"]
+        == definition_data(method.versions.get(number=1).definition)["steps"]
     )
 
 
@@ -932,27 +959,70 @@ def test_a_row_that_isnt_a_number_is_a_missing_row(client: Client, method: Metho
 
 
 def test_a_checks_method_is_chosen_from_the_picker(client: Client, method: Method) -> None:
-    first_check_query = {"path": "with.checks.0"}
+    first_check_query = {"path": "with.steps.0"}
     assert (
-        'operation=change_method&amp;target=with.checks.0"'
+        'operation=change_method&amp;target=with.steps.0"'
         in client.get(designer_url(method, "method_page"), first_check_query).text
     )
-    assert 'operation=change_method&amp;target="' not in client.get(designer_url(method, "method_page")).text
     picker = client.get(
-        designer_url(method, "method_choices"), {"operation": "change_method", "target": "with.checks.0"}
+        designer_url(method, "method_choices"), {"operation": "change_method", "target": "with.steps.0"}
     )
     accepted = BUILTINS.find("gradeflow/accepted-answers@1")
     assert escape(accepted.label) in picker.text
     post_to_designer(
         client,
         method,
-        "method_check",
-        path="with.checks.0",
+        "method_step",
+        path="with.steps.0",
         operation="change_method",
-        target="with.checks.0",
+        target="with.steps.0",
         method="gradeflow/accepted-answers@1",
     )
-    assert definition_data(draft(method).definition)["checks"][0]["uses"] == "gradeflow/accepted-answers@1"
+    assert definition_data(draft(method).definition)["steps"][0]["uses"] == "gradeflow/accepted-answers@1"
+
+
+def test_a_method_gives_marks_or_a_steps_output(client: Client, method: Method) -> None:
+    post_to_designer(
+        client,
+        method,
+        "method_step",
+        path="",
+        operation="add",
+        target="with.steps.1",
+        method="gradeflow/extract@1",
+    )
+    output_step = "{{ steps.extract.output }}"
+
+    def method_top_level_page() -> Response:
+        return client.get(designer_url(method, "method_page"))
+
+    def marks_by_and_output_step_hidden() -> tuple[bool, bool]:
+        form = method_top_level_page().context["editor"].form
+        return form["marks_by"].starts_hidden, form["output_step"].starts_hidden
+
+    def post_top_level_fields(**fields: str) -> None:
+        post_to_designer(client, method, "method_step", path="", fields_posted="1", **fields)
+
+    page = method_top_level_page()
+    assert 'operation=change_method&amp;target="' not in page.text
+    assert list(page.context["editor"].form["output"].field.choices) == [
+        ("marks", "Marks"),
+        ("step_output", "A step's output"),
+    ]
+    assert output_step in dict(page.context["editor"].form["output_step"].field.choices)
+    assert marks_by_and_output_step_hidden() == (False, True)
+
+    post_top_level_fields(output="step_output", output_step=output_step)
+    saved_definition = definition_data(draft(method).definition)
+    assert (saved_definition["output"], saved_definition["output_step"]) == ("step_output", output_step)
+    assert marks_by_and_output_step_hidden() == (True, False), "as reloaded"
+    steps_settings = core_draft(method).steps_draft.data["with"]
+    assert (steps_settings["output"], steps_settings["output_step"]) == ("step_output", output_step)
+
+    post_top_level_fields(output="marks", marks_by="total")
+    saved_definition = definition_data(draft(method).definition)
+    assert (saved_definition.get("output", "marks"), saved_definition["marks_by"]) == ("marks", "total")
+    assert marks_by_and_output_step_hidden() == (False, True)
 
 
 def test_a_version_has_no_draft_only_views(client: Client, method: Method) -> None:
@@ -1007,7 +1077,42 @@ def test_an_unpublished_method_is_only_its_authors(client: Client, course: Cours
 def test_the_picker_for_a_check_thats_gone_isnt_found(client: Client, method: Method) -> None:
     assert (
         client.get(
-            designer_url(method, "method_choices"), {"operation": "change_method", "target": "with.checks.5"}
+            designer_url(method, "method_choices"), {"operation": "change_method", "target": "with.steps.5"}
         ).status_code
         == 404
     )
+
+
+@pytest.mark.parametrize(
+    ("steps_definition", "read_only"),
+    [
+        (
+            {
+                "steps": [
+                    {"question": "Q1", "uses": "gradeflow/key-points@1", "with": {"points": ["a"]}},
+                    {"question": "Q2", "weight": 0, "uses": "gradeflow/key-points@1", "with": {"points": ["a"]}},
+                ],
+            },
+            {"Q2"},
+        ),
+        (
+            {
+                "output": "step_output",
+                "output_step": "{{ steps.number.output }}",
+                "steps": [{"id": "number", "question": "Q1", "uses": "gradeflow/extract@1"}],
+            },
+            set(),
+        ),
+    ],
+)
+def test_the_page_says_which_questions_a_group_method_only_reads(
+    client: Client, method: Method, steps_definition: dict[str, object], read_only: set[str]
+) -> None:
+    definition = {"label": "Group", "summary": "Reads two.", "marks_question_group": True, **steps_definition}
+    record = draft(method)
+    record.tests["questions"] = {"Q1": {"type": "text"}, "Q2": {"type": "text"}}
+    record.definition = dump_yaml(definition)
+    record.save()
+    page = client.get(designer_url(method, "method_page"))
+    assert page.status_code == 200
+    assert page.context["read_only"] == read_only

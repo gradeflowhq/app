@@ -30,4 +30,6 @@ class CopyForm(forms.Form):
 
     def __init__(self, choices: list[tuple[str, str]], *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
-        self.fields["library"].choices = choices  # type: ignore[attr-defined]
+        library = self.fields["library"]
+        assert isinstance(library, forms.ChoiceField)
+        library.choices = choices

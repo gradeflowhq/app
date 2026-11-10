@@ -1,4 +1,4 @@
-{# A check of a marking being edited, as a form, with the cards of the checks it holds: the editor of a question's marking and of a method alike. Read-only where the editor isn't editable. A button is disabled while its request is out, so a second click, as on a check that has since moved, isn't sent. A morph keeps each check's More options as the user left it there, and a check opened anew gets its own, open if it shows an error. #}
+{# A step of a marking being edited, as a form, with cards for the steps it holds. Buttons are disabled while their request is out: a second click could act on a step that has moved. A morph keeps each step's More options as the user left them; a step opened anew starts open if it shows an error. #}
 {% with draft_url=editor.actions.update %}
 <form id="marking-form" class="flex flex-1 flex-col{% if not editor.editable %} read-only-fields{% endif %}" hx-post="{{ draft_url }}" hx-trigger="change, input delay:700ms" hx-target="#editor-notices" hx-swap="innerHTML" hx-disable:inherited="closest button" novalidate>
   {% csrf_token %}
@@ -31,7 +31,7 @@
 
     <div id="editor-notices" class="grid gap-3 [&:not(:has(*))]:hidden">
       {% partialdef notices inline %}
-        {% if editor.description and not editor.checks_settings %}<c-summary :text="editor.description" />{% endif %}
+        {% if editor.description and not editor.settings_holding_steps %}<c-summary :text="editor.description" />{% endif %}
         {% if editor.saved_by_someone_else %}<div role="alert" class="alert alert-warning alert-soft">{% icon "exclamation-triangle" %}<div class="grid justify-items-start gap-2"><p>Someone saved this marking after you started. Saving replaces their version.</p><button type="button" class="btn btn-sm" hx-post="{{ editor.actions.discard }}" data-confirm="Discard your changes?" data-confirm-detail="{{ editor.discard_note }}" data-confirm-button="Discard">Use theirs</button></div></div>{% endif %}
         {% if editor.conflicts %}
           <c-alert class="items-start">
@@ -49,7 +49,7 @@
           {% for field in editor.form %}<c-field-errors :errors="field.errors" id="{{ field.auto_id }}_error" hx-swap-oob="true" />{% endfor %}
           {% for field_set in editor.form.rows %}{% for row in field_set.forms %}{% for field in row %}<c-field-errors :errors="field.errors" id="{{ field.auto_id }}_error" hx-swap-oob="true" />{% endfor %}{% endfor %}{% endfor %}
           {% for field_set in editor.form.maps %}{% for entry in field_set.entries %}<c-field-errors :errors="entry.errors" id="{{ entry.prefix }}-error" hx-swap-oob="true" />{% endfor %}{% endfor %}
-          {% for setting_view in editor.checks_settings %}<c-field-errors :errors="setting_view.errors" id="checks-setting-{{ setting_view.setting.name }}-error" hx-swap-oob="true" />{% endfor %}
+          {% for setting_view in editor.settings_holding_steps %}<c-field-errors :errors="setting_view.errors" id="steps-setting-{{ setting_view.setting.name }}-error" hx-swap-oob="true" />{% endfor %}
           {{ update_html|default:"" }}
           {% include "marking/editor.html#editor-status" %}
         {% endif %}
@@ -60,15 +60,15 @@
     {% with field_sets=editor.form.basic_maps %}{% partial typed_maps %}{% endwith %}
     {% include "forms/object.html#groups" with groups=editor.form.basic_sections %}
 
-    {% for setting_view in editor.checks_settings %}
-    <section class="grid gap-2" aria-labelledby="checks-setting-{{ forloop.counter }}">
+    {% for setting_view in editor.settings_holding_steps %}
+    <section class="grid gap-2" aria-labelledby="steps-setting-{{ forloop.counter }}">
       <div class="flex items-center gap-2">
-        <h3 id="checks-setting-{{ forloop.counter }}" class="font-medium">{{ setting_view.setting.title }}</h3>
+        <h3 id="steps-setting-{{ forloop.counter }}" class="font-medium">{{ setting_view.setting.title }}</h3>
         {{ setting_view.label_controls }}
       </div>
       <ul class="grid gap-2">
         {% for child in setting_view.children %}
-        <li class="card-box group/check relative flex items-start gap-2 p-3 hover:border-primary/50">
+        <li class="card-box relative flex items-start gap-2 p-3 hover:border-primary/50">
           <div class="min-w-0 flex-1">
             <button type="button" class="block text-left font-medium after:absolute after:inset-0 after:rounded-box" hx-post="{{ draft_url }}" hx-vals="{% hx_vals operation="open" target=child.path %}">{{ child.label }}</button>
             {% if child.notes %}<p class="text-sm text-muted">{{ child.notes|join:" · " }}</p>{% endif %}
@@ -86,13 +86,13 @@
           {% endif %}
         </li>
         {% empty %}
-        <li class="rounded-box border border-dashed border-base-300 p-3 text-sm text-muted">None yet.{% if setting_view.needs_checks and not setting_view.errors %} {% if not setting_view.setting.is_list %}Add a check.{% elif setting_view.setting.minimum > 1 %}Add at least {{ setting_view.setting.minimum }} checks.{% else %}Add at least one check.{% endif %}{% endif %}</li>
+        <li class="rounded-box border border-dashed border-base-300 p-3 text-sm text-muted">None yet.{% if setting_view.needs_steps and not setting_view.errors %} {{ setting_view.add_prompt }}{% endif %}</li>
         {% endfor %}
       </ul>
-      <c-field-errors :errors="setting_view.errors" id="checks-setting-{{ setting_view.setting.name }}-error" />
+      <c-field-errors :errors="setting_view.errors" id="steps-setting-{{ setting_view.setting.name }}-error" />
       {% if editor.editable %}
         {% if setting_view.can_add %}
-        <div><button type="button" class="btn" hx-get="{{ editor.actions.methods }}?operation=add&amp;target={{ setting_view.setting.new_check_path|urlencode }}&amp;path={{ editor.path|urlencode }}" hx-target="#picker-body" hx-swap="innerHTML" data-dialog="picker">{% icon "plus" "size-4" %}Add check</button></div>
+        <div><button type="button" class="btn" hx-get="{{ editor.actions.methods }}?operation=add&amp;target={{ setting_view.setting.new_step_path|urlencode }}&amp;path={{ editor.path|urlencode }}" hx-target="#picker-body" hx-swap="innerHTML" data-dialog="picker">{% icon "plus" "size-4" %}Add {{ setting_view.setting.item_label }}</button></div>
         {% elif setting_view.unavailable_reason %}
         <p class="text-sm text-muted">{{ setting_view.unavailable_reason }}</p>
         {% endif %}
@@ -110,7 +110,7 @@
 </form>
 {% endwith %}
 
-{# A row list or typed map's heading and help, and the field saying it was posted, so an empty one clears it; none for one an input fills. #}
+{# A row list or typed map's heading and help, and the field saying it was posted, so an empty one clears it; none for one a setting fills. #}
 {% partialdef field_set_head %}
         <legend class="mb-1 flex items-center gap-2 font-medium">{{ field_set.label }}{{ field_set.label_controls }}</legend>
         {% if not field_set.replaced_control %}

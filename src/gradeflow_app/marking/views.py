@@ -19,7 +19,7 @@ from gradeflow_app.assessments.models import AssessmentAccess
 from gradeflow_app.courses.models import Role
 from gradeflow_app.editor import operations
 from gradeflow_app.editor.guide import choices, sections_of
-from gradeflow_app.editor.picker import PickerForm, check_picker, picker
+from gradeflow_app.editor.picker import PickerForm, picker, step_picker
 from gradeflow_app.editor.presenters import Editor, editor
 from gradeflow_app.libraries import services as libraries
 from gradeflow_app.libraries.collection import loaded_usable_methods, offers, usable
@@ -179,24 +179,24 @@ def draft_view(request: Request, access: AssessmentAccess, draft_id: UUID) -> Ht
             )
         return render(request, "marking/panel.html", {"access": access, "editor": _editor(request, workspace, path)})
     fields_only = not request.POST.get("operation")
-    inputs_before = workspace.editor_inputs(path) if workspace.checks.is_check(path) else None
-    decisions = workspace.checks.answer_decisions()
-    method = drafted_method(workspace.checks)
+    structure_before = workspace.editor_structure(path) if workspace.marking_draft.is_step(path) else None
+    decisions = workspace.marking_draft.answer_decisions()
+    method = drafted_method(workspace.marking_draft)
     next_editor = _editor(request, workspace, _apply(request, workspace, path))
     _refresh_list_if_method_changed(request, workspace, method)
     context: dict[str, Any] = {"access": access, "editor": next_editor}
     # Typing keeps the form in place unless its fields change; answer decisions refresh beside it, and so does the
     # preview once the draft is back to what it previewed.
-    if fields_only and workspace.editor_inputs(next_editor.path) == inputs_before:
+    if fields_only and workspace.editor_structure(next_editor.path) == structure_before:
         answers_html = (
             answers_column_html(request, access, workspace.subject, workspace, out_of_band=True)
             if workspace.subject.question is None
-            or decisions != workspace.checks.answer_decisions()
+            or decisions != workspace.marking_draft.answer_decisions()
             or not previews.preview_is_stale(workspace)
             else preview_bar(request, workspace)
         )
         context |= {"fields_only_update": True, "update_html": answers_html}
-        return render(request, "marking/check.html#notices", context)
+        return render(request, "marking/step.html#notices", context)
     context["answers_html"] = answers_column_html(request, access, workspace.subject, workspace, out_of_band=True)
     response = render(request, "marking/panel.html", context)
     return morphed_into(response, "#marking-panel") if fields_only else response
@@ -204,7 +204,7 @@ def draft_view(request: Request, access: AssessmentAccess, draft_id: UUID) -> Ht
 
 def _refresh_list_if_method_changed(request: Request, workspace: MarkingWorkspace, before: str) -> None:
     """Refresh the user's question list where it names the draft's method, once that changed from `before`."""
-    if drafted_method(workspace.checks) != before:
+    if drafted_method(workspace.marking_draft) != before:
         notify_drafts_changed(workspace.subject.assessment, request.user)
 
 
@@ -256,7 +256,7 @@ def save(request: Request, access: AssessmentAccess, draft_id: UUID) -> HttpResp
         path = (
             path
             if workspace.problems_at(path, saving=True)
-            else next((problem.check for problem in workspace.checks.problems), path)
+            else next((problem.step_path for problem in workspace.marking_draft.problems), path)
         )
         context = {"access": access, "editor": _editor(request, workspace, path)}
         return render(request, "marking/editor.html", context)
@@ -343,9 +343,9 @@ def mark_example(request: Request, access: AssessmentAccess, question_id: UUID) 
         raise Http404
     workspace = MarkingWorkspace(draft)
     decision = cast("Decision | Literal['cancel']", request.POST.get("decision", ""))
-    method = drafted_method(workspace.checks)
+    method = drafted_method(workspace.marking_draft)
     try:
-        workspace.checks.mark_by_example(request.POST.getlist("answer"), decision)
+        workspace.marking_draft.mark_by_example(request.POST.getlist("answer"), decision)
     except GradeFlowError as error:
         messages.error(request, str(error))
     else:
@@ -394,7 +394,7 @@ def question_methods(request: Request, access: AssessmentAccess, question_id: UU
 
 @assessment_member(Role.EDITOR)
 def draft_methods(request: Request, access: AssessmentAccess, draft_id: UUID) -> HttpResponse:
-    """The method picker for the check at `target` of the draft, which opens the editor at `path` after."""
+    """The method picker for the step at `target` of the draft, which opens the editor at `path` after."""
     workspace = MarkingWorkspace.of(request, access, draft_id)
     args = [access.assessment.pk, workspace.draft.pk]
     picker_form = PickerForm(
@@ -404,7 +404,7 @@ def draft_methods(request: Request, access: AssessmentAccess, draft_id: UUID) ->
         fields={"path": request.GET.get("path", request.GET.get("target", ""))},
     )
     picker_url = reverse("draft_methods", args=args)
-    return check_picker(request, workspace.checks, workspace.offers, access.course, picker_form, picker_url)
+    return step_picker(request, workspace.marking_draft, workspace.offers, access.course, picker_form, picker_url)
 
 
 @assessment_member(Role.EDITOR)

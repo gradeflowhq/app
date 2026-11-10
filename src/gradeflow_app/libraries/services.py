@@ -3,10 +3,10 @@ deleting it."""
 
 import re
 import unicodedata
-from collections.abc import Callable, Iterator, Mapping
+from collections.abc import Iterator, Mapping
 from copy import deepcopy
 from itertools import count
-from typing import Any
+from typing import Any, Protocol
 
 from django.core.exceptions import ValidationError
 from django.db import transaction
@@ -138,9 +138,11 @@ def method_draft(
     )
 
 
-def create_method(
-    library: Library, user: User, make_draft: Callable[..., MethodDraft], *, label: str, summary: str
-) -> Method:
+class MakeDraft(Protocol):
+    def __call__(self, *, name: str, version: int, label: str, summary: str) -> MethodDraft: ...
+
+
+def create_method(library: Library, user: User, make_draft: MakeDraft, *, label: str, summary: str) -> Method:
     """A new method called `label` in the library, as `user`'s draft that `make_draft` makes from its name, version,
     label and summary. Raises `ValidationError` if the library has a method called that."""
     _require_available_label(library, label)

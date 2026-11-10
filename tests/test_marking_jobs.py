@@ -39,8 +39,8 @@ def question_group_marking(assessment: Assessment, keys: list[str]) -> Marking:
                 "with": {
                     "sets": [
                         {
-                            "uses": "gradeflow/combination@1",
-                            "with": {"checks": [{"question": key, "uses": "gradeflow/full-marks@1"} for key in keys]},
+                            "uses": "gradeflow/workflow@1",
+                            "with": {"steps": [{"question": key, "uses": "gradeflow/full-marks@1"} for key in keys]},
                         }
                     ]
                 },

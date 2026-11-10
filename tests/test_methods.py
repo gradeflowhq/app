@@ -33,7 +33,7 @@ pytestmark = pytest.mark.django_db
 
 def save_key_points_marking(client: Client, assessment: Assessment, points: list[str]) -> Marking:
     url, draft = start_marking(client, assessment, "Q1", "gradeflow/key-points@1")
-    client.post(url, {"path": "", "fields_posted": "1", "points": points, "combine": "any"})
+    client.post(url, {"path": "", "fields_posted": "1", "points": points, "marks_by": "any_correct"})
     save_draft(client, draft)
     return Marking.objects.get(question__key="Q1")
 
@@ -47,16 +47,15 @@ def post_save_as_method(client: Client, assessment: Assessment, **fields: str) -
 
 
 def publish_marking_as_method(
-    client: Client, assessment: Assessment, label: str, *, with_points_input: bool = False
+    client: Client, assessment: Assessment, label: str, *, with_points_setting: bool = False
 ) -> Method:
-    """A method published from the saved marking of Q1, called `label`; with `with_points_input`, its points an
-    input."""
+    """A method published from Q1's saved marking, called `label`. `with_points_setting` makes its points a setting."""
     assert post_save_as_method(client, assessment, label=label, summary="Full marks for the word.") == 200
     draft = MethodDraftRecord.objects.get(method__library__course=assessment.course, method__versions=None)
-    if with_points_input:
+    if with_points_setting:
         assert (
             post_to_designer(
-                client, draft.method, "method_field", operation="new_input", field="with.checks.0.with.points"
+                client, draft.method, "method_field", operation="bind_new_setting", field="with.steps.0.with.points"
             ).status_code
             == 200
         )
@@ -78,7 +77,7 @@ def test_a_marking_saved_as_a_method_marks_like_it_with_what_others_fill_in(
     question = assessment.questions.get(key="Q1")
     save_dialog = client.get(reverse("method_save", args=[assessment.pk, question.pk])).text
     assert "Save as a method" in save_dialog
-    saved = publish_marking_as_method(client, assessment, "Key word", with_points_input=True)
+    saved = publish_marking_as_method(client, assessment, "Key word", with_points_setting=True)
     assert saved.name == "key-word"
     version = saved.versions.get()
 
@@ -245,9 +244,9 @@ def test_a_question_groups_marking_saves_as_a_method_for_its_questions(client: C
         assessment=assessment,
         definition=dump_yaml(
             {
-                "uses": "gradeflow/combination@1",
+                "uses": "gradeflow/workflow@1",
                 "with": {
-                    "checks": [
+                    "steps": [
                         {"question": "Q1", "uses": "gradeflow/full-marks@1"},
                         {"question": "Q2", "uses": "gradeflow/full-marks@1"},
                     ]

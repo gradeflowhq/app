@@ -9,7 +9,7 @@ from typing import Any
 from django.core.exceptions import ValidationError
 from django.template.loader import render_to_string
 from django.urls import reverse
-from gradeflow_core import Check, GradeFlowError, Methods, QuestionSet
+from gradeflow_core import GradeFlowError, Methods, QuestionSet, Step
 from gradeflow_core import Method as CoreMethod
 from gradeflow_core.editing import FailedFile, LoadedFiles, MarkingDraft, MethodDraft, RowResult
 from pydantic import TypeAdapter
@@ -17,7 +17,7 @@ from pydantic import ValidationError as PydanticValidationError
 
 from gradeflow_app.accounts.models import User
 from gradeflow_app.courses.models import Course
-from gradeflow_app.editor.editing import CheckWorkspace, EditorActions
+from gradeflow_app.editor.editing import EditorActions, StepWorkspace
 from gradeflow_app.jobs import runs
 from gradeflow_app.jobs.payloads import TestRun
 from gradeflow_app.libraries.collection import (
@@ -46,7 +46,7 @@ class StaleWorkspace(Exception):
 
 
 @dataclass
-class MethodWorkspace(CheckWorkspace):
+class MethodWorkspace(StepWorkspace):
     method: Method
     tests_record: MethodDraftRecord | VersionTests
 
@@ -109,7 +109,7 @@ class MethodWorkspace(CheckWorkspace):
 
     @cached_property
     def draft(self) -> MethodDraft:
-        number = None if self.draft_record else self.tests_record.version.number  # type: ignore[union-attr]
+        number = self.tests_record.version.number if isinstance(self.tests_record, VersionTests) else None
         test_values = self.tests.get("test_values", {})
         return method_draft(
             self.method, self.definition, self.tests, self.methods, version=number, test_values=test_values
@@ -126,14 +126,16 @@ class MethodWorkspace(CheckWorkspace):
 
     @property
     def defaults(self) -> dict[str, Any]:
-        """Each input's default, where it has one."""
+        """Each declared setting's default, where it has one."""
         return {
-            name: declaration["default"] for name, declaration in self.draft.inputs.items() if "default" in declaration
+            name: declaration["default"]
+            for name, declaration in self.draft.declared_settings.items()
+            if "default" in declaration
         }
 
     @property
-    def checks(self) -> MarkingDraft:
-        return self.draft.checks
+    def marking_draft(self) -> MarkingDraft:
+        return self.draft.steps_draft
 
     def url(self, name: str) -> str:
         """The workspace's own address for the view `name`."""
@@ -145,7 +147,7 @@ class MethodWorkspace(CheckWorkspace):
     @property
     def actions(self) -> EditorActions:
         return EditorActions(
-            update=self.url("method_check"),
+            update=self.url("method_step"),
             methods=self.url("method_choices") if self.editable else "",
         )
 
@@ -154,67 +156,59 @@ class MethodWorkspace(CheckWorkspace):
         if not self.editable:
             form.disable()
             return form
-        fields, inputs = self.draft.configurable_fields(), self.draft.inputs
-        use_counts = {
-            field.bound_input: sum(other.bound_input == field.bound_input for other in fields)
-            for field in fields
-            if field.bound_input
-        }
+        fields, declared_settings = self.draft.configurable_fields(), self.draft.declared_settings
+        use_counts = Counter(field.bound_setting for field in fields if field.bound_setting)
         for field in fields:
-            if field.check == path:
+            if field.step_path == path:
                 context = {
                     "field": field,
-                    "input": inputs.get(field.bound_input or "", {}),
-                    "default": self.default_label(field.bound_input) if field.bound_input else None,
-                    "compatible": [
-                        (name, inputs[name].get("title") or name, use_counts.get(name, 0))
-                        for name in self.draft.compatible_inputs(field.path)
+                    "declared_setting": declared_settings.get(field.bound_setting or "", {}),
+                    "default": self.default_label(field.bound_setting) if field.bound_setting else None,
+                    "setting_is_shared": use_counts[field.bound_setting or ""] > 1,
+                    "compatible_settings": [
+                        (name, declared_settings[name].get("title") or name, use_counts[name])
+                        for name in self.draft.compatible_settings(field.path)
                     ],
                     "action": self.url("method_field"),
                 }
-                form.add_label_controls(field.key, render_to_string("methods/input_menu.html", context))
-                if field.bound_input:
-                    context["inputs_url"] = self.url("method_inputs")
-                    form.replace_control(field.key, render_to_string("methods/input_fill.html", context))
+                form.add_label_controls(field.key, render_to_string("methods/field_source_menu.html", context))
+                if field.bound_setting:
+                    context["settings_url"] = self.url("method_settings")
+                    form.replace_control(field.key, render_to_string("methods/field_filled_by_setting.html", context))
         return form
 
     @property
     def summary(self) -> str:
         """What the method marks, in the core's words."""
-        return self.checks.describe("")
+        return self.marking_draft.describe("")
 
     @cached_property
     def yaml_only_reasons(self) -> list[str]:
-        """Why the checks can only be edited as YAML, if they can't be edited field by field."""
+        """Why the steps can only be edited as YAML, if they can't be edited field by field."""
         if reasons := self.draft.uneditable_reasons:
             return reasons
         try:
             shown = [
                 title
-                for path in self.checks.paths()
-                for title in unrepresentable_fields(self.checks.schema(path), self.checks.values(path))
+                for path in self.marking_draft.paths()
+                for title in unrepresentable_fields(self.marking_draft.schema(path), self.marking_draft.values(path))
             ]
         except GradeFlowError as error:
             return [str(error)]
         return list(dict.fromkeys(f"{title} has a value only YAML can show." for title in shown))
 
     def default_label(self, name: str) -> Any:
-        """An input's default as people read it: a choice by its label."""
-        schema = self.draft.input_schema(name)
+        """A declared setting's default as people read it: a choice by its label."""
+        schema = self.draft.declared_setting_schema(name)
         default, _ = unwrap_nullable(resolve(schema["properties"].get("default", {}), schema.get("$defs", {})))
-        return as_labels(self.draft.inputs[name].get("default"), labels_of(default))
+        return as_labels(self.draft.declared_settings[name].get("default"), labels_of(default))
 
-    def settings_filled_by(self, name: str) -> list[tuple[str, str]]:
-        """The settings an input fills: each one's check, and where it is. Checks labelled alike are numbered in
-        order."""
-        fields = [field for field in self.draft.configurable_fields() if field.bound_input == name]
-        labels = {check: self.checks.label(check) for check in dict.fromkeys(field.check for field in fields)}
-        label_counts, label_numbers = Counter(labels.values()), Counter[str]()
-        for check, label in labels.items():
-            if label_counts[label] > 1:
-                label_numbers[label] += 1
-                labels[check] = f"{label} {label_numbers[label]}"
-        return [(field.check, f"{labels[field.check]} · {field.title}") for field in fields]
+    def fields_filled_by(self, name: str) -> list[tuple[str, str]]:
+        """The fields a declared setting fills: each one's step path and label."""
+        fields = [field for field in self.draft.configurable_fields() if field.bound_setting == name]
+        step_paths = list(dict.fromkeys(field.step_path for field in fields))
+        labels = dict(zip(step_paths, self.marking_draft.numbered_labels(step_paths), strict=True))
+        return [(field.step_path, f"{labels[field.step_path]} · {field.title}") for field in fields]
 
     def current_results(self) -> list[RowResult] | None:
         """The results of the last test run, while they mark what is here now."""
@@ -248,7 +242,7 @@ class MethodWorkspace(CheckWorkspace):
             assert self.version is not None
             raise ValidationError(f"Nothing changed since version {self.version.number}.")
         if not self.valid:
-            raise ValidationError(f"Finish the marking first: {self.checks.problems[0].message}")
+            raise ValidationError(f"Finish the marking first: {self.marking_draft.problems[0].message}")
         if self.untested:
             raise ValidationError("Run the tests first, so the examples show their marks.")
         self.record_examples()
@@ -274,14 +268,18 @@ class MethodWorkspace(CheckWorkspace):
             methods=files,
             questions=self.questions,
             question=self.draft.question,
-            inputs=self.draft.test_values,
+            settings=self.draft.test_values,
             rows=rows_of(self.tests),
         )
 
-    def test_run_asks_models(self) -> bool:
-        """Whether a test run asks language models. Raises `EditingError` if it can't be tried yet."""
+    def tested_step(self) -> Step:
+        """The step a test run marks with. Raises `GradeFlowError` if it can't be tried yet."""
         method, methods = self._tested_methods()
-        return Check.load({"uses": method.ref, "with": self.draft.test_values}, methods=methods).needs_model_endpoint()
+        return Step.load({"uses": method.ref, "with": self.draft.test_values}, methods=methods)
+
+    def test_run_asks_models(self) -> bool:
+        """Whether a test run asks language models. Raises `GradeFlowError` if it can't be tried yet."""
+        return self.tested_step().needs_model_endpoint()
 
     def _tested_methods(self) -> tuple[CoreMethod[Any], Methods]:
         """The method as tested, and the methods it may use. Raises `EditingError` if it can't be tried yet."""
@@ -289,7 +287,7 @@ class MethodWorkspace(CheckWorkspace):
         return method, Methods([*(each for each in self.methods if each.ref != method.ref), method])
 
     def save(self) -> None:
-        """Store the edits made to the workspace as its next revision; with none, as after only opening a check,
+        """Store the edits made to the workspace as its next revision; with none, as after only opening a step,
         it stays as it is, and so do its test results."""
         tests = self.tests
         tests["test_values"] = self.draft.test_values

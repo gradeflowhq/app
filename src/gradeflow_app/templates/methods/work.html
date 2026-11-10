@@ -6,7 +6,7 @@
     <input type="hidden" name="shown_question" value="{{ state.question }}">
     <input type="hidden" name="path" value="{{ editor.path|default:state.path }}">
     <input type="hidden" name="tab" value="{{ state.tab }}">
-    <input type="hidden" name="input" value="{{ input_view.name|default:'' }}">
+    <input type="hidden" name="setting" value="{{ declared_setting_view.name }}">
     <input type="hidden" name="finish" value="{% if finishing %}1{% endif %}">
   </div>
 
@@ -50,9 +50,9 @@
       {% if access.can_edit %}
       {% if draft %}
         {% partialdef publish inline %}<div id="method-publish"{% if out_of_band %} hx-swap-oob="outerMorph"{% endif %} class="flex items-center gap-3">
-          {% if workspace.changed and first_problem_check is not None %}
+          {% if workspace.changed and first_problem_step is not None %}
             {% if yaml_only_reasons %}<button type="button" class="secondary-link text-sm max-sm:hidden" hx-get="{{ urls.yaml }}" hx-target="#drawer-body" hx-swap="innerHTML" data-dialog="drawer">Fix it in YAML to publish</button>
-            {% else %}<button type="button" class="secondary-link text-sm max-sm:hidden" hx-post="{{ urls.check }}" hx-vals="{% hx_vals operation="open" target=first_problem_check finish="1" tab="checks" %}">{% if first_problem_unfilled %}Finish{% else %}Fix{% endif %} “{{ first_problem_label }}” to publish</button>{% endif %}
+            {% else %}<button type="button" class="secondary-link text-sm max-sm:hidden" hx-post="{{ urls.step }}" hx-vals="{% hx_vals operation="open" target=first_problem_step finish="1" tab="steps" %}">{% if first_problem_unfilled %}Finish{% else %}Fix{% endif %} “{{ first_problem_label }}” to publish</button>{% endif %}
           {% elif workspace.changed and not problems and untested %}<button type="button" class="secondary-link text-sm max-sm:hidden" hx-post="{{ urls.run }}">Run the tests to publish</button>{% endif %}
           <span{% if not workspace.changed %} title="No changes to publish"{% elif problems %} title="Fix the problems below to publish"{% endif %}><button type="button" class="btn btn-primary" hx-post="{{ urls.publish }}"{% if not workspace.changed or problems or not workspace.valid or untested %} disabled{% elif not workspace.tests.rows %} data-confirm="Publish without test answers?" data-confirm-detail="It hasn't been tried on any answer yet." data-confirm-button="Publish"{% endif %}>Publish</button></span>
         </div>{% endpartialdef %}
@@ -106,21 +106,21 @@
           {% else %}
             <span class="text-sm text-muted">Not run yet</span>
           {% endif %}
-          {% if can_edit_tests and not run.is_active %}<button type="button" class="btn btn-sm ml-auto" hx-post="{{ urls.run }}"{% if first_problem_check is not None %} disabled title="Finish the marking first"{% elif problems %} disabled title="Fix the problems first"{% elif not workspace.tests.rows %} disabled title="Add a test answer first"{% endif %}>{% icon "play" "size-4" %}Run tests</button>{% endif %}
+          {% if can_edit_tests and not run.is_active %}<button type="button" class="btn btn-sm ml-auto" hx-post="{{ urls.run }}"{% if first_problem_step is not None %} disabled title="Finish the marking first"{% elif problems %} disabled title="Fix the problems first"{% elif not workspace.tests.rows %} disabled title="Add a test answer first"{% endif %}>{% icon "play" "size-4" %}Run tests</button>{% endif %}
         </div>
         {% endif %}
       </header>
 
       <div class="grid content-start gap-3 p-4">
         {% if values %}
-        <c-more-options label="Input values{% if workspace.draft.test_values %} · {{ workspace.draft.test_values|length }} changed{% endif %}" :open="values_expanded" class="card-box px-4 py-3">
+        <c-more-options label="Test values{% if workspace.draft.test_values %} · {{ workspace.draft.test_values|length }} changed{% endif %}" :open="values_expanded" class="card-box px-4 py-3">
           <form class="grid gap-4{% if not draft %} read-only-fields{% endif %}" hx-post="{{ urls.values }}" hx-trigger="change">
             {% csrf_token %}
             <c-form-errors :errors="values.non_field_errors" />
             {% include "forms/object.html#groups" with groups=values.basic_sections %}
             {% include "forms/object.html#groups" with groups=values.advanced_sections %}
-            {% include "marking/check.html#row_lists" with field_sets=values.rows draft_url=urls.values editable=draft %}
-            {% include "marking/check.html#typed_maps" with field_sets=values.maps draft_url=urls.values editable=draft %}
+            {% include "marking/step.html#row_lists" with field_sets=values.rows draft_url=urls.values editable=draft %}
+            {% include "marking/step.html#typed_maps" with field_sets=values.maps draft_url=urls.values editable=draft %}
             {% if draft and workspace.draft.test_values %}<div><button type="button" class="btn btn-sm" hx-post="{{ urls.values }}" hx-vals='{"operation": "reset"}'>Use defaults</button></div>{% endif %}
           </form>
         </c-more-options>
@@ -189,18 +189,18 @@
         <h2>Marking</h2>
         {% if not yaml_only_reasons %}
         <div class="segmented ml-auto" role="radiogroup" aria-label="Show">
-          <label class="segment"><input type="radio" class="sr-only" name="show" value="checks" hx-get="{{ urls.page }}" hx-vals='{"tab": "checks", "path": ""}' hx-trigger="change"{% if state.tab == "checks" %} checked{% endif %}>Checks</label>
-          <label class="segment"><input type="radio" class="sr-only" name="show" value="inputs" hx-get="{{ urls.inputs }}" hx-vals='{"tab": "inputs", "input": ""}' hx-trigger="change"{% if state.tab == "inputs" %} checked{% endif %}>Inputs</label>
+          <label class="segment"><input type="radio" class="sr-only" name="show" value="steps" hx-get="{{ urls.page }}" hx-vals='{"tab": "steps", "path": ""}' hx-trigger="change"{% if state.tab == "steps" %} checked{% endif %}>Steps</label>
+          <label class="segment"><input type="radio" class="sr-only" name="show" value="settings" hx-get="{{ urls.settings }}" hx-vals='{"tab": "settings", "setting": ""}' hx-trigger="change"{% if state.tab == "settings" %} checked{% endif %}>Settings</label>
         </div>
         {% endif %}
       </div>
       {% if yaml_only_reasons %}
         {% if workspace.summary %}<div class="prose-core px-5 pt-5">{{ workspace.summary|markdown }}</div>{% endif %}
         <c-empty-state icon="code-bracket" title="Written in YAML">{{ yaml_only_reasons|join:" " }}<c-slot name="action"><button type="button" class="btn" hx-get="{{ urls.yaml }}" hx-target="#drawer-body" hx-swap="innerHTML" data-dialog="drawer">{% icon "code-bracket" "size-4" %}{% if draft %}Edit as YAML{% else %}View as YAML{% endif %}</button></c-slot></c-empty-state>
-      {% elif state.tab == "inputs" %}
-        {% include "methods/inputs.html" %}
+      {% elif state.tab == "settings" %}
+        {% include "methods/settings.html" %}
       {% elif editor %}
-        {% include "marking/check.html" %}
+        {% include "marking/step.html" %}
       {% endif %}
       {% if draft and problems %}
       <div class="border-t border-base-300 px-5 py-4">

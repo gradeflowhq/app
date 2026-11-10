@@ -19,9 +19,9 @@ FRACTIONS = {0.5: "½", 0.25: "¼", 0.75: "¾"}
 MINUS = "−"  # noqa: RUF001 - a minus sign, as people write it
 
 
-def preset_label(value: Any) -> str:
+def preset_label(value: float) -> str:
     """A preset as people write it: ½ for 0.5, with a minus sign when negative."""
-    if isinstance(value, int | float) and value < 0:
+    if value < 0:
         return MINUS + preset_label(-value)
     return FRACTIONS.get(value) or DecimalInput().format_value(value) or str(value)
 
@@ -121,9 +121,7 @@ class MapEntries:
 
 
 class ObjectForm(forms.Form):
-    """The fields of one object: a core check, question, adapter or serializer configuration. Its lists of rows,
-    maps and settings that hold checks are shown beside its fields, and take the core's problems with what they
-    hold."""
+    """The fields of one object: a core step, question, adapter or serializer configuration."""
 
     template_name = "forms/object.html"
     bound_field_class = HintedField
@@ -148,7 +146,7 @@ class ObjectForm(forms.Form):
         initial = {
             name: current for name in self.layout.fields if (current := _nested_value(initial_object, name)) is not None
         }
-        # Each check's fields have ids of their own, so a morph from one check to another never keeps a field,
+        # Each step's fields have ids of their own, so a morph from one step to another never keeps a field,
         # with what was typed in it.
         kwargs.setdefault("auto_id", f"id_{path.replace('.', '-')}_%s" if path else "id_%s")
         super().__init__(initial=initial, **kwargs)
@@ -178,7 +176,7 @@ class ObjectForm(forms.Form):
             )
             for name, tagged in self.layout.tagged.items()
         ]
-        self.checks_setting_errors: dict[str, list[str]] = {name: [] for name in self.layout.checks_settings}
+        self.steps_setting_errors: dict[str, list[str]] = {name: [] for name in self.layout.settings_holding_steps}
 
     def disable(self) -> None:
         """Show the values without letting them change."""
@@ -217,15 +215,14 @@ class ObjectForm(forms.Form):
             self.add_problem(problem.field, problem.message)
 
     def add_problem(self, location: Sequence[int | str], message: str) -> None:
-        """Show a problem the core found at `location`, relative to this object, on what holds that value: a field, a
-        setting that holds checks, a row or a map's entry. One that nothing here holds, such as a setting only YAML
-        can write, shows on the whole form after the setting's name."""
+        """Show a problem the core found at `location`, relative to this object, on the field, steps setting, row or map
+        entry holding that value; otherwise on the whole form, after the setting's name."""
         name, *inner_location = location or [""]
         index = inner_location[0] if inner_location else None
         row_forms = next((rows.forms for rows in self.rows if rows.name == name), [])
         map_entries = next((entries.entries for entries in self.maps if entries.name == name), [])
-        if str(name) in self.checks_setting_errors:
-            self.checks_setting_errors[str(name)].append(message)
+        if str(name) in self.steps_setting_errors:
+            self.steps_setting_errors[str(name)].append(message)
         elif isinstance(index, int) and index < len(row_forms):
             row_forms[index].add_problem(inner_location[1:], message)
         elif entry := next((entry for entry in map_entries if entry.key == str(index)), None):

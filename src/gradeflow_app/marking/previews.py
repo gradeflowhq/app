@@ -66,7 +66,7 @@ def run_preview(request: Request, access: AssessmentAccess, workspace: MarkingWo
         return
     draft.preview_input, draft.preview_results, draft.preview_failure = preview_input, None, ""
     draft.save(update_fields=["preview_input", "preview_results", "preview_failure"])
-    asks_models = current.checks.finalized().needs_model_endpoint()
+    asks_models = current.marking_draft.finalized().needs_model_endpoint()
     runs.start(Run(PREVIEW, str(draft.pk), _key(preview_input)), endpoint(request) if asks_models else None)
     workspace.draft.refresh_from_db()
 
@@ -110,7 +110,7 @@ def _workspace(run: Run) -> MarkingWorkspace | None:
 def _input(run: Run) -> MarkingRun | None:
     if (workspace := _workspace(run)) is None:
         return None
-    check = workspace.checks.finalized()
+    check = workspace.marking_draft.finalized()
     return marking_run(workspace.draft.assessment, check, files_needed_by(methods_used(check.dump())))
 
 
@@ -124,7 +124,7 @@ def _store_results(run: Run, outcome: Any) -> None:
     if workspace is None:
         raise ValueError("The draft changed since its preview started.")
     submissions = marked_submissions(
-        outcome, workspace.draft.assessment, workspace.checks.finalized().questions_marked()
+        outcome, workspace.draft.assessment, workspace.marking_draft.finalized().questions_marked()
     )
     workspace.draft.preview_results = [submission.model_dump(mode="json") for submission in submissions]
     workspace.draft.save(update_fields=["preview_results"])

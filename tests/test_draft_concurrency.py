@@ -37,6 +37,6 @@ def test_concurrent_decisions_preserve_existing_choices(assessment: Assessment, 
     refused = race(partial(is_refused, 0), partial(is_refused, 1))
     assert refused == ((False, True) if same_answer else (False, False))
     draft.refresh_from_db()
-    decisions = MarkingWorkspace(draft).checks.answer_decisions()
+    decisions = MarkingWorkspace(draft).marking_draft.answer_decisions()
     assert set(decisions) == ({"39"} if same_answer else {"39", "40"})
     assert decisions["39"] == "full_marks"

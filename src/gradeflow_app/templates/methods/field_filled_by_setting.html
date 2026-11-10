@@ -1,0 +1,5 @@
+{# Shown in place of a field's control when a setting fills it. The id stops a morph reusing the control's Tom Select wrapper. #}
+<div id="field-filled-by-setting-{{ field.path }}" class="flex items-center gap-2 rounded-field border border-dashed border-base-300 py-1 pl-3 pr-1 text-sm">
+  <span class="min-w-0 flex-1 truncate text-muted">{% if "default" in declared_setting %}{{ default|short_value }}{% else %}No default{% endif %}</span>
+  {% with setting_label=declared_setting.title|default:field.bound_setting %}<button type="button" class="btn btn-ghost btn-square btn-sm shrink-0" hx-get="{{ settings_url }}" hx-vals="{% hx_vals tab="settings" setting=field.bound_setting %}" aria-label="Edit setting {{ setting_label }}" title="Edit setting {{ setting_label }}">{% icon "pencil-square" "size-4" %}</button>{% endwith %}
+</div>

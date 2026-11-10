@@ -49,9 +49,9 @@ def labels_of(schema: Schema) -> dict[str, str]:
     return hint(schema).get("labels") or hint(items).get("labels") or {}
 
 
-def holds_checks(schema: Schema) -> bool:
-    """Whether the field holds a check, or a list of them."""
-    return "check" in (hint(schema).get("kind"), hint(schema.get("items", {})).get("kind"))
+def holds_steps(schema: Schema) -> bool:
+    """Whether the field holds a step, or a list of them."""
+    return "step" in (hint(schema).get("kind"), hint(schema.get("items", {})).get("kind"))
 
 
 def is_editable(schema: Schema) -> bool:

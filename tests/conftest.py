@@ -434,7 +434,7 @@ QUESTIONS = QuestionSet.model_validate({"Q1": {"type": "text"}})
 
 def method_definition(label: str = "Light", answer: str = "light", uses: str = "") -> str:
     check = {"uses": uses} if uses else {"uses": "gradeflow/key-points@1", "with": {"points": [answer]}}
-    return dump_yaml({"label": label, "summary": f"Says {answer}.", "question_types": ["text"], "checks": [check]})
+    return dump_yaml({"label": label, "summary": f"Says {answer}.", "question_types": ["text"], "steps": [check]})
 
 
 def create_method_draft(method: Method, user: User, definition: str) -> MethodDraftRecord:

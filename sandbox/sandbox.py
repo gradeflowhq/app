@@ -119,7 +119,7 @@ def test(job: dict[str, Any]) -> list[Any]:
         methods=BUILTINS.with_files(job["methods"]),
         questions=QuestionSet.model_validate(job["questions"]),
         question=job["question"],
-        inputs=job["inputs"],
+        settings=job["settings"],
         rows=[ExampleRow.model_validate(row) for row in job["rows"]],
         model_endpoint=model_endpoint(),
     )

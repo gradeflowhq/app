@@ -33,7 +33,7 @@
       },
       {
         "question_key": "Q5",
-        "method": "gradeflow/combination@1",
+        "method": "gradeflow/workflow@1",
         "average": 80
       },
       {
@@ -53,10 +53,10 @@
     ],
     "marking": {
       "question": "Q5",
-      "uses": "gradeflow/combination@1",
+      "uses": "gradeflow/workflow@1",
       "with": {
-        "combine": "proportional",
-        "checks": [
+        "marks_by": "proportional",
+        "steps": [
           {
             "uses": "gradeflow/code-tests@1",
             "with": {
@@ -88,7 +88,7 @@
         ]
       }
     },
-    "setting_name": "combine",
+    "setting_name": "marks_by",
     "checks": [
       {
         "name": "sum_digits(7)",
@@ -223,8 +223,8 @@
     }
   },
   "examples": {
-    "combination": {
-      "method": "gradeflow/combination@1",
+    "workflow": {
+      "method": "gradeflow/workflow@1",
       "question_key": "Q2",
       "question_text": "A stone is dropped from 20 m. Take g = 9.8 m/s². How long does it take to land, in seconds?",
       "marked_question": "Q2",
@@ -263,10 +263,10 @@
         "1": [
           {
             "question": "Q2",
-            "uses": "gradeflow/combination@1",
+            "uses": "gradeflow/workflow@1",
             "with": {
-              "combine": "any",
-              "checks": [
+              "marks_by": "any_correct",
+              "steps": [
                 {
                   "name": "g = 9.8",
                   "uses": "gradeflow/accepted-answers@1",
@@ -294,10 +294,10 @@
         "0.5": [
           {
             "question": "Q2",
-            "uses": "gradeflow/combination@1",
+            "uses": "gradeflow/workflow@1",
             "with": {
-              "combine": "any",
-              "checks": [
+              "marks_by": "any_correct",
+              "steps": [
                 {
                   "name": "g = 9.8",
                   "uses": "gradeflow/accepted-answers@1",
@@ -326,10 +326,10 @@
         "0": [
           {
             "question": "Q2",
-            "uses": "gradeflow/combination@1",
+            "uses": "gradeflow/workflow@1",
             "with": {
-              "combine": "any",
-              "checks": [
+              "marks_by": "any_correct",
+              "steps": [
                 {
                   "name": "g = 9.8",
                   "uses": "gradeflow/accepted-answers@1",
@@ -597,7 +597,7 @@
             "question": "Q7",
             "uses": "gradeflow/code-tests@1",
             "with": {
-              "combine": "proportional",
+              "marks_by": "proportional",
               "tests": [
                 {
                   "expression": "is_even(4)",
@@ -612,7 +612,7 @@
             "question": "Q7",
             "uses": "gradeflow/code-tests@1",
             "with": {
-              "combine": "proportional",
+              "marks_by": "proportional",
               "tests": [
                 {
                   "expression": "is_even(7)",
@@ -627,7 +627,7 @@
             "question": "Q7",
             "uses": "gradeflow/code-tests@1",
             "with": {
-              "combine": "proportional",
+              "marks_by": "proportional",
               "tests": [
                 {
                   "expression": "is_even(0)",
@@ -642,7 +642,7 @@
             "question": "Q7",
             "uses": "gradeflow/code-tests@1",
             "with": {
-              "combine": "proportional",
+              "marks_by": "proportional",
               "tests": [
                 {
                   "expression": "is_even(-2)",
@@ -657,7 +657,7 @@
             "question": "Q7",
             "uses": "gradeflow/code-tests@1",
             "with": {
-              "combine": "proportional",
+              "marks_by": "proportional",
               "tests": [
                 {
                   "expression": "is_even(4)",
@@ -676,7 +676,7 @@
             "question": "Q7",
             "uses": "gradeflow/code-tests@1",
             "with": {
-              "combine": "proportional",
+              "marks_by": "proportional",
               "tests": [
                 {
                   "expression": "is_even(4)",
@@ -695,7 +695,7 @@
             "question": "Q7",
             "uses": "gradeflow/code-tests@1",
             "with": {
-              "combine": "proportional",
+              "marks_by": "proportional",
               "tests": [
                 {
                   "expression": "is_even(4)",
@@ -714,7 +714,7 @@
             "question": "Q7",
             "uses": "gradeflow/code-tests@1",
             "with": {
-              "combine": "proportional",
+              "marks_by": "proportional",
               "tests": [
                 {
                   "expression": "is_even(7)",
@@ -733,7 +733,7 @@
             "question": "Q7",
             "uses": "gradeflow/code-tests@1",
             "with": {
-              "combine": "proportional",
+              "marks_by": "proportional",
               "tests": [
                 {
                   "expression": "is_even(7)",
@@ -752,7 +752,7 @@
             "question": "Q7",
             "uses": "gradeflow/code-tests@1",
             "with": {
-              "combine": "proportional",
+              "marks_by": "proportional",
               "tests": [
                 {
                   "expression": "is_even(0)",
@@ -771,7 +771,7 @@
             "question": "Q7",
             "uses": "gradeflow/code-tests@1",
             "with": {
-              "combine": "proportional",
+              "marks_by": "proportional",
               "tests": [
                 {
                   "expression": "is_even(4)",
@@ -794,7 +794,7 @@
             "question": "Q7",
             "uses": "gradeflow/code-tests@1",
             "with": {
-              "combine": "proportional",
+              "marks_by": "proportional",
               "tests": [
                 {
                   "expression": "is_even(4)",
@@ -817,7 +817,7 @@
             "question": "Q7",
             "uses": "gradeflow/code-tests@1",
             "with": {
-              "combine": "proportional",
+              "marks_by": "proportional",
               "tests": [
                 {
                   "expression": "is_even(4)",
@@ -840,7 +840,7 @@
             "question": "Q7",
             "uses": "gradeflow/code-tests@1",
             "with": {
-              "combine": "proportional",
+              "marks_by": "proportional",
               "tests": [
                 {
                   "expression": "is_even(7)",
@@ -863,7 +863,7 @@
             "question": "Q7",
             "uses": "gradeflow/code-tests@1",
             "with": {
-              "combine": "proportional",
+              "marks_by": "proportional",
               "tests": [
                 {
                   "expression": "is_even(4)",

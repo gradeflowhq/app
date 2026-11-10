@@ -29,7 +29,7 @@ def test_payload_marks_with_the_published_versions_it_carries() -> None:
         "version": 1,
         "summary": "Says light.",
         "question_types": ["text"],
-        "checks": [{"uses": "gradeflow/accepted-answers@1", "with": {"answers": ["light"]}}],
+        "steps": [{"uses": "gradeflow/accepted-answers@1", "with": {"answers": ["light"]}}],
     }
     payload = MarkingRun(
         questions=QUESTIONS,

@@ -11,7 +11,6 @@ from django.template.loader import render_to_string
 from django.urls import reverse
 from gradeflow_core import Check, QuestionResult
 from gradeflow_core.editing import DECISIONS, can_mark_by_example
-from gradeflow_core.editing import Marking as CoreMarking
 
 from gradeflow_app.assessments.models import Assessment, AssessmentAccess
 from gradeflow_app.jobs.runs import RunState
@@ -20,7 +19,7 @@ from gradeflow_app.marking import previews
 from gradeflow_app.marking.answers import answer_groups, comparisons
 from gradeflow_app.marking.answers.answer_groups import AnswerGroup
 from gradeflow_app.marking.answers.combinations import Combination, combinations
-from gradeflow_app.marking.checks import assessment_checks, marking_draft, questions_involved, questions_marked
+from gradeflow_app.marking.checks import assessment_checks, marking_draft_of, questions_involved, questions_marked
 from gradeflow_app.marking.models import Marking, MarkingSubject
 from gradeflow_app.marking.remarks import NO_MODEL_SERVICE, running_remarks
 from gradeflow_app.marking.workspace import MarkingWorkspace
@@ -306,7 +305,7 @@ def _marking_job(assessment: Assessment, keys: Iterable[str]) -> RunState | None
     )
 
 
-def _marked_and_read_keys(check: CoreMarking | None) -> tuple[list[str], list[str]]:
+def _marked_and_read_keys(check: Check | None) -> tuple[list[str], list[str]]:
     """The questions a marking of questions together marks, and those it only reads, such as a condition's."""
     if check is None:
         return [], []
@@ -323,14 +322,14 @@ def _set_group_decisions(
         return
     if workspace is None:
         assessment = subject.assessment
-        draft = marking_draft(
+        draft = marking_draft_of(
             subject.marking.definition if subject.marking else "",
             assessment.question_set(),
             subject.key,
             course_methods(assessment.course),
         )
     else:
-        draft = workspace.checks
+        draft = workspace.marking_draft
     decisions = draft.answer_decisions()
     for group in groups:
         group_decisions = {decisions.get(entry.normalized) for entry in group.student_answers}

@@ -1,0 +1,19 @@
+{# The menu beside a field a setting can fill: a fixed value, a setting, or a new one. #}
+{% with menu_id=field.path|slugify setting_label=declared_setting.title|default:field.bound_setting %}
+<div class="contents">
+  <c-menu id="field-source-{{ menu_id }}" panel_class="w-64 font-normal"
+          label="{% if field.bound_setting %}{{ field.title }}: filled from {{ setting_label }}{% else %}Fill {{ field.title }} from a setting{% endif %}"
+          title="{% if field.bound_setting %}Filled from a setting{% else %}Fill from a setting{% endif %}"
+          button_class="{% if field.bound_setting %}badge badge-primary badge-soft badge-sm max-w-full cursor-pointer gap-1 whitespace-nowrap font-normal{% else %}btn btn-ghost btn-square btn-sm text-subtle{% endif %}">
+    <c-slot name="trigger">{% if field.bound_setting %}{% icon "link" "size-3" mini=True %}<span class="truncate">{{ setting_label }}</span>{% icon "chevron-down" "size-3" mini=True %}{% else %}{% icon "link" "size-4" %}{% endif %}</c-slot>
+    <li><button type="button" role="menuitemradio" aria-checked="{{ field.bound_setting|yesno:'false,true' }}"{% if field.bound_setting %} hx-post="{{ action }}" hx-vals="{% hx_vals operation="unbind" field=field.path %}"{% else %} class="font-medium"{% endif %}>Fixed value{% if not field.bound_setting %}{% icon "check" "ml-auto size-4" %}{% endif %}</button></li>
+    {% if compatible_settings %}
+    <li class="menu-title">Settings</li>
+    {% for name, label, field_count in compatible_settings %}
+    <li><button type="button" role="menuitemradio" aria-checked="{% if name == field.bound_setting %}true{% else %}false{% endif %}"{% if name == field.bound_setting %} class="font-medium"{% else %} hx-post="{{ action }}" hx-vals="{% hx_vals operation="bind" field=field.path setting=name %}"{% endif %}>{{ label }}<span class="ml-auto text-sm text-muted">{{ field_count }} field{{ field_count|pluralize }}</span>{% if name == field.bound_setting %}{% icon "check" "size-4" %}{% endif %}</button></li>
+    {% endfor %}
+    {% endif %}
+    {% if not field.bound_setting or setting_is_shared %}<li><button type="button" hx-post="{{ action }}" hx-vals="{% hx_vals operation="bind_new_setting" field=field.path %}">{% icon "plus" "size-4" %}New setting</button></li>{% endif %}
+  </c-menu>
+</div>
+{% endwith %}

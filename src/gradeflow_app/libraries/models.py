@@ -1,6 +1,6 @@
 import uuid
-from collections.abc import Iterable, Mapping
-from typing import Any
+from collections.abc import Iterable
+from typing import TYPE_CHECKING
 
 from django.conf import settings
 from django.db import models
@@ -9,6 +9,9 @@ from gradeflow_core import GradeFlowError
 from gradeflow_core.editing import method_name, method_ref, split_ref
 
 from gradeflow_app.courses.models import Course
+
+if TYPE_CHECKING:
+    from gradeflow_app.libraries.method_tests import MethodTests
 
 NAMESPACE_LENGTH = 60
 NAME_LENGTH = 100
@@ -157,7 +160,7 @@ class TestsRecord(models.Model):
     class Meta:
         abstract = True
 
-    def save_revision(self, tests: Mapping[str, Any]) -> None:
+    def save_revision(self, tests: MethodTests) -> None:
         """Save `tests`, with any other change made to it, as the next revision."""
         self.tests = dict(tests)
         self.revision += 1
