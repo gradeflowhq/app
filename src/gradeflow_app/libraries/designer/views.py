@@ -17,7 +17,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 from gradeflow_core import GradeFlowError, InvalidError, QuestionSet
-from gradeflow_core.editing import QUESTION_TYPES, EditingError, new_question
+from gradeflow_core.editing import QUESTION_CLASSES, EditingError, new_question
 
 from gradeflow_app.editor import operations
 from gradeflow_app.editor.picker import PickerForm, step_picker
@@ -325,7 +325,7 @@ def question(request: Request, access: MethodAccess, number: int | None = None) 
     existing = workspace.questions.get(key)
     # A new question is like the last one, as parts (a), (b) and (c) usually are.
     type_source = existing or next(reversed(list(workspace.questions.values())), None)
-    default_type = next(iter(QUESTION_TYPES))
+    default_type = next(iter(QUESTION_CLASSES))
     question_type = question_type_named(
         data.get("type", type_source.type if type_source else default_type), default_type
     )

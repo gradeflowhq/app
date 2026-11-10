@@ -156,7 +156,7 @@ def test_choosing_automatically_runs_a_job_with_the_token_and_whats_been_tested(
     [run_id] = idle_runner.run_ids("model-choice")
     assert endpoint_sent(idle_runner, run_id) == {
         "url": PROVIDER_URL,
-        "token": "secret-token",
+        "api_key": "secret-token",
         "fast_model": None,
         "careful_model": None,
         "answers_per_request": ANSWERS_PER_REQUEST_LIMITS["default"],
@@ -388,7 +388,7 @@ def test_marking_that_asks_a_model_carries_the_endpoint_with_its_chosen_models(
 ) -> None:
     model_service(user, fast_model="decider", chosen_by="myself")
     sent = endpoint_sent(idle_runner, mark_with_criteria(assessment, user))
-    assert sent["token"] == "secret-token"
+    assert sent["api_key"] == "secret-token"
     assert sent["fast_model"] == "decider"
 
 

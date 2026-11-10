@@ -185,7 +185,7 @@ def _launch(run: Run, model_endpoint: ModelEndpoint | None) -> Launch:
     endpoint_json = None
     if model_endpoint is not None:
         endpoint_json = json.dumps(
-            model_endpoint.model_dump(mode="json") | {"token": model_endpoint.token.get_secret_value()}
+            model_endpoint.model_dump(mode="json") | {"api_key": model_endpoint.api_key.get_secret_value()}
         )
     return Launch(
         task=run_handler.task,

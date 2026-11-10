@@ -4,7 +4,7 @@ from collections.abc import Iterable
 from typing import Any
 
 from gradeflow_core import InvalidError, Question
-from gradeflow_core.editing import QuestionType, converted_question, new_question
+from gradeflow_core.editing import QUESTION_CLASSES, QuestionType, converted_question
 
 from gradeflow_app.questions.models import QUESTION_TYPE_LABELS
 from gradeflow_app.ui.schemaforms.forms import ObjectForm
@@ -20,7 +20,7 @@ class QuestionForm(ObjectForm):
         if not self.is_valid():
             return None
         try:
-            return new_question(self.question_type, self.values())
+            return QUESTION_CLASSES[self.question_type].load(self.values())
         except InvalidError as error:
             self.add_problems(error.problems)
             return None

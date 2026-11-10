@@ -201,6 +201,6 @@ def compatible_landing_methods() -> list[Method[Any]]:
         method
         for question_set in question_sets
         for question in [None, *question_set]
-        for method in compatible_methods(Position(question_set, question, in_group=question is None))
+        for method in compatible_methods(Position(question_set, question, is_in_group=question is None))
     )
     return list({method.ref: method for method in methods}.values())

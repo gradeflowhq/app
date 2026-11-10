@@ -15,7 +15,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.utils.html import escape, strip_tags
 from gradeflow_core import BUILTINS, InvalidError, Question
-from gradeflow_core.editing import QUESTION_TYPES, QuestionType, converted_question, dump_yaml, new_question
+from gradeflow_core.editing import QUESTION_CLASSES, QuestionType, converted_question, dump_yaml
 
 from gradeflow_app.accounts.models import User
 from gradeflow_app.assessments.models import Assessment
@@ -585,13 +585,13 @@ def test_multiple_values_accept_a_space_separator(client: Client, assessment: As
 def test_each_question_type_says_what_it_is(client: Client, assessment: Assessment) -> None:
     question = assessment.questions.get(key="Q2")
     url = reverse("question_settings", args=[assessment.pk, question.pk])
-    assert escape(QUESTION_TYPES[question.core_question.type].summary) in client.get(url).text
+    assert escape(QUESTION_CLASSES[question.core_question.type].summary) in client.get(url).text
 
 
 def rejection_message(question_type: QuestionType, values: dict[str, Any]) -> str:
     """Why the core rejects a question."""
     with pytest.raises(InvalidError) as rejected:
-        new_question(question_type, values)
+        QUESTION_CLASSES[question_type].load(values)
     [problem] = rejected.value.problems
     return escape(problem.message)
 

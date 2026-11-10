@@ -124,7 +124,7 @@ def method_draft(
     methods: Methods,
     *,
     version: int | None = None,
-    test_values: Mapping[str, Any] | None = None,
+    test_values: Mapping[str, Any] = {},
 ) -> MethodDraft:
     """`definition` as the core reads it as `method`'s `version`, by default its next, with the questions of its
     `tests`."""

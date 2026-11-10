@@ -5,7 +5,7 @@ from django.db import transaction
 from django.http import HttpResponse
 from django.shortcuts import render
 from django_htmx.http import HttpResponseClientRefresh
-from gradeflow_core.editing import QUESTION_TYPES
+from gradeflow_core.editing import QUESTION_CLASSES
 
 from gradeflow_app.assessments.access import assessment_member
 from gradeflow_app.assessments.models import AssessmentAccess
@@ -51,7 +51,7 @@ def question_settings(request: Request, access: AssessmentAccess, question_id: U
             "question": question,
             "types": QUESTION_TYPE_LABELS.items(),
             "question_type": question_type,
-            "summary": QUESTION_TYPES[question_type].summary,
+            "summary": QUESTION_CLASSES[question_type].summary,
             "form": form,
         },
     )

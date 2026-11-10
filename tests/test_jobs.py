@@ -187,14 +187,14 @@ def test_each_kind_of_run_starts_with_its_task_the_apps_url_and_its_secret(
 def test_a_run_asking_language_models_gets_the_endpoint_and_more_time(
     settings: Settings, idle_runner: FakeRunner, django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks
 ) -> None:
-    endpoint = ModelEndpoint(url="https://models.example.com/v1", token=SecretStr("device-token"))
+    endpoint = ModelEndpoint(url="https://models.example.com/v1", api_key=SecretStr("device-token"))
     run = Run("preview", str(uuid.uuid7()), "1")
     with django_capture_on_commit_callbacks(execute=True):
         runs.start(run, endpoint)
     launch = idle_runner.launches[run.id]
     assert launch.time_limit == settings.GRADEFLOW_MODEL_JOB_TIME_LIMIT
     endpoint_json = json.loads(launch.environment()["GRADEFLOW_MODEL_ENDPOINT"])
-    assert (endpoint_json["url"], endpoint_json["token"]) == ("https://models.example.com/v1", "device-token")
+    assert (endpoint_json["url"], endpoint_json["api_key"]) == ("https://models.example.com/v1", "device-token")
 
 
 def test_a_run_reads_its_input_only_while_what_it_is_for_is_unchanged(

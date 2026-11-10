@@ -27,7 +27,7 @@ def endpoint(request: Request, service: ModelService | None = None) -> ModelEndp
     fast_model, careful_model = service.models_in_use()
     return ModelEndpoint(
         url=service.url,
-        token=SecretStr(token),
+        api_key=SecretStr(token),
         fast_model=fast_model or None,
         careful_model=careful_model or None,
         answers_per_request=service.answers_per_request,

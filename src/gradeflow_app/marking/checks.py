@@ -59,7 +59,7 @@ def check_for(marking: Marking) -> Check | None:
 
 def methods_for(user: User, assessment: Assessment, key: str | None = None) -> Methods:
     """The methods `user` may mark the question `key` with, or else a question group."""
-    position = Position(assessment.question_set(), key, in_group=key is None)
+    position = Position(assessment.question_set(), key, is_in_group=key is None)
     return compatible_methods(position, methods=usable(user, assessment.course))
 
 

@@ -2,12 +2,12 @@ import uuid
 
 from django.db import models
 from gradeflow_core import Question as CoreQuestion
-from gradeflow_core.editing import QUESTION_TYPES, QuestionType
+from gradeflow_core.editing import QUESTION_CLASSES, QuestionType
 from simple_history.models import HistoricalRecords
 
 from gradeflow_app.assessments.models import Assessment
 
-QUESTION_TYPE_LABELS: dict[QuestionType, str] = {kind: question.label for kind, question in QUESTION_TYPES.items()}
+QUESTION_TYPE_LABELS: dict[QuestionType, str] = {kind: question.label for kind, question in QUESTION_CLASSES.items()}
 """Each question type's name, in the core's order."""
 
 

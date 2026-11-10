@@ -82,7 +82,7 @@ def question_choice(
     """The questions a step added at `target` of a question group may read, and the one it reads: `chosen_question`
     or the first; none if it is `""` and methods of several questions can go there. None for any other step."""
     position = marking_draft.position(target)
-    if not position.in_group or position.question is not None:
+    if not position.is_in_group or position.question is not None:
         return None
     keys = list(marking_draft.questions)
     if chosen_question == "" and allows_group_methods(marking_draft, target):
