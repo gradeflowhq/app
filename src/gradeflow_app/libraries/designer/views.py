@@ -307,7 +307,7 @@ def settings_tab(request: Request, access: MethodAccess, number: int | None = No
             form.add_problems(error.problems)
             return showing_form
         except EditingError as error:
-            form.add_problem((), str(error))
+            form.add_problem("", str(error))
             return showing_form
         workspace.save()
         return {"tab": "settings", "setting": ""}

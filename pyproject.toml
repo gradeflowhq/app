@@ -19,6 +19,7 @@ dependencies = [
     "gradeflow-core[llm]",
     "heroicons>=2.14",
     "httpx>=0.28",
+    "jsonpointer>=3.1",
     "markdown-it-py>=4.2",
     "mdit-py-plugins>=0.6",
     "psycopg[binary]>=3.3.6",
@@ -74,7 +75,7 @@ enable_error_code = ["deprecated", "truthy-bool", "truthy-iterable", "ignore-wit
 warn_unreachable = true
 
 [[tool.mypy.overrides]]
-module = ["allauth.*", "simple_history.*"]
+module = ["allauth.*", "jsonpointer", "simple_history.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]

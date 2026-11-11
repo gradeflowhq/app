@@ -8,6 +8,7 @@ from typing import Any, cast
 
 from django import forms
 from gradeflow_core import Problem
+from jsonpointer import JsonPointer
 
 from gradeflow_app.ui.forms import BoundField, posted_indexes
 from gradeflow_app.ui.schemaforms.fields import field_for
@@ -204,9 +205,8 @@ class ObjectForm(forms.Form):
         assert isinstance(bound, HintedField)
         return bound
 
-    def _field_at(self, location: Sequence[int | str]) -> str | None:
-        """The field holding the value at a core error's location, if this form has one."""
-        parts = [str(part) for part in location]
+    def _field_at(self, parts: Sequence[str]) -> str | None:
+        """The form field holding the value at `parts`, if this form has one."""
         candidates = (NESTED_SEPARATOR.join(parts[:end]) for end in range(len(parts), 0, -1))
         return next((name for name in candidates if name in self.fields), None)
 
@@ -214,23 +214,24 @@ class ObjectForm(forms.Form):
         for problem in problems:
             self.add_problem(problem.field, problem.message)
 
-    def add_problem(self, location: Sequence[int | str], message: str) -> None:
-        """Show a problem the core found at `location`, relative to this object, on the field, steps setting, row or map
-        entry holding that value; otherwise on the whole form, after the setting's name."""
-        name, *inner_location = location or [""]
-        index = inner_location[0] if inner_location else None
+    def add_problem(self, field: str, message: str) -> None:
+        """Show a problem the core found at `field`, a JSON Pointer into this object, on the field, steps setting, row
+        or map entry holding that value; otherwise on the whole form, after the setting's name."""
+        parts: list[str] = JsonPointer(field).parts
+        name, *inner_parts = parts or [""]
+        index = inner_parts[0] if inner_parts else ""
         row_forms = next((rows.forms for rows in self.rows if rows.name == name), [])
         map_entries = next((entries.entries for entries in self.maps if entries.name == name), [])
-        if str(name) in self.steps_setting_errors:
-            self.steps_setting_errors[str(name)].append(message)
-        elif isinstance(index, int) and index < len(row_forms):
-            row_forms[index].add_problem(inner_location[1:], message)
-        elif entry := next((entry for entry in map_entries if entry.key == str(index)), None):
+        if name in self.steps_setting_errors:
+            self.steps_setting_errors[name].append(message)
+        elif index.isdecimal() and int(index) < len(row_forms):
+            row_forms[int(index)].add_problem(JsonPointer.from_parts(inner_parts[1:]).path, message)
+        elif entry := next((entry for entry in map_entries if entry.key == index), None):
             entry.errors.append(message)
-        elif field := self._field_at(location):
-            self.add_error(field, message)
+        elif form_field := self._field_at(parts):
+            self.add_error(form_field, message)
         else:
-            named = next((str(part) for part in reversed(location) if isinstance(part, str)), "")
+            named = next((part for part in reversed(parts) if not part.isdecimal()), "")
             self.add_error(None, f"{named}: {message}" if named else message)
 
     @property

@@ -9,7 +9,7 @@ from django.http import QueryDict
 from gradeflow_core import GradeFlowError, Problem
 from gradeflow_core.editing import EditingError
 
-from gradeflow_app.editor.editing import problem_text
+from gradeflow_app.editor.editing import field_parts, problem_text
 from gradeflow_app.editor.presenters import editor
 from gradeflow_app.libraries import method_tests
 from gradeflow_app.libraries.access import MethodAccess
@@ -110,8 +110,9 @@ def _problems(workspace: MethodWorkspace, problems: list[Problem]) -> list[str]:
 
 def _method_problem_text(problem: Problem, declared_settings: Mapping[str, Mapping[str, Any]]) -> str:
     """A method's `problem`, after the title of the setting whose test value is at fault."""
-    if len(problem.field) == 1 and (declaration := declared_settings.get(str(problem.field[0]))) is not None:
-        return f"{declaration.get('title') or problem.field[0]}: {problem.message}"
+    parts = field_parts(problem)
+    if len(parts) == 1 and (declaration := declared_settings.get(parts[0])) is not None:
+        return f"{declaration.get('title') or parts[0]}: {problem.message}"
     return str(problem)
 
 

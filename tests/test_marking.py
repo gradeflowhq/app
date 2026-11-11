@@ -9,6 +9,7 @@ from django.urls import reverse
 from django.utils.html import escape
 from gradeflow_core import GradeFlowError, InvalidError, MarkScheme, Methods, Question, QuestionSet
 from gradeflow_core.editing import DECISIONS, Decision, MarkingDraft, dump_yaml
+from jsonpointer import JsonPointer
 from pytest_django import DjangoCaptureOnCommitCallbacks
 
 from gradeflow_app.assessments.models import Assessment
@@ -59,7 +60,13 @@ def accepted_answers_check(question: str, answer: str) -> dict[str, Any]:
 def problem_message(draft: MarkingDraftRecord, part: str | int) -> str:
     """What the core says is wrong with the draft's field whose location holds `part`."""
     draft.refresh_from_db()
-    return escape(next(problem.message for problem in MarkingWorkspace(draft).draft.problems if part in problem.field))
+    return escape(
+        next(
+            problem.message
+            for problem in MarkingWorkspace(draft).draft.problems
+            if str(part) in JsonPointer(problem.field).parts
+        )
+    )
 
 
 def question_group_marking(assessment: Assessment) -> Marking:

@@ -5,7 +5,8 @@ from dataclasses import dataclass
 from typing import Any, NamedTuple
 
 from gradeflow_core import GradeFlowError, Methods, Problem
-from gradeflow_core.editing import Condition, Draft, Position
+from gradeflow_core.editing import Condition, Draft, Position, field_in_values
+from jsonpointer import JsonPointer
 
 from gradeflow_app.libraries.collection import OfferedMethods
 from gradeflow_app.ui.schemaforms.forms import ObjectForm
@@ -34,6 +35,12 @@ class Conflict(NamedTuple):
     url: str
 
 
+def field_parts(problem: Problem) -> list[str]:
+    """Where the field at fault is among its step's values, such as `["answers", "0"]`."""
+    parts: list[str] = JsonPointer(field_in_values(problem.field)).parts
+    return parts
+
+
 def problem_text(draft: Draft, problem: Problem, open_path: str = "") -> str:
     """`problem` in words, after its step's `label`, unless that step is at `open_path`, and the title of the field
     at fault. As the core words it if the core can't say where."""
@@ -43,8 +50,8 @@ def problem_text(draft: Draft, problem: Problem, open_path: str = "") -> str:
             if problem.step_path == open_path
             else [draft.label(problem.step_path) if problem.step_path else "The marking"]
         )
-        if problem.field:
-            name = str(problem.field[0])
+        if parts := field_parts(problem):
+            name = parts[0]
             where.append(draft.schema(problem.step_path)["properties"].get(name, {}).get("title", name))
     except GradeFlowError:
         return str(problem)

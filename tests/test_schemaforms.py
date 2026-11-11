@@ -132,7 +132,7 @@ def test_core_errors_land_on_the_field_holding_their_value() -> None:
         answers={"type": "array", "items": {"type": "string"}},
     )
     form = ObjectForm(schema, {})
-    for field in [("evaluate",), ("setup", "time_limit"), ("answers", 0), (), ("elsewhere",)]:
+    for field in ["/evaluate", "/setup/time_limit", "/answers/0", "", "/elsewhere"]:
         form.add_problem(field, "Wrong.")
     assert form.errors == {
         "evaluate": ["Wrong."],

@@ -1,14 +1,14 @@
 """The step editor, for its templates: the step at a path as a form, with cards for the steps it holds."""
 
 from collections.abc import Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 from django.utils.text import get_text_list
 from gradeflow_core import GradeFlowError, Methods, Problem
 from gradeflow_core import Method as CoreMethod
-from gradeflow_core.editing import Draft, StepsSetting
+from gradeflow_core.editing import Draft, StepsSetting, field_in_values
 
-from gradeflow_app.editor.editing import Conflict, EditorActions, StepWorkspace, problem_text
+from gradeflow_app.editor.editing import Conflict, EditorActions, StepWorkspace, field_parts, problem_text
 from gradeflow_app.editor.guide import choices, question_choice
 from gradeflow_app.libraries.collection import BUILTIN_NAMES, OfferedMethods
 from gradeflow_app.ui.schemaforms.forms import ObjectForm
@@ -177,7 +177,9 @@ def _editor(workspace: StepWorkspace, path: str, *, saving: bool, more_open: boo
     if not draft.is_step(path):
         path = ""
     form = workspace.form(path)
-    form.add_problems(workspace.problems_at(path, saving=saving))
+    form.add_problems(
+        replace(problem, field=field_in_values(problem.field)) for problem in workspace.problems_at(path, saving=saving)
+    )
     unfilled = [problem for problem in draft.step_problems if problem.step_path == path and problem.is_incomplete]
     method = draft.method(path)
     return Editor(
@@ -190,7 +192,7 @@ def _editor(workspace: StepWorkspace, path: str, *, saving: bool, more_open: boo
                 setting,
                 form.steps_setting_errors.get(setting.name, []),
                 form.label_controls.get(setting.name, ""),
-                any(problem.field[:1] == (setting.name,) for problem in unfilled),
+                any(field_parts(problem)[:1] == [setting.name] for problem in unfilled),
             )
             for setting in draft.settings_holding_steps(path)
         ],
