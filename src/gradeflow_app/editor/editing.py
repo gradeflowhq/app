@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, NamedTuple
 
-from gradeflow_core import Check, GradeFlowError, Methods, Problem
+from gradeflow_core import GradeFlowError, Methods, Problem, Step
 from gradeflow_core.editing import Condition, EditingError, MarkingDraft, Position
 
 from gradeflow_app.libraries.collection import OfferedMethods
@@ -108,7 +108,8 @@ class StepWorkspace(ABC):
         return form
 
     def editor_structure(self, path: str) -> tuple[object, ...]:
-        """What redraws the editor at `path` when it changes: schema, methods offered and condition rows."""
+        """What redraws the editor at `path` when it changes: schema, methods offered, condition rows and the
+        problems of the steps it holds."""
         marking_draft = self.marking_draft
         rows = [value for value in marking_draft.values(path).values() if isinstance(value, Condition)]
         methods_and_conditions: list[object] = [tuple(method.ref for method in marking_draft.methods(path)), *rows]
@@ -119,10 +120,13 @@ class StepWorkspace(ABC):
                 )
             except GradeFlowError as error:
                 methods_and_conditions.append(str(error))
-        return marking_draft.schema(path), tuple(methods_and_conditions)
+        inner_problems = tuple(
+            problem for problem in marking_draft.problems if problem.step_path.startswith(f"{path}/")
+        )
+        return marking_draft.schema(path), tuple(methods_and_conditions), inner_problems
 
     @property
-    def finalized(self) -> Check | None:
+    def finalized(self) -> Step | None:
         """The marking, once the core finds nothing wrong with it."""
         try:
             return self.marking_draft.finalized()

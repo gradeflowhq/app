@@ -7,7 +7,7 @@ import pytest
 from django.test import Client
 from django.urls import reverse
 from django.utils.html import escape
-from gradeflow_core import Check, GradeFlowError, InvalidError, Methods, Question, QuestionSet
+from gradeflow_core import GradeFlowError, InvalidError, MarkScheme, Methods, Question, QuestionSet
 from gradeflow_core.editing import DECISIONS, Decision, MarkingDraft, dump_yaml
 from pytest_django import DjangoCaptureOnCommitCallbacks
 
@@ -99,22 +99,22 @@ def test_a_typing_post_reads_the_answers_once(
 
 def test_stale_or_unknown_editor_actions_change_nothing(client: Client, assessment: Assessment) -> None:
     url, draft = start_marking(client, assessment, "Q1", "gradeflow/workflow@1")
-    client.post(url, {"path": "", "operation": "add", "target": "with.steps.0", "method": "gradeflow/key-points@1"})
-    client.post(url, {"path": "", "operation": "remove", "target": "with.steps.0"})
+    client.post(url, {"path": "", "operation": "add", "target": "/with/steps/0", "method": "gradeflow/key-points@1"})
+    client.post(url, {"path": "", "operation": "remove", "target": "/with/steps/0"})
     before = definition_tree(draft)
     stale_actions = [
-        {"path": "", "operation": "remove", "target": "with.steps.0"},
-        {"path": "", "operation": "move", "target": "with.steps.3", "direction": "down"},
-        {"path": "", "operation": "add", "target": "with.nowhere.0", "method": "gradeflow/key-points@1"},
-        {"path": "", "operation": "open", "target": "with.steps.7"},
-        {"path": "with.steps.4", "fields_posted": "1", "points": ["light"]},
+        {"path": "", "operation": "remove", "target": "/with/steps/0"},
+        {"path": "", "operation": "move", "target": "/with/steps/3", "direction": "down"},
+        {"path": "", "operation": "add", "target": "/with/nowhere/0", "method": "gradeflow/key-points@1"},
+        {"path": "", "operation": "open", "target": "/with/steps/7"},
+        {"path": "/with/steps/4", "fields_posted": "1", "points": ["light"]},
         {"path": "", "operation": "change_method", "target": "", "method": "gradeflow/nope@1"},
-        {"path": "", "operation": "add", "target": "with.steps.0", "method": "gradeflow/nope@1"},
+        {"path": "", "operation": "add", "target": "/with/steps/0", "method": "gradeflow/nope@1"},
     ]
     for data in stale_actions:
         assert client.post(url, data).status_code == 200, data
     assert definition_tree(draft) == before
-    assert client.get(url, {"path": "with.setup"}).status_code == 200
+    assert client.get(url, {"path": "/with/setup"}).status_code == 200
 
 
 def test_questions_opens_the_first_question(client: Client, assessment: Assessment) -> None:
@@ -340,7 +340,7 @@ def test_breadcrumbs_name_each_check_as_its_card_does(assessment: Assessment) ->
         "with": {"steps": [points, {"uses": "gradeflow/not-allowed@1", "with": {}}]},
     }
     workspace = workspace_of(assessment, workflow)
-    for path in ("with.steps.0", "with.steps.1"):
+    for path in ("/with/steps/0", "/with/steps/1"):
         breadcrumbs = editor(workspace, path).breadcrumbs
         assert breadcrumbs == [
             (breadcrumb_path, workspace.marking_draft.label(breadcrumb_path)) for breadcrumb_path in ("", path)
@@ -352,25 +352,25 @@ def test_a_check_inside_a_groups_check_marks_that_checks_question(client: Client
     draft = MarkingDraftRecord.objects.get()
     url = reverse("draft", args=[assessment.pk, draft.pk])
     picker = client.get(
-        reverse("draft_methods", args=[assessment.pk, draft.pk]), {"operation": "add", "target": "with.then.0"}
+        reverse("draft_methods", args=[assessment.pk, draft.pk]), {"operation": "add", "target": "/with/then/0"}
     )
     assert 'name="question"' in picker.text, "its methods depend on the question"
     add_step_fields = {
         "path": "",
         "operation": "add",
-        "target": "with.then.0",
+        "target": "/with/then/0",
         "method": "gradeflow/workflow@1",
         "question": "Q3",
     }
     assert client.post(url, add_step_fields).status_code == 200
     add_inner_step_fields = {
-        "path": "with.then.0",
+        "path": "/with/then/0",
         "operation": "add",
-        "target": "with.then.0.with.steps.0",
+        "target": "/with/then/0/with/steps/0",
         "method": "gradeflow/multiple-choice@1",
     }
     client.post(url, add_inner_step_fields)
-    open_response = client.post(url, {"path": "", "operation": "open", "target": "with.then.0.with.steps.0"})
+    open_response = client.post(url, {"path": "", "operation": "open", "target": "/with/then/0/with/steps/0"})
     assert open_response.status_code == 200
     assert 'name="correct"' in open_response.text, "Q3's options to choose from"
 
@@ -385,13 +385,13 @@ def test_a_question_in_a_group_names_the_others(client: Client, assessment: Asse
 def test_checks_are_moved_and_removed(client: Client, assessment: Assessment) -> None:
     url, draft = start_marking(client, assessment, "Q1", "gradeflow/workflow@1")
     for index, method in enumerate(("gradeflow/key-points@1", "gradeflow/accepted-answers@1")):
-        client.post(url, {"path": "", "operation": "add", "target": f"with.steps.{index}", "method": method})
-    client.post(url, {"path": "", "operation": "move", "target": "with.steps.0", "direction": "down"})
+        client.post(url, {"path": "", "operation": "add", "target": f"/with/steps/{index}", "method": method})
+    client.post(url, {"path": "", "operation": "move", "target": "/with/steps/0", "direction": "down"})
     assert [check["uses"] for check in definition_tree(draft)["with"]["steps"]] == [
         "gradeflow/accepted-answers@1",
         "gradeflow/key-points@1",
     ]
-    page = client.post(url, {"path": "with.steps.1", "operation": "remove", "target": "with.steps.1"}).text
+    page = client.post(url, {"path": "/with/steps/1", "operation": "remove", "target": "/with/steps/1"}).text
     assert [check["uses"] for check in definition_tree(draft)["with"]["steps"]] == ["gradeflow/accepted-answers@1"]
     assert 'name="path" value=""' in page, "removing the check shown goes back to what holds it"
 
@@ -508,7 +508,7 @@ def test_the_question_list_validates_each_marking_once(client: Client, assessmen
     question_group_marking(assessment)
     from unittest.mock import patch
 
-    with patch.object(Check, "load", wraps=Check.load) as load_spy:
+    with patch.object(MarkScheme, "load", wraps=MarkScheme.load) as load_spy:
         client.get(reverse("question_list", args=[assessment.pk]), headers=HTMX_HEADERS)
     assert load_spy.call_count == 1
 
@@ -524,8 +524,8 @@ def test_marking_an_answer_redraws_the_editor_and_the_answers(client: Client, as
 
 def test_the_way_back_opens_what_holds_the_check(client: Client, assessment: Assessment) -> None:
     url, _ = start_marking(client, assessment, "Q1", "gradeflow/workflow@1")
-    client.post(url, {"path": "", "operation": "add", "target": "with.steps.0", "method": "gradeflow/key-points@1"})
-    page = client.post(url, {"path": "with.steps.0", "operation": "open", "target": ""}).text
+    client.post(url, {"path": "", "operation": "add", "target": "/with/steps/0", "method": "gradeflow/key-points@1"})
+    page = client.post(url, {"path": "/with/steps/0", "operation": "open", "target": ""}).text
     assert 'name="path" value=""' in page
 
 
@@ -571,7 +571,7 @@ def test_a_values_check_suggests_that_values_answers(assessment: Assessment) -> 
     ]
     values = {"question": "Q1", "uses": "gradeflow/multiple-values@1", "with": {"checks": checks}}
     workspace = workspace_of(assessment, values)
-    assert workspace.suggestions_at(workspace.marking_draft.position("with.checks.1")) == {"water": 1}
+    assert workspace.suggestions_at(workspace.marking_draft.position("/with/checks/1")) == {"water": 1}
 
 
 def test_answers_the_question_reads_as_blank_arent_suggested(assessment: Assessment) -> None:
@@ -583,8 +583,8 @@ def test_answers_the_question_reads_as_blank_arent_suggested(assessment: Assessm
 
 def test_the_marking_opens_from_its_breadcrumb_whose_path_is_empty(client: Client, assessment: Assessment) -> None:
     url, _ = start_marking(client, assessment, "Q1", "gradeflow/workflow@1")
-    client.post(url, {"path": "", "operation": "add", "target": "with.steps.0", "method": "gradeflow/key-points@1"})
-    page = client.post(url, {"path": "with.steps.0", "operation": "open"})
+    client.post(url, {"path": "", "operation": "add", "target": "/with/steps/0", "method": "gradeflow/key-points@1"})
+    page = client.post(url, {"path": "/with/steps/0", "operation": "open"})
     assert page.status_code == 200
     assert 'name="path" value=""' in page.text
 
@@ -595,10 +595,10 @@ def test_choosing_another_question_in_the_picker_keeps_where_the_check_goes(
     client.post(reverse("question_group_new", args=[assessment.pk]), {"method": "gradeflow/conditional@1"})
     draft = MarkingDraftRecord.objects.get()
     methods = reverse("draft_methods", args=[assessment.pk, draft.pk])
-    picker = client.get(methods, {"operation": "add", "target": "with.condition.0", "path": ""}).text
+    picker = client.get(methods, {"operation": "add", "target": "/with/condition/0", "path": ""}).text
     reload = html.unescape(re.findall(r'hx-get="([^"]*)" hx-include="this"', picker)[0])
     again = client.get(f"{reload}&question=Q3").text
-    assert '<input type="hidden" name="target" value="with.condition.0">' in again
+    assert '<input type="hidden" name="target" value="/with/condition/0">' in again
     assert '<input type="hidden" name="path" value="">' in again
     assert 'data-method="gradeflow/multiple-choice@1"' in again, "Q3's methods"
 
@@ -607,18 +607,18 @@ def test_a_question_groups_check_may_be_a_method_of_several_questions(client: Cl
     client.post(reverse("question_group_new", args=[assessment.pk]), {"method": "gradeflow/workflow@1"})
     draft = MarkingDraftRecord.objects.get()
     methods = reverse("draft_methods", args=[assessment.pk, draft.pk])
-    first_question_picker = client.get(methods, {"operation": "add", "target": "with.steps.0", "path": ""}).text
+    first_question_picker = client.get(methods, {"operation": "add", "target": "/with/steps/0", "path": ""}).text
     assert '<option value="">Several questions</option>' in first_question_picker
     assert 'data-method="gradeflow/answer-sets@1"' not in first_question_picker, "the first question's methods"
     several_questions_picker = client.get(
-        methods, {"operation": "add", "target": "with.steps.0", "path": "", "question": ""}
+        methods, {"operation": "add", "target": "/with/steps/0", "path": "", "question": ""}
     ).text
     assert '<option value="" selected>Several questions</option>' in several_questions_picker
     assert 'data-method="gradeflow/answer-sets@1"' in several_questions_picker
     add_step_fields = {
         "path": "",
         "operation": "add",
-        "target": "with.steps.0",
+        "target": "/with/steps/0",
         "method": "gradeflow/answer-sets@1",
         "question": "",
     }
@@ -727,7 +727,7 @@ def marked_by_example(draft: MarkingDraftRecord, answer: str, decision: Decision
     draft.refresh_from_db()
     workspace = MarkingWorkspace(draft)
     workspace.marking_draft.mark_by_example([answer], decision)
-    return Check.load(workspace.marking_draft.data, methods=workspace.methods).dump()
+    return MarkScheme.load([workspace.marking_draft.data], methods=workspace.methods).dump()[0]
 
 
 def decision_count(draft: MarkingDraftRecord) -> int:
@@ -770,7 +770,7 @@ def test_each_answer_marked_by_example_redraws_the_editor(client: Client, assess
         assert workspace.valid
         cards = page.text.split('id="editor-notices"', 1)[1]
         steps = definition_tree(draft)["with"]["steps"]
-        descriptions = [workspace.marking_draft.describe(f"with.steps.{index}") for index in range(len(steps))]
+        descriptions = [workspace.marking_draft.describe(f"/with/steps/{index}") for index in range(len(steps))]
         assert all(markdown(description) in cards for description in descriptions)
 
 
@@ -791,7 +791,7 @@ def test_a_problem_shows_on_its_checks_card_and_on_its_form_where_no_field_holds
     assert misplaced_reference_message in client.get(url).text
     unknown_setting_message = save_and_get_problem_message(light, {**dark, "with": {"answers": ["dark"], "colour": 1}})
     assert f"colour: {unknown_setting_message}" in client.get(url).text
-    open_response = client.post(url, {"path": "", "operation": "open", "target": "with.steps.1"}, headers=HTMX_HEADERS)
+    open_response = client.post(url, {"path": "", "operation": "open", "target": "/with/steps/1"}, headers=HTMX_HEADERS)
     assert f"colour: {unknown_setting_message}" in open_response.text
 
 

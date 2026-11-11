@@ -4,7 +4,7 @@ from collections.abc import Iterable
 from typing import Any
 
 from django.db import transaction
-from gradeflow_core import Check, MarkedSubmission, ModelEndpoint, Submission
+from gradeflow_core import Marked, ModelEndpoint, Step, Submission
 from pydantic import TypeAdapter
 
 from gradeflow_app.accounts.models import User
@@ -21,7 +21,7 @@ from gradeflow_app.marking.models import Marking
 from gradeflow_app.results.models import Result
 
 REMARK = "remark"
-_SUBMISSIONS_ADAPTER = TypeAdapter(list[MarkedSubmission])
+_SUBMISSIONS_ADAPTER = TypeAdapter(list[Marked[Submission]])
 NO_MODEL_SERVICE = "no-model-service"
 """A marking's failure when the change came from someone without an AI service, so it wasn't marked again."""
 
@@ -75,7 +75,7 @@ def schedule_marking(marking: Marking, user: User, model_endpoint: ModelEndpoint
     return run
 
 
-def marking_run(assessment: Assessment, check: Check, methods: MethodFiles) -> MarkingRun:
+def marking_run(assessment: Assessment, check: Step, methods: MethodFiles) -> MarkingRun:
     """Every student of the assessment marked with `check`, which uses `methods`, given only the answers it reads."""
     questions_read = check.questions_read()
     return MarkingRun(
@@ -92,12 +92,12 @@ def marking_run(assessment: Assessment, check: Check, methods: MethodFiles) -> M
     )
 
 
-def marked_submissions(outcome: Any, assessment: Assessment, keys: Iterable[str]) -> list[MarkedSubmission]:
+def marked_submissions(outcome: Any, assessment: Assessment, keys: Iterable[str]) -> list[Marked[Submission]]:
     """A mark run's outcome, which must give every student of the assessment a result for each of `keys`. Raises
     `ValueError` if it doesn't."""
     submissions = _SUBMISSIONS_ADAPTER.validate_python(outcome)
     expected = set(assessment.students.values_list("encrypted_id", flat=True))
-    received = {submission.student_id for submission in submissions}
+    received = {submission.sheet.student_id for submission in submissions}
     missing_outputs = any(set(keys) - submission.results.keys() for submission in submissions)
     if received != expected or len(submissions) != len(received) or missing_outputs:
         raise ValueError("The marking service returned an incomplete set of student results.")
@@ -157,7 +157,7 @@ def _store_results(run: Run, outcome: Any) -> None:
     Result.objects.filter(question__in=questions.values()).delete()
     Result.objects.bulk_create(
         Result(
-            student_id=students[submission.student_id],
+            student_id=students[submission.sheet.student_id],
             question=question,
             proportion=result.proportion,
             feedback=result.feedback,

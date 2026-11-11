@@ -16,7 +16,7 @@ from gradeflow_app.questions.models import QUESTION_TYPE_LABELS
 @dataclass(frozen=True)
 class Section:
     label: str
-    methods: list[tuple[Method[Any], str]] = field(default_factory=list)
+    methods: list[tuple[Method, str]] = field(default_factory=list)
     """Each method, and who made it if someone did."""
     tab: str = "builtin"
     """The picker's tab it's under: the core's methods, the person's own and their courses', or public ones."""
@@ -29,10 +29,10 @@ PICKER_TABS = {"builtin": "Built-in", "yours": "Yours", "public": "Public"}
 class Choices:
     """The latest version of each method to choose from."""
 
-    everyday: list[Method[Any]]
-    transforms: list[Method[Any]]
-    saved: list[Method[Any]]
-    advanced: list[Method[Any]]
+    everyday: list[Method]
+    transforms: list[Method]
+    saved: list[Method]
+    advanced: list[Method]
 
     def __len__(self) -> int:
         return len(self.everyday) + len(self.transforms) + len(self.saved) + len(self.advanced)
@@ -57,7 +57,7 @@ def sections_of(methods: Methods, offers: OfferedMethods) -> list[Section]:
     available = {method.name: method for method in newest}
     method_choices = choices(newest, offers)
 
-    def with_owners(names: Iterable[str]) -> list[tuple[Method[Any], str]]:
+    def with_owners(names: Iterable[str]) -> list[tuple[Method, str]]:
         return [(available[name], offers.owners[name]) for name in names if name in available]
 
     return [
@@ -99,12 +99,12 @@ def _labels(question_types: Iterable[str]) -> list[str]:
     return [label for question_type, label in QUESTION_TYPE_LABELS.items() if question_type in question_types]
 
 
-def works_with(method: Method[Any] | MethodDraft) -> list[str]:
+def works_with(method: Method | MethodDraft) -> list[str]:
     """What the method marks, as labels: its question types, then question groups."""
     return _labels(method.question_types) + (["Question groups"] if method.marks_question_group else [])
 
 
-def used_for(method: Method[Any]) -> str:
+def used_for(method: Method) -> str:
     """What the method marks, as a sentence: "For text and number questions and question groups"."""
     type_labels = [label.lower() for label in _labels(method.question_types)]
     questions = "all" if len(type_labels) == len(QUESTION_TYPE_LABELS) else get_text_list(type_labels, "and")
@@ -166,7 +166,7 @@ def guide_context(
     }
 
 
-def _setting_titles(method: Method[Any]) -> list[str]:
+def _setting_titles(method: Method) -> list[str]:
     """What a step using the method is set up with, by title, in order."""
     schema = method.settings_schema(Position(QuestionSet({})))
     return [setting.get("title", name) for name, setting in schema.get("properties", {}).items()]

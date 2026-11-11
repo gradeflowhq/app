@@ -8,7 +8,7 @@ import pytest
 from django.core.exceptions import ValidationError
 from django.test import Client
 from django.urls import reverse
-from gradeflow_core import MethodFileError
+from gradeflow_core import InvalidError
 from gradeflow_core.editing import dump_yaml, load_yaml
 
 from gradeflow_app.accounts.models import User
@@ -67,7 +67,7 @@ def test_publication_and_deletion_cannot_create_a_dangling_dependency(
     if deletion_first:
         removed, outcome = race(delete, publish)
         assert removed is None
-        assert isinstance(outcome, (ValidationError, MethodFileError))
+        assert isinstance(outcome, (ValidationError, InvalidError))
         assert not parent.versions.exists()
         assert not MethodVersion.objects.filter(pk=version.pk).exists()
     else:

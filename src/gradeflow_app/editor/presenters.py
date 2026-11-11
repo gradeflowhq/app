@@ -2,7 +2,6 @@
 
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Any
 
 from django.utils.text import get_text_list
 from gradeflow_core import GradeFlowError, Methods, Problem
@@ -58,7 +57,7 @@ def _add_prompt(setting: StepsSetting) -> str:
     return f"Add at least one {setting.item_label}."
 
 
-def _made_by(method: CoreMethod[Any] | None, offers: OfferedMethods) -> str:
+def _made_by(method: CoreMethod | None, offers: OfferedMethods) -> str:
     if method is None or method.name in BUILTIN_NAMES:
         return ""
     owner = offers.owners.get(method.name)
@@ -75,7 +74,7 @@ def _card(workspace: StepWorkspace, path: str) -> StepCard:
     """The step at `path` as a card, with the first problem of it or a step it holds."""
     marking_draft = workspace.marking_draft
     problems = [
-        each for each in marking_draft.problems if each.step_path == path or each.step_path.startswith(f"{path}.")
+        each for each in marking_draft.problems if each.step_path == path or each.step_path.startswith(f"{path}/")
     ]
     problem = next((each for each in problems if not each.is_incomplete), None)
     return StepCard(
@@ -132,7 +131,7 @@ class Editor:
     """Problems in other steps, shown when saving: each one's step path and text."""
     can_change_method: bool = False
     """Whether another method can mark here."""
-    newer_version: CoreMethod[Any] | None = None
+    newer_version: CoreMethod | None = None
     """The latest version of the step's method, when it uses an earlier one."""
     archived: bool = False
     made_by: str = ""
@@ -170,8 +169,8 @@ def editor(workspace: StepWorkspace, path: str, *, saving: bool = False, more_op
 
 def _ancestor_paths(marking_draft: MarkingDraft, path: str) -> list[str]:
     """The paths of the steps from the top of the marking down to the one at `path`, which is last."""
-    path_parts = path.split(".")
-    ancestors = (".".join(path_parts[:length]) for length in range(len(path_parts) + 1))
+    path_parts = path.split("/")
+    ancestors = ("/".join(path_parts[:length]) for length in range(1, len(path_parts) + 1))
     return [ancestor for ancestor in ancestors if marking_draft.is_step(ancestor)]
 
 

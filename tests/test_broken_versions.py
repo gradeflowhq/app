@@ -188,7 +188,7 @@ def test_a_check_lists_what_this_core_cant_load(light: Method, wrapper: Method, 
     assert output.getvalue().splitlines() == [
         f"method-laboratory/light@2: {' '.join(OLD_PROBLEMS)}",
         "method-laboratory/wrapper@1: uses method-laboratory/light@2",
-        "Method laboratory › Assessment › Q1: uses: There's no method method-laboratory/wrapper@1.",
+        "Method laboratory › Assessment › Q1: There's no method method-laboratory/wrapper@1.",
         "Method laboratory › Assessment › Q1, draft by Ana Tan: evaluate_expected: Unknown setting. "
         "variables: Unknown setting.",
     ]

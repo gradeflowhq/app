@@ -180,7 +180,7 @@ def answer_rows(
     row_results = results or []
     views = []
     for index, row in enumerate(rows):
-        matches = index < len(row_results) and row_results[index].answers == row["answers"]
+        matches = index < len(row_results) and row_results[index].sheet.answers == row["answers"]
         result = row_results[index] if matches else None
         question_result = result.results.get(question) if result is not None else None
         marks = question_result.marks if question_result is not None else None

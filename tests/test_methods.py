@@ -55,7 +55,7 @@ def publish_marking_as_method(
     if with_points_setting:
         assert (
             post_to_designer(
-                client, draft.method, "method_field", operation="bind_new_setting", field="with.steps.0.with.points"
+                client, draft.method, "method_field", operation="bind_new_setting", field="/with/steps/0/with/points"
             ).status_code
             == 200
         )

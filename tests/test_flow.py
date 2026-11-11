@@ -91,10 +91,10 @@ def test_saving_an_incomplete_marking_shows_what_is_missing(client: Client, asse
 
 def test_a_step_added_to_a_workflow_saves(client: Client, assessment: Assessment) -> None:
     url, draft = start_marking(client, assessment, "Q1", "gradeflow/workflow@1")
-    client.post(url, {"path": "", "operation": "add", "target": "with.steps.0", "method": "gradeflow/key-points@1"})
+    client.post(url, {"path": "", "operation": "add", "target": "/with/steps/0", "method": "gradeflow/key-points@1"})
     draft.refresh_from_db()
     assert definition_data(draft.definition)["with"]["steps"] == [{"uses": "gradeflow/key-points@1", "with": {}}]
-    client.post(url, {"path": "with.steps.0", "fields_posted": "1", "points": ["light"], "marks_by": "all_correct"})
+    client.post(url, {"path": "/with/steps/0", "fields_posted": "1", "points": ["light"], "marks_by": "all_correct"})
     client.post(reverse("draft_save", args=[assessment.pk, draft.pk]), {"path": "", "operation": "save"})
     assert Marking.objects.filter(question=draft.question).exists()
 
@@ -288,11 +288,11 @@ def test_a_question_group_with_answer_sets(client: Client, assessment: Assessmen
     assert definition_data(draft.definition)["with"]["sets"] == [
         {"name": "Expected", "uses": "gradeflow/workflow@1", "with": {"steps": []}}
     ], "starting with one answer_set"
-    target = "with.sets.0.with.steps.0"
+    target = "/with/sets/0/with/steps/0"
     response = client.post(
         url,
         {
-            "path": "with.sets.0",
+            "path": "/with/sets/0",
             "operation": "add",
             "target": target,
             "method": "gradeflow/key-points@1",
@@ -493,7 +493,7 @@ def test_complete_answer_sets_say_what_they_check(client: Client, assessment: As
     draft.definition = dump_yaml({"uses": "gradeflow/answer-sets@1", "with": {"sets": [answer_set]}})
     draft.save()
     page = client.get(reverse("question_group_draft", args=[assessment.pk, draft.pk])).text
-    assert markdown(MarkingWorkspace(draft).marking_draft.describe("with.sets.0")) in page
+    assert markdown(MarkingWorkspace(draft).marking_draft.describe("/with/sets/0")) in page
     assert "Not set up yet" not in page
 
 
@@ -683,7 +683,7 @@ def test_a_chosen_type_keeps_the_marks_and_description(client: Client, assessmen
 def test_choosing_a_checks_question_redraws_its_form(client: Client, assessment: Assessment) -> None:
     client.post(reverse("question_group_new", args=[assessment.pk]), {"method": "gradeflow/conditional@1"})
     url = reverse("draft", args=[assessment.pk, MarkingDraftRecord.objects.get().pk])
-    target = "with.condition.0"
+    target = "/with/condition/0"
     client.post(
         url, {"path": "", "operation": "add", "target": target, "method": "gradeflow/full-marks@1", "question": "Q1"}
     )

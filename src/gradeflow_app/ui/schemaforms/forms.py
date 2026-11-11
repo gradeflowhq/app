@@ -148,7 +148,7 @@ class ObjectForm(forms.Form):
         }
         # Each step's fields have ids of their own, so a morph from one step to another never keeps a field,
         # with what was typed in it.
-        kwargs.setdefault("auto_id", f"id_{path.replace('.', '-')}_%s" if path else "id_%s")
+        kwargs.setdefault("auto_id", f"id_{path[1:].replace('/', '-')}_%s" if path else "id_%s")
         super().__init__(initial=initial, **kwargs)
         if not self.is_bound:
             self.cleaned_data: dict[str, Any] = {}  # so `add_error` can show the core's problems

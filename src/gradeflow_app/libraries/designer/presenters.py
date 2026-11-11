@@ -53,6 +53,8 @@ def workspace_context(
     }
     draft, tests_record, problems = workspace.draft, workspace.tests_record, workspace.marking_draft.problems
     run, run_out_of_date = run_state(tests_record)
+    if run is not None and not run.is_active and tests_record.results and workspace.last_results() is None:
+        run = None  # its results were written by an earlier core and can't be read
     context: dict[str, Any] = {
         "access": access,
         "member": access.member,

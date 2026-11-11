@@ -70,7 +70,7 @@ def _test_run(run: Run) -> TestRun | None:
 def _finish(run: Run, outcome: Any) -> None:
     test_run = _test_run(run)
     results = _RESULTS_ADAPTER.validate_python(outcome)
-    if test_run is None or [result.answers for result in results] != [row.answers for row in test_run.rows]:
+    if test_run is None or [result.sheet.answers for result in results] != [row.answers for row in test_run.rows]:
         raise ValueError("The marking service returned results that don't match the test answers.")
     _model(run).objects.filter(pk=run.owner).update(
         run_revision=int(run.key), results=_RESULTS_ADAPTER.dump_python(results, mode="json"), failure=""

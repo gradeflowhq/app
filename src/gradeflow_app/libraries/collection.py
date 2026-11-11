@@ -8,7 +8,6 @@ import logging
 from collections.abc import Iterable
 from dataclasses import dataclass
 from functools import cache, cached_property, lru_cache
-from typing import Any
 from uuid import UUID
 
 from django.db.models import Q, QuerySet
@@ -39,7 +38,7 @@ def load_saved(published: MethodFiles) -> LoadedFiles:
     """Versions never change, so loading them once is enough."""
     loaded = load_method_files(published, BUILTINS)
     for ref, failed in loaded.failed.items():
-        _log_failure(ref, failed.ref, " ".join(failed.messages))
+        _log_failure(ref, failed.ref, " ".join(map(str, failed.problems)))
     return loaded
 
 
@@ -98,7 +97,7 @@ class OfferedMethods:
     def names(self) -> frozenset[str]:
         return frozenset(name for _, names in self.sections for name in names) | frozenset(self.public)
 
-    def newer_version(self, method: CoreMethod[Any], methods: Methods) -> CoreMethod[Any] | None:
+    def newer_version(self, method: CoreMethod, methods: Methods) -> CoreMethod | None:
         """The latest version of `method` among `methods`, if it is newer and still offered."""
         if method.name not in self.names | BUILTIN_NAMES:
             return None

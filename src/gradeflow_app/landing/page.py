@@ -51,7 +51,7 @@ class SettingVariant:
 class ShownExample:
     key: str
     example: Example
-    method: Method[Any]
+    method: Method
     initial_value: str
     variants: list[SettingVariant]
 

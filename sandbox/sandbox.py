@@ -138,7 +138,7 @@ def choose(job: dict[str, Any]) -> None:
 
 
 def trial(job: dict[str, Any]) -> None:
-    from gradeflow_core.editing import try_model
+    from gradeflow_core import try_model
 
     endpoint = model_endpoint()
     for request in job["trials"]:

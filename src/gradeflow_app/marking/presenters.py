@@ -6,7 +6,7 @@ from typing import Literal
 from uuid import UUID
 
 from django.urls import reverse
-from gradeflow_core import Check, GradeFlowError, QuestionSet
+from gradeflow_core import GradeFlowError, QuestionSet, Step
 from gradeflow_core.editing import EditingError, LoadedFiles, MarkingDraft, methods_used
 
 from gradeflow_app.assessments.models import Assessment, AssessmentAccess
@@ -14,7 +14,7 @@ from gradeflow_app.editor.editing import problem_text
 from gradeflow_app.editor.guide import Choices, choices
 from gradeflow_app.imports.models import has_imported_marks, imported_mark_keys
 from gradeflow_app.libraries.collection import loaded_course_methods, offers, usable
-from gradeflow_app.libraries.models import Method
+from gradeflow_app.libraries.models import MethodVersion
 from gradeflow_app.libraries.services import version_name
 from gradeflow_app.marking.checks import (
     assessment_checks,
@@ -44,12 +44,12 @@ class MarkingSummary:
     """The version at fault, such as “Light” version 2, when it's one the marking uses."""
 
 
-def summary_of(check: Check) -> MarkingSummary:
+def summary_of(check: Step) -> MarkingSummary:
     """A marking the core accepts."""
     try:
-        return MarkingSummary(check.method.label, check.describe())
+        return MarkingSummary(check.method_label, check.describe())
     except GradeFlowError as error:
-        return MarkingSummary(check.method.label, "", (str(error),))
+        return MarkingSummary(check.method_label, "", (str(error),))
 
 
 def saved_summary(definition: str, key: str | None, loaded: LoadedFiles, questions: QuestionSet) -> MarkingSummary:
@@ -63,13 +63,17 @@ def saved_summary(definition: str, key: str | None, loaded: LoadedFiles, questio
     used = sorted(methods_used(definition_data(definition)))
     if failed := next((loaded.failed[ref] for ref in used if ref in loaded.failed), None):
         return MarkingSummary(
-            label, "", tuple(failed.messages), is_compatible=False, incompatible_version=version_name(failed.ref)
+            label,
+            "",
+            tuple(map(str, failed.problems)),
+            is_compatible=False,
+            incompatible_version=version_name(failed.ref),
         )
     problem_texts = tuple(dict.fromkeys(problem_text(draft, problem) for problem in problems))
     return MarkingSummary(label, "", problem_texts, is_compatible=check_of(definition, loaded.methods) is not None)
 
 
-def _summary(marking: Marking, check: Check | None, assessment: Assessment) -> MarkingSummary:
+def _summary(marking: Marking, check: Step | None, assessment: Assessment) -> MarkingSummary:
     """`marking` as `check`, the core's reading of it, while it can mark."""
     if check is not None:
         return summary_of(check)
@@ -115,13 +119,13 @@ class SavedMarking:
         return self.marking.question_id is None
 
 
-def saved_markings(markings: Iterable[Marking], accepted: Mapping[Marking, Check]) -> dict[str, SavedMarking]:
+def saved_markings(markings: Iterable[Marking], accepted: Mapping[Marking, Step]) -> dict[str, SavedMarking]:
     """The saved marking of each question that has one, by key."""
     # A question's own marking comes last, so it wins over a question group that still lists it.
     ordered = sorted(markings, key=lambda marking: marking.question_id is not None)
     by_key = {key: marking for marking in ordered for key in questions_marked(marking, accepted.get(marking))}
     return {
-        key: SavedMarking(marking, accepted[marking].method.label if marking in accepted else None)
+        key: SavedMarking(marking, accepted[marking].method_label if marking in accepted else None)
         for key, marking in by_key.items()
     }
 
@@ -169,7 +173,7 @@ class QuestionList:
 
 
 def question_list(
-    access: AssessmentAccess, shown_id: str, accepted: Mapping[Marking, Check] | None = None
+    access: AssessmentAccess, shown_id: str, accepted: Mapping[Marking, Step] | None = None
 ) -> QuestionList:
     """`accepted`, the assessment's markings the core accepts, saves working them out again."""
     assessment = access.assessment
@@ -219,7 +223,7 @@ def question_list(
         QuestionGroup(
             reverse("question_group", args=[assessment.pk, marking.pk]),
             sorted(questions_marked(marking, accepted.get(marking))),
-            draft_methods.get(marking.pk) or (accepted[marking].method.label if marking in accepted else ""),
+            draft_methods.get(marking.pk) or (accepted[marking].method_label if marking in accepted else ""),
             marking.pk in drafted_ids,
             str(marking.pk) == shown_id,
         )
@@ -268,7 +272,7 @@ class SavedGroup:
     summary: MarkingSummary
 
 
-def saved_group(assessment: Assessment, marking: Marking, check: Check | None) -> SavedGroup:
+def saved_group(assessment: Assessment, marking: Marking, check: Step | None) -> SavedGroup:
     """The question group `marking`, as `check`, the core's reading of it, while it can mark."""
     return SavedGroup(
         marking,
@@ -301,7 +305,7 @@ def panel(
     access: AssessmentAccess,
     question: Question,
     marking: Marking | None,
-    accepted: Mapping[Marking, Check] | None = None,
+    accepted: Mapping[Marking, Step] | None = None,
 ) -> Panel:
     """`accepted`, the assessment's markings the core accepts, saves working them out again."""
     assessment = access.assessment
@@ -322,11 +326,11 @@ def panel(
         else None,
         has_imported_marks=has_imported_marks(assessment, question.key),
         has_history=choosing and Marking.history.filter(question_id=question.pk).exists(),
-        archived=check is not None and check.method.name in _archived_methods(marking or group_marking),
+        archived=check is not None and check.uses in _archived_refs(marking or group_marking),
     )
 
 
-def _archived_methods(marking: Marking | None) -> set[str]:
-    """The archived methods `marking` uses."""
-    methods = Method.objects.filter(versions__markings=marking, archived=True).select_related("library")
-    return {method.full_name for method in methods}
+def _archived_refs(marking: Marking | None) -> set[str]:
+    """The versions of archived methods `marking` uses, by ref."""
+    versions = MethodVersion.objects.filter(markings=marking, method__archived=True).select_related("method__library")
+    return {version.ref for version in versions}

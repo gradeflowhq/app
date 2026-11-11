@@ -3,7 +3,7 @@
 import html
 import re
 from html import unescape
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pytest
 from django.test import Client
@@ -149,11 +149,17 @@ def test_running_the_tests_shows_the_marks_until_the_answers_change(
     page = client.get(designer_url(method, "method_page")).text
     tests = draft(method)
     assert run_state(tests) == (COMPLETED, False), tests.failure
-    assert [row["answers"] for row in tests.results or []] == [{"Q1": "light"}, {"Q1": "dark"}], "a result per answer"
+    answers = [row["sheet"]["answers"] for row in tests.results or []]
+    assert answers == [{"Q1": "light"}, {"Q1": "dark"}], "a result per answer"
     assert "Results are up to date" in page
+    flat_results = [{**row["sheet"], "results": row["results"], "max_marks": 1} for row in tests.results or []]
+    MethodDraftRecord.objects.filter(pk=tests.pk).update(results=flat_results)
+    assert MethodWorkspace(method, draft(method)).last_results() is None, "as an earlier core wrote them"
+    assert client.get(designer_url(method, "method_page")).status_code == 200
+    MethodDraftRecord.objects.filter(pk=tests.pk).update(results=tests.results)
     results = client.get(designer_url(method, "method_results")).text
     assert "Results are up to date" in results
-    post_to_designer(client, method, "method_step", operation="open", target="with.steps.0")
+    post_to_designer(client, method, "method_step", operation="open", target="/with/steps/0")
     assert "Results are up to date" in client.get(designer_url(method, "method_results")).text, "only looked"
     post_to_designer(client, method, "method_answers", operation="add", answer="lights")
     assert "Changed since the last run" in client.get(designer_url(method, "method_results")).text
@@ -186,14 +192,14 @@ def test_unreadable_test_results_fail_the_run(
     with django_capture_on_commit_callbacks(execute=True):
         post_to_designer(client, method, "method_run")
     rerun = idle_runner.run_ids("draft-tests")[-1]
-    other = {"answers": {"Q1": "other"}, "matches_expected": None, "results": {}, "max_marks": 1}
+    other = {"sheet": {"answers": {"Q1": "other"}}, "matches_expected": None, "results": {}, "max_marks": 1}
     assert post_callback(rerun, {"event": "finished", "outcome": [other]}) == 204
     tests = draft(method)
     assert run_state(tests)[0] == RunState("failed", tests.failure)
     assert "don't match the test answers" in tests.failure
 
 
-FIRST_POINTS_PATH, SECOND_POINTS_PATH = "with.steps.0.with.points", "with.steps.1.with.points"
+FIRST_POINTS_PATH, SECOND_POINTS_PATH = "/with/steps/0/with/points", "/with/steps/1/with/points"
 
 
 def test_a_field_is_filled_from_a_setting_or_fixed(client: Client, method: Method) -> None:
@@ -235,7 +241,7 @@ def menu_items(page: str) -> list[tuple[str, bool]]:
 
 
 def test_a_fields_source_menu_marks_what_fills_it(client: Client, method: Method) -> None:
-    first_check_query = {"path": "with.steps.0"}
+    first_check_query = {"path": "/with/steps/0"}
     page = client.get(designer_url(method, "method_page"), first_check_query).text
     assert menu_items(page)[0] == ("Fixed value", True)
     post_to_designer(client, method, "method_field", operation="bind_new_setting", field=FIRST_POINTS_PATH)
@@ -253,7 +259,7 @@ def test_checks_of_a_method_share_a_setting(client: Client, method: Method) -> N
         "method_step",
         path="",
         operation="add",
-        target="with.steps.1",
+        target="/with/steps/1",
         method="gradeflow/key-points@1",
     )
     post_to_designer(client, method, "method_field", operation="bind", field=SECOND_POINTS_PATH, setting=name)
@@ -262,7 +268,7 @@ def test_checks_of_a_method_share_a_setting(client: Client, method: Method) -> N
     label = BUILTINS.find("gradeflow/key-points@1").label
     assert f"{label} 1 · Points" in setting_page
     assert f"{label} 2 · Points" in setting_page
-    second_step_page = client.get(designer_url(method, "method_page"), {"path": "with.steps.1"}).text
+    second_step_page = client.get(designer_url(method, "method_page"), {"path": "/with/steps/1"}).text
     assert "New setting" in second_step_page, "a field sharing a setting can have its own"
     post_to_designer(client, method, "method_field", operation="bind_new_setting", field=SECOND_POINTS_PATH)
     method_draft = core_draft(method)
@@ -290,29 +296,33 @@ def test_the_label_help_and_default_of_a_setting_are_saved(client: Client, metho
     assert saved_tests(method)["test_values"] == {}
 
 
-def test_a_checks_problems_show_while_a_setting_has_only_a_test_value(client: Client, method: Method) -> None:
-    definition = dump_yaml(
-        {
+def test_a_checks_problems_show_while_a_setting_has_no_value_or_only_a_test_value(
+    client: Client, method: Method
+) -> None:
+    key_points = {"uses": "gradeflow/key-points@1", "with": {"points": "{{ settings.points }}"}}
+    expression = {"uses": "gradeflow/equivalent-expression@1", "with": {"answers": ["x2"]}}
+
+    def page_with(*steps: dict[str, Any]) -> Any:
+        definition = {
             "label": "Light",
             "summary": "Says light.",
             "question_types": ["text"],
             "settings": {"points": {"title": "Points"}},
-            "steps": [
-                {"uses": "gradeflow/key-points@1", "with": {"points": "{{ settings.points }}"}},
-                {"uses": "gradeflow/equivalent-expression@1", "with": {"answers": ["x2"]}},
-            ],
+            "steps": list(steps),
         }
-    )
-    post_to_designer(client, method, "method_yaml", definition=definition)
-    page = client.get(designer_url(method, "method_page"))
-    assert page.context["problems"] == ["Give “Points” a test value or a default."]
+        post_to_designer(client, method, "method_yaml", definition=dump_yaml(definition))
+        return client.get(designer_url(method, "method_page"))
+
+    assert page_with(key_points).context["problems"] == ["Give “Points” a test value or a default."]
+    page = page_with(key_points, expression)
+    assert (page.context["first_problem_step"], page.context["problems"]) == ("/with/steps/1", [])
     post_to_designer(client, method, "method_values", None, **{"values-points": ["sun"]})
     page = client.get(designer_url(method, "method_page"))
-    assert (page.context["first_problem_step"], page.context["problems"]) == ("with.steps.1", [])
+    assert (page.context["first_problem_step"], page.context["problems"]) == ("/with/steps/1", [])
 
 
 def test_every_part_of_a_setting_declaration_is_edited(client: Client, method: Method) -> None:
-    marks_by_path = "with.steps.0.with.marks_by"
+    marks_by_path = "/with/steps/0/with/marks_by"
     post_to_designer(client, method, "method_field", operation="bind_new_setting", field=marks_by_path)
     name = setting_name_at(core_draft(method), marks_by_path)
     assert name is not None
@@ -344,8 +354,8 @@ def test_every_part_of_a_setting_declaration_is_edited(client: Client, method: M
     assert core_draft(method).declared_settings[name] == {"title": "How points count"}
 
 
-MATCH_PATH, WHOLE_WORDS_PATH = (f"with.steps.0.with.{key}" for key in ("match", "whole_words"))
-MIN_LENGTH_PATH = "with.steps.1.with.min_length"
+MATCH_PATH, WHOLE_WORDS_PATH = (f"/with/steps/0/with/{key}" for key in ("match", "whole_words"))
+MIN_LENGTH_PATH = "/with/steps/1/with/min_length"
 
 
 @pytest.fixture
@@ -391,7 +401,7 @@ def test_a_table_default_of_a_setting_comes_before_advanced(client: Client, meth
     check = {"uses": "gradeflow/custom-code@1", "with": {"code": "correct = True\n"}}
     text = dump_yaml({"label": "Light", "summary": "Code.", "question_types": ["text"], "steps": [check]})
     post_to_designer(client, method, "method_yaml", definition=text)
-    page = declared_setting_page(client, method, bind_new_setting(client, method, "with.steps.0.with.parameters"))
+    page = declared_setting_page(client, method, bind_new_setting(client, method, "/with/steps/0/with/parameters"))
     assert page.index('name="default-posted"') < page.index('name="setting-advanced"')
 
 
@@ -495,13 +505,13 @@ def test_editing_a_check_keeps_the_fields_filled_by_settings(client: Client, met
         client, method, "method_settings", None, **{"setting": whole_words_setting, "setting-default": "True"}
     )
     before = core_draft(method).declared_settings
-    page = client.get(designer_url(method, "method_page"), {"path": "with.steps.0"}).text
+    page = client.get(designer_url(method, "method_page"), {"path": "/with/steps/0"}).text
     for key in ("points", "match", "whole_words"):
-        assert f'id="field-filled-by-setting-with.steps.0.with.{key}"' in page
+        assert f'id="field-filled-by-setting-/with/steps/0/with/{key}"' in page
         assert f'name="{key}"' not in page
     assert '<span class="min-w-0 flex-1 truncate text-muted">Similar spelling</span>' in page
     post_to_designer(
-        client, method, "method_step", path="with.steps.0", fields="1", strictness="lenient", match="meaning"
+        client, method, "method_step", path="/with/steps/0", fields="1", strictness="lenient", match="meaning"
     )
     assert core_draft(method).declared_settings == before
     assert before[points_setting]["default"] == ["light"]
@@ -555,7 +565,7 @@ def test_the_default_explains_the_field_beside_the_description_of_the_setting(cl
 
 
 def test_a_check_named_by_a_setting_shows_the_name_it_gets(client: Client, method: Method) -> None:
-    name = bind_new_setting(client, method, "with.steps.0.name")
+    name = bind_new_setting(client, method, "/with/steps/0/name")
 
     def page_at(path: str) -> str:
         page = client.get(designer_url(method, "method_page"), {"path": path}).text
@@ -563,10 +573,10 @@ def test_a_check_named_by_a_setting_shows_the_name_it_gets(client: Client, metho
         return page
 
     label = BUILTINS.find("gradeflow/key-points@1").label
-    assert f">{label}</h3>" in page_at("with.steps.0"), "without a default, as its method"
+    assert f">{label}</h3>" in page_at("/with/steps/0"), "without a default, as its method"
     post_to_designer(client, method, "method_settings", None, **{"setting": name, "setting-default": "Says light"})
     assert ">Says light</button>" in page_at("")
-    assert ">Says light</h3>" in page_at("with.steps.0")
+    assert ">Says light</h3>" in page_at("/with/steps/0")
     assert "Says light · Name" in declared_setting_page(client, method, name)
 
 
@@ -576,7 +586,7 @@ def test_rows_of_a_setting_are_added_and_removed_before_saving(client: Client, m
         {"name": "Light", "summary": "Says light.", "question_types": ["text"], "steps": [check]}
     )
     post_to_designer(client, method, "method_yaml", definition=code_tests_yaml)
-    tests = "with.steps.0.with.tests"
+    tests = "/with/steps/0/with/tests"
     post_to_designer(client, method, "method_field", operation="bind_new_setting", field=tests)
     name = setting_name_at(core_draft(method), tests)
     assert name is not None
@@ -928,7 +938,7 @@ def test_a_version_is_read_only_and_lists_the_others(client: Client, method: Met
     assert MethodDraftRecord.objects.get(method=method).definition == definition
     assert enabled_fields(version_page) == []
     assert 'class="flex flex-1 flex-col read-only-fields"' in page
-    draft_page = client.get(designer_url(method, "method_page"), {"path": "with.steps.0"})
+    draft_page = client.get(designer_url(method, "method_page"), {"path": "/with/steps/0"})
     assert "points" in enabled_fields(draft_page)
 
 
@@ -959,13 +969,13 @@ def test_a_row_that_isnt_a_number_is_a_missing_row(client: Client, method: Metho
 
 
 def test_a_checks_method_is_chosen_from_the_picker(client: Client, method: Method) -> None:
-    first_check_query = {"path": "with.steps.0"}
+    first_check_query = {"path": "/with/steps/0"}
     assert (
-        'operation=change_method&amp;target=with.steps.0"'
+        'operation=change_method&amp;target=/with/steps/0"'
         in client.get(designer_url(method, "method_page"), first_check_query).text
     )
     picker = client.get(
-        designer_url(method, "method_choices"), {"operation": "change_method", "target": "with.steps.0"}
+        designer_url(method, "method_choices"), {"operation": "change_method", "target": "/with/steps/0"}
     )
     accepted = BUILTINS.find("gradeflow/accepted-answers@1")
     assert escape(accepted.label) in picker.text
@@ -973,9 +983,9 @@ def test_a_checks_method_is_chosen_from_the_picker(client: Client, method: Metho
         client,
         method,
         "method_step",
-        path="with.steps.0",
+        path="/with/steps/0",
         operation="change_method",
-        target="with.steps.0",
+        target="/with/steps/0",
         method="gradeflow/accepted-answers@1",
     )
     assert definition_data(draft(method).definition)["steps"][0]["uses"] == "gradeflow/accepted-answers@1"
@@ -988,7 +998,7 @@ def test_a_method_gives_marks_or_a_steps_output(client: Client, method: Method) 
         "method_step",
         path="",
         operation="add",
-        target="with.steps.1",
+        target="/with/steps/1",
         method="gradeflow/extract@1",
     )
     output_step = "{{ steps.extract.output }}"
@@ -1077,7 +1087,7 @@ def test_an_unpublished_method_is_only_its_authors(client: Client, course: Cours
 def test_the_picker_for_a_check_thats_gone_isnt_found(client: Client, method: Method) -> None:
     assert (
         client.get(
-            designer_url(method, "method_choices"), {"operation": "change_method", "target": "with.steps.5"}
+            designer_url(method, "method_choices"), {"operation": "change_method", "target": "/with/steps/5"}
         ).status_code
         == 404
     )

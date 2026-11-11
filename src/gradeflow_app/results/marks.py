@@ -10,7 +10,7 @@ from functools import cached_property
 from typing import Literal, NamedTuple
 from uuid import UUID
 
-from gradeflow_core import CheckResult, MarkedSubmission, QuestionResult
+from gradeflow_core import CheckResult, Marked, QuestionResult, Submission
 
 from gradeflow_app.assessments.models import Assessment
 from gradeflow_app.imports.models import Student
@@ -213,14 +213,14 @@ class Results:
     def statistics(self) -> TotalStatistics | None:
         return TotalStatistics.of(self.totals)
 
-    def marked_submission(self, row: StudentMarks) -> MarkedSubmission:
+    def marked_submission(self, row: StudentMarks) -> Marked[Submission]:
         """The row's student as the core's marked submission, with results for the questions it has marks for."""
         results = {
             question.key: result
             for question in self.questions
             if (result := row.awards[question.key].question_result()) is not None
         }
-        return MarkedSubmission(**row.student.submission.model_dump(), results=results, max_marks=self.max_marks)
+        return Marked(sheet=row.student.submission, results=results, max_marks=self.max_marks)
 
     @property
     def has_marks(self) -> bool:

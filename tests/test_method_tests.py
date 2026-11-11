@@ -16,7 +16,7 @@ def tests() -> MethodTests:
 def result(answers: dict[str, str]) -> RowResult:
     return RowResult.model_validate(
         {
-            "answers": answers,
+            "sheet": {"answers": answers},
             "matches_expected": None,
             "results": {
                 "Q1": {"proportion": 1, "max_marks": 2, "feedback": "First feedback"},

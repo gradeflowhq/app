@@ -9,7 +9,7 @@ import pytest
 from django.template.loader import render_to_string
 from django.test import Client
 from django.urls import reverse
-from gradeflow_core import AnswerComparison, MarkedSubmission, ModelEndpoint, compare_answers
+from gradeflow_core import AnswerComparison, Marked, ModelEndpoint, Submission, compare_answers
 from gradeflow_core.editing import dump_yaml
 from pydantic import SecretStr
 from pytest_django import DjangoCaptureOnCommitCallbacks, Settings
@@ -92,7 +92,7 @@ def test_drafts_preview_on_request(client: Client, assessment: Assessment, fake_
     draft.refresh_from_db()
     assert previews.preview_state(draft) == runs.COMPLETED
     answers = {student.encrypted_id for student in assessment.students.all()}
-    assert {item["student_id"] for item in draft.preview_results or []} == answers
+    assert {item["sheet"]["student_id"] for item in draft.preview_results or []} == answers
     assert not fake_runner.held, "the runner forgets a run once its outcome is in"
     client.post(url, fields | {"code": fields["code"] + "\n# changed"})
     preview_draft(client, draft)
@@ -111,6 +111,24 @@ def test_a_preview_by_another_build_of_the_core_is_run_again(
     page = client.get(reverse("answers", args=[assessment.pk, draft.question_id]))
     assert page.status_code == 200, "its results aren't read"
     assert "Marking changed" in page.text
+    preview_draft(client, draft)
+    assert len(fake_runner.run_ids("preview")) == 2
+
+
+def test_a_preview_stored_as_an_earlier_core_wrote_it_is_run_again(
+    client: Client, assessment: Assessment, fake_runner: FakeRunner
+) -> None:
+    url, fields = code_draft(client, assessment)
+    client.post(url, fields)
+    draft = MarkingDraftRecord.objects.get()
+    preview_draft(client, draft)
+    draft.refresh_from_db()
+    flat_results = [
+        {**item["sheet"], "results": item["results"], "max_marks": 1} for item in draft.preview_results or []
+    ]
+    MarkingDraftRecord.objects.update(preview_results=flat_results)
+    page = client.get(reverse("answers", args=[assessment.pk, draft.question_id]))
+    assert page.status_code == 200, "its results aren't read"
     preview_draft(client, draft)
     assert len(fake_runner.run_ids("preview")) == 2
 
@@ -491,10 +509,10 @@ def test_a_preview_counts_the_students_whose_marks_change(client: Client, assess
     draft.refresh_from_db()
     students = {student.encrypted_id: student for student in assessment.students.all()}
     for index, submission in enumerate(draft.preview_results or []):
-        result = MarkedSubmission.model_validate(submission).results["Q2"]
+        result = Marked[Submission].model_validate(submission).results["Q2"]
         proportion = 1 - result.proportion if index == 0 else result.proportion
         Result.objects.create(
-            student=students[submission["student_id"]],
+            student=students[submission["sheet"]["student_id"]],
             question=question,
             proportion=proportion,
             feedback=result.feedback,
@@ -538,7 +556,7 @@ def test_a_preview_says_when_answers_could_not_be_marked(client: Client, assessm
     preview_draft(client, draft)
     draft.refresh_from_db()
     question = assessment.questions.get(key="Q1")
-    preview_results = [MarkedSubmission.model_validate(item) for item in draft.preview_results or []]
+    preview_results = [Marked[Submission].model_validate(item) for item in draft.preview_results or []]
     unmarked_count = sum(not submission.results["Q1"].is_marked for submission in preview_results)
     assert unmarked_count
     page = client.get(reverse("answers", args=[assessment.pk, question.pk])).text

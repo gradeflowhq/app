@@ -5,7 +5,7 @@ import json
 from typing import Any
 
 from django.db import transaction
-from gradeflow_core import MarkedSubmission, QuestionResult
+from gradeflow_core import Marked, QuestionResult, Submission
 from gradeflow_core.editing import methods_used
 from pydantic import ValidationError
 
@@ -48,10 +48,10 @@ def preview_and_results(workspace: MarkingWorkspace | None) -> tuple[RunState | 
     if state is not COMPLETED:
         return state, None
     try:
-        submissions = [MarkedSubmission.model_validate(item) for item in workspace.draft.preview_results or []]
+        submissions = [Marked[Submission].model_validate(item) for item in workspace.draft.preview_results or []]
     except ValidationError:
         return None, None  # from a build of the core that marks differently
-    return state, {submission.student_id: submission.results for submission in submissions}
+    return state, {submission.sheet.student_id: submission.results for submission in submissions}
 
 
 @transaction.atomic
@@ -61,7 +61,7 @@ def run_preview(request: Request, access: AssessmentAccess, workspace: MarkingWo
     current = MarkingWorkspace(draft)
     if not current.valid or (preview_input := _preview_input(current)) is None:
         return
-    last = preview_state(draft)
+    last, _ = preview_and_results(current)
     if last is not None and last.status != "failed" and draft.preview_input == preview_input:
         return
     draft.preview_input, draft.preview_results, draft.preview_failure = preview_input, None, ""

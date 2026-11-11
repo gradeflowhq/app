@@ -35,7 +35,7 @@ def test_the_sandbox_gives_a_result_for_each_test_answer() -> None:
         "rows": rows,
     }
     outcome = sandbox_tasks(lambda event: None)["test"](test_request)
-    assert [RowResult.model_validate(item).answers for item in outcome] == [row["answers"] for row in rows]
+    assert [RowResult.model_validate(item).sheet.answers for item in outcome] == [row["answers"] for row in rows]
 
 
 def test_the_sandbox_counts_students_marked_about_once_a_second_and_at_the_end() -> None:
@@ -47,5 +47,5 @@ def test_the_sandbox_counts_students_marked_about_once_a_second_and_at_the_end()
         "submissions": [{"student_id": f"S{index}", "answers": {"Q1": "light"}} for index in range(3)],
     }
     outcome = sandbox_tasks(events.append)["mark"](run)
-    assert [item["student_id"] for item in outcome] == ["S0", "S1", "S2"]
+    assert [item["sheet"]["student_id"] for item in outcome] == ["S0", "S1", "S2"]
     assert events == [{"event": "marked", "count": 1, "total": 3}, {"event": "marked", "count": 3, "total": 3}]

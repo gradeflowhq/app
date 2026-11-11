@@ -4,7 +4,7 @@ that reads saved data differently."""
 from typing import Any
 
 from django.core.management.base import BaseCommand
-from gradeflow_core import BUILTINS, Check, GradeFlowError
+from gradeflow_core import BUILTINS, InvalidError, MarkScheme
 from gradeflow_core.editing import load_method_files, methods_used
 
 from gradeflow_app.libraries.collection import files_needed_by, method_files
@@ -19,7 +19,7 @@ class Command(BaseCommand):
     def handle(self, *args: Any, **options: Any) -> None:
         failures = load_method_files(method_files(MethodVersion.objects.all()), BUILTINS).failed
         problems = [
-            f"{ref}: {' '.join(file.messages)}" if file.ref == ref else f"{ref}: uses {file.ref}"
+            f"{ref}: {' '.join(map(str, file.problems))}" if file.ref == ref else f"{ref}: uses {file.ref}"
             for ref, file in failures.items()
         ]
         markings = Marking.objects.select_related("assessment__course", "question")
@@ -37,7 +37,7 @@ class Command(BaseCommand):
 def _load_error(definition: str) -> str | None:
     data = definition_data(definition)
     try:
-        Check.load(data, methods=load_method_files(files_needed_by(methods_used(data)), BUILTINS).methods)
-    except GradeFlowError as error:
-        return " ".join(str(error).splitlines())
+        MarkScheme.load([data], methods=load_method_files(files_needed_by(methods_used(data)), BUILTINS).methods)
+    except InvalidError as error:
+        return " ".join(map(str, error.problems))
     return None

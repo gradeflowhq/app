@@ -20,7 +20,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import close_old_connections, connection, connections, transaction
 from django.test import Client, TestCase
 from django.urls import reverse
-from gradeflow_core import MarkedSubmission, MethodFileError, QuestionSet
+from gradeflow_core import InvalidError, Marked, QuestionSet, Submission
 from gradeflow_core import Question as CoreQuestion
 from gradeflow_core.editing import dump_yaml
 from pytest_django import Settings
@@ -124,10 +124,10 @@ def sandbox_tasks(call_back: Callable[[Event], None]) -> dict[str, Task]:
     return tasks
 
 
-def marked_by_sandbox(payload: MarkingRun) -> list[MarkedSubmission]:
+def marked_by_sandbox(payload: MarkingRun) -> list[Marked[Submission]]:
     """``payload`` marked by the sandbox."""
     outcome = sandbox_tasks(lambda event: None)["mark"](payload.model_dump(mode="json"))
-    return [MarkedSubmission.model_validate(item) for item in outcome]
+    return [Marked[Submission].model_validate(item) for item in outcome]
 
 
 @dataclass
@@ -362,7 +362,7 @@ def _run_on_own_connection(action: Callable[[], Any], backend_pids: Queue[int]) 
             cursor.execute("SELECT pg_backend_pid()")
             backend_pids.put(cursor.fetchone()[0])
         return action()
-    except (ValidationError, MethodFileError) as error:
+    except (ValidationError, InvalidError) as error:
         return error
     finally:
         connections.close_all()

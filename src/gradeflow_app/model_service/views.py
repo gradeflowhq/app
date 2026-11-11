@@ -11,8 +11,7 @@ from django.http import HttpResponse
 from django.shortcuts import render
 from django.template.loader import render_to_string
 from django.views.decorators.http import require_POST
-from gradeflow_core import GradeFlowError, ModelTrial, best_models
-from gradeflow_core.editing import list_models
+from gradeflow_core import GradeFlowError, ModelTrial, best_models, list_models
 from pydantic import ValidationError as PydanticValidationError
 
 from gradeflow_app.jobs.payloads import ModelTrialRequest

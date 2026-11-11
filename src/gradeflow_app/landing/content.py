@@ -192,7 +192,7 @@ def core_marks() -> dict[str, Any]:
 
 
 @cache
-def compatible_landing_methods() -> list[Method[Any]]:
+def compatible_landing_methods() -> list[Method]:
     """The core's methods for the page's questions."""
     landing = landing_content()
     question_sets = [landing.workspace.question_set, landing.grouping.question_set]

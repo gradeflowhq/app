@@ -9,7 +9,7 @@ from typing import Any
 from django.http import Http404
 from django.template.loader import render_to_string
 from django.urls import reverse
-from gradeflow_core import Check, QuestionResult
+from gradeflow_core import QuestionResult, Step
 from gradeflow_core.editing import DECISIONS, can_mark_by_example
 
 from gradeflow_app.assessments.models import Assessment, AssessmentAccess
@@ -118,7 +118,7 @@ def answers_column_html(
     subject: MarkingSubject,
     workspace: MarkingWorkspace | None,
     *,
-    accepted: Mapping[Marking, Check] | None = None,
+    accepted: Mapping[Marking, Step] | None = None,
     out_of_band: bool = False,
 ) -> str:
     """The answers column beside a marking: students' answers to its question, or the combinations of answers it
@@ -142,7 +142,7 @@ def answers_context(
     access: AssessmentAccess,
     subject: MarkingSubject,
     workspace: MarkingWorkspace | None,
-    accepted: Mapping[Marking, Check] | None = None,
+    accepted: Mapping[Marking, Step] | None = None,
 ) -> dict[str, Any]:
     """The answers column of a question's marking, with the marks of the user's latest preview of their draft in
     `workspace`."""
@@ -217,7 +217,7 @@ def combinations_context(
     access: AssessmentAccess,
     subject: MarkingSubject,
     workspace: MarkingWorkspace | None,
-    accepted: Mapping[Marking, Check] | None = None,
+    accepted: Mapping[Marking, Step] | None = None,
 ) -> dict[str, Any]:
     """Students by their answers to the questions marked together, as the user's draft in `workspace` marks them if
     they're editing it, else as the saved marking does."""
@@ -258,7 +258,7 @@ def combinations_context(
     }
 
 
-def out_of_date_notices(accepted: Mapping[Marking, Check], question_keys: Iterable[str]) -> list[str]:
+def out_of_date_notices(accepted: Mapping[Marking, Step], question_keys: Iterable[str]) -> list[str]:
     """Why the marks of these questions are from before: their marking, one of the `accepted` ones, failed or wasn't
     run. One that can't mark says why in its own column; one marking them now shows its progress."""
     keys = set(question_keys)
@@ -275,7 +275,7 @@ def out_of_date_notices(accepted: Mapping[Marking, Check], question_keys: Iterab
     return messages
 
 
-def _asks_models(accepted: Mapping[Marking, Check], keys: Iterable[str], workspace: MarkingWorkspace | None) -> bool:
+def _asks_models(accepted: Mapping[Marking, Step], keys: Iterable[str], workspace: MarkingWorkspace | None) -> bool:
     """Whether a saved marking of these questions, one of the `accepted` ones, or the draft being previewed, asks a
     language model, which needs a model service."""
     wanted = set(keys)
@@ -305,7 +305,7 @@ def _marking_job(assessment: Assessment, keys: Iterable[str]) -> RunState | None
     )
 
 
-def _marked_and_read_keys(check: Check | None) -> tuple[list[str], list[str]]:
+def _marked_and_read_keys(check: Step | None) -> tuple[list[str], list[str]]:
     """The questions a marking of questions together marks, and those it only reads, such as a condition's."""
     if check is None:
         return [], []

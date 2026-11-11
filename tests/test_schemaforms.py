@@ -197,7 +197,7 @@ def test_a_code_editor_outlives_redraws_of_its_own_field_only() -> None:
         return found[1]
 
     assert editor_id("", "a") == editor_id("", "b"), "typing keeps the editor"
-    assert editor_id("", "a") != editor_id("with.steps.0", "a"), "another check's code gets its own editor"
+    assert editor_id("", "a") != editor_id("/with/steps/0", "a"), "another check's code gets its own editor"
 
 
 def test_a_choice_of_numbers_is_posted_back_as_a_number() -> None:

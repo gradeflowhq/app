@@ -20,7 +20,7 @@ def test_payload_keeps_every_encrypted_id_and_complete_answers() -> None:
     )
     restored = MarkingRun.model_validate(payload.model_dump(mode="json"))
     assert restored.submissions == submissions
-    assert [submission.student_id for submission in marked_by_sandbox(restored)] == ["S1", "S2"]
+    assert [submission.sheet.student_id for submission in marked_by_sandbox(restored)] == ["S1", "S2"]
 
 
 def test_payload_marks_with_the_published_versions_it_carries() -> None:

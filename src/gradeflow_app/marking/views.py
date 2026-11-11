@@ -11,7 +11,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 from django_htmx.http import HttpResponseLocation, push_url
-from gradeflow_core import Check, GradeFlowError
+from gradeflow_core import GradeFlowError, Step
 from gradeflow_core.editing import Decision, MarkingDraft, MethodDraft, dump_yaml
 
 from gradeflow_app.assessments.access import assessment_member
@@ -61,7 +61,7 @@ def question(request: Request, access: AssessmentAccess, question_id: UUID) -> H
 
 
 def _question(
-    request: Request, access: AssessmentAccess, question: Question, accepted: Mapping[Marking, Check]
+    request: Request, access: AssessmentAccess, question: Question, accepted: Mapping[Marking, Step]
 ) -> HttpResponse:
     subject = MarkingSubject.of(access.assessment, question)
     workspace = draft_workspace(request, access, subject)
@@ -87,7 +87,7 @@ def _marking_column_context(
     question: Question,
     subject: MarkingSubject,
     workspace: MarkingWorkspace | None,
-    accepted: Mapping[Marking, Check] | None = None,
+    accepted: Mapping[Marking, Step] | None = None,
 ) -> dict[str, Any]:
     """The marking column of a question: the user's draft in `workspace`, or else the saved marking."""
     if workspace is not None:

@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 
 from django.db.models import QuerySet
-from gradeflow_core import Check, Methods
+from gradeflow_core import Methods, Step
 
 from gradeflow_app.assessments.models import Assessment
 from gradeflow_app.exports.models import SentMarks
@@ -43,7 +43,7 @@ class Progress:
         return Stage.SEND if self.latest_sent_marks is None else Stage.SENT
 
 
-def progress(assessment: Assessment, accepted: Mapping[Marking, Check]) -> Progress:
+def progress(assessment: Assessment, accepted: Mapping[Marking, Step]) -> Progress:
     """The assessment's progress, with `accepted`, its markings the core accepts."""
     return Progress(
         latest_import=assessment.submissions_files.first(),

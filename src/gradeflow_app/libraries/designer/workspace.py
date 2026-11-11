@@ -9,9 +9,9 @@ from typing import Any
 from django.core.exceptions import ValidationError
 from django.template.loader import render_to_string
 from django.urls import reverse
-from gradeflow_core import GradeFlowError, Methods, QuestionSet, Step
+from gradeflow_core import GradeFlowError, MethodFileError, Methods, QuestionSet, Step
 from gradeflow_core import Method as CoreMethod
-from gradeflow_core.editing import FailedFile, LoadedFiles, MarkingDraft, MethodDraft, RowResult
+from gradeflow_core.editing import LoadedFiles, MarkingDraft, MethodDraft, RowResult
 from pydantic import TypeAdapter
 from pydantic import ValidationError as PydanticValidationError
 
@@ -97,7 +97,7 @@ class MethodWorkspace(StepWorkspace):
         return self.loaded.methods
 
     @property
-    def failed(self) -> FailedFile | None:
+    def failed(self) -> MethodFileError | None:
         """Why the core can't load the version shown, if it can't."""
         if self.draft_record or self.version is None:
             return None
@@ -274,14 +274,13 @@ class MethodWorkspace(StepWorkspace):
 
     def tested_step(self) -> Step:
         """The step a test run marks with. Raises `GradeFlowError` if it can't be tried yet."""
-        method, methods = self._tested_methods()
-        return Step.load({"uses": method.ref, "with": self.draft.test_values}, methods=methods)
+        return self.draft.tested_step()
 
     def test_run_asks_models(self) -> bool:
         """Whether a test run asks language models. Raises `GradeFlowError` if it can't be tried yet."""
         return self.tested_step().needs_model_endpoint()
 
-    def _tested_methods(self) -> tuple[CoreMethod[Any], Methods]:
+    def _tested_methods(self) -> tuple[CoreMethod, Methods]:
         """The method as tested, and the methods it may use. Raises `EditingError` if it can't be tried yet."""
         method = self.draft.finalized()
         return method, Methods([*(each for each in self.methods if each.ref != method.ref), method])

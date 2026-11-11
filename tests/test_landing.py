@@ -6,7 +6,7 @@ import pytest
 from django.test import Client
 from django.urls import reverse
 from django.utils.html import escape
-from gradeflow_core import MarkedSubmission, MarkScheme, QuestionSet, Submission, mark
+from gradeflow_core import Marked, MarkScheme, QuestionSet, Submission, mark
 
 from gradeflow_app.landing import content
 from gradeflow_app.landing.content import MARKS, MarkingJson, landing_content
@@ -31,7 +31,7 @@ def test_people_signed_in_go_to_their_courses(client: Client) -> None:
 
 def marked(
     question_set: QuestionSet, markings: list[MarkingJson], answers: list[dict[str, str]]
-) -> Iterator[MarkedSubmission]:
+) -> Iterator[Marked[Submission]]:
     """Each student's `answers`, marked with `markings`."""
     submissions = [Submission(student_id=str(index), answers=answer) for index, answer in enumerate(answers)]
     return mark(question_set, MarkScheme.load(markings), submissions)
