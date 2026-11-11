@@ -608,16 +608,219 @@
   }
 }
 
-/* The landing page: a glow behind its hero and the app's windows its examples sit in. */
+/* The landing page's closing call to action has a glow behind it, and its demos sit in windows of the app. */
 @utility landing-glow {
   background: radial-gradient(56% 64% at 50% 0%, color-mix(in oklab, var(--color-primary) 16%, transparent), transparent 72%);
 }
+/* Ticks, crosses and halves around the hero's headline, each written in pen strokes, then faded. Smaller ones are
+   fainter. Hidden on a phone, and still with reduced motion. */
+@utility landing-marks {
+  @apply pointer-events-none absolute inset-x-0 top-0 -z-10 h-[34rem] max-sm:hidden;
+  & > svg {
+    position: absolute;
+    width: var(--size);
+    height: var(--size);
+    opacity: var(--strength);
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.25;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  @variant motion-safe {
+    & > svg {
+      animation: landing-mark 9s ease-in-out var(--delay) infinite both;
+    }
+    & path {
+      stroke-dasharray: 1;
+      animation: landing-mark-stroke 9s ease-out var(--delay) infinite both;
+    }
+    & path:nth-child(2) {
+      animation-name: landing-mark-stroke-2;
+    }
+    & path:nth-child(3) {
+      animation-name: landing-mark-stroke-3;
+    }
+  }
+  & > :nth-child(1) {
+    left: 7%;
+    top: 16%;
+    rotate: -8deg;
+    --delay: 0s;
+    --size: 2.5rem;
+    --strength: 0.45;
+  }
+  & > :nth-child(2) {
+    left: 17%;
+    top: 42%;
+    rotate: 5deg;
+    --delay: 1.6s;
+    --size: 2rem;
+    --strength: 0.35;
+  }
+  & > :nth-child(3) {
+    left: 5%;
+    top: 66%;
+    rotate: 4deg;
+    --delay: 3.2s;
+    --size: 2.75rem;
+    --strength: 0.5;
+  }
+  & > :nth-child(4) {
+    left: 20%;
+    top: 84%;
+    rotate: -6deg;
+    --delay: 4.8s;
+    --size: 2rem;
+    --strength: 0.35;
+  }
+  & > :nth-child(5) {
+    left: 24%;
+    top: 4%;
+    rotate: 10deg;
+    --delay: 6.4s;
+    --size: 1.75rem;
+    --strength: 0.3;
+  }
+  & > :nth-child(6) {
+    left: 91%;
+    top: 20%;
+    rotate: 7deg;
+    --delay: 0.8s;
+    --size: 2.75rem;
+    --strength: 0.5;
+  }
+  & > :nth-child(7) {
+    left: 80%;
+    top: 44%;
+    rotate: -5deg;
+    --delay: 2.4s;
+    --size: 2rem;
+    --strength: 0.35;
+  }
+  & > :nth-child(8) {
+    left: 94%;
+    top: 60%;
+    rotate: -7deg;
+    --delay: 4s;
+    --size: 2.25rem;
+    --strength: 0.4;
+  }
+  & > :nth-child(9) {
+    left: 83%;
+    top: 80%;
+    rotate: -3deg;
+    --delay: 5.6s;
+    --size: 2.5rem;
+    --strength: 0.45;
+  }
+  & > :nth-child(10) {
+    left: 75%;
+    top: 5%;
+    rotate: -10deg;
+    --delay: 7.2s;
+    --size: 1.75rem;
+    --strength: 0.3;
+  }
+}
+@utility landing-mark-tick {
+  color: color-mix(in oklab, var(--color-success) 80%, var(--color-base-content));
+}
+@utility landing-mark-cross {
+  color: color-mix(in oklab, var(--color-error) 80%, var(--color-base-content));
+}
+@utility landing-mark-half {
+  color: color-mix(in oklab, var(--color-warning) 80%, var(--color-base-content));
+}
+/* A mark fades in and settles as it's written, holds, then fades out. */
+@keyframes landing-mark {
+  0% {
+    opacity: 0;
+    scale: 0.92;
+  }
+  4%,
+  55% {
+    opacity: var(--strength);
+    scale: 1;
+  }
+  68%,
+  100% {
+    opacity: 0;
+    scale: 1;
+  }
+}
+/* A mark's strokes are written one after another. */
+@keyframes landing-mark-stroke {
+  0% {
+    stroke-dashoffset: 1;
+  }
+  7%,
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+/* A later stroke stays hidden until it starts. */
+@keyframes landing-mark-stroke-2 {
+  0%,
+  6% {
+    stroke-dashoffset: 1;
+    stroke-opacity: 0;
+  }
+  6.1% {
+    stroke-opacity: 1;
+  }
+  12%,
+  100% {
+    stroke-dashoffset: 0;
+    stroke-opacity: 1;
+  }
+}
+@keyframes landing-mark-stroke-3 {
+  0%,
+  11% {
+    stroke-dashoffset: 1;
+    stroke-opacity: 0;
+  }
+  11.1% {
+    stroke-opacity: 1;
+  }
+  18%,
+  100% {
+    stroke-dashoffset: 0;
+    stroke-opacity: 1;
+  }
+}
 @utility landing-app-frame {
   @apply overflow-hidden rounded-2xl border border-base-300 bg-base-100;
+  /* A glow of the primary colour, for the dark theme. */
   box-shadow:
     0 1px 2px oklch(25% 0.02 260 / 0.05),
     0 16px 40px -12px oklch(25% 0.02 260 / 0.14),
-    0 48px 96px -40px oklch(25% 0.04 260 / 0.22);
+    0 48px 96px -40px oklch(25% 0.04 260 / 0.22),
+    0 32px 96px -48px color-mix(in oklab, var(--color-primary) 35%, transparent);
+}
+/* A scene's control pressed before the next frame. */
+@utility landing-scene {
+  & [data-pressed] {
+    @apply scale-95 ring-3 ring-primary/40 transition;
+  }
+}
+/* A tab of the review section's steps: its number, title and description. */
+@utility landing-review-tab {
+  @apply flex cursor-pointer items-start gap-3.5 rounded-box border border-transparent p-4 text-left transition-colors hover:bg-base-200/70 aria-selected:border-base-300 aria-selected:bg-base-100 aria-selected:shadow-sm max-sm:flex-col max-sm:items-center max-sm:gap-2 max-sm:p-3 max-sm:text-center max-sm:text-sm;
+}
+@utility landing-review-tab-number {
+  @apply grid size-7 shrink-0 place-items-center rounded-full border border-base-300 text-sm font-semibold tabular-nums text-muted;
+  [aria-selected="true"] > & {
+    @apply border-primary bg-primary text-primary-content;
+  }
+}
+/* The label above a section's heading. */
+@utility landing-eyebrow {
+  @apply text-sm font-semibold uppercase tracking-wider text-primary;
+}
+@utility landing-feature-icon {
+  @apply grid size-10 shrink-0 place-items-center rounded-field bg-primary/10 text-primary;
 }
 /* An answer, then its marks beside it; in a list too narrow for both, the marks go under an answer that is code. */
 @utility landing-answer {
@@ -634,26 +837,70 @@
     }
   }
 }
-/* On a phone, a segmented control fills its row in equal parts, and the examples' tabs fill two columns. */
-@utility landing-choices {
-  @variant max-sm {
-    & > [role="radiogroup"] {
-      @apply grid w-full auto-cols-fr grid-flow-col;
+/* A method example's variant: the change to its settings, the lines of its description the change brings, and the
+   answers whose marks change. */
+@utility landing-variant-change {
+  @apply inline-flex w-fit items-center gap-2 rounded-field bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary;
+  @variant motion-safe {
+    animation: landing-enter 0.4s ease-out both;
+  }
+}
+@utility landing-variant {
+  /* A description shows in full. */
+  & .collapsible {
+    @apply max-h-none;
+    mask-image: none;
+  }
+  & pre [data-new] {
+    @apply inline-block w-full;
+  }
+  & [data-new] {
+    @apply -mx-1 rounded-field bg-primary/10 px-1;
+    @variant motion-safe {
+      animation: landing-enter 0.4s ease-out 0.2s both;
     }
-    & label {
-      @apply justify-center;
+  }
+  & [data-new] [data-new] {
+    @apply bg-transparent;
+  }
+  & > .changed {
+    @variant motion-safe {
+      animation: landing-flash 1.2s ease-out 0.3s both;
     }
   }
 }
-@utility landing-tabs {
-  @variant max-sm {
-    @apply w-full;
-    & > [role="radiogroup"] {
-      @apply grid w-full grid-cols-2;
-    }
-    & label {
-      @apply justify-center;
-    }
+@keyframes landing-enter {
+  from {
+    opacity: 0;
+    transform: translateY(0.25rem);
+  }
+}
+@keyframes landing-flash {
+  from {
+    background-color: color-mix(in oklab, var(--color-primary) 12%, transparent);
+  }
+}
+/* A dot for each variant of a method example, wide for the variant shown, filling while the slideshow plays. */
+@utility landing-variant-dot {
+  @apply relative h-2 w-2 cursor-pointer overflow-hidden rounded-full bg-base-300 transition-all hover:bg-base-content/30 aria-[current]:w-8;
+  &[aria-current]::after {
+    @apply absolute inset-0 origin-left bg-primary content-[''];
+  }
+  &[data-timing]::after {
+    animation: landing-timer var(--variant-ms) linear both;
+  }
+}
+@keyframes landing-timer {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+/* The method examples' tabs scroll sideways on a phone. */
+@utility landing-method-tabs {
+  @apply max-w-full overflow-x-auto;
+  & label {
+    @apply whitespace-nowrap;
   }
 }
 

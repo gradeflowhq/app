@@ -3,11 +3,11 @@
     "course": "Introduction to Programming",
     "assessment": "Final Exam",
     "question_key": "Q5",
-    "question_text": "Write a recursive function sum_digits(n) that returns the sum of n's digits. Don't use loops.",
     "question_set": {
       "Q5": {
         "type": "code",
-        "max_marks": 3
+        "max_marks": 3,
+        "description": "Write a recursive function sum_digits(n) that returns the sum of n's digits, with a docstring. Don't use loops."
       }
     },
     "questions": [
@@ -37,18 +37,17 @@
         "average": 80
       },
       {
-        "question_key": "Q6",
-        "method": "gradeflow/custom-code@1",
+        "question_key": "Q6a",
+        "in_question_group": true,
+        "average": 58
+      },
+      {
+        "question_key": "Q6b",
+        "in_question_group": true,
         "average": 49
       },
       {
-        "question_key": "Q7",
-        "method": "gradeflow/conditional@1",
-        "average": 66,
-        "grouped": true
-      },
-      {
-        "question_key": "Q8"
+        "question_key": "Q7"
       }
     ],
     "marking": {
@@ -60,18 +59,12 @@
           {
             "uses": "gradeflow/code-tests@1",
             "with": {
+              "marks_by": "proportional",
               "tests": [
                 {
                   "expression": "sum_digits(7)",
                   "expected": "7"
-                }
-              ]
-            }
-          },
-          {
-            "uses": "gradeflow/code-tests@1",
-            "with": {
-              "tests": [
+                },
                 {
                   "expression": "sum_digits(1234)",
                   "expected": "10"
@@ -80,282 +73,802 @@
             }
           },
           {
-            "uses": "gradeflow/code-uses@1",
+            "name": "Recursive, no loops",
+            "uses": "gradeflow/workflow@1",
             "with": {
-              "looks_for": "recursion"
+              "marks_by": "all_correct",
+              "steps": [
+                {
+                  "uses": "gradeflow/code-uses@1",
+                  "with": {
+                    "looks_for": "recursion"
+                  }
+                },
+                {
+                  "uses": "gradeflow/not-allowed@1",
+                  "with": {
+                    "check": {
+                      "uses": "gradeflow/code-uses@1",
+                      "with": {
+                        "looks_for": "loop"
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "Docstring",
+            "uses": "gradeflow/pattern@1",
+            "with": {
+              "pattern": "\"\"\""
             }
           }
         ]
       }
     },
-    "setting_name": "marks_by",
-    "checks": [
-      {
-        "name": "sum_digits(7)",
-        "marking": {
-          "question": "Q5",
-          "uses": "gradeflow/code-tests@1",
-          "with": {
-            "tests": [
-              {
-                "expression": "sum_digits(7)",
-                "expected": "7"
-              }
-            ]
-          }
+    "answer_groups": [
+      [
+        {
+          "text": "def sum_digits(n):\n    if n == 0:\n        return 0\n    return n % 10 + sum_digits(n // 10)",
+          "student_count": 83
+        },
+        {
+          "text": "def sum_digits(n):\n    if n < 10:\n        return n\n    return n % 10 + sum_digits(n // 10)",
+          "student_count": 8
         }
-      },
-      {
-        "name": "sum_digits(1234)",
-        "marking": {
-          "question": "Q5",
-          "uses": "gradeflow/code-tests@1",
-          "with": {
-            "tests": [
-              {
-                "expression": "sum_digits(1234)",
-                "expected": "10"
-              }
-            ]
-          }
+      ],
+      [
+        {
+          "text": "def sum_digits(n):\n    \"\"\"The sum of n's digits.\"\"\"\n    if n == 0:\n        return 0\n    return n % 10 + sum_digits(n // 10)",
+          "student_count": 46
+        },
+        {
+          "text": "def sum_digits(n):\n    \"\"\"The sum of n's digits.\"\"\"\n    if n < 10:\n        return n\n    return n % 10 + sum_digits(n // 10)",
+          "student_count": 6
         }
-      },
-      {
-        "name": "Recursive",
-        "marking": {
-          "question": "Q5",
-          "uses": "gradeflow/code-uses@1",
-          "with": {
-            "looks_for": "recursion"
-          }
+      ],
+      [
+        {
+          "text": "def sum_digits(n):\n    return sum(int(d) for d in str(n))",
+          "student_count": 38
+        },
+        {
+          "text": "def sum_digits(n):\n    return sum(map(int, str(n)))",
+          "student_count": 6
         }
+      ],
+      [
+        {
+          "text": "def sum_digits(n):\n    if n < 10:\n        return 0\n    return n % 10 + sum_digits(n // 10)",
+          "student_count": 21
+        }
+      ],
+      [
+        {
+          "text": "def sum_digits(n):\n    total = 0\n    while n > 0:\n        total += n % 10\n        n //= 10\n    return total",
+          "student_count": 13
+        }
+      ],
+      [
+        {
+          "text": "def sum_digits(n):\n    return n % 10 + sum_digits(n // 10)",
+          "student_count": 12
+        }
+      ]
+    ],
+    "question_groups": [
+      {
+        "questions": [
+          "Q6a",
+          "Q6b"
+        ],
+        "method": "gradeflow/answer-sets@1"
       }
     ],
-    "answer_groups": [
-      {
-        "answer": "def sum_digits(n):\n    if n == 0:\n        return 0\n    return n % 10 + sum_digits(n // 10)",
-        "other_answer_count": 37,
-        "student_count": 214
-      },
-      {
-        "answer": "def sum_digits(n):\n    return sum(int(d) for d in str(n))",
-        "other_answer_count": 18,
-        "student_count": 96
-      },
-      {
-        "answer": "def sum_digits(n):\n    if n < 10:\n        return 0\n    return n % 10 + sum_digits(n // 10)",
-        "other_answer_count": 6,
-        "student_count": 41
-      },
-      {
-        "answer": "def sum_digits(n):\n    return n % 10 + sum_digits(n // 10)",
-        "other_answer_count": 3,
-        "student_count": 23
+    "edited_marking": {
+      "question": "Q5",
+      "uses": "gradeflow/workflow@1",
+      "with": {
+        "marks_by": "proportional",
+        "steps": [
+          {
+            "uses": "gradeflow/code-tests@1",
+            "with": {
+              "marks_by": "proportional",
+              "tests": [
+                {
+                  "expression": "sum_digits(7)",
+                  "expected": "7"
+                },
+                {
+                  "expression": "sum_digits(1234)",
+                  "expected": "10"
+                }
+              ]
+            }
+          },
+          {
+            "name": "Recursive, no loops",
+            "uses": "gradeflow/workflow@1",
+            "with": {
+              "marks_by": "all_correct",
+              "steps": [
+                {
+                  "uses": "gradeflow/code-uses@1",
+                  "with": {
+                    "looks_for": "recursion"
+                  }
+                },
+                {
+                  "uses": "gradeflow/not-allowed@1",
+                  "with": {
+                    "check": {
+                      "uses": "gradeflow/code-uses@1",
+                      "with": {
+                        "looks_for": "loop"
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        ]
       }
-    ]
+    }
   },
-  "grouping": {
+  "review": {
     "question_key": "Q1",
-    "question_text": "What do mitochondria do in a cell?",
     "question_set": {
       "Q1": {
         "type": "text",
-        "max_marks": 1
+        "max_marks": 1,
+        "description": "What do mitochondria do in a cell?",
+        "reading": {
+          "ignore_case": false
+        }
       }
     },
-    "accepted_answers": [
-      "Release energy"
-    ],
     "answers": [
       {
         "text": "Release energy",
-        "student_count": 286,
-        "meaning_group": "energy"
+        "student_count": 98,
+        "meaning_group": "release"
       },
       {
         "text": "Releases energy for the cell",
-        "student_count": 117,
-        "meaning_group": "energy for the cell"
+        "student_count": 42,
+        "meaning_group": "for the cell"
       },
       {
         "text": "Produce energy for the cell",
-        "student_count": 74,
-        "meaning_group": "energy for the cell"
+        "student_count": 27,
+        "meaning_group": "for the cell"
+      },
+      {
+        "text": "Produces ATP",
+        "student_count": 17,
+        "meaning_group": "ATP"
       },
       {
         "text": "Store genetic information",
-        "student_count": 41,
-        "meaning_group": "genetics"
+        "student_count": 15,
+        "meaning_group": "genetic"
+      },
+      {
+        "text": "They release energy",
+        "student_count": 13,
+        "meaning_group": "release"
       },
       {
         "text": "Make proteins",
-        "student_count": 33,
+        "student_count": 12,
         "meaning_group": "proteins"
+      },
+      {
+        "text": "Store DNA",
+        "student_count": 7,
+        "meaning_group": "genetic"
       }
     ],
-    "markings": {
-      "before_accepting": [
-        {
-          "question": "Q1",
-          "uses": "gradeflow/accepted-answers@1",
-          "with": {
-            "answers": [
-              "Release energy"
-            ]
-          }
-        }
-      ],
-      "after_accepting": [
-        {
-          "question": "Q1",
-          "uses": "gradeflow/accepted-answers@1",
-          "with": {
-            "answers": [
-              "Release energy",
-              "Releases energy for the cell",
-              "Produce energy for the cell",
-              "Store genetic information",
-              "Make proteins"
-            ]
-          }
-        }
-      ]
-    }
+    "marking": {
+      "question": "Q1",
+      "uses": "gradeflow/accepted-answers@1",
+      "with": {
+        "answers": [
+          "Release energy"
+        ]
+      }
+    },
+    "decisions": [
+      {
+        "answers": [
+          "Releases energy for the cell"
+        ],
+        "decision": "full_marks"
+      },
+      {
+        "answers": [
+          "Produces ATP"
+        ],
+        "decision": "partial_marks"
+      }
+    ],
+    "adjustment": {
+      "answer": "Produce energy for the cell",
+      "marks": 0.5,
+      "feedback": "Energy is released, not produced."
+    },
+    "decided_answer": "Releases energy for the cell"
   },
   "examples": {
     "workflow": {
       "method": "gradeflow/workflow@1",
       "question_key": "Q2",
-      "question_text": "A stone is dropped from 20 m. Take g = 9.8 m/s². How long does it take to land, in seconds?",
+      "question_text": "Where in a cell is energy released? Answer in 10 words or fewer.",
       "marked_question": "Q2",
       "question_set": {
         "Q2": {
-          "type": "number",
+          "type": "text",
           "max_marks": 2
         }
       },
       "answers": [
         {
           "answers": {
-            "Q2": "2.02"
+            "Q2": "In the mitochondria"
           },
-          "student_count": 211
+          "student_count": 241
         },
         {
           "answers": {
-            "Q2": "2"
+            "Q2": "The powerhouse of the cell"
+          },
+          "student_count": 52
+        },
+        {
+          "answers": {
+            "Q2": "In the mitochondria, where cellular respiration releases energy stored in glucose"
+          },
+          "student_count": 63
+        },
+        {
+          "answers": {
+            "Q2": "In the nucleus"
+          },
+          "student_count": 38
+        },
+        {
+          "answers": {
+            "Q2": "The nucleus controls the cell and releases energy for everything it does"
+          },
+          "student_count": 9
+        }
+      ],
+      "variants": [
+        {
+          "change": "Start with one step: Key Points",
+          "marking": {
+            "question": "Q2",
+            "uses": "gradeflow/workflow@1",
+            "with": {
+              "marks_by": "proportional",
+              "steps": [
+                {
+                  "uses": "gradeflow/key-points@1",
+                  "with": {
+                    "points": [
+                      "mitochondria"
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "change": "Add a step: Length",
+          "marking": {
+            "question": "Q2",
+            "uses": "gradeflow/workflow@1",
+            "with": {
+              "marks_by": "proportional",
+              "steps": [
+                {
+                  "uses": "gradeflow/key-points@1",
+                  "with": {
+                    "points": [
+                      "mitochondria"
+                    ]
+                  }
+                },
+                {
+                  "uses": "gradeflow/length@1",
+                  "with": {
+                    "max_length": 10,
+                    "unit": "words"
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "change": "Nest a Workflow, so either point is enough",
+          "marking": {
+            "question": "Q2",
+            "uses": "gradeflow/workflow@1",
+            "with": {
+              "marks_by": "proportional",
+              "steps": [
+                {
+                  "uses": "gradeflow/workflow@1",
+                  "with": {
+                    "marks_by": "any_correct",
+                    "steps": [
+                      {
+                        "uses": "gradeflow/key-points@1",
+                        "with": {
+                          "points": [
+                            "mitochondria"
+                          ]
+                        }
+                      },
+                      {
+                        "uses": "gradeflow/key-points@1",
+                        "with": {
+                          "points": [
+                            "powerhouse"
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "uses": "gradeflow/length@1",
+                  "with": {
+                    "max_length": 10,
+                    "unit": "words"
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "change": "How marks are given: All must be correct",
+          "marking": {
+            "question": "Q2",
+            "uses": "gradeflow/workflow@1",
+            "with": {
+              "marks_by": "all_correct",
+              "steps": [
+                {
+                  "uses": "gradeflow/workflow@1",
+                  "with": {
+                    "marks_by": "any_correct",
+                    "steps": [
+                      {
+                        "uses": "gradeflow/key-points@1",
+                        "with": {
+                          "points": [
+                            "mitochondria"
+                          ]
+                        }
+                      },
+                      {
+                        "uses": "gradeflow/key-points@1",
+                        "with": {
+                          "points": [
+                            "powerhouse"
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "uses": "gradeflow/length@1",
+                  "with": {
+                    "max_length": 10,
+                    "unit": "words"
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "change": "Remove the step Length",
+          "marking": {
+            "question": "Q2",
+            "uses": "gradeflow/workflow@1",
+            "with": {
+              "marks_by": "all_correct",
+              "steps": [
+                {
+                  "uses": "gradeflow/workflow@1",
+                  "with": {
+                    "marks_by": "any_correct",
+                    "steps": [
+                      {
+                        "uses": "gradeflow/key-points@1",
+                        "with": {
+                          "points": [
+                            "mitochondria"
+                          ]
+                        }
+                      },
+                      {
+                        "uses": "gradeflow/key-points@1",
+                        "with": {
+                          "points": [
+                            "powerhouse"
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "answer_criteria": {
+      "method": "gradeflow/answer-criteria@1",
+      "question_key": "Q1",
+      "question_text": "Pens cost $2 and books $5. What do 3 pens and 2 books cost? Show your working.",
+      "marked_question": "Q1",
+      "question_set": {
+        "Q1": {
+          "type": "text",
+          "max_marks": 3,
+          "description": "Pens cost $2 and books $5. What do 3 pens and 2 books cost? Show your working."
+        }
+      },
+      "answers": [
+        {
+          "answers": {
+            "Q1": "3 × 2 = 6 and 2 × 5 = 10, so 6 + 10 = $16"
+          },
+          "student_count": 188
+        },
+        {
+          "answers": {
+            "Q1": "$16"
           },
           "student_count": 74
         },
         {
           "answers": {
-            "Q2": "4.08"
+            "Q1": "3 × 2 = 6 and 2 × 5 = 10, so she pays $6 and $10"
           },
-          "student_count": 26
+          "student_count": 31
         }
       ],
-      "choices": {
-        "1": "100%",
-        "0.5": "50%",
-        "0": "0%"
+      "variants": [
+        {
+          "change": "Start with no criteria",
+          "marking": {
+            "question": "Q1",
+            "uses": "gradeflow/answer-criteria@1",
+            "with": {
+              "criteria": [],
+              "model_answer": "3 × 2 = 6 and 2 × 5 = 10, so 6 + 10 = $16"
+            }
+          },
+          "results": [
+            {
+              "marks": null,
+              "feedback": ""
+            },
+            {
+              "marks": null,
+              "feedback": ""
+            },
+            {
+              "marks": null,
+              "feedback": ""
+            }
+          ]
+        },
+        {
+          "change": "Add a criterion: Correct total",
+          "marking": {
+            "question": "Q1",
+            "uses": "gradeflow/answer-criteria@1",
+            "with": {
+              "criteria": [
+                {
+                  "text": "Correct total",
+                  "marks": 2
+                }
+              ],
+              "model_answer": "3 × 2 = 6 and 2 × 5 = 10, so 6 + 10 = $16"
+            }
+          },
+          "results": [
+            {
+              "marks": 2,
+              "feedback": "Correct total."
+            },
+            {
+              "marks": 2,
+              "feedback": "Correct total."
+            },
+            {
+              "marks": 0,
+              "feedback": "Correct total: Not met."
+            }
+          ]
+        },
+        {
+          "change": "Add a criterion: Shows the working",
+          "marking": {
+            "question": "Q1",
+            "uses": "gradeflow/answer-criteria@1",
+            "with": {
+              "criteria": [
+                {
+                  "text": "Correct total",
+                  "marks": 2
+                },
+                {
+                  "text": "Shows the working",
+                  "marks": 1
+                }
+              ],
+              "model_answer": "3 × 2 = 6 and 2 × 5 = 10, so 6 + 10 = $16"
+            }
+          },
+          "results": [
+            {
+              "marks": 3,
+              "feedback": "Correct total.\nShows the working."
+            },
+            {
+              "marks": 2,
+              "feedback": "Correct total.\nShows the working: Not met."
+            },
+            {
+              "marks": 1,
+              "feedback": "Correct total: Not met.\nShows the working."
+            }
+          ]
+        },
+        {
+          "change": "Add a penalty: Forgot to sum",
+          "marking": {
+            "question": "Q1",
+            "uses": "gradeflow/answer-criteria@1",
+            "with": {
+              "criteria": [
+                {
+                  "text": "Correct total",
+                  "marks": 2
+                },
+                {
+                  "text": "Shows the working",
+                  "marks": 1
+                },
+                {
+                  "text": "Forgot to sum",
+                  "marks": -1
+                }
+              ],
+              "model_answer": "3 × 2 = 6 and 2 × 5 = 10, so 6 + 10 = $16"
+            }
+          },
+          "results": [
+            {
+              "marks": 3,
+              "feedback": "Correct total.\nShows the working."
+            },
+            {
+              "marks": 2,
+              "feedback": "Correct total.\nShows the working: Not met."
+            },
+            {
+              "marks": 0,
+              "feedback": "Correct total: Not met.\nShows the working.\nPenalty: Forgot to sum."
+            }
+          ]
+        }
+      ]
+    },
+    "code_tests": {
+      "method": "gradeflow/code-tests@1",
+      "question_key": "Q7",
+      "question_text": "Write is_even(n), which returns True when n is even.",
+      "marked_question": "Q7",
+      "question_set": {
+        "Q7": {
+          "type": "code",
+          "max_marks": 2
+        }
       },
-      "markings": {
-        "1": [
-          {
-            "question": "Q2",
-            "uses": "gradeflow/workflow@1",
+      "answers": [
+        {
+          "answers": {
+            "Q7": "def is_even(n):\n    return n % 2 == 0"
+          },
+          "student_count": 131
+        },
+        {
+          "answers": {
+            "Q7": "def is_even(n):\n    return n % 2 == 0 and n > 0"
+          },
+          "student_count": 33
+        },
+        {
+          "answers": {
+            "Q7": "def is_even(n):\n    print(n % 2 == 0)"
+          },
+          "student_count": 18
+        }
+      ],
+      "variants": [
+        {
+          "change": "Start with two tests",
+          "marking": {
+            "question": "Q7",
+            "uses": "gradeflow/code-tests@1",
             "with": {
-              "marks_by": "any_correct",
-              "steps": [
+              "marks_by": "proportional",
+              "tests": [
                 {
-                  "name": "g = 9.8",
-                  "uses": "gradeflow/accepted-answers@1",
-                  "with": {
-                    "answers": [
-                      "2.02"
-                    ],
-                    "tolerance": 0.01
-                  }
+                  "expression": "is_even(4)",
+                  "expected": "True"
                 },
                 {
-                  "name": "g = 10",
-                  "uses": "gradeflow/accepted-answers@1",
-                  "with": {
-                    "answers": [
-                      "2"
-                    ],
-                    "tolerance": 0.01
-                  }
+                  "expression": "is_even(7)",
+                  "expected": "False"
                 }
               ]
             }
           }
-        ],
-        "0.5": [
-          {
-            "question": "Q2",
-            "uses": "gradeflow/workflow@1",
+        },
+        {
+          "change": "Add tests for 0 and -2",
+          "marking": {
+            "question": "Q7",
+            "uses": "gradeflow/code-tests@1",
             "with": {
-              "marks_by": "any_correct",
-              "steps": [
+              "marks_by": "proportional",
+              "tests": [
                 {
-                  "name": "g = 9.8",
-                  "uses": "gradeflow/accepted-answers@1",
-                  "with": {
-                    "answers": [
-                      "2.02"
-                    ],
-                    "tolerance": 0.01
-                  }
+                  "expression": "is_even(4)",
+                  "expected": "True"
                 },
                 {
-                  "name": "g = 10",
-                  "weight": 0.5,
-                  "uses": "gradeflow/accepted-answers@1",
-                  "with": {
-                    "answers": [
-                      "2"
-                    ],
-                    "tolerance": 0.01
-                  }
+                  "expression": "is_even(7)",
+                  "expected": "False"
+                },
+                {
+                  "expression": "is_even(0)",
+                  "expected": "True"
+                },
+                {
+                  "expression": "is_even(-2)",
+                  "expected": "True"
                 }
               ]
             }
           }
-        ],
-        "0": [
-          {
-            "question": "Q2",
-            "uses": "gradeflow/workflow@1",
+        },
+        {
+          "change": "How tests count: All must be correct",
+          "marking": {
+            "question": "Q7",
+            "uses": "gradeflow/code-tests@1",
             "with": {
-              "marks_by": "any_correct",
-              "steps": [
+              "marks_by": "all_correct",
+              "tests": [
                 {
-                  "name": "g = 9.8",
-                  "uses": "gradeflow/accepted-answers@1",
-                  "with": {
-                    "answers": [
-                      "2.02"
-                    ],
-                    "tolerance": 0.01
-                  }
+                  "expression": "is_even(4)",
+                  "expected": "True"
                 },
                 {
-                  "name": "g = 10",
-                  "weight": 0.0,
-                  "uses": "gradeflow/accepted-answers@1",
-                  "with": {
-                    "answers": [
-                      "2"
-                    ],
-                    "tolerance": 0.01
-                  }
+                  "expression": "is_even(7)",
+                  "expected": "False"
+                },
+                {
+                  "expression": "is_even(0)",
+                  "expected": "True"
+                },
+                {
+                  "expression": "is_even(-2)",
+                  "expected": "True"
                 }
               ]
             }
           }
-        ]
-      }
+        }
+      ]
+    },
+    "custom_code": {
+      "method": "gradeflow/custom-code@1",
+      "question_key": "Q5",
+      "question_text": "Name a word that reads the same backwards.",
+      "marked_question": "Q5",
+      "question_set": {
+        "Q5": {
+          "type": "text",
+          "max_marks": 1,
+          "reading": {
+            "ignore_case": false
+          }
+        }
+      },
+      "answers": [
+        {
+          "answers": {
+            "Q5": "Level"
+          },
+          "student_count": 154
+        },
+        {
+          "answers": {
+            "Q5": "Racecar"
+          },
+          "student_count": 97
+        },
+        {
+          "answers": {
+            "Q5": "Hannah"
+          },
+          "student_count": 41
+        },
+        {
+          "answers": {
+            "Q5": "Banana"
+          },
+          "student_count": 23
+        },
+        {
+          "answers": {
+            "Q5": "A"
+          },
+          "student_count": 6
+        }
+      ],
+      "variants": [
+        {
+          "change": "Start with a simple check",
+          "marking": {
+            "question": "Q5",
+            "uses": "gradeflow/custom-code@1",
+            "with": {
+              "code": "word = answer.strip()\ncorrect = word == word[::-1]\nfeedback = \"Correct.\" if correct else \"Expected a word that reads the same backwards.\"\n"
+            }
+          }
+        },
+        {
+          "change": "Ignore case",
+          "marking": {
+            "question": "Q5",
+            "uses": "gradeflow/custom-code@1",
+            "with": {
+              "code": "word = answer.strip().lower()\ncorrect = word == word[::-1]\nfeedback = \"Correct.\" if correct else \"Expected a word that reads the same backwards.\"\n"
+            }
+          }
+        },
+        {
+          "change": "Need at least two letters",
+          "marking": {
+            "question": "Q5",
+            "uses": "gradeflow/custom-code@1",
+            "with": {
+              "code": "word = answer.strip().lower()\ncorrect = len(word) > 1 and word == word[::-1]\nfeedback = \"Correct.\" if correct else \"Expected a word that reads the same backwards.\"\n"
+            }
+          }
+        }
+      ]
     },
     "conditional": {
       "method": "gradeflow/conditional@1",
@@ -409,9 +922,53 @@
           "student_count": 17
         }
       ],
-      "markings": {
-        "on": [
-          {
+      "variants": [
+        {
+          "change": "Start without a condition",
+          "marking": {
+            "question": "Q4b",
+            "uses": "gradeflow/multiple-choice@1",
+            "with": {
+              "correct": [
+                "away"
+              ]
+            }
+          }
+        },
+        {
+          "change": "Add If: Q4a chooses artery",
+          "marking": {
+            "uses": "gradeflow/conditional@1",
+            "with": {
+              "condition": [
+                {
+                  "question": "Q4a",
+                  "uses": "gradeflow/multiple-choice@1",
+                  "with": {
+                    "correct": [
+                      "artery"
+                    ]
+                  }
+                }
+              ],
+              "then": [
+                {
+                  "question": "Q4b",
+                  "uses": "gradeflow/multiple-choice@1",
+                  "with": {
+                    "correct": [
+                      "away"
+                    ]
+                  }
+                }
+              ],
+              "otherwise": []
+            }
+          }
+        },
+        {
+          "change": "Add Otherwise: Q4b chooses towards",
+          "marking": {
             "uses": "gradeflow/conditional@1",
             "with": {
               "condition": [
@@ -449,469 +1006,341 @@
               ]
             }
           }
-        ],
-        "": [
-          {
-            "question": "Q4b",
-            "uses": "gradeflow/multiple-choice@1",
-            "with": {
-              "correct": [
-                "away"
-              ]
-            }
-          }
-        ]
-      }
+        }
+      ]
     },
-    "custom_code": {
-      "method": "gradeflow/custom-code@1",
-      "question_key": "Q6",
-      "question_text": "A car travels 150 km in 2.5 h. What is its average speed? Give the unit.",
-      "marked_question": "Q6",
+    "answer_sets": {
+      "method": "gradeflow/answer-sets@1",
+      "question_key": "Q3",
+      "question_text": "A stone is dropped from a 45 m cliff. Ignore air resistance. a) How long does it take to land, in seconds? b) How fast is it going when it lands, in m/s?",
+      "marked_question": "Q3b",
       "question_set": {
-        "Q6": {
-          "type": "text",
-          "max_marks": 2
+        "Q3a": {
+          "type": "number",
+          "max_marks": 1
+        },
+        "Q3b": {
+          "type": "number",
+          "max_marks": 1
         }
       },
       "answers": [
         {
           "answers": {
-            "Q6": "60 km/h"
+            "Q3a": "3.03",
+            "Q3b": "29.7"
           },
-          "student_count": 146
+          "student_count": 171
         },
         {
           "answers": {
-            "Q6": "60"
+            "Q3a": "3",
+            "Q3b": "30"
           },
-          "student_count": 41
+          "student_count": 88
         },
         {
           "answers": {
-            "Q6": "16.7 m/s"
+            "Q3a": "3",
+            "Q3b": "29.4"
           },
           "student_count": 23
         },
         {
           "answers": {
-            "Q6": "375 km/h"
+            "Q3a": "2.14",
+            "Q3b": "21"
           },
           "student_count": 12
+        },
+        {
+          "answers": {
+            "Q3a": "3.03",
+            "Q3b": "30"
+          },
+          "student_count": 9
         }
       ],
-      "choices": {
-        "0": "0",
-        "0.5": "0.5",
-        "1": "1"
-      },
-      "markings": {
-        "0": [
-          {
-            "question": "Q6",
-            "uses": "gradeflow/custom-code@1",
+      "variants": [
+        {
+          "change": "Start with the answers for g = 9.8",
+          "marking": {
+            "uses": "gradeflow/answer-sets@1",
             "with": {
-              "code": "import re\nmatch = re.match(r\"([\\d.]+) *(km/h|m/s)?$\", answer)\nspeed_kmh = match and float(match[1])\nif match and match[2] == \"m/s\":\n    speed_kmh *= 3.6\nif not speed_kmh or abs(speed_kmh - 60) > 0.5:\n    proportion, feedback = 0, \"Expected 60 km/h.\"\nelif match[2]:\n    proportion, feedback = 1, \"Correct.\"\nelse:\n    proportion = 1 - unit_penalty\n    feedback = \"Right speed, but no unit.\"",
-              "parameters": {
-                "unit_penalty": {
-                  "type": "number",
-                  "value": 0.0
+              "sets": [
+                {
+                  "name": "Takes g = 9.8",
+                  "uses": "gradeflow/workflow@1",
+                  "with": {
+                    "steps": [
+                      {
+                        "question": "Q3a",
+                        "uses": "gradeflow/accepted-answers@1",
+                        "with": {
+                          "answers": [
+                            "3.03"
+                          ]
+                        }
+                      },
+                      {
+                        "question": "Q3b",
+                        "uses": "gradeflow/accepted-answers@1",
+                        "with": {
+                          "answers": [
+                            "29.7"
+                          ]
+                        }
+                      }
+                    ]
+                  }
                 }
-              }
+              ]
             }
           }
-        ],
-        "0.5": [
-          {
-            "question": "Q6",
-            "uses": "gradeflow/custom-code@1",
+        },
+        {
+          "change": "Add a set for students who take g = 10",
+          "marking": {
+            "uses": "gradeflow/answer-sets@1",
             "with": {
-              "code": "import re\nmatch = re.match(r\"([\\d.]+) *(km/h|m/s)?$\", answer)\nspeed_kmh = match and float(match[1])\nif match and match[2] == \"m/s\":\n    speed_kmh *= 3.6\nif not speed_kmh or abs(speed_kmh - 60) > 0.5:\n    proportion, feedback = 0, \"Expected 60 km/h.\"\nelif match[2]:\n    proportion, feedback = 1, \"Correct.\"\nelse:\n    proportion = 1 - unit_penalty\n    feedback = \"Right speed, but no unit.\"",
-              "parameters": {
-                "unit_penalty": {
-                  "type": "number",
-                  "value": 0.5
+              "sets": [
+                {
+                  "name": "Takes g = 9.8",
+                  "uses": "gradeflow/workflow@1",
+                  "with": {
+                    "steps": [
+                      {
+                        "question": "Q3a",
+                        "uses": "gradeflow/accepted-answers@1",
+                        "with": {
+                          "answers": [
+                            "3.03"
+                          ]
+                        }
+                      },
+                      {
+                        "question": "Q3b",
+                        "uses": "gradeflow/accepted-answers@1",
+                        "with": {
+                          "answers": [
+                            "29.7"
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "name": "Takes g = 10",
+                  "uses": "gradeflow/workflow@1",
+                  "with": {
+                    "steps": [
+                      {
+                        "question": "Q3a",
+                        "uses": "gradeflow/accepted-answers@1",
+                        "with": {
+                          "answers": [
+                            "3"
+                          ]
+                        }
+                      },
+                      {
+                        "question": "Q3b",
+                        "uses": "gradeflow/accepted-answers@1",
+                        "with": {
+                          "answers": [
+                            "30"
+                          ]
+                        }
+                      }
+                    ]
+                  }
                 }
-              }
+              ]
             }
           }
-        ],
-        "1": [
-          {
-            "question": "Q6",
-            "uses": "gradeflow/custom-code@1",
+        },
+        {
+          "change": "Add a set for rounding the time first, at 75%",
+          "marking": {
+            "uses": "gradeflow/answer-sets@1",
             "with": {
-              "code": "import re\nmatch = re.match(r\"([\\d.]+) *(km/h|m/s)?$\", answer)\nspeed_kmh = match and float(match[1])\nif match and match[2] == \"m/s\":\n    speed_kmh *= 3.6\nif not speed_kmh or abs(speed_kmh - 60) > 0.5:\n    proportion, feedback = 0, \"Expected 60 km/h.\"\nelif match[2]:\n    proportion, feedback = 1, \"Correct.\"\nelse:\n    proportion = 1 - unit_penalty\n    feedback = \"Right speed, but no unit.\"",
-              "parameters": {
-                "unit_penalty": {
-                  "type": "number",
-                  "value": 1.0
+              "sets": [
+                {
+                  "name": "Takes g = 9.8",
+                  "uses": "gradeflow/workflow@1",
+                  "with": {
+                    "steps": [
+                      {
+                        "question": "Q3a",
+                        "uses": "gradeflow/accepted-answers@1",
+                        "with": {
+                          "answers": [
+                            "3.03"
+                          ]
+                        }
+                      },
+                      {
+                        "question": "Q3b",
+                        "uses": "gradeflow/accepted-answers@1",
+                        "with": {
+                          "answers": [
+                            "29.7"
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "name": "Takes g = 10",
+                  "uses": "gradeflow/workflow@1",
+                  "with": {
+                    "steps": [
+                      {
+                        "question": "Q3a",
+                        "uses": "gradeflow/accepted-answers@1",
+                        "with": {
+                          "answers": [
+                            "3"
+                          ]
+                        }
+                      },
+                      {
+                        "question": "Q3b",
+                        "uses": "gradeflow/accepted-answers@1",
+                        "with": {
+                          "answers": [
+                            "30"
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "name": "Rounds the time first",
+                  "uses": "gradeflow/workflow@1",
+                  "with": {
+                    "steps": [
+                      {
+                        "question": "Q3a",
+                        "uses": "gradeflow/accepted-answers@1",
+                        "with": {
+                          "answers": [
+                            "3"
+                          ]
+                        }
+                      },
+                      {
+                        "question": "Q3b",
+                        "uses": "gradeflow/accepted-answers@1",
+                        "with": {
+                          "answers": [
+                            "29.4"
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  "weight": 0.75
                 }
-              }
+              ]
             }
           }
-        ]
-      }
+        }
+      ]
     },
-    "code_tests": {
-      "method": "gradeflow/code-tests@1",
-      "question_key": "Q7",
-      "question_text": "Write is_even(n), which returns True when n is even.",
-      "marked_question": "Q7",
+    "equivalent_expression": {
+      "method": "gradeflow/equivalent-expression@1",
+      "question_key": "Q8",
+      "question_text": "Give a factor of x² - 1.",
+      "marked_question": "Q8",
       "question_set": {
-        "Q7": {
-          "type": "code",
-          "max_marks": 2
+        "Q8": {
+          "type": "text",
+          "max_marks": 1
         }
       },
       "answers": [
         {
           "answers": {
-            "Q7": "def is_even(n):\n    return n % 2 == 0"
+            "Q8": "x - 1"
           },
-          "student_count": 131
+          "student_count": 210
         },
         {
           "answers": {
-            "Q7": "def is_even(n):\n    return n % 2 == 0 and n > 0"
+            "Q8": "x + 1"
           },
-          "student_count": 33
+          "student_count": 180
         },
         {
           "answers": {
-            "Q7": "def is_even(n):\n    print(n % 2 == 0)"
+            "Q8": "1 + x"
           },
-          "student_count": 18
+          "student_count": 30
+        },
+        {
+          "answers": {
+            "Q8": "-1 + x"
+          },
+          "student_count": 25
+        },
+        {
+          "answers": {
+            "Q8": "x"
+          },
+          "student_count": 15
+        },
+        {
+          "answers": {
+            "Q8": "1 - x"
+          },
+          "student_count": 12
         }
       ],
-      "choices": {
-        "0": "is_even(4) → True",
-        "1": "is_even(7) → False",
-        "2": "is_even(0) → True",
-        "3": "is_even(-2) → True"
-      },
-      "markings": {
-        "": [],
-        "0": [
-          {
-            "question": "Q7",
-            "uses": "gradeflow/code-tests@1",
+      "variants": [
+        {
+          "change": "Accept x - 1",
+          "marking": {
+            "question": "Q8",
+            "uses": "gradeflow/equivalent-expression@1",
             "with": {
-              "marks_by": "proportional",
-              "tests": [
-                {
-                  "expression": "is_even(4)",
-                  "expected": "True"
-                }
+              "answers": [
+                "x - 1"
               ]
             }
           }
-        ],
-        "1": [
-          {
-            "question": "Q7",
-            "uses": "gradeflow/code-tests@1",
+        },
+        {
+          "change": "Add x + 1",
+          "marking": {
+            "question": "Q8",
+            "uses": "gradeflow/equivalent-expression@1",
             "with": {
-              "marks_by": "proportional",
-              "tests": [
-                {
-                  "expression": "is_even(7)",
-                  "expected": "False"
-                }
+              "answers": [
+                "x - 1",
+                "x + 1"
               ]
             }
           }
-        ],
-        "2": [
-          {
-            "question": "Q7",
-            "uses": "gradeflow/code-tests@1",
+        },
+        {
+          "change": "Add 1 - x",
+          "marking": {
+            "question": "Q8",
+            "uses": "gradeflow/equivalent-expression@1",
             "with": {
-              "marks_by": "proportional",
-              "tests": [
-                {
-                  "expression": "is_even(0)",
-                  "expected": "True"
-                }
+              "answers": [
+                "x - 1",
+                "x + 1",
+                "1 - x"
               ]
             }
           }
-        ],
-        "3": [
-          {
-            "question": "Q7",
-            "uses": "gradeflow/code-tests@1",
-            "with": {
-              "marks_by": "proportional",
-              "tests": [
-                {
-                  "expression": "is_even(-2)",
-                  "expected": "True"
-                }
-              ]
-            }
-          }
-        ],
-        "0,1": [
-          {
-            "question": "Q7",
-            "uses": "gradeflow/code-tests@1",
-            "with": {
-              "marks_by": "proportional",
-              "tests": [
-                {
-                  "expression": "is_even(4)",
-                  "expected": "True"
-                },
-                {
-                  "expression": "is_even(7)",
-                  "expected": "False"
-                }
-              ]
-            }
-          }
-        ],
-        "0,2": [
-          {
-            "question": "Q7",
-            "uses": "gradeflow/code-tests@1",
-            "with": {
-              "marks_by": "proportional",
-              "tests": [
-                {
-                  "expression": "is_even(4)",
-                  "expected": "True"
-                },
-                {
-                  "expression": "is_even(0)",
-                  "expected": "True"
-                }
-              ]
-            }
-          }
-        ],
-        "0,3": [
-          {
-            "question": "Q7",
-            "uses": "gradeflow/code-tests@1",
-            "with": {
-              "marks_by": "proportional",
-              "tests": [
-                {
-                  "expression": "is_even(4)",
-                  "expected": "True"
-                },
-                {
-                  "expression": "is_even(-2)",
-                  "expected": "True"
-                }
-              ]
-            }
-          }
-        ],
-        "1,2": [
-          {
-            "question": "Q7",
-            "uses": "gradeflow/code-tests@1",
-            "with": {
-              "marks_by": "proportional",
-              "tests": [
-                {
-                  "expression": "is_even(7)",
-                  "expected": "False"
-                },
-                {
-                  "expression": "is_even(0)",
-                  "expected": "True"
-                }
-              ]
-            }
-          }
-        ],
-        "1,3": [
-          {
-            "question": "Q7",
-            "uses": "gradeflow/code-tests@1",
-            "with": {
-              "marks_by": "proportional",
-              "tests": [
-                {
-                  "expression": "is_even(7)",
-                  "expected": "False"
-                },
-                {
-                  "expression": "is_even(-2)",
-                  "expected": "True"
-                }
-              ]
-            }
-          }
-        ],
-        "2,3": [
-          {
-            "question": "Q7",
-            "uses": "gradeflow/code-tests@1",
-            "with": {
-              "marks_by": "proportional",
-              "tests": [
-                {
-                  "expression": "is_even(0)",
-                  "expected": "True"
-                },
-                {
-                  "expression": "is_even(-2)",
-                  "expected": "True"
-                }
-              ]
-            }
-          }
-        ],
-        "0,1,2": [
-          {
-            "question": "Q7",
-            "uses": "gradeflow/code-tests@1",
-            "with": {
-              "marks_by": "proportional",
-              "tests": [
-                {
-                  "expression": "is_even(4)",
-                  "expected": "True"
-                },
-                {
-                  "expression": "is_even(7)",
-                  "expected": "False"
-                },
-                {
-                  "expression": "is_even(0)",
-                  "expected": "True"
-                }
-              ]
-            }
-          }
-        ],
-        "0,1,3": [
-          {
-            "question": "Q7",
-            "uses": "gradeflow/code-tests@1",
-            "with": {
-              "marks_by": "proportional",
-              "tests": [
-                {
-                  "expression": "is_even(4)",
-                  "expected": "True"
-                },
-                {
-                  "expression": "is_even(7)",
-                  "expected": "False"
-                },
-                {
-                  "expression": "is_even(-2)",
-                  "expected": "True"
-                }
-              ]
-            }
-          }
-        ],
-        "0,2,3": [
-          {
-            "question": "Q7",
-            "uses": "gradeflow/code-tests@1",
-            "with": {
-              "marks_by": "proportional",
-              "tests": [
-                {
-                  "expression": "is_even(4)",
-                  "expected": "True"
-                },
-                {
-                  "expression": "is_even(0)",
-                  "expected": "True"
-                },
-                {
-                  "expression": "is_even(-2)",
-                  "expected": "True"
-                }
-              ]
-            }
-          }
-        ],
-        "1,2,3": [
-          {
-            "question": "Q7",
-            "uses": "gradeflow/code-tests@1",
-            "with": {
-              "marks_by": "proportional",
-              "tests": [
-                {
-                  "expression": "is_even(7)",
-                  "expected": "False"
-                },
-                {
-                  "expression": "is_even(0)",
-                  "expected": "True"
-                },
-                {
-                  "expression": "is_even(-2)",
-                  "expected": "True"
-                }
-              ]
-            }
-          }
-        ],
-        "0,1,2,3": [
-          {
-            "question": "Q7",
-            "uses": "gradeflow/code-tests@1",
-            "with": {
-              "marks_by": "proportional",
-              "tests": [
-                {
-                  "expression": "is_even(4)",
-                  "expected": "True"
-                },
-                {
-                  "expression": "is_even(7)",
-                  "expected": "False"
-                },
-                {
-                  "expression": "is_even(0)",
-                  "expected": "True"
-                },
-                {
-                  "expression": "is_even(-2)",
-                  "expected": "True"
-                }
-              ]
-            }
-          }
-        ]
-      }
+        }
+      ]
     }
-  },
-  "privacy_students": [
-    [
-      "24081537",
-      41
-    ],
-    [
-      "24019862",
-      36.5
-    ],
-    [
-      "24113405",
-      44
-    ],
-    [
-      "24057218",
-      22
-    ],
-    [
-      "24090741",
-      33.5
-    ],
-    [
-      "24036659",
-      51
-    ]
-  ]
+  }
 }

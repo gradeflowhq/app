@@ -1,0 +1,9 @@
+{# The app's answers column, showing `column`. #}
+{% with question=column.question groupings=column.groupings grouping=column.grouping grouping_options=column.grouping_options filters=column.filters filter=column.filter draft=column.draft needs_preview=column.needs_preview can_preview=True preview_job=column.preview_job preview_summary=column.preview_summary marking_job=column.marking_job can_mark_by_example=True decisions=column.decisions %}
+<section class="workspace-answers h-full" aria-label="Answers"{% if column.shows_answers or column.adjustment %} x-data="openAnswerGroup"{% if column.shows_answers %} data-show-answers{% endif %}{% if column.adjustment %} data-marks="{{ column.adjustment.marks }}" data-feedback="{{ column.adjustment.feedback }}"{% endif %}{% endif %}>
+  {% include "results/answers.html#header" %}
+  <div class="grid content-start gap-3 p-4">
+    <ul class="answer-groups divide-y divide-base-300" aria-label="Answers">{% for answer_group, open in column.groups_with_open %}{% include "results/answer_group.html" %}{% endfor %}</ul>
+  </div>
+</section>
+{% endwith %}

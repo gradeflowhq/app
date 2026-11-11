@@ -1,0 +1,6128 @@
+{
+ "workspace": {
+  "method_labels": {
+   "gradeflow/multiple-choice@1": "Multiple Choice",
+   "gradeflow/accepted-answers@1": "Accepted Answers",
+   "gradeflow/key-points@1": "Key Points",
+   "gradeflow/code-tests@1": "Code Tests",
+   "gradeflow/workflow@1": "Workflow",
+   "gradeflow/answer-sets@1": "Answer Sets"
+  },
+  "normalized": [
+   [
+    "def sum_digits(n):\n    if n == 0:\n        return 0\n    return n % 10 + sum_digits(n // 10)",
+    "def sum_digits(n):\n    if n < 10:\n        return n\n    return n % 10 + sum_digits(n // 10)"
+   ],
+   [
+    "def sum_digits(n):\n    \"\"\"The sum of n's digits.\"\"\"\n    if n == 0:\n        return 0\n    return n % 10 + sum_digits(n // 10)",
+    "def sum_digits(n):\n    \"\"\"The sum of n's digits.\"\"\"\n    if n < 10:\n        return n\n    return n % 10 + sum_digits(n // 10)"
+   ],
+   [
+    "def sum_digits(n):\n    return sum(int(d) for d in str(n))",
+    "def sum_digits(n):\n    return sum(map(int, str(n)))"
+   ],
+   [
+    "def sum_digits(n):\n    if n < 10:\n        return 0\n    return n % 10 + sum_digits(n // 10)"
+   ],
+   [
+    "def sum_digits(n):\n    total = 0\n    while n > 0:\n        total += n % 10\n        n //= 10\n    return total"
+   ],
+   [
+    "def sum_digits(n):\n    return n % 10 + sum_digits(n // 10)"
+   ]
+  ],
+  "results": [
+   [
+    {
+     "proportion": 0.6666666666666666,
+     "max_marks": 3.0,
+     "feedback": "Passed both tests.\nRecursive, no loops: Uses recursion.\nDocstring: Not in the expected format.",
+     "method_label": "Workflow",
+     "is_marked": true,
+     "model_names": [],
+     "breakdown": {
+      "title": "Each one counts",
+      "effect": "partial",
+      "marks": null,
+      "details": [],
+      "children": [
+       {
+        "title": "Passes these tests, a share for each",
+        "effect": "earned",
+        "marks": 1.0,
+        "details": [],
+        "children": [
+         {
+          "title": "Makes `sum_digits(7)` give `7`.",
+          "effect": "earned",
+          "marks": null,
+          "details": [
+           {
+            "title": "Expression",
+            "value": "sum_digits(7)",
+            "kind": "code"
+           },
+           {
+            "title": "Expected",
+            "value": "7",
+            "kind": "code"
+           },
+           {
+            "title": "Output",
+            "value": "7",
+            "kind": "code"
+           }
+          ],
+          "children": []
+         },
+         {
+          "title": "Makes `sum_digits(1234)` give `10`.",
+          "effect": "earned",
+          "marks": null,
+          "details": [
+           {
+            "title": "Expression",
+            "value": "sum_digits(1234)",
+            "kind": "code"
+           },
+           {
+            "title": "Expected",
+            "value": "10",
+            "kind": "code"
+           },
+           {
+            "title": "Output",
+            "value": "10",
+            "kind": "code"
+           }
+          ],
+          "children": []
+         }
+        ]
+       },
+       {
+        "title": "**Recursive, no loops**",
+        "effect": "earned",
+        "marks": 1.0,
+        "details": [],
+        "children": [
+         {
+          "title": "Uses recursion.",
+          "effect": "earned",
+          "marks": null,
+          "details": [],
+          "children": []
+         },
+         {
+          "title": "**Not allowed:** Uses a loop.",
+          "effect": "earned",
+          "marks": null,
+          "details": [],
+          "children": []
+         }
+        ]
+       },
+       {
+        "title": "**Docstring:** Matches the pattern `\"\"\"`.",
+        "effect": "no_marks",
+        "marks": 0.0,
+        "details": [],
+        "children": []
+       }
+      ]
+     },
+     "marks": 2.0
+    },
+    {
+     "proportion": 0.6666666666666666,
+     "max_marks": 3.0,
+     "feedback": "Passed both tests.\nRecursive, no loops: Uses recursion.\nDocstring: Not in the expected format.",
+     "method_label": "Workflow",
+     "is_marked": true,
+     "model_names": [],
+     "breakdown": {
+      "title": "Each one counts",
+      "effect": "partial",
+      "marks": null,
+      "details": [],
+      "children": [
+       {
+        "title": "Passes these tests, a share for each",
+        "effect": "earned",
+        "marks": 1.0,
+        "details": [],
+        "children": [
+         {
+          "title": "Makes `sum_digits(7)` give `7`.",
+          "effect": "earned",
+          "marks": null,
+          "details": [
+           {
+            "title": "Expression",
+            "value": "sum_digits(7)",
+            "kind": "code"
+           },
+           {
+            "title": "Expected",
+            "value": "7",
+            "kind": "code"
+           },
+           {
+            "title": "Output",
+            "value": "7",
+            "kind": "code"
+           }
+          ],
+          "children": []
+         },
+         {
+          "title": "Makes `sum_digits(1234)` give `10`.",
+          "effect": "earned",
+          "marks": null,
+          "details": [
+           {
+            "title": "Expression",
+            "value": "sum_digits(1234)",
+            "kind": "code"
+           },
+           {
+            "title": "Expected",
+            "value": "10",
+            "kind": "code"
+           },
+           {
+            "title": "Output",
+            "value": "10",
+            "kind": "code"
+           }
+          ],
+          "children": []
+         }
+        ]
+       },
+       {
+        "title": "**Recursive, no loops**",
+        "effect": "earned",
+        "marks": 1.0,
+        "details": [],
+        "children": [
+         {
+          "title": "Uses recursion.",
+          "effect": "earned",
+          "marks": null,
+          "details": [],
+          "children": []
+         },
+         {
+          "title": "**Not allowed:** Uses a loop.",
+          "effect": "earned",
+          "marks": null,
+          "details": [],
+          "children": []
+         }
+        ]
+       },
+       {
+        "title": "**Docstring:** Matches the pattern `\"\"\"`.",
+        "effect": "no_marks",
+        "marks": 0.0,
+        "details": [],
+        "children": []
+       }
+      ]
+     },
+     "marks": 2.0
+    }
+   ],
+   [
+    {
+     "proportion": 1.0,
+     "max_marks": 3.0,
+     "feedback": "Passed both tests.\nRecursive, no loops: Uses recursion.\nDocstring: Correct format.",
+     "method_label": "Workflow",
+     "is_marked": true,
+     "model_names": [],
+     "breakdown": {
+      "title": "Each one counts",
+      "effect": "earned",
+      "marks": null,
+      "details": [],
+      "children": [
+       {
+        "title": "Passes these tests, a share for each",
+        "effect": "earned",
+        "marks": 1.0,
+        "details": [],
+        "children": [
+         {
+          "title": "Makes `sum_digits(7)` give `7`.",
+          "effect": "earned",
+          "marks": null,
+          "details": [
+           {
+            "title": "Expression",
+            "value": "sum_digits(7)",
+            "kind": "code"
+           },
+           {
+            "title": "Expected",
+            "value": "7",
+            "kind": "code"
+           },
+           {
+            "title": "Output",
+            "value": "7",
+            "kind": "code"
+           }
+          ],
+          "children": []
+         },
+         {
+          "title": "Makes `sum_digits(1234)` give `10`.",
+          "effect": "earned",
+          "marks": null,
+          "details": [
+           {
+            "title": "Expression",
+            "value": "sum_digits(1234)",
+            "kind": "code"
+           },
+           {
+            "title": "Expected",
+            "value": "10",
+            "kind": "code"
+           },
+           {
+            "title": "Output",
+            "value": "10",
+            "kind": "code"
+           }
+          ],
+          "children": []
+         }
+        ]
+       },
+       {
+        "title": "**Recursive, no loops**",
+        "effect": "earned",
+        "marks": 1.0,
+        "details": [],
+        "children": [
+         {
+          "title": "Uses recursion.",
+          "effect": "earned",
+          "marks": null,
+          "details": [],
+          "children": []
+         },
+         {
+          "title": "**Not allowed:** Uses a loop.",
+          "effect": "earned",
+          "marks": null,
+          "details": [],
+          "children": []
+         }
+        ]
+       },
+       {
+        "title": "**Docstring:** Matches the pattern `\"\"\"`.",
+        "effect": "earned",
+        "marks": 1.0,
+        "details": [],
+        "children": []
+       }
+      ]
+     },
+     "marks": 3.0
+    },
+    {
+     "proportion": 1.0,
+     "max_marks": 3.0,
+     "feedback": "Passed both tests.\nRecursive, no loops: Uses recursion.\nDocstring: Correct format.",
+     "method_label": "Workflow",
+     "is_marked": true,
+     "model_names": [],
+     "breakdown": {
+      "title": "Each one counts",
+      "effect": "earned",
+      "marks": null,
+      "details": [],
+      "children": [
+       {
+        "title": "Passes these tests, a share for each",
+        "effect": "earned",
+        "marks": 1.0,
+        "details": [],
+        "children": [
+         {
+          "title": "Makes `sum_digits(7)` give `7`.",
+          "effect": "earned",
+          "marks": null,
+          "details": [
+           {
+            "title": "Expression",
+            "value": "sum_digits(7)",
+            "kind": "code"
+           },
+           {
+            "title": "Expected",
+            "value": "7",
+            "kind": "code"
+           },
+           {
+            "title": "Output",
+            "value": "7",
+            "kind": "code"
+           }
+          ],
+          "children": []
+         },
+         {
+          "title": "Makes `sum_digits(1234)` give `10`.",
+          "effect": "earned",
+          "marks": null,
+          "details": [
+           {
+            "title": "Expression",
+            "value": "sum_digits(1234)",
+            "kind": "code"
+           },
+           {
+            "title": "Expected",
+            "value": "10",
+            "kind": "code"
+           },
+           {
+            "title": "Output",
+            "value": "10",
+            "kind": "code"
+           }
+          ],
+          "children": []
+         }
+        ]
+       },
+       {
+        "title": "**Recursive, no loops**",
+        "effect": "earned",
+        "marks": 1.0,
+        "details": [],
+        "children": [
+         {
+          "title": "Uses recursion.",
+          "effect": "earned",
+          "marks": null,
+          "details": [],
+          "children": []
+         },
+         {
+          "title": "**Not allowed:** Uses a loop.",
+          "effect": "earned",
+          "marks": null,
+          "details": [],
+          "children": []
+         }
+        ]
+       },
+       {
+        "title": "**Docstring:** Matches the pattern `\"\"\"`.",
+        "effect": "earned",
+        "marks": 1.0,
+        "details": [],
+        "children": []
+       }
+      ]
+     },
+     "marks": 3.0
+    }
+   ],
+   [
+    {
+     "proportion": 0.3333333333333333,
+     "max_marks": 3.0,
+     "feedback": "Passed both tests.\nRecursive, no loops: Expected recursion.\nDocstring: Not in the expected format.",
+     "method_label": "Workflow",
+     "is_marked": true,
+     "model_names": [],
+     "breakdown": {
+      "title": "Each one counts",
+      "effect": "partial",
+      "marks": null,
+      "details": [],
+      "children": [
+       {
+        "title": "Passes these tests, a share for each",
+        "effect": "earned",
+        "marks": 1.0,
+        "details": [],
+        "children": [
+         {
+          "title": "Makes `sum_digits(7)` give `7`.",
+          "effect": "earned",
+          "marks": null,
+          "details": [
+           {
+            "title": "Expression",
+            "value": "sum_digits(7)",
+            "kind": "code"
+           },
+           {
+            "title": "Expected",
+            "value": "7",
+            "kind": "code"
+           },
+           {
+            "title": "Output",
+            "value": "7",
+            "kind": "code"
+           }
+          ],
+          "children": []
+         },
+         {
+          "title": "Makes `sum_digits(1234)` give `10`.",
+          "effect": "earned",
+          "marks": null,
+          "details": [
+           {
+            "title": "Expression",
+            "value": "sum_digits(1234)",
+            "kind": "code"
+           },
+           {
+            "title": "Expected",
+            "value": "10",
+            "kind": "code"
+           },
+           {
+            "title": "Output",
+            "value": "10",
+            "kind": "code"
+           }
+          ],
+          "children": []
+         }
+        ]
+       },
+       {
+        "title": "**Recursive, no loops**",
+        "effect": "no_marks",
+        "marks": 0.0,
+        "details": [],
+        "children": [
+         {
+          "title": "Uses recursion.",
+          "effect": "no_marks",
+          "marks": null,
+          "details": [],
+          "children": []
+         },
+         {
+          "title": "**Not allowed:** Uses a loop.",
+          "effect": "earned",
+          "marks": null,
+          "details": [],
+          "children": []
+         }
+        ]
+       },
+       {
+        "title": "**Docstring:** Matches the pattern `\"\"\"`.",
+        "effect": "no_marks",
+        "marks": 0.0,
+        "details": [],
+        "children": []
+       }
+      ]
+     },
+     "marks": 1.0
+    },
+    {
+     "proportion": 0.3333333333333333,
+     "max_marks": 3.0,
+     "feedback": "Passed both tests.\nRecursive, no loops: Expected recursion.\nDocstring: Not in the expected format.",
+     "method_label": "Workflow",
+     "is_marked": true,
+     "model_names": [],
+     "breakdown": {
+      "title": "Each one counts",
+      "effect": "partial",
+      "marks": null,
+      "details": [],
+      "children": [
+       {
+        "title": "Passes these tests, a share for each",
+        "effect": "earned",
+        "marks": 1.0,
+        "details": [],
+        "children": [
+         {
+          "title": "Makes `sum_digits(7)` give `7`.",
+          "effect": "earned",
+          "marks": null,
+          "details": [
+           {
+            "title": "Expression",
+            "value": "sum_digits(7)",
+            "kind": "code"
+           },
+           {
+            "title": "Expected",
+            "value": "7",
+            "kind": "code"
+           },
+           {
+            "title": "Output",
+            "value": "7",
+            "kind": "code"
+           }
+          ],
+          "children": []
+         },
+         {
+          "title": "Makes `sum_digits(1234)` give `10`.",
+          "effect": "earned",
+          "marks": null,
+          "details": [
+           {
+            "title": "Expression",
+            "value": "sum_digits(1234)",
+            "kind": "code"
+           },
+           {
+            "title": "Expected",
+            "value": "10",
+            "kind": "code"
+           },
+           {
+            "title": "Output",
+            "value": "10",
+            "kind": "code"
+           }
+          ],
+          "children": []
+         }
+        ]
+       },
+       {
+        "title": "**Recursive, no loops**",
+        "effect": "no_marks",
+        "marks": 0.0,
+        "details": [],
+        "children": [
+         {
+          "title": "Uses recursion.",
+          "effect": "no_marks",
+          "marks": null,
+          "details": [],
+          "children": []
+         },
+         {
+          "title": "**Not allowed:** Uses a loop.",
+          "effect": "earned",
+          "marks": null,
+          "details": [],
+          "children": []
+         }
+        ]
+       },
+       {
+        "title": "**Docstring:** Matches the pattern `\"\"\"`.",
+        "effect": "no_marks",
+        "marks": 0.0,
+        "details": [],
+        "children": []
+       }
+      ]
+     },
+     "marks": 1.0
+    }
+   ],
+   [
+    {
+     "proportion": 0.3333333333333333,
+     "max_marks": 3.0,
+     "feedback": "Passed 0 of 2 tests.\nsum_digits(7) gave 0. Expected 7.\nsum_digits(1234) gave 9. Expected 10.\nRecursive, no loops: Uses recursion.\nDocstring: Not in the expected format.",
+     "method_label": "Workflow",
+     "is_marked": true,
+     "model_names": [],
+     "breakdown": {
+      "title": "Each one counts",
+      "effect": "partial",
+      "marks": null,
+      "details": [],
+      "children": [
+       {
+        "title": "Passes these tests, a share for each",
+        "effect": "no_marks",
+        "marks": 0.0,
+        "details": [],
+        "children": [
+         {
+          "title": "Makes `sum_digits(7)` give `7`.",
+          "effect": "no_marks",
+          "marks": null,
+          "details": [
+           {
+            "title": "Expression",
+            "value": "sum_digits(7)",
+            "kind": "code"
+           },
+           {
+            "title": "Expected",
+            "value": "7",
+            "kind": "code"
+           },
+           {
+            "title": "Output",
+            "value": "0",
+            "kind": "code"
+           }
+          ],
+          "children": []
+         },
+         {
+          "title": "Makes `sum_digits(1234)` give `10`.",
+          "effect": "no_marks",
+          "marks": null,
+          "details": [
+           {
+            "title": "Expression",
+            "value": "sum_digits(1234)",
+            "kind": "code"
+           },
+           {
+            "title": "Expected",
+            "value": "10",
+            "kind": "code"
+           },
+           {
+            "title": "Output",
+            "value": "9",
+            "kind": "code"
+           }
+          ],
+          "children": []
+         }
+        ]
+       },
+       {
+        "title": "**Recursive, no loops**",
+        "effect": "earned",
+        "marks": 1.0,
+        "details": [],
+        "children": [
+         {
+          "title": "Uses recursion.",
+          "effect": "earned",
+          "marks": null,
+          "details": [],
+          "children": []
+         },
+         {
+          "title": "**Not allowed:** Uses a loop.",
+          "effect": "earned",
+          "marks": null,
+          "details": [],
+          "children": []
+         }
+        ]
+       },
+       {
+        "title": "**Docstring:** Matches the pattern `\"\"\"`.",
+        "effect": "no_marks",
+        "marks": 0.0,
+        "details": [],
+        "children": []
+       }
+      ]
+     },
+     "marks": 1.0
+    }
+   ],
+   [
+    {
+     "proportion": 0.3333333333333333,
+     "max_marks": 3.0,
+     "feedback": "Passed both tests.\nRecursive, no loops: Expected recursion.\nNot allowed. Uses a loop.\nDocstring: Not in the expected format.",
+     "method_label": "Workflow",
+     "is_marked": true,
+     "model_names": [],
+     "breakdown": {
+      "title": "Each one counts",
+      "effect": "partial",
+      "marks": null,
+      "details": [],
+      "children": [
+       {
+        "title": "Passes these tests, a share for each",
+        "effect": "earned",
+        "marks": 1.0,
+        "details": [],
+        "children": [
+         {
+          "title": "Makes `sum_digits(7)` give `7`.",
+          "effect": "earned",
+          "marks": null,
+          "details": [
+           {
+            "title": "Expression",
+            "value": "sum_digits(7)",
+            "kind": "code"
+           },
+           {
+            "title": "Expected",
+            "value": "7",
+            "kind": "code"
+           },
+           {
+            "title": "Output",
+            "value": "7",
+            "kind": "code"
+           }
+          ],
+          "children": []
+         },
+         {
+          "title": "Makes `sum_digits(1234)` give `10`.",
+          "effect": "earned",
+          "marks": null,
+          "details": [
+           {
+            "title": "Expression",
+            "value": "sum_digits(1234)",
+            "kind": "code"
+           },
+           {
+            "title": "Expected",
+            "value": "10",
+            "kind": "code"
+           },
+           {
+            "title": "Output",
+            "value": "10",
+            "kind": "code"
+           }
+          ],
+          "children": []
+         }
+        ]
+       },
+       {
+        "title": "**Recursive, no loops**",
+        "effect": "no_marks",
+        "marks": 0.0,
+        "details": [],
+        "children": [
+         {
+          "title": "Uses recursion.",
+          "effect": "no_marks",
+          "marks": null,
+          "details": [],
+          "children": []
+         },
+         {
+          "title": "**Not allowed:** Uses a loop.",
+          "effect": "no_marks",
+          "marks": null,
+          "details": [],
+          "children": []
+         }
+        ]
+       },
+       {
+        "title": "**Docstring:** Matches the pattern `\"\"\"`.",
+        "effect": "no_marks",
+        "marks": 0.0,
+        "details": [],
+        "children": []
+       }
+      ]
+     },
+     "marks": 1.0
+    }
+   ],
+   [
+    {
+     "proportion": 0.3333333333333333,
+     "max_marks": 3.0,
+     "feedback": "Passed 0 of 2 tests.\nAll 2 failed: RecursionError: maximum recursion depth exceeded.\nRecursive, no loops: Uses recursion.\nDocstring: Not in the expected format.",
+     "method_label": "Workflow",
+     "is_marked": true,
+     "model_names": [],
+     "breakdown": {
+      "title": "Each one counts",
+      "effect": "partial",
+      "marks": null,
+      "details": [],
+      "children": [
+       {
+        "title": "Passes these tests, a share for each",
+        "effect": "no_marks",
+        "marks": 0.0,
+        "details": [],
+        "children": [
+         {
+          "title": "Makes `sum_digits(7)` give `7`.",
+          "effect": "no_marks",
+          "marks": null,
+          "details": [
+           {
+            "title": "Expression",
+            "value": "sum_digits(7)",
+            "kind": "code"
+           },
+           {
+            "title": "Expected",
+            "value": "7",
+            "kind": "code"
+           },
+           {
+            "title": "Output",
+            "value": "RecursionError: maximum recursion depth exceeded",
+            "kind": "error"
+           }
+          ],
+          "children": []
+         },
+         {
+          "title": "Makes `sum_digits(1234)` give `10`.",
+          "effect": "no_marks",
+          "marks": null,
+          "details": [
+           {
+            "title": "Expression",
+            "value": "sum_digits(1234)",
+            "kind": "code"
+           },
+           {
+            "title": "Expected",
+            "value": "10",
+            "kind": "code"
+           },
+           {
+            "title": "Output",
+            "value": "RecursionError: maximum recursion depth exceeded",
+            "kind": "error"
+           }
+          ],
+          "children": []
+         }
+        ]
+       },
+       {
+        "title": "**Recursive, no loops**",
+        "effect": "earned",
+        "marks": 1.0,
+        "details": [],
+        "children": [
+         {
+          "title": "Uses recursion.",
+          "effect": "earned",
+          "marks": null,
+          "details": [],
+          "children": []
+         },
+         {
+          "title": "**Not allowed:** Uses a loop.",
+          "effect": "earned",
+          "marks": null,
+          "details": [],
+          "children": []
+         }
+        ]
+       },
+       {
+        "title": "**Docstring:** Matches the pattern `\"\"\"`.",
+        "effect": "no_marks",
+        "marks": 0.0,
+        "details": [],
+        "children": []
+       }
+      ]
+     },
+     "marks": 1.0
+    }
+   ]
+  ],
+  "summary": {
+   "method_label": "Workflow",
+   "description": "Each one counts:\n- Passes these tests, a share for each:\n  - `sum_digits(7)` gives `7`.\n  - `sum_digits(1234)` gives `10`.\n- **Recursive, no loops:** All of these:\n  - Uses recursion.\n  - **Not allowed:** Uses a loop.\n- **Docstring:** Matches the pattern `\"\"\"`.",
+   "problems": [],
+   "is_compatible": true,
+   "incompatible_version": ""
+  },
+  "editor": {
+   "label": "Workflow",
+   "description": "Each one counts:\n- Passes these tests, a share for each:\n  - `sum_digits(7)` gives `7`.\n  - `sum_digits(1234)` gives `10`.\n- **Recursive, no loops:** All of these:\n  - Uses recursion.\n  - **Not allowed:** Uses a loop.\n- **Docstring:** Matches the pattern `\"\"\"`.",
+   "form_schema": {
+    "$defs": {
+     "StepData": {
+      "description": "What a step looks like before its method is known, for its JSON schema.",
+      "properties": {
+       "uses": {
+        "title": "Uses",
+        "type": "string"
+       },
+       "with": {
+        "additionalProperties": true,
+        "title": "With",
+        "type": "object"
+       }
+      },
+      "required": [
+       "uses"
+      ],
+      "title": "Step",
+      "type": "object"
+     },
+     "OutcomeFeedback": {
+      "additionalProperties": false,
+      "description": "Feedback for each outcome. One left empty is the method's own.",
+      "properties": {
+       "correct": {
+        "default": "",
+        "title": "When it's correct",
+        "type": "string"
+       },
+       "partly_correct": {
+        "default": "",
+        "title": "When it's partly correct",
+        "type": "string"
+       },
+       "incorrect": {
+        "default": "",
+        "title": "When it's incorrect",
+        "type": "string"
+       }
+      },
+      "title": "Feedback",
+      "type": "object"
+     }
+    },
+    "properties": {
+     "marks_by": {
+      "default": "all_correct",
+      "enum": [
+       "all_correct",
+       "any_correct",
+       "none_correct",
+       "total",
+       "proportional"
+      ],
+      "title": "How marks are given",
+      "type": "string",
+      "x-gradeflow": {
+       "labels": {
+        "all_correct": "All must be correct",
+        "any_correct": "Any one must be correct",
+        "none_correct": "None may be correct",
+        "proportional": "Proportional",
+        "total": "Total"
+       }
+      }
+     },
+     "steps": {
+      "items": {
+       "$ref": "#/$defs/StepData",
+       "title": "Step",
+       "x-gradeflow": {
+        "kind": "step"
+       }
+      },
+      "title": "Steps",
+      "type": "array",
+      "x-gradeflow": {
+       "item_label": "step"
+      }
+     },
+     "feedback": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "$ref": "#/$defs/OutcomeFeedback"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "What students read, instead of the method's own feedback.",
+      "title": "Feedback",
+      "x-gradeflow": {
+       "advanced": true,
+       "kind": "feedback",
+       "template_parts": {
+        "{{ answer }}": "Their answer",
+        "{{ feedback }}": "The method's feedback",
+        "{{ proportion | percent }}": "Proportion of the marks"
+       }
+      }
+     }
+    },
+    "title": "Workflow",
+    "type": "object"
+   },
+   "values": {
+    "marks_by": "proportional",
+    "steps": [
+     {
+      "uses": "gradeflow/code-tests@1",
+      "with": {
+       "marks_by": "proportional",
+       "tests": [
+        {
+         "expression": "sum_digits(7)",
+         "expected": "7"
+        },
+        {
+         "expression": "sum_digits(1234)",
+         "expected": "10"
+        }
+       ]
+      }
+     },
+     {
+      "name": "Recursive, no loops",
+      "uses": "gradeflow/workflow@1",
+      "with": {
+       "marks_by": "all_correct",
+       "steps": [
+        {
+         "uses": "gradeflow/code-uses@1",
+         "with": {
+          "looks_for": "recursion"
+         }
+        },
+        {
+         "uses": "gradeflow/not-allowed@1",
+         "with": {
+          "check": {
+           "uses": "gradeflow/code-uses@1",
+           "with": {
+            "looks_for": "loop"
+           }
+          }
+         }
+        }
+       ]
+      }
+     },
+     {
+      "name": "Docstring",
+      "uses": "gradeflow/pattern@1",
+      "with": {
+       "pattern": "\"\"\""
+      }
+     }
+    ],
+    "question": "Q5"
+   },
+   "steps": [
+    {
+     "setting": {
+      "name": "steps",
+      "path": "/with/steps",
+      "title": "Steps",
+      "is_list": true,
+      "minimum": 0,
+      "maximum": null,
+      "step_paths": [
+       "/with/steps/0",
+       "/with/steps/1",
+       "/with/steps/2"
+      ],
+      "item_label": "step"
+     },
+     "cards": [
+      {
+       "path": "/with/steps/0",
+       "label": "Code Tests",
+       "description": "Passes these tests, a share for each:\n- `sum_digits(7)` gives `7`.\n- `sum_digits(1234)` gives `10`.",
+       "has_problems": false,
+       "problem": "",
+       "notes": []
+      },
+      {
+       "path": "/with/steps/1",
+       "label": "Recursive, no loops",
+       "description": "All of these:\n- Uses recursion.\n- **Not allowed:** Uses a loop.",
+       "has_problems": false,
+       "problem": "",
+       "notes": []
+      },
+      {
+       "path": "/with/steps/2",
+       "label": "Docstring",
+       "description": "Matches the pattern `\"\"\"`.",
+       "has_problems": false,
+       "problem": "",
+       "notes": []
+      }
+     ]
+    }
+   ]
+  },
+  "edited_results": [
+   {
+    "proportion": 1.0,
+    "max_marks": 3.0,
+    "feedback": "Passed both tests.\nRecursive, no loops: Uses recursion.",
+    "method_label": "Workflow",
+    "is_marked": true,
+    "model_names": [],
+    "breakdown": {
+     "title": "Each one counts",
+     "effect": "earned",
+     "marks": null,
+     "details": [],
+     "children": [
+      {
+       "title": "Passes these tests, a share for each",
+       "effect": "earned",
+       "marks": 1.5,
+       "details": [],
+       "children": [
+        {
+         "title": "Makes `sum_digits(7)` give `7`.",
+         "effect": "earned",
+         "marks": null,
+         "details": [
+          {
+           "title": "Expression",
+           "value": "sum_digits(7)",
+           "kind": "code"
+          },
+          {
+           "title": "Expected",
+           "value": "7",
+           "kind": "code"
+          },
+          {
+           "title": "Output",
+           "value": "7",
+           "kind": "code"
+          }
+         ],
+         "children": []
+        },
+        {
+         "title": "Makes `sum_digits(1234)` give `10`.",
+         "effect": "earned",
+         "marks": null,
+         "details": [
+          {
+           "title": "Expression",
+           "value": "sum_digits(1234)",
+           "kind": "code"
+          },
+          {
+           "title": "Expected",
+           "value": "10",
+           "kind": "code"
+          },
+          {
+           "title": "Output",
+           "value": "10",
+           "kind": "code"
+          }
+         ],
+         "children": []
+        }
+       ]
+      },
+      {
+       "title": "**Recursive, no loops**",
+       "effect": "earned",
+       "marks": 1.5,
+       "details": [],
+       "children": [
+        {
+         "title": "Uses recursion.",
+         "effect": "earned",
+         "marks": null,
+         "details": [],
+         "children": []
+        },
+        {
+         "title": "**Not allowed:** Uses a loop.",
+         "effect": "earned",
+         "marks": null,
+         "details": [],
+         "children": []
+        }
+       ]
+      }
+     ]
+    },
+    "marks": 3.0
+   },
+   {
+    "proportion": 1.0,
+    "max_marks": 3.0,
+    "feedback": "Passed both tests.\nRecursive, no loops: Uses recursion.",
+    "method_label": "Workflow",
+    "is_marked": true,
+    "model_names": [],
+    "breakdown": {
+     "title": "Each one counts",
+     "effect": "earned",
+     "marks": null,
+     "details": [],
+     "children": [
+      {
+       "title": "Passes these tests, a share for each",
+       "effect": "earned",
+       "marks": 1.5,
+       "details": [],
+       "children": [
+        {
+         "title": "Makes `sum_digits(7)` give `7`.",
+         "effect": "earned",
+         "marks": null,
+         "details": [
+          {
+           "title": "Expression",
+           "value": "sum_digits(7)",
+           "kind": "code"
+          },
+          {
+           "title": "Expected",
+           "value": "7",
+           "kind": "code"
+          },
+          {
+           "title": "Output",
+           "value": "7",
+           "kind": "code"
+          }
+         ],
+         "children": []
+        },
+        {
+         "title": "Makes `sum_digits(1234)` give `10`.",
+         "effect": "earned",
+         "marks": null,
+         "details": [
+          {
+           "title": "Expression",
+           "value": "sum_digits(1234)",
+           "kind": "code"
+          },
+          {
+           "title": "Expected",
+           "value": "10",
+           "kind": "code"
+          },
+          {
+           "title": "Output",
+           "value": "10",
+           "kind": "code"
+          }
+         ],
+         "children": []
+        }
+       ]
+      },
+      {
+       "title": "**Recursive, no loops**",
+       "effect": "earned",
+       "marks": 1.5,
+       "details": [],
+       "children": [
+        {
+         "title": "Uses recursion.",
+         "effect": "earned",
+         "marks": null,
+         "details": [],
+         "children": []
+        },
+        {
+         "title": "**Not allowed:** Uses a loop.",
+         "effect": "earned",
+         "marks": null,
+         "details": [],
+         "children": []
+        }
+       ]
+      }
+     ]
+    },
+    "marks": 3.0
+   },
+   {
+    "proportion": 1.0,
+    "max_marks": 3.0,
+    "feedback": "Passed both tests.\nRecursive, no loops: Uses recursion.",
+    "method_label": "Workflow",
+    "is_marked": true,
+    "model_names": [],
+    "breakdown": {
+     "title": "Each one counts",
+     "effect": "earned",
+     "marks": null,
+     "details": [],
+     "children": [
+      {
+       "title": "Passes these tests, a share for each",
+       "effect": "earned",
+       "marks": 1.5,
+       "details": [],
+       "children": [
+        {
+         "title": "Makes `sum_digits(7)` give `7`.",
+         "effect": "earned",
+         "marks": null,
+         "details": [
+          {
+           "title": "Expression",
+           "value": "sum_digits(7)",
+           "kind": "code"
+          },
+          {
+           "title": "Expected",
+           "value": "7",
+           "kind": "code"
+          },
+          {
+           "title": "Output",
+           "value": "7",
+           "kind": "code"
+          }
+         ],
+         "children": []
+        },
+        {
+         "title": "Makes `sum_digits(1234)` give `10`.",
+         "effect": "earned",
+         "marks": null,
+         "details": [
+          {
+           "title": "Expression",
+           "value": "sum_digits(1234)",
+           "kind": "code"
+          },
+          {
+           "title": "Expected",
+           "value": "10",
+           "kind": "code"
+          },
+          {
+           "title": "Output",
+           "value": "10",
+           "kind": "code"
+          }
+         ],
+         "children": []
+        }
+       ]
+      },
+      {
+       "title": "**Recursive, no loops**",
+       "effect": "earned",
+       "marks": 1.5,
+       "details": [],
+       "children": [
+        {
+         "title": "Uses recursion.",
+         "effect": "earned",
+         "marks": null,
+         "details": [],
+         "children": []
+        },
+        {
+         "title": "**Not allowed:** Uses a loop.",
+         "effect": "earned",
+         "marks": null,
+         "details": [],
+         "children": []
+        }
+       ]
+      }
+     ]
+    },
+    "marks": 3.0
+   },
+   {
+    "proportion": 1.0,
+    "max_marks": 3.0,
+    "feedback": "Passed both tests.\nRecursive, no loops: Uses recursion.",
+    "method_label": "Workflow",
+    "is_marked": true,
+    "model_names": [],
+    "breakdown": {
+     "title": "Each one counts",
+     "effect": "earned",
+     "marks": null,
+     "details": [],
+     "children": [
+      {
+       "title": "Passes these tests, a share for each",
+       "effect": "earned",
+       "marks": 1.5,
+       "details": [],
+       "children": [
+        {
+         "title": "Makes `sum_digits(7)` give `7`.",
+         "effect": "earned",
+         "marks": null,
+         "details": [
+          {
+           "title": "Expression",
+           "value": "sum_digits(7)",
+           "kind": "code"
+          },
+          {
+           "title": "Expected",
+           "value": "7",
+           "kind": "code"
+          },
+          {
+           "title": "Output",
+           "value": "7",
+           "kind": "code"
+          }
+         ],
+         "children": []
+        },
+        {
+         "title": "Makes `sum_digits(1234)` give `10`.",
+         "effect": "earned",
+         "marks": null,
+         "details": [
+          {
+           "title": "Expression",
+           "value": "sum_digits(1234)",
+           "kind": "code"
+          },
+          {
+           "title": "Expected",
+           "value": "10",
+           "kind": "code"
+          },
+          {
+           "title": "Output",
+           "value": "10",
+           "kind": "code"
+          }
+         ],
+         "children": []
+        }
+       ]
+      },
+      {
+       "title": "**Recursive, no loops**",
+       "effect": "earned",
+       "marks": 1.5,
+       "details": [],
+       "children": [
+        {
+         "title": "Uses recursion.",
+         "effect": "earned",
+         "marks": null,
+         "details": [],
+         "children": []
+        },
+        {
+         "title": "**Not allowed:** Uses a loop.",
+         "effect": "earned",
+         "marks": null,
+         "details": [],
+         "children": []
+        }
+       ]
+      }
+     ]
+    },
+    "marks": 3.0
+   },
+   {
+    "proportion": 0.5,
+    "max_marks": 3.0,
+    "feedback": "Passed both tests.\nRecursive, no loops: Expected recursion.",
+    "method_label": "Workflow",
+    "is_marked": true,
+    "model_names": [],
+    "breakdown": {
+     "title": "Each one counts",
+     "effect": "partial",
+     "marks": null,
+     "details": [],
+     "children": [
+      {
+       "title": "Passes these tests, a share for each",
+       "effect": "earned",
+       "marks": 1.5,
+       "details": [],
+       "children": [
+        {
+         "title": "Makes `sum_digits(7)` give `7`.",
+         "effect": "earned",
+         "marks": null,
+         "details": [
+          {
+           "title": "Expression",
+           "value": "sum_digits(7)",
+           "kind": "code"
+          },
+          {
+           "title": "Expected",
+           "value": "7",
+           "kind": "code"
+          },
+          {
+           "title": "Output",
+           "value": "7",
+           "kind": "code"
+          }
+         ],
+         "children": []
+        },
+        {
+         "title": "Makes `sum_digits(1234)` give `10`.",
+         "effect": "earned",
+         "marks": null,
+         "details": [
+          {
+           "title": "Expression",
+           "value": "sum_digits(1234)",
+           "kind": "code"
+          },
+          {
+           "title": "Expected",
+           "value": "10",
+           "kind": "code"
+          },
+          {
+           "title": "Output",
+           "value": "10",
+           "kind": "code"
+          }
+         ],
+         "children": []
+        }
+       ]
+      },
+      {
+       "title": "**Recursive, no loops**",
+       "effect": "no_marks",
+       "marks": 0.0,
+       "details": [],
+       "children": [
+        {
+         "title": "Uses recursion.",
+         "effect": "no_marks",
+         "marks": null,
+         "details": [],
+         "children": []
+        },
+        {
+         "title": "**Not allowed:** Uses a loop.",
+         "effect": "earned",
+         "marks": null,
+         "details": [],
+         "children": []
+        }
+       ]
+      }
+     ]
+    },
+    "marks": 1.5
+   },
+   {
+    "proportion": 0.5,
+    "max_marks": 3.0,
+    "feedback": "Passed both tests.\nRecursive, no loops: Expected recursion.",
+    "method_label": "Workflow",
+    "is_marked": true,
+    "model_names": [],
+    "breakdown": {
+     "title": "Each one counts",
+     "effect": "partial",
+     "marks": null,
+     "details": [],
+     "children": [
+      {
+       "title": "Passes these tests, a share for each",
+       "effect": "earned",
+       "marks": 1.5,
+       "details": [],
+       "children": [
+        {
+         "title": "Makes `sum_digits(7)` give `7`.",
+         "effect": "earned",
+         "marks": null,
+         "details": [
+          {
+           "title": "Expression",
+           "value": "sum_digits(7)",
+           "kind": "code"
+          },
+          {
+           "title": "Expected",
+           "value": "7",
+           "kind": "code"
+          },
+          {
+           "title": "Output",
+           "value": "7",
+           "kind": "code"
+          }
+         ],
+         "children": []
+        },
+        {
+         "title": "Makes `sum_digits(1234)` give `10`.",
+         "effect": "earned",
+         "marks": null,
+         "details": [
+          {
+           "title": "Expression",
+           "value": "sum_digits(1234)",
+           "kind": "code"
+          },
+          {
+           "title": "Expected",
+           "value": "10",
+           "kind": "code"
+          },
+          {
+           "title": "Output",
+           "value": "10",
+           "kind": "code"
+          }
+         ],
+         "children": []
+        }
+       ]
+      },
+      {
+       "title": "**Recursive, no loops**",
+       "effect": "no_marks",
+       "marks": 0.0,
+       "details": [],
+       "children": [
+        {
+         "title": "Uses recursion.",
+         "effect": "no_marks",
+         "marks": null,
+         "details": [],
+         "children": []
+        },
+        {
+         "title": "**Not allowed:** Uses a loop.",
+         "effect": "earned",
+         "marks": null,
+         "details": [],
+         "children": []
+        }
+       ]
+      }
+     ]
+    },
+    "marks": 1.5
+   },
+   {
+    "proportion": 0.5,
+    "max_marks": 3.0,
+    "feedback": "Passed 0 of 2 tests.\nsum_digits(7) gave 0. Expected 7.\nsum_digits(1234) gave 9. Expected 10.\nRecursive, no loops: Uses recursion.",
+    "method_label": "Workflow",
+    "is_marked": true,
+    "model_names": [],
+    "breakdown": {
+     "title": "Each one counts",
+     "effect": "partial",
+     "marks": null,
+     "details": [],
+     "children": [
+      {
+       "title": "Passes these tests, a share for each",
+       "effect": "no_marks",
+       "marks": 0.0,
+       "details": [],
+       "children": [
+        {
+         "title": "Makes `sum_digits(7)` give `7`.",
+         "effect": "no_marks",
+         "marks": null,
+         "details": [
+          {
+           "title": "Expression",
+           "value": "sum_digits(7)",
+           "kind": "code"
+          },
+          {
+           "title": "Expected",
+           "value": "7",
+           "kind": "code"
+          },
+          {
+           "title": "Output",
+           "value": "0",
+           "kind": "code"
+          }
+         ],
+         "children": []
+        },
+        {
+         "title": "Makes `sum_digits(1234)` give `10`.",
+         "effect": "no_marks",
+         "marks": null,
+         "details": [
+          {
+           "title": "Expression",
+           "value": "sum_digits(1234)",
+           "kind": "code"
+          },
+          {
+           "title": "Expected",
+           "value": "10",
+           "kind": "code"
+          },
+          {
+           "title": "Output",
+           "value": "9",
+           "kind": "code"
+          }
+         ],
+         "children": []
+        }
+       ]
+      },
+      {
+       "title": "**Recursive, no loops**",
+       "effect": "earned",
+       "marks": 1.5,
+       "details": [],
+       "children": [
+        {
+         "title": "Uses recursion.",
+         "effect": "earned",
+         "marks": null,
+         "details": [],
+         "children": []
+        },
+        {
+         "title": "**Not allowed:** Uses a loop.",
+         "effect": "earned",
+         "marks": null,
+         "details": [],
+         "children": []
+        }
+       ]
+      }
+     ]
+    },
+    "marks": 1.5
+   },
+   {
+    "proportion": 0.5,
+    "max_marks": 3.0,
+    "feedback": "Passed both tests.\nRecursive, no loops: Expected recursion.\nNot allowed. Uses a loop.",
+    "method_label": "Workflow",
+    "is_marked": true,
+    "model_names": [],
+    "breakdown": {
+     "title": "Each one counts",
+     "effect": "partial",
+     "marks": null,
+     "details": [],
+     "children": [
+      {
+       "title": "Passes these tests, a share for each",
+       "effect": "earned",
+       "marks": 1.5,
+       "details": [],
+       "children": [
+        {
+         "title": "Makes `sum_digits(7)` give `7`.",
+         "effect": "earned",
+         "marks": null,
+         "details": [
+          {
+           "title": "Expression",
+           "value": "sum_digits(7)",
+           "kind": "code"
+          },
+          {
+           "title": "Expected",
+           "value": "7",
+           "kind": "code"
+          },
+          {
+           "title": "Output",
+           "value": "7",
+           "kind": "code"
+          }
+         ],
+         "children": []
+        },
+        {
+         "title": "Makes `sum_digits(1234)` give `10`.",
+         "effect": "earned",
+         "marks": null,
+         "details": [
+          {
+           "title": "Expression",
+           "value": "sum_digits(1234)",
+           "kind": "code"
+          },
+          {
+           "title": "Expected",
+           "value": "10",
+           "kind": "code"
+          },
+          {
+           "title": "Output",
+           "value": "10",
+           "kind": "code"
+          }
+         ],
+         "children": []
+        }
+       ]
+      },
+      {
+       "title": "**Recursive, no loops**",
+       "effect": "no_marks",
+       "marks": 0.0,
+       "details": [],
+       "children": [
+        {
+         "title": "Uses recursion.",
+         "effect": "no_marks",
+         "marks": null,
+         "details": [],
+         "children": []
+        },
+        {
+         "title": "**Not allowed:** Uses a loop.",
+         "effect": "no_marks",
+         "marks": null,
+         "details": [],
+         "children": []
+        }
+       ]
+      }
+     ]
+    },
+    "marks": 1.5
+   },
+   {
+    "proportion": 0.5,
+    "max_marks": 3.0,
+    "feedback": "Passed 0 of 2 tests.\nAll 2 failed: RecursionError: maximum recursion depth exceeded.\nRecursive, no loops: Uses recursion.",
+    "method_label": "Workflow",
+    "is_marked": true,
+    "model_names": [],
+    "breakdown": {
+     "title": "Each one counts",
+     "effect": "partial",
+     "marks": null,
+     "details": [],
+     "children": [
+      {
+       "title": "Passes these tests, a share for each",
+       "effect": "no_marks",
+       "marks": 0.0,
+       "details": [],
+       "children": [
+        {
+         "title": "Makes `sum_digits(7)` give `7`.",
+         "effect": "no_marks",
+         "marks": null,
+         "details": [
+          {
+           "title": "Expression",
+           "value": "sum_digits(7)",
+           "kind": "code"
+          },
+          {
+           "title": "Expected",
+           "value": "7",
+           "kind": "code"
+          },
+          {
+           "title": "Output",
+           "value": "RecursionError: maximum recursion depth exceeded",
+           "kind": "error"
+          }
+         ],
+         "children": []
+        },
+        {
+         "title": "Makes `sum_digits(1234)` give `10`.",
+         "effect": "no_marks",
+         "marks": null,
+         "details": [
+          {
+           "title": "Expression",
+           "value": "sum_digits(1234)",
+           "kind": "code"
+          },
+          {
+           "title": "Expected",
+           "value": "10",
+           "kind": "code"
+          },
+          {
+           "title": "Output",
+           "value": "RecursionError: maximum recursion depth exceeded",
+           "kind": "error"
+          }
+         ],
+         "children": []
+        }
+       ]
+      },
+      {
+       "title": "**Recursive, no loops**",
+       "effect": "earned",
+       "marks": 1.5,
+       "details": [],
+       "children": [
+        {
+         "title": "Uses recursion.",
+         "effect": "earned",
+         "marks": null,
+         "details": [],
+         "children": []
+        },
+        {
+         "title": "**Not allowed:** Uses a loop.",
+         "effect": "earned",
+         "marks": null,
+         "details": [],
+         "children": []
+        }
+       ]
+      }
+     ]
+    },
+    "marks": 1.5
+   }
+  ],
+  "edited_summary": {
+   "method_label": "Workflow",
+   "description": "Each one counts:\n- Passes these tests, a share for each:\n  - `sum_digits(7)` gives `7`.\n  - `sum_digits(1234)` gives `10`.\n- **Recursive, no loops:** All of these:\n  - Uses recursion.\n  - **Not allowed:** Uses a loop.",
+   "problems": [],
+   "is_compatible": true,
+   "incompatible_version": ""
+  },
+  "edited_editor": {
+   "label": "Workflow",
+   "description": "Each one counts:\n- Passes these tests, a share for each:\n  - `sum_digits(7)` gives `7`.\n  - `sum_digits(1234)` gives `10`.\n- **Recursive, no loops:** All of these:\n  - Uses recursion.\n  - **Not allowed:** Uses a loop.",
+   "form_schema": {
+    "$defs": {
+     "StepData": {
+      "description": "What a step looks like before its method is known, for its JSON schema.",
+      "properties": {
+       "uses": {
+        "title": "Uses",
+        "type": "string"
+       },
+       "with": {
+        "additionalProperties": true,
+        "title": "With",
+        "type": "object"
+       }
+      },
+      "required": [
+       "uses"
+      ],
+      "title": "Step",
+      "type": "object"
+     },
+     "OutcomeFeedback": {
+      "additionalProperties": false,
+      "description": "Feedback for each outcome. One left empty is the method's own.",
+      "properties": {
+       "correct": {
+        "default": "",
+        "title": "When it's correct",
+        "type": "string"
+       },
+       "partly_correct": {
+        "default": "",
+        "title": "When it's partly correct",
+        "type": "string"
+       },
+       "incorrect": {
+        "default": "",
+        "title": "When it's incorrect",
+        "type": "string"
+       }
+      },
+      "title": "Feedback",
+      "type": "object"
+     }
+    },
+    "properties": {
+     "marks_by": {
+      "default": "all_correct",
+      "enum": [
+       "all_correct",
+       "any_correct",
+       "none_correct",
+       "total",
+       "proportional"
+      ],
+      "title": "How marks are given",
+      "type": "string",
+      "x-gradeflow": {
+       "labels": {
+        "all_correct": "All must be correct",
+        "any_correct": "Any one must be correct",
+        "none_correct": "None may be correct",
+        "proportional": "Proportional",
+        "total": "Total"
+       }
+      }
+     },
+     "steps": {
+      "items": {
+       "$ref": "#/$defs/StepData",
+       "title": "Step",
+       "x-gradeflow": {
+        "kind": "step"
+       }
+      },
+      "title": "Steps",
+      "type": "array",
+      "x-gradeflow": {
+       "item_label": "step"
+      }
+     },
+     "feedback": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "$ref": "#/$defs/OutcomeFeedback"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "What students read, instead of the method's own feedback.",
+      "title": "Feedback",
+      "x-gradeflow": {
+       "advanced": true,
+       "kind": "feedback",
+       "template_parts": {
+        "{{ answer }}": "Their answer",
+        "{{ feedback }}": "The method's feedback",
+        "{{ proportion | percent }}": "Proportion of the marks"
+       }
+      }
+     }
+    },
+    "title": "Workflow",
+    "type": "object"
+   },
+   "values": {
+    "marks_by": "proportional",
+    "steps": [
+     {
+      "uses": "gradeflow/code-tests@1",
+      "with": {
+       "marks_by": "proportional",
+       "tests": [
+        {
+         "expression": "sum_digits(7)",
+         "expected": "7"
+        },
+        {
+         "expression": "sum_digits(1234)",
+         "expected": "10"
+        }
+       ]
+      }
+     },
+     {
+      "name": "Recursive, no loops",
+      "uses": "gradeflow/workflow@1",
+      "with": {
+       "marks_by": "all_correct",
+       "steps": [
+        {
+         "uses": "gradeflow/code-uses@1",
+         "with": {
+          "looks_for": "recursion"
+         }
+        },
+        {
+         "uses": "gradeflow/not-allowed@1",
+         "with": {
+          "check": {
+           "uses": "gradeflow/code-uses@1",
+           "with": {
+            "looks_for": "loop"
+           }
+          }
+         }
+        }
+       ]
+      }
+     }
+    ],
+    "question": "Q5"
+   },
+   "steps": [
+    {
+     "setting": {
+      "name": "steps",
+      "path": "/with/steps",
+      "title": "Steps",
+      "is_list": true,
+      "minimum": 0,
+      "maximum": null,
+      "step_paths": [
+       "/with/steps/0",
+       "/with/steps/1"
+      ],
+      "item_label": "step"
+     },
+     "cards": [
+      {
+       "path": "/with/steps/0",
+       "label": "Code Tests",
+       "description": "Passes these tests, a share for each:\n- `sum_digits(7)` gives `7`.\n- `sum_digits(1234)` gives `10`.",
+       "has_problems": false,
+       "problem": "",
+       "notes": []
+      },
+      {
+       "path": "/with/steps/1",
+       "label": "Recursive, no loops",
+       "description": "All of these:\n- Uses recursion.\n- **Not allowed:** Uses a loop.",
+       "has_problems": false,
+       "problem": "",
+       "notes": []
+      }
+     ]
+    }
+   ]
+  }
+ },
+ "review": {
+  "normalized": [
+   "Release energy",
+   "Releases energy for the cell",
+   "Produce energy for the cell",
+   "Produces ATP",
+   "Store genetic information",
+   "They release energy",
+   "Make proteins",
+   "Store DNA"
+  ],
+  "results": [
+   {
+    "proportion": 1.0,
+    "max_marks": 1.0,
+    "feedback": "Correct.",
+    "method_label": "Accepted Answers",
+    "is_marked": true,
+    "model_names": [],
+    "breakdown": null,
+    "marks": 1.0
+   },
+   {
+    "proportion": 0.0,
+    "max_marks": 1.0,
+    "feedback": "Expected “Release energy”.",
+    "method_label": "Accepted Answers",
+    "is_marked": true,
+    "model_names": [],
+    "breakdown": null,
+    "marks": 0.0
+   },
+   {
+    "proportion": 0.0,
+    "max_marks": 1.0,
+    "feedback": "Expected “Release energy”.",
+    "method_label": "Accepted Answers",
+    "is_marked": true,
+    "model_names": [],
+    "breakdown": null,
+    "marks": 0.0
+   },
+   {
+    "proportion": 0.0,
+    "max_marks": 1.0,
+    "feedback": "Expected “Release energy”.",
+    "method_label": "Accepted Answers",
+    "is_marked": true,
+    "model_names": [],
+    "breakdown": null,
+    "marks": 0.0
+   },
+   {
+    "proportion": 0.0,
+    "max_marks": 1.0,
+    "feedback": "Expected “Release energy”.",
+    "method_label": "Accepted Answers",
+    "is_marked": true,
+    "model_names": [],
+    "breakdown": null,
+    "marks": 0.0
+   },
+   {
+    "proportion": 0.0,
+    "max_marks": 1.0,
+    "feedback": "Expected “Release energy”.",
+    "method_label": "Accepted Answers",
+    "is_marked": true,
+    "model_names": [],
+    "breakdown": null,
+    "marks": 0.0
+   },
+   {
+    "proportion": 0.0,
+    "max_marks": 1.0,
+    "feedback": "Expected “Release energy”.",
+    "method_label": "Accepted Answers",
+    "is_marked": true,
+    "model_names": [],
+    "breakdown": null,
+    "marks": 0.0
+   },
+   {
+    "proportion": 0.0,
+    "max_marks": 1.0,
+    "feedback": "Expected “Release energy”.",
+    "method_label": "Accepted Answers",
+    "is_marked": true,
+    "model_names": [],
+    "breakdown": null,
+    "marks": 0.0
+   }
+  ],
+  "summary": {
+   "method_label": "Accepted Answers",
+   "description": "Matches `Release energy`.",
+   "problems": [],
+   "is_compatible": true,
+   "incompatible_version": ""
+  },
+  "editor": {
+   "label": "Accepted Answers",
+   "description": "Matches `Release energy`.",
+   "form_schema": {
+    "$defs": {
+     "MatchMode": {
+      "enum": [
+       "exact",
+       "spelling",
+       "meaning"
+      ],
+      "type": "string"
+     },
+     "Strictness": {
+      "enum": [
+       "lenient",
+       "normal",
+       "strict"
+      ],
+      "type": "string"
+     },
+     "OutcomeFeedback": {
+      "additionalProperties": false,
+      "description": "Feedback for each outcome. One left empty is the method's own.",
+      "properties": {
+       "correct": {
+        "default": "",
+        "title": "When it's correct",
+        "type": "string"
+       },
+       "partly_correct": {
+        "default": "",
+        "title": "When it's partly correct",
+        "type": "string"
+       },
+       "incorrect": {
+        "default": "",
+        "title": "When it's incorrect",
+        "type": "string"
+       }
+      },
+      "title": "Feedback",
+      "type": "object"
+     }
+    },
+    "properties": {
+     "answers": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Accepted answers",
+      "type": "array",
+      "x-gradeflow": {
+       "lists_answers": true
+      }
+     },
+     "match": {
+      "$ref": "#/$defs/MatchMode",
+      "default": "exact",
+      "description": "Similar spelling accepts typos, and Same meaning accepts other words.",
+      "title": "Match",
+      "x-gradeflow": {
+       "labels": {
+        "exact": "Exactly",
+        "meaning": "Same meaning",
+        "spelling": "Similar spelling"
+       }
+      }
+     },
+     "strictness": {
+      "$ref": "#/$defs/Strictness",
+      "default": "normal",
+      "title": "How strict",
+      "x-gradeflow": {
+       "applies_when": {
+        "match": [
+         "spelling",
+         "meaning"
+        ]
+       },
+       "labels": {
+        "lenient": "Lenient",
+        "normal": "Normal",
+        "strict": "Strict"
+       }
+      }
+     },
+     "feedback": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "$ref": "#/$defs/OutcomeFeedback"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "What students read, instead of the method's own feedback.",
+      "title": "Feedback",
+      "x-gradeflow": {
+       "advanced": true,
+       "kind": "feedback",
+       "template_parts": {
+        "{{ answer }}": "Their answer",
+        "{{ feedback }}": "The method's feedback",
+        "{{ proportion | percent }}": "Proportion of the marks"
+       }
+      }
+     }
+    },
+    "required": [
+     "answers"
+    ],
+    "title": "Accepted Answers",
+    "type": "object"
+   },
+   "values": {
+    "answers": [
+     "Release energy"
+    ],
+    "question": "Q1"
+   },
+   "steps": []
+  },
+  "decided_results": [
+   {
+    "proportion": 1.0,
+    "max_marks": 1.0,
+    "feedback": "Correct.",
+    "method_label": "Workflow",
+    "is_marked": true,
+    "model_names": [],
+    "breakdown": {
+     "title": "Any one of these",
+     "effect": "earned",
+     "marks": null,
+     "details": [],
+     "children": [
+      {
+       "title": "Matches `Release energy` or `Releases energy for the cell`.",
+       "effect": "earned",
+       "marks": null,
+       "details": [],
+       "children": []
+      },
+      {
+       "title": "Matches `Produces ATP`.",
+       "effect": "uncounted",
+       "marks": null,
+       "details": [],
+       "children": []
+      }
+     ]
+    },
+    "marks": 1.0
+   },
+   {
+    "proportion": 1.0,
+    "max_marks": 1.0,
+    "feedback": "Correct.",
+    "method_label": "Workflow",
+    "is_marked": true,
+    "model_names": [],
+    "breakdown": {
+     "title": "Any one of these",
+     "effect": "earned",
+     "marks": null,
+     "details": [],
+     "children": [
+      {
+       "title": "Matches `Release energy` or `Releases energy for the cell`.",
+       "effect": "earned",
+       "marks": null,
+       "details": [],
+       "children": []
+      },
+      {
+       "title": "Matches `Produces ATP`.",
+       "effect": "uncounted",
+       "marks": null,
+       "details": [],
+       "children": []
+      }
+     ]
+    },
+    "marks": 1.0
+   },
+   {
+    "proportion": 0.0,
+    "max_marks": 1.0,
+    "feedback": "Expected “Release energy” or “Releases energy for the cell”.",
+    "method_label": "Workflow",
+    "is_marked": true,
+    "model_names": [],
+    "breakdown": {
+     "title": "Any one of these",
+     "effect": "no_marks",
+     "marks": null,
+     "details": [],
+     "children": [
+      {
+       "title": "Matches `Release energy` or `Releases energy for the cell`.",
+       "effect": "no_marks",
+       "marks": null,
+       "details": [],
+       "children": []
+      },
+      {
+       "title": "Matches `Produces ATP`.",
+       "effect": "no_marks",
+       "marks": null,
+       "details": [],
+       "children": []
+      }
+     ]
+    },
+    "marks": 0.0
+   },
+   {
+    "proportion": 0.5,
+    "max_marks": 1.0,
+    "feedback": "Partly correct (50% of the marks).",
+    "method_label": "Workflow",
+    "is_marked": true,
+    "model_names": [],
+    "breakdown": {
+     "title": "Any one of these",
+     "effect": "partial",
+     "marks": null,
+     "details": [],
+     "children": [
+      {
+       "title": "Matches `Release energy` or `Releases energy for the cell`.",
+       "effect": "uncounted",
+       "marks": null,
+       "details": [],
+       "children": []
+      },
+      {
+       "title": "Matches `Produces ATP`.",
+       "effect": "earned",
+       "marks": null,
+       "details": [],
+       "children": []
+      }
+     ]
+    },
+    "marks": 0.5
+   },
+   {
+    "proportion": 0.0,
+    "max_marks": 1.0,
+    "feedback": "Expected “Release energy” or “Releases energy for the cell”.",
+    "method_label": "Workflow",
+    "is_marked": true,
+    "model_names": [],
+    "breakdown": {
+     "title": "Any one of these",
+     "effect": "no_marks",
+     "marks": null,
+     "details": [],
+     "children": [
+      {
+       "title": "Matches `Release energy` or `Releases energy for the cell`.",
+       "effect": "no_marks",
+       "marks": null,
+       "details": [],
+       "children": []
+      },
+      {
+       "title": "Matches `Produces ATP`.",
+       "effect": "no_marks",
+       "marks": null,
+       "details": [],
+       "children": []
+      }
+     ]
+    },
+    "marks": 0.0
+   },
+   {
+    "proportion": 0.0,
+    "max_marks": 1.0,
+    "feedback": "Expected “Release energy” or “Releases energy for the cell”.",
+    "method_label": "Workflow",
+    "is_marked": true,
+    "model_names": [],
+    "breakdown": {
+     "title": "Any one of these",
+     "effect": "no_marks",
+     "marks": null,
+     "details": [],
+     "children": [
+      {
+       "title": "Matches `Release energy` or `Releases energy for the cell`.",
+       "effect": "no_marks",
+       "marks": null,
+       "details": [],
+       "children": []
+      },
+      {
+       "title": "Matches `Produces ATP`.",
+       "effect": "no_marks",
+       "marks": null,
+       "details": [],
+       "children": []
+      }
+     ]
+    },
+    "marks": 0.0
+   },
+   {
+    "proportion": 0.0,
+    "max_marks": 1.0,
+    "feedback": "Expected “Release energy” or “Releases energy for the cell”.",
+    "method_label": "Workflow",
+    "is_marked": true,
+    "model_names": [],
+    "breakdown": {
+     "title": "Any one of these",
+     "effect": "no_marks",
+     "marks": null,
+     "details": [],
+     "children": [
+      {
+       "title": "Matches `Release energy` or `Releases energy for the cell`.",
+       "effect": "no_marks",
+       "marks": null,
+       "details": [],
+       "children": []
+      },
+      {
+       "title": "Matches `Produces ATP`.",
+       "effect": "no_marks",
+       "marks": null,
+       "details": [],
+       "children": []
+      }
+     ]
+    },
+    "marks": 0.0
+   },
+   {
+    "proportion": 0.0,
+    "max_marks": 1.0,
+    "feedback": "Expected “Release energy” or “Releases energy for the cell”.",
+    "method_label": "Workflow",
+    "is_marked": true,
+    "model_names": [],
+    "breakdown": {
+     "title": "Any one of these",
+     "effect": "no_marks",
+     "marks": null,
+     "details": [],
+     "children": [
+      {
+       "title": "Matches `Release energy` or `Releases energy for the cell`.",
+       "effect": "no_marks",
+       "marks": null,
+       "details": [],
+       "children": []
+      },
+      {
+       "title": "Matches `Produces ATP`.",
+       "effect": "no_marks",
+       "marks": null,
+       "details": [],
+       "children": []
+      }
+     ]
+    },
+    "marks": 0.0
+   }
+  ],
+  "decided_summary": {
+   "method_label": "Workflow",
+   "description": "Any one of these:\n- Matches `Release energy` or `Releases energy for the cell`.\n- **50% of the marks:** Matches `Produces ATP`.",
+   "problems": [],
+   "is_compatible": true,
+   "incompatible_version": ""
+  },
+  "decided_editor": {
+   "label": "Workflow",
+   "description": "Any one of these:\n- Matches `Release energy` or `Releases energy for the cell`.\n- **50% of the marks:** Matches `Produces ATP`.",
+   "form_schema": {
+    "$defs": {
+     "StepData": {
+      "description": "What a step looks like before its method is known, for its JSON schema.",
+      "properties": {
+       "uses": {
+        "title": "Uses",
+        "type": "string"
+       },
+       "with": {
+        "additionalProperties": true,
+        "title": "With",
+        "type": "object"
+       }
+      },
+      "required": [
+       "uses"
+      ],
+      "title": "Step",
+      "type": "object"
+     },
+     "OutcomeFeedback": {
+      "additionalProperties": false,
+      "description": "Feedback for each outcome. One left empty is the method's own.",
+      "properties": {
+       "correct": {
+        "default": "",
+        "title": "When it's correct",
+        "type": "string"
+       },
+       "partly_correct": {
+        "default": "",
+        "title": "When it's partly correct",
+        "type": "string"
+       },
+       "incorrect": {
+        "default": "",
+        "title": "When it's incorrect",
+        "type": "string"
+       }
+      },
+      "title": "Feedback",
+      "type": "object"
+     }
+    },
+    "properties": {
+     "marks_by": {
+      "default": "all_correct",
+      "enum": [
+       "all_correct",
+       "any_correct",
+       "none_correct",
+       "total",
+       "proportional"
+      ],
+      "title": "How marks are given",
+      "type": "string",
+      "x-gradeflow": {
+       "labels": {
+        "all_correct": "All must be correct",
+        "any_correct": "Any one must be correct",
+        "none_correct": "None may be correct",
+        "proportional": "Proportional",
+        "total": "Total"
+       }
+      }
+     },
+     "steps": {
+      "items": {
+       "$ref": "#/$defs/StepData",
+       "title": "Step",
+       "x-gradeflow": {
+        "kind": "step"
+       }
+      },
+      "title": "Steps",
+      "type": "array",
+      "x-gradeflow": {
+       "item_label": "step"
+      }
+     },
+     "feedback": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "$ref": "#/$defs/OutcomeFeedback"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "What students read, instead of the method's own feedback.",
+      "title": "Feedback",
+      "x-gradeflow": {
+       "advanced": true,
+       "kind": "feedback",
+       "template_parts": {
+        "{{ answer }}": "Their answer",
+        "{{ feedback }}": "The method's feedback",
+        "{{ proportion | percent }}": "Proportion of the marks"
+       }
+      }
+     }
+    },
+    "title": "Workflow",
+    "type": "object"
+   },
+   "values": {
+    "marks_by": "any_correct",
+    "steps": [
+     {
+      "uses": "gradeflow/accepted-answers@1",
+      "with": {
+       "answers": [
+        "Release energy",
+        "Releases energy for the cell"
+       ]
+      }
+     },
+     {
+      "weight": 0.5,
+      "uses": "gradeflow/accepted-answers@1",
+      "with": {
+       "answers": [
+        "Produces ATP"
+       ]
+      }
+     }
+    ],
+    "question": "Q1"
+   },
+   "steps": [
+    {
+     "setting": {
+      "name": "steps",
+      "path": "/with/steps",
+      "title": "Steps",
+      "is_list": true,
+      "minimum": 0,
+      "maximum": null,
+      "step_paths": [
+       "/with/steps/0",
+       "/with/steps/1"
+      ],
+      "item_label": "step"
+     },
+     "cards": [
+      {
+       "path": "/with/steps/0",
+       "label": "Accepted Answers",
+       "description": "Matches `Release energy` or `Releases energy for the cell`.",
+       "has_problems": false,
+       "problem": "",
+       "notes": []
+      },
+      {
+       "path": "/with/steps/1",
+       "label": "Accepted Answers",
+       "description": "Matches `Produces ATP`.",
+       "has_problems": false,
+       "problem": "",
+       "notes": [
+        "Worth ½"
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "decisions": {
+   "Release energy": "full_marks",
+   "Releases energy for the cell": "full_marks",
+   "Produces ATP": "partial_marks"
+  }
+ },
+ "examples": {
+  "workflow": {
+   "method_label": "Workflow",
+   "method_summary": "Several steps combined into one mark.",
+   "variants": [
+    {
+     "description": "Each one counts:\n- Includes `mitochondria`.",
+     "results": [
+      {
+       "proportion": 1.0,
+       "max_marks": 2.0,
+       "feedback": "Has “mitochondria”.",
+       "method_label": "Workflow",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": null,
+       "marks": 2.0
+      },
+      {
+       "proportion": 0.0,
+       "max_marks": 2.0,
+       "feedback": "Missing “mitochondria”.",
+       "method_label": "Workflow",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": null,
+       "marks": 0.0
+      },
+      {
+       "proportion": 1.0,
+       "max_marks": 2.0,
+       "feedback": "Has “mitochondria”.",
+       "method_label": "Workflow",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": null,
+       "marks": 2.0
+      },
+      {
+       "proportion": 0.0,
+       "max_marks": 2.0,
+       "feedback": "Missing “mitochondria”.",
+       "method_label": "Workflow",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": null,
+       "marks": 0.0
+      },
+      {
+       "proportion": 0.0,
+       "max_marks": 2.0,
+       "feedback": "Missing “mitochondria”.",
+       "method_label": "Workflow",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": null,
+       "marks": 0.0
+      }
+     ]
+    },
+    {
+     "description": "Each one counts:\n- Includes `mitochondria`.\n- Has at most `10` words.",
+     "results": [
+      {
+       "proportion": 1.0,
+       "max_marks": 2.0,
+       "feedback": "Has “mitochondria”.\nCorrect length.",
+       "method_label": "Workflow",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": {
+        "title": "Each one counts",
+        "effect": "earned",
+        "marks": null,
+        "details": [],
+        "children": [
+         {
+          "title": "Includes `mitochondria`.",
+          "effect": "earned",
+          "marks": 1.0,
+          "details": [],
+          "children": []
+         },
+         {
+          "title": "Has at most `10` words.",
+          "effect": "earned",
+          "marks": 1.0,
+          "details": [],
+          "children": []
+         }
+        ]
+       },
+       "marks": 2.0
+      },
+      {
+       "proportion": 0.5,
+       "max_marks": 2.0,
+       "feedback": "Missing “mitochondria”.\nCorrect length.",
+       "method_label": "Workflow",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": {
+        "title": "Each one counts",
+        "effect": "partial",
+        "marks": null,
+        "details": [],
+        "children": [
+         {
+          "title": "Includes `mitochondria`.",
+          "effect": "no_marks",
+          "marks": 0.0,
+          "details": [],
+          "children": []
+         },
+         {
+          "title": "Has at most `10` words.",
+          "effect": "earned",
+          "marks": 1.0,
+          "details": [],
+          "children": []
+         }
+        ]
+       },
+       "marks": 1.0
+      },
+      {
+       "proportion": 0.5,
+       "max_marks": 2.0,
+       "feedback": "Has “mitochondria”.\nToo long: 11 words. Expected at most 10.",
+       "method_label": "Workflow",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": {
+        "title": "Each one counts",
+        "effect": "partial",
+        "marks": null,
+        "details": [],
+        "children": [
+         {
+          "title": "Includes `mitochondria`.",
+          "effect": "earned",
+          "marks": 1.0,
+          "details": [],
+          "children": []
+         },
+         {
+          "title": "Has at most `10` words.",
+          "effect": "no_marks",
+          "marks": 0.0,
+          "details": [],
+          "children": []
+         }
+        ]
+       },
+       "marks": 1.0
+      },
+      {
+       "proportion": 0.5,
+       "max_marks": 2.0,
+       "feedback": "Missing “mitochondria”.\nCorrect length.",
+       "method_label": "Workflow",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": {
+        "title": "Each one counts",
+        "effect": "partial",
+        "marks": null,
+        "details": [],
+        "children": [
+         {
+          "title": "Includes `mitochondria`.",
+          "effect": "no_marks",
+          "marks": 0.0,
+          "details": [],
+          "children": []
+         },
+         {
+          "title": "Has at most `10` words.",
+          "effect": "earned",
+          "marks": 1.0,
+          "details": [],
+          "children": []
+         }
+        ]
+       },
+       "marks": 1.0
+      },
+      {
+       "proportion": 0.0,
+       "max_marks": 2.0,
+       "feedback": "Missing “mitochondria”.\nToo long: 12 words. Expected at most 10.",
+       "method_label": "Workflow",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": {
+        "title": "Each one counts",
+        "effect": "no_marks",
+        "marks": null,
+        "details": [],
+        "children": [
+         {
+          "title": "Includes `mitochondria`.",
+          "effect": "no_marks",
+          "marks": 0.0,
+          "details": [],
+          "children": []
+         },
+         {
+          "title": "Has at most `10` words.",
+          "effect": "no_marks",
+          "marks": 0.0,
+          "details": [],
+          "children": []
+         }
+        ]
+       },
+       "marks": 0.0
+      }
+     ]
+    },
+    {
+     "description": "Each one counts:\n- Any one of these:\n  - Includes `mitochondria`.\n  - Includes `powerhouse`.\n- Has at most `10` words.",
+     "results": [
+      {
+       "proportion": 1.0,
+       "max_marks": 2.0,
+       "feedback": "Has “mitochondria”.\nCorrect length.",
+       "method_label": "Workflow",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": {
+        "title": "Each one counts",
+        "effect": "earned",
+        "marks": null,
+        "details": [],
+        "children": [
+         {
+          "title": "Any one of these",
+          "effect": "earned",
+          "marks": 1.0,
+          "details": [],
+          "children": [
+           {
+            "title": "Includes `mitochondria`.",
+            "effect": "earned",
+            "marks": null,
+            "details": [],
+            "children": []
+           },
+           {
+            "title": "Includes `powerhouse`.",
+            "effect": "uncounted",
+            "marks": null,
+            "details": [],
+            "children": []
+           }
+          ]
+         },
+         {
+          "title": "Has at most `10` words.",
+          "effect": "earned",
+          "marks": 1.0,
+          "details": [],
+          "children": []
+         }
+        ]
+       },
+       "marks": 2.0
+      },
+      {
+       "proportion": 1.0,
+       "max_marks": 2.0,
+       "feedback": "Has “powerhouse”.\nCorrect length.",
+       "method_label": "Workflow",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": {
+        "title": "Each one counts",
+        "effect": "earned",
+        "marks": null,
+        "details": [],
+        "children": [
+         {
+          "title": "Any one of these",
+          "effect": "earned",
+          "marks": 1.0,
+          "details": [],
+          "children": [
+           {
+            "title": "Includes `mitochondria`.",
+            "effect": "uncounted",
+            "marks": null,
+            "details": [],
+            "children": []
+           },
+           {
+            "title": "Includes `powerhouse`.",
+            "effect": "earned",
+            "marks": null,
+            "details": [],
+            "children": []
+           }
+          ]
+         },
+         {
+          "title": "Has at most `10` words.",
+          "effect": "earned",
+          "marks": 1.0,
+          "details": [],
+          "children": []
+         }
+        ]
+       },
+       "marks": 2.0
+      },
+      {
+       "proportion": 0.5,
+       "max_marks": 2.0,
+       "feedback": "Has “mitochondria”.\nToo long: 11 words. Expected at most 10.",
+       "method_label": "Workflow",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": {
+        "title": "Each one counts",
+        "effect": "partial",
+        "marks": null,
+        "details": [],
+        "children": [
+         {
+          "title": "Any one of these",
+          "effect": "earned",
+          "marks": 1.0,
+          "details": [],
+          "children": [
+           {
+            "title": "Includes `mitochondria`.",
+            "effect": "earned",
+            "marks": null,
+            "details": [],
+            "children": []
+           },
+           {
+            "title": "Includes `powerhouse`.",
+            "effect": "uncounted",
+            "marks": null,
+            "details": [],
+            "children": []
+           }
+          ]
+         },
+         {
+          "title": "Has at most `10` words.",
+          "effect": "no_marks",
+          "marks": 0.0,
+          "details": [],
+          "children": []
+         }
+        ]
+       },
+       "marks": 1.0
+      },
+      {
+       "proportion": 0.5,
+       "max_marks": 2.0,
+       "feedback": "Missing “mitochondria”.\nCorrect length.",
+       "method_label": "Workflow",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": {
+        "title": "Each one counts",
+        "effect": "partial",
+        "marks": null,
+        "details": [],
+        "children": [
+         {
+          "title": "Any one of these",
+          "effect": "no_marks",
+          "marks": 0.0,
+          "details": [],
+          "children": [
+           {
+            "title": "Includes `mitochondria`.",
+            "effect": "no_marks",
+            "marks": null,
+            "details": [],
+            "children": []
+           },
+           {
+            "title": "Includes `powerhouse`.",
+            "effect": "no_marks",
+            "marks": null,
+            "details": [],
+            "children": []
+           }
+          ]
+         },
+         {
+          "title": "Has at most `10` words.",
+          "effect": "earned",
+          "marks": 1.0,
+          "details": [],
+          "children": []
+         }
+        ]
+       },
+       "marks": 1.0
+      },
+      {
+       "proportion": 0.0,
+       "max_marks": 2.0,
+       "feedback": "Missing “mitochondria”.\nToo long: 12 words. Expected at most 10.",
+       "method_label": "Workflow",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": {
+        "title": "Each one counts",
+        "effect": "no_marks",
+        "marks": null,
+        "details": [],
+        "children": [
+         {
+          "title": "Any one of these",
+          "effect": "no_marks",
+          "marks": 0.0,
+          "details": [],
+          "children": [
+           {
+            "title": "Includes `mitochondria`.",
+            "effect": "no_marks",
+            "marks": null,
+            "details": [],
+            "children": []
+           },
+           {
+            "title": "Includes `powerhouse`.",
+            "effect": "no_marks",
+            "marks": null,
+            "details": [],
+            "children": []
+           }
+          ]
+         },
+         {
+          "title": "Has at most `10` words.",
+          "effect": "no_marks",
+          "marks": 0.0,
+          "details": [],
+          "children": []
+         }
+        ]
+       },
+       "marks": 0.0
+      }
+     ]
+    },
+    {
+     "description": "All of these:\n- Any one of these:\n  - Includes `mitochondria`.\n  - Includes `powerhouse`.\n- Has at most `10` words.",
+     "results": [
+      {
+       "proportion": 1.0,
+       "max_marks": 2.0,
+       "feedback": "Has “mitochondria”.\nCorrect length.",
+       "method_label": "Workflow",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": {
+        "title": "All of these",
+        "effect": "earned",
+        "marks": null,
+        "details": [],
+        "children": [
+         {
+          "title": "Any one of these",
+          "effect": "earned",
+          "marks": null,
+          "details": [],
+          "children": [
+           {
+            "title": "Includes `mitochondria`.",
+            "effect": "earned",
+            "marks": null,
+            "details": [],
+            "children": []
+           },
+           {
+            "title": "Includes `powerhouse`.",
+            "effect": "uncounted",
+            "marks": null,
+            "details": [],
+            "children": []
+           }
+          ]
+         },
+         {
+          "title": "Has at most `10` words.",
+          "effect": "earned",
+          "marks": null,
+          "details": [],
+          "children": []
+         }
+        ]
+       },
+       "marks": 2.0
+      },
+      {
+       "proportion": 1.0,
+       "max_marks": 2.0,
+       "feedback": "Has “powerhouse”.\nCorrect length.",
+       "method_label": "Workflow",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": {
+        "title": "All of these",
+        "effect": "earned",
+        "marks": null,
+        "details": [],
+        "children": [
+         {
+          "title": "Any one of these",
+          "effect": "earned",
+          "marks": null,
+          "details": [],
+          "children": [
+           {
+            "title": "Includes `mitochondria`.",
+            "effect": "uncounted",
+            "marks": null,
+            "details": [],
+            "children": []
+           },
+           {
+            "title": "Includes `powerhouse`.",
+            "effect": "earned",
+            "marks": null,
+            "details": [],
+            "children": []
+           }
+          ]
+         },
+         {
+          "title": "Has at most `10` words.",
+          "effect": "earned",
+          "marks": null,
+          "details": [],
+          "children": []
+         }
+        ]
+       },
+       "marks": 2.0
+      },
+      {
+       "proportion": 0.0,
+       "max_marks": 2.0,
+       "feedback": "Too long: 11 words. Expected at most 10.",
+       "method_label": "Workflow",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": {
+        "title": "All of these",
+        "effect": "no_marks",
+        "marks": null,
+        "details": [],
+        "children": [
+         {
+          "title": "Any one of these",
+          "effect": "earned",
+          "marks": null,
+          "details": [],
+          "children": [
+           {
+            "title": "Includes `mitochondria`.",
+            "effect": "earned",
+            "marks": null,
+            "details": [],
+            "children": []
+           },
+           {
+            "title": "Includes `powerhouse`.",
+            "effect": "uncounted",
+            "marks": null,
+            "details": [],
+            "children": []
+           }
+          ]
+         },
+         {
+          "title": "Has at most `10` words.",
+          "effect": "no_marks",
+          "marks": null,
+          "details": [],
+          "children": []
+         }
+        ]
+       },
+       "marks": 0.0
+      },
+      {
+       "proportion": 0.0,
+       "max_marks": 2.0,
+       "feedback": "Missing “mitochondria”.",
+       "method_label": "Workflow",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": {
+        "title": "All of these",
+        "effect": "no_marks",
+        "marks": null,
+        "details": [],
+        "children": [
+         {
+          "title": "Any one of these",
+          "effect": "no_marks",
+          "marks": null,
+          "details": [],
+          "children": [
+           {
+            "title": "Includes `mitochondria`.",
+            "effect": "no_marks",
+            "marks": null,
+            "details": [],
+            "children": []
+           },
+           {
+            "title": "Includes `powerhouse`.",
+            "effect": "no_marks",
+            "marks": null,
+            "details": [],
+            "children": []
+           }
+          ]
+         },
+         {
+          "title": "Has at most `10` words.",
+          "effect": "earned",
+          "marks": null,
+          "details": [],
+          "children": []
+         }
+        ]
+       },
+       "marks": 0.0
+      },
+      {
+       "proportion": 0.0,
+       "max_marks": 2.0,
+       "feedback": "Missing “mitochondria”.\nToo long: 12 words. Expected at most 10.",
+       "method_label": "Workflow",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": {
+        "title": "All of these",
+        "effect": "no_marks",
+        "marks": null,
+        "details": [],
+        "children": [
+         {
+          "title": "Any one of these",
+          "effect": "no_marks",
+          "marks": null,
+          "details": [],
+          "children": [
+           {
+            "title": "Includes `mitochondria`.",
+            "effect": "no_marks",
+            "marks": null,
+            "details": [],
+            "children": []
+           },
+           {
+            "title": "Includes `powerhouse`.",
+            "effect": "no_marks",
+            "marks": null,
+            "details": [],
+            "children": []
+           }
+          ]
+         },
+         {
+          "title": "Has at most `10` words.",
+          "effect": "no_marks",
+          "marks": null,
+          "details": [],
+          "children": []
+         }
+        ]
+       },
+       "marks": 0.0
+      }
+     ]
+    },
+    {
+     "description": "All of these:\n- Any one of these:\n  - Includes `mitochondria`.\n  - Includes `powerhouse`.",
+     "results": [
+      {
+       "proportion": 1.0,
+       "max_marks": 2.0,
+       "feedback": "Has “mitochondria”.",
+       "method_label": "Workflow",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": {
+        "title": "Any one of these",
+        "effect": "earned",
+        "marks": null,
+        "details": [],
+        "children": [
+         {
+          "title": "Includes `mitochondria`.",
+          "effect": "earned",
+          "marks": null,
+          "details": [],
+          "children": []
+         },
+         {
+          "title": "Includes `powerhouse`.",
+          "effect": "uncounted",
+          "marks": null,
+          "details": [],
+          "children": []
+         }
+        ]
+       },
+       "marks": 2.0
+      },
+      {
+       "proportion": 1.0,
+       "max_marks": 2.0,
+       "feedback": "Has “powerhouse”.",
+       "method_label": "Workflow",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": {
+        "title": "Any one of these",
+        "effect": "earned",
+        "marks": null,
+        "details": [],
+        "children": [
+         {
+          "title": "Includes `mitochondria`.",
+          "effect": "uncounted",
+          "marks": null,
+          "details": [],
+          "children": []
+         },
+         {
+          "title": "Includes `powerhouse`.",
+          "effect": "earned",
+          "marks": null,
+          "details": [],
+          "children": []
+         }
+        ]
+       },
+       "marks": 2.0
+      },
+      {
+       "proportion": 1.0,
+       "max_marks": 2.0,
+       "feedback": "Has “mitochondria”.",
+       "method_label": "Workflow",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": {
+        "title": "Any one of these",
+        "effect": "earned",
+        "marks": null,
+        "details": [],
+        "children": [
+         {
+          "title": "Includes `mitochondria`.",
+          "effect": "earned",
+          "marks": null,
+          "details": [],
+          "children": []
+         },
+         {
+          "title": "Includes `powerhouse`.",
+          "effect": "uncounted",
+          "marks": null,
+          "details": [],
+          "children": []
+         }
+        ]
+       },
+       "marks": 2.0
+      },
+      {
+       "proportion": 0.0,
+       "max_marks": 2.0,
+       "feedback": "Missing “mitochondria”.",
+       "method_label": "Workflow",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": {
+        "title": "Any one of these",
+        "effect": "no_marks",
+        "marks": null,
+        "details": [],
+        "children": [
+         {
+          "title": "Includes `mitochondria`.",
+          "effect": "no_marks",
+          "marks": null,
+          "details": [],
+          "children": []
+         },
+         {
+          "title": "Includes `powerhouse`.",
+          "effect": "no_marks",
+          "marks": null,
+          "details": [],
+          "children": []
+         }
+        ]
+       },
+       "marks": 0.0
+      },
+      {
+       "proportion": 0.0,
+       "max_marks": 2.0,
+       "feedback": "Missing “mitochondria”.",
+       "method_label": "Workflow",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": {
+        "title": "Any one of these",
+        "effect": "no_marks",
+        "marks": null,
+        "details": [],
+        "children": [
+         {
+          "title": "Includes `mitochondria`.",
+          "effect": "no_marks",
+          "marks": null,
+          "details": [],
+          "children": []
+         },
+         {
+          "title": "Includes `powerhouse`.",
+          "effect": "no_marks",
+          "marks": null,
+          "details": [],
+          "children": []
+         }
+        ]
+       },
+       "marks": 0.0
+      }
+     ]
+    }
+   ]
+  },
+  "answer_criteria": {
+   "method_label": "Answer Criteria",
+   "method_summary": "Marks for each criterion met, or the best fit.",
+   "variants": [
+    {
+     "description": "",
+     "results": [
+      {
+       "proportion": 0.0,
+       "max_marks": 3.0,
+       "feedback": "",
+       "method_label": "Answer Criteria",
+       "is_marked": false,
+       "model_names": [],
+       "breakdown": null,
+       "marks": 0.0
+      },
+      {
+       "proportion": 0.0,
+       "max_marks": 3.0,
+       "feedback": "",
+       "method_label": "Answer Criteria",
+       "is_marked": false,
+       "model_names": [],
+       "breakdown": null,
+       "marks": 0.0
+      },
+      {
+       "proportion": 0.0,
+       "max_marks": 3.0,
+       "feedback": "",
+       "method_label": "Answer Criteria",
+       "is_marked": false,
+       "model_names": [],
+       "breakdown": null,
+       "marks": 0.0
+      }
+     ]
+    },
+    {
+     "description": "AI checks the answer for Correct total (2 marks).",
+     "results": [
+      {
+       "proportion": 0.6666666666666666,
+       "max_marks": 3.0,
+       "feedback": "Correct total.",
+       "method_label": "Answer Criteria",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": null,
+       "marks": 2.0
+      },
+      {
+       "proportion": 0.6666666666666666,
+       "max_marks": 3.0,
+       "feedback": "Correct total.",
+       "method_label": "Answer Criteria",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": null,
+       "marks": 2.0
+      },
+      {
+       "proportion": 0.0,
+       "max_marks": 3.0,
+       "feedback": "Correct total: Not met.",
+       "method_label": "Answer Criteria",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": null,
+       "marks": 0.0
+      }
+     ]
+    },
+    {
+     "description": "AI checks the answer for each of these:\n- Correct total (2 marks)\n- Shows the working (1 mark)",
+     "results": [
+      {
+       "proportion": 1.0,
+       "max_marks": 3.0,
+       "feedback": "Correct total.\nShows the working.",
+       "method_label": "Answer Criteria",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": null,
+       "marks": 3.0
+      },
+      {
+       "proportion": 0.6666666666666666,
+       "max_marks": 3.0,
+       "feedback": "Correct total.\nShows the working: Not met.",
+       "method_label": "Answer Criteria",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": null,
+       "marks": 2.0
+      },
+      {
+       "proportion": 0.3333333333333333,
+       "max_marks": 3.0,
+       "feedback": "Correct total: Not met.\nShows the working.",
+       "method_label": "Answer Criteria",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": null,
+       "marks": 1.0
+      }
+     ]
+    },
+    {
+     "description": "AI checks the answer for each of these:\n- Correct total (2 marks)\n- Shows the working (1 mark)\n- Forgot to sum (-1 mark)",
+     "results": [
+      {
+       "proportion": 1.0,
+       "max_marks": 3.0,
+       "feedback": "Correct total.\nShows the working.",
+       "method_label": "Answer Criteria",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": null,
+       "marks": 3.0
+      },
+      {
+       "proportion": 0.6666666666666666,
+       "max_marks": 3.0,
+       "feedback": "Correct total.\nShows the working: Not met.",
+       "method_label": "Answer Criteria",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": null,
+       "marks": 2.0
+      },
+      {
+       "proportion": 0.0,
+       "max_marks": 3.0,
+       "feedback": "Correct total: Not met.\nShows the working.\nPenalty: Forgot to sum.",
+       "method_label": "Answer Criteria",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": null,
+       "marks": 0.0
+      }
+     ]
+    }
+   ]
+  },
+  "code_tests": {
+   "method_label": "Code Tests",
+   "method_summary": "Marks for each test the student's code passes.",
+   "variants": [
+    {
+     "description": "Passes these tests, a share for each:\n- `is_even(4)` gives `True`.\n- `is_even(7)` gives `False`.",
+     "results": [
+      {
+       "proportion": 1.0,
+       "max_marks": 2.0,
+       "feedback": "Passed both tests.",
+       "method_label": "Code Tests",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": {
+        "title": "Passes these tests, a share for each",
+        "effect": "earned",
+        "marks": null,
+        "details": [],
+        "children": [
+         {
+          "title": "Makes `is_even(4)` give `True`.",
+          "effect": "earned",
+          "marks": 1.0,
+          "details": [
+           {
+            "title": "Expression",
+            "value": "is_even(4)",
+            "kind": "code"
+           },
+           {
+            "title": "Expected",
+            "value": "True",
+            "kind": "code"
+           },
+           {
+            "title": "Output",
+            "value": "True",
+            "kind": "code"
+           }
+          ],
+          "children": []
+         },
+         {
+          "title": "Makes `is_even(7)` give `False`.",
+          "effect": "earned",
+          "marks": 1.0,
+          "details": [
+           {
+            "title": "Expression",
+            "value": "is_even(7)",
+            "kind": "code"
+           },
+           {
+            "title": "Expected",
+            "value": "False",
+            "kind": "code"
+           },
+           {
+            "title": "Output",
+            "value": "False",
+            "kind": "code"
+           }
+          ],
+          "children": []
+         }
+        ]
+       },
+       "marks": 2.0
+      },
+      {
+       "proportion": 1.0,
+       "max_marks": 2.0,
+       "feedback": "Passed both tests.",
+       "method_label": "Code Tests",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": {
+        "title": "Passes these tests, a share for each",
+        "effect": "earned",
+        "marks": null,
+        "details": [],
+        "children": [
+         {
+          "title": "Makes `is_even(4)` give `True`.",
+          "effect": "earned",
+          "marks": 1.0,
+          "details": [
+           {
+            "title": "Expression",
+            "value": "is_even(4)",
+            "kind": "code"
+           },
+           {
+            "title": "Expected",
+            "value": "True",
+            "kind": "code"
+           },
+           {
+            "title": "Output",
+            "value": "True",
+            "kind": "code"
+           }
+          ],
+          "children": []
+         },
+         {
+          "title": "Makes `is_even(7)` give `False`.",
+          "effect": "earned",
+          "marks": 1.0,
+          "details": [
+           {
+            "title": "Expression",
+            "value": "is_even(7)",
+            "kind": "code"
+           },
+           {
+            "title": "Expected",
+            "value": "False",
+            "kind": "code"
+           },
+           {
+            "title": "Output",
+            "value": "False",
+            "kind": "code"
+           }
+          ],
+          "children": []
+         }
+        ]
+       },
+       "marks": 2.0
+      },
+      {
+       "proportion": 0.0,
+       "max_marks": 2.0,
+       "feedback": "Passed 0 of 2 tests.\nis_even(4) gave None. Expected True. It printed “True”.\nis_even(7) gave None. Expected False. It printed “False”.",
+       "method_label": "Code Tests",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": {
+        "title": "Passes these tests, a share for each",
+        "effect": "no_marks",
+        "marks": null,
+        "details": [],
+        "children": [
+         {
+          "title": "Makes `is_even(4)` give `True`.",
+          "effect": "no_marks",
+          "marks": 0.0,
+          "details": [
+           {
+            "title": "Expression",
+            "value": "is_even(4)",
+            "kind": "code"
+           },
+           {
+            "title": "Expected",
+            "value": "True",
+            "kind": "code"
+           },
+           {
+            "title": "Output",
+            "value": "None",
+            "kind": "code"
+           },
+           {
+            "title": "Printed",
+            "value": "True",
+            "kind": "text"
+           }
+          ],
+          "children": []
+         },
+         {
+          "title": "Makes `is_even(7)` give `False`.",
+          "effect": "no_marks",
+          "marks": 0.0,
+          "details": [
+           {
+            "title": "Expression",
+            "value": "is_even(7)",
+            "kind": "code"
+           },
+           {
+            "title": "Expected",
+            "value": "False",
+            "kind": "code"
+           },
+           {
+            "title": "Output",
+            "value": "None",
+            "kind": "code"
+           },
+           {
+            "title": "Printed",
+            "value": "False",
+            "kind": "text"
+           }
+          ],
+          "children": []
+         }
+        ]
+       },
+       "marks": 0.0
+      }
+     ]
+    },
+    {
+     "description": "Passes these tests, a share for each:\n- `is_even(4)` gives `True`.\n- `is_even(7)` gives `False`.\n- `is_even(0)` gives `True`.\n- `is_even(-2)` gives `True`.",
+     "results": [
+      {
+       "proportion": 1.0,
+       "max_marks": 2.0,
+       "feedback": "Passed all 4 tests.",
+       "method_label": "Code Tests",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": {
+        "title": "Passes these tests, a share for each",
+        "effect": "earned",
+        "marks": null,
+        "details": [],
+        "children": [
+         {
+          "title": "Makes `is_even(4)` give `True`.",
+          "effect": "earned",
+          "marks": 0.5,
+          "details": [
+           {
+            "title": "Expression",
+            "value": "is_even(4)",
+            "kind": "code"
+           },
+           {
+            "title": "Expected",
+            "value": "True",
+            "kind": "code"
+           },
+           {
+            "title": "Output",
+            "value": "True",
+            "kind": "code"
+           }
+          ],
+          "children": []
+         },
+         {
+          "title": "Makes `is_even(7)` give `False`.",
+          "effect": "earned",
+          "marks": 0.5,
+          "details": [
+           {
+            "title": "Expression",
+            "value": "is_even(7)",
+            "kind": "code"
+           },
+           {
+            "title": "Expected",
+            "value": "False",
+            "kind": "code"
+           },
+           {
+            "title": "Output",
+            "value": "False",
+            "kind": "code"
+           }
+          ],
+          "children": []
+         },
+         {
+          "title": "Makes `is_even(0)` give `True`.",
+          "effect": "earned",
+          "marks": 0.5,
+          "details": [
+           {
+            "title": "Expression",
+            "value": "is_even(0)",
+            "kind": "code"
+           },
+           {
+            "title": "Expected",
+            "value": "True",
+            "kind": "code"
+           },
+           {
+            "title": "Output",
+            "value": "True",
+            "kind": "code"
+           }
+          ],
+          "children": []
+         },
+         {
+          "title": "Makes `is_even(-2)` give `True`.",
+          "effect": "earned",
+          "marks": 0.5,
+          "details": [
+           {
+            "title": "Expression",
+            "value": "is_even(-2)",
+            "kind": "code"
+           },
+           {
+            "title": "Expected",
+            "value": "True",
+            "kind": "code"
+           },
+           {
+            "title": "Output",
+            "value": "True",
+            "kind": "code"
+           }
+          ],
+          "children": []
+         }
+        ]
+       },
+       "marks": 2.0
+      },
+      {
+       "proportion": 0.5,
+       "max_marks": 2.0,
+       "feedback": "Passed 2 of 4 tests.\nis_even(0) gave False. Expected True.\nis_even(-2) gave False. Expected True.",
+       "method_label": "Code Tests",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": {
+        "title": "Passes these tests, a share for each",
+        "effect": "partial",
+        "marks": null,
+        "details": [],
+        "children": [
+         {
+          "title": "Makes `is_even(4)` give `True`.",
+          "effect": "earned",
+          "marks": 0.5,
+          "details": [
+           {
+            "title": "Expression",
+            "value": "is_even(4)",
+            "kind": "code"
+           },
+           {
+            "title": "Expected",
+            "value": "True",
+            "kind": "code"
+           },
+           {
+            "title": "Output",
+            "value": "True",
+            "kind": "code"
+           }
+          ],
+          "children": []
+         },
+         {
+          "title": "Makes `is_even(7)` give `False`.",
+          "effect": "earned",
+          "marks": 0.5,
+          "details": [
+           {
+            "title": "Expression",
+            "value": "is_even(7)",
+            "kind": "code"
+           },
+           {
+            "title": "Expected",
+            "value": "False",
+            "kind": "code"
+           },
+           {
+            "title": "Output",
+            "value": "False",
+            "kind": "code"
+           }
+          ],
+          "children": []
+         },
+         {
+          "title": "Makes `is_even(0)` give `True`.",
+          "effect": "no_marks",
+          "marks": 0.0,
+          "details": [
+           {
+            "title": "Expression",
+            "value": "is_even(0)",
+            "kind": "code"
+           },
+           {
+            "title": "Expected",
+            "value": "True",
+            "kind": "code"
+           },
+           {
+            "title": "Output",
+            "value": "False",
+            "kind": "code"
+           }
+          ],
+          "children": []
+         },
+         {
+          "title": "Makes `is_even(-2)` give `True`.",
+          "effect": "no_marks",
+          "marks": 0.0,
+          "details": [
+           {
+            "title": "Expression",
+            "value": "is_even(-2)",
+            "kind": "code"
+           },
+           {
+            "title": "Expected",
+            "value": "True",
+            "kind": "code"
+           },
+           {
+            "title": "Output",
+            "value": "False",
+            "kind": "code"
+           }
+          ],
+          "children": []
+         }
+        ]
+       },
+       "marks": 1.0
+      },
+      {
+       "proportion": 0.0,
+       "max_marks": 2.0,
+       "feedback": "Passed 0 of 4 tests.\nis_even(4) gave None. Expected True. It printed “True”.\nis_even(7) gave None. Expected False. It printed “False”.\nis_even(0) gave None. Expected True. It printed “True”.\nis_even(-2) gave None. Expected True. It printed “True”.",
+       "method_label": "Code Tests",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": {
+        "title": "Passes these tests, a share for each",
+        "effect": "no_marks",
+        "marks": null,
+        "details": [],
+        "children": [
+         {
+          "title": "Makes `is_even(4)` give `True`.",
+          "effect": "no_marks",
+          "marks": 0.0,
+          "details": [
+           {
+            "title": "Expression",
+            "value": "is_even(4)",
+            "kind": "code"
+           },
+           {
+            "title": "Expected",
+            "value": "True",
+            "kind": "code"
+           },
+           {
+            "title": "Output",
+            "value": "None",
+            "kind": "code"
+           },
+           {
+            "title": "Printed",
+            "value": "True",
+            "kind": "text"
+           }
+          ],
+          "children": []
+         },
+         {
+          "title": "Makes `is_even(7)` give `False`.",
+          "effect": "no_marks",
+          "marks": 0.0,
+          "details": [
+           {
+            "title": "Expression",
+            "value": "is_even(7)",
+            "kind": "code"
+           },
+           {
+            "title": "Expected",
+            "value": "False",
+            "kind": "code"
+           },
+           {
+            "title": "Output",
+            "value": "None",
+            "kind": "code"
+           },
+           {
+            "title": "Printed",
+            "value": "False",
+            "kind": "text"
+           }
+          ],
+          "children": []
+         },
+         {
+          "title": "Makes `is_even(0)` give `True`.",
+          "effect": "no_marks",
+          "marks": 0.0,
+          "details": [
+           {
+            "title": "Expression",
+            "value": "is_even(0)",
+            "kind": "code"
+           },
+           {
+            "title": "Expected",
+            "value": "True",
+            "kind": "code"
+           },
+           {
+            "title": "Output",
+            "value": "None",
+            "kind": "code"
+           },
+           {
+            "title": "Printed",
+            "value": "True",
+            "kind": "text"
+           }
+          ],
+          "children": []
+         },
+         {
+          "title": "Makes `is_even(-2)` give `True`.",
+          "effect": "no_marks",
+          "marks": 0.0,
+          "details": [
+           {
+            "title": "Expression",
+            "value": "is_even(-2)",
+            "kind": "code"
+           },
+           {
+            "title": "Expected",
+            "value": "True",
+            "kind": "code"
+           },
+           {
+            "title": "Output",
+            "value": "None",
+            "kind": "code"
+           },
+           {
+            "title": "Printed",
+            "value": "True",
+            "kind": "text"
+           }
+          ],
+          "children": []
+         }
+        ]
+       },
+       "marks": 0.0
+      }
+     ]
+    },
+    {
+     "description": "Passes all 4 tests:\n- `is_even(4)` gives `True`.\n- `is_even(7)` gives `False`.\n- `is_even(0)` gives `True`.\n- `is_even(-2)` gives `True`.",
+     "results": [
+      {
+       "proportion": 1.0,
+       "max_marks": 2.0,
+       "feedback": "Passed all 4 tests.",
+       "method_label": "Code Tests",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": {
+        "title": "Passes all 4 tests",
+        "effect": "earned",
+        "marks": null,
+        "details": [],
+        "children": [
+         {
+          "title": "Makes `is_even(4)` give `True`.",
+          "effect": "earned",
+          "marks": null,
+          "details": [
+           {
+            "title": "Expression",
+            "value": "is_even(4)",
+            "kind": "code"
+           },
+           {
+            "title": "Expected",
+            "value": "True",
+            "kind": "code"
+           },
+           {
+            "title": "Output",
+            "value": "True",
+            "kind": "code"
+           }
+          ],
+          "children": []
+         },
+         {
+          "title": "Makes `is_even(7)` give `False`.",
+          "effect": "earned",
+          "marks": null,
+          "details": [
+           {
+            "title": "Expression",
+            "value": "is_even(7)",
+            "kind": "code"
+           },
+           {
+            "title": "Expected",
+            "value": "False",
+            "kind": "code"
+           },
+           {
+            "title": "Output",
+            "value": "False",
+            "kind": "code"
+           }
+          ],
+          "children": []
+         },
+         {
+          "title": "Makes `is_even(0)` give `True`.",
+          "effect": "earned",
+          "marks": null,
+          "details": [
+           {
+            "title": "Expression",
+            "value": "is_even(0)",
+            "kind": "code"
+           },
+           {
+            "title": "Expected",
+            "value": "True",
+            "kind": "code"
+           },
+           {
+            "title": "Output",
+            "value": "True",
+            "kind": "code"
+           }
+          ],
+          "children": []
+         },
+         {
+          "title": "Makes `is_even(-2)` give `True`.",
+          "effect": "earned",
+          "marks": null,
+          "details": [
+           {
+            "title": "Expression",
+            "value": "is_even(-2)",
+            "kind": "code"
+           },
+           {
+            "title": "Expected",
+            "value": "True",
+            "kind": "code"
+           },
+           {
+            "title": "Output",
+            "value": "True",
+            "kind": "code"
+           }
+          ],
+          "children": []
+         }
+        ]
+       },
+       "marks": 2.0
+      },
+      {
+       "proportion": 0.0,
+       "max_marks": 2.0,
+       "feedback": "Passed 2 of 4 tests.\nis_even(0) gave False. Expected True.\nis_even(-2) gave False. Expected True.",
+       "method_label": "Code Tests",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": {
+        "title": "Passes all 4 tests",
+        "effect": "no_marks",
+        "marks": null,
+        "details": [],
+        "children": [
+         {
+          "title": "Makes `is_even(4)` give `True`.",
+          "effect": "earned",
+          "marks": null,
+          "details": [
+           {
+            "title": "Expression",
+            "value": "is_even(4)",
+            "kind": "code"
+           },
+           {
+            "title": "Expected",
+            "value": "True",
+            "kind": "code"
+           },
+           {
+            "title": "Output",
+            "value": "True",
+            "kind": "code"
+           }
+          ],
+          "children": []
+         },
+         {
+          "title": "Makes `is_even(7)` give `False`.",
+          "effect": "earned",
+          "marks": null,
+          "details": [
+           {
+            "title": "Expression",
+            "value": "is_even(7)",
+            "kind": "code"
+           },
+           {
+            "title": "Expected",
+            "value": "False",
+            "kind": "code"
+           },
+           {
+            "title": "Output",
+            "value": "False",
+            "kind": "code"
+           }
+          ],
+          "children": []
+         },
+         {
+          "title": "Makes `is_even(0)` give `True`.",
+          "effect": "no_marks",
+          "marks": null,
+          "details": [
+           {
+            "title": "Expression",
+            "value": "is_even(0)",
+            "kind": "code"
+           },
+           {
+            "title": "Expected",
+            "value": "True",
+            "kind": "code"
+           },
+           {
+            "title": "Output",
+            "value": "False",
+            "kind": "code"
+           }
+          ],
+          "children": []
+         },
+         {
+          "title": "Makes `is_even(-2)` give `True`.",
+          "effect": "no_marks",
+          "marks": null,
+          "details": [
+           {
+            "title": "Expression",
+            "value": "is_even(-2)",
+            "kind": "code"
+           },
+           {
+            "title": "Expected",
+            "value": "True",
+            "kind": "code"
+           },
+           {
+            "title": "Output",
+            "value": "False",
+            "kind": "code"
+           }
+          ],
+          "children": []
+         }
+        ]
+       },
+       "marks": 0.0
+      },
+      {
+       "proportion": 0.0,
+       "max_marks": 2.0,
+       "feedback": "Passed 0 of 4 tests.\nis_even(4) gave None. Expected True. It printed “True”.\nis_even(7) gave None. Expected False. It printed “False”.\nis_even(0) gave None. Expected True. It printed “True”.\nis_even(-2) gave None. Expected True. It printed “True”.",
+       "method_label": "Code Tests",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": {
+        "title": "Passes all 4 tests",
+        "effect": "no_marks",
+        "marks": null,
+        "details": [],
+        "children": [
+         {
+          "title": "Makes `is_even(4)` give `True`.",
+          "effect": "no_marks",
+          "marks": null,
+          "details": [
+           {
+            "title": "Expression",
+            "value": "is_even(4)",
+            "kind": "code"
+           },
+           {
+            "title": "Expected",
+            "value": "True",
+            "kind": "code"
+           },
+           {
+            "title": "Output",
+            "value": "None",
+            "kind": "code"
+           },
+           {
+            "title": "Printed",
+            "value": "True",
+            "kind": "text"
+           }
+          ],
+          "children": []
+         },
+         {
+          "title": "Makes `is_even(7)` give `False`.",
+          "effect": "no_marks",
+          "marks": null,
+          "details": [
+           {
+            "title": "Expression",
+            "value": "is_even(7)",
+            "kind": "code"
+           },
+           {
+            "title": "Expected",
+            "value": "False",
+            "kind": "code"
+           },
+           {
+            "title": "Output",
+            "value": "None",
+            "kind": "code"
+           },
+           {
+            "title": "Printed",
+            "value": "False",
+            "kind": "text"
+           }
+          ],
+          "children": []
+         },
+         {
+          "title": "Makes `is_even(0)` give `True`.",
+          "effect": "no_marks",
+          "marks": null,
+          "details": [
+           {
+            "title": "Expression",
+            "value": "is_even(0)",
+            "kind": "code"
+           },
+           {
+            "title": "Expected",
+            "value": "True",
+            "kind": "code"
+           },
+           {
+            "title": "Output",
+            "value": "None",
+            "kind": "code"
+           },
+           {
+            "title": "Printed",
+            "value": "True",
+            "kind": "text"
+           }
+          ],
+          "children": []
+         },
+         {
+          "title": "Makes `is_even(-2)` give `True`.",
+          "effect": "no_marks",
+          "marks": null,
+          "details": [
+           {
+            "title": "Expression",
+            "value": "is_even(-2)",
+            "kind": "code"
+           },
+           {
+            "title": "Expected",
+            "value": "True",
+            "kind": "code"
+           },
+           {
+            "title": "Output",
+            "value": "None",
+            "kind": "code"
+           },
+           {
+            "title": "Printed",
+            "value": "True",
+            "kind": "text"
+           }
+          ],
+          "children": []
+         }
+        ]
+       },
+       "marks": 0.0
+      }
+     ]
+    }
+   ]
+  },
+  "custom_code": {
+   "method_label": "Custom Code",
+   "method_summary": "Your Python code decides the marks.",
+   "variants": [
+    {
+     "description": "Python code decides the marks:\n\n```python\nword = answer.strip()\ncorrect = word == word[::-1]\nfeedback = \"Correct.\" if correct else \"Expected a word that reads the same backwards.\"\n```",
+     "results": [
+      {
+       "proportion": 0.0,
+       "max_marks": 1.0,
+       "feedback": "Expected a word that reads the same backwards.",
+       "method_label": "Custom Code",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": null,
+       "marks": 0.0
+      },
+      {
+       "proportion": 0.0,
+       "max_marks": 1.0,
+       "feedback": "Expected a word that reads the same backwards.",
+       "method_label": "Custom Code",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": null,
+       "marks": 0.0
+      },
+      {
+       "proportion": 0.0,
+       "max_marks": 1.0,
+       "feedback": "Expected a word that reads the same backwards.",
+       "method_label": "Custom Code",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": null,
+       "marks": 0.0
+      },
+      {
+       "proportion": 0.0,
+       "max_marks": 1.0,
+       "feedback": "Expected a word that reads the same backwards.",
+       "method_label": "Custom Code",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": null,
+       "marks": 0.0
+      },
+      {
+       "proportion": 1.0,
+       "max_marks": 1.0,
+       "feedback": "Correct.",
+       "method_label": "Custom Code",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": null,
+       "marks": 1.0
+      }
+     ]
+    },
+    {
+     "description": "Python code decides the marks:\n\n```python\nword = answer.strip().lower()\ncorrect = word == word[::-1]\nfeedback = \"Correct.\" if correct else \"Expected a word that reads the same backwards.\"\n```",
+     "results": [
+      {
+       "proportion": 1.0,
+       "max_marks": 1.0,
+       "feedback": "Correct.",
+       "method_label": "Custom Code",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": null,
+       "marks": 1.0
+      },
+      {
+       "proportion": 1.0,
+       "max_marks": 1.0,
+       "feedback": "Correct.",
+       "method_label": "Custom Code",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": null,
+       "marks": 1.0
+      },
+      {
+       "proportion": 1.0,
+       "max_marks": 1.0,
+       "feedback": "Correct.",
+       "method_label": "Custom Code",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": null,
+       "marks": 1.0
+      },
+      {
+       "proportion": 0.0,
+       "max_marks": 1.0,
+       "feedback": "Expected a word that reads the same backwards.",
+       "method_label": "Custom Code",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": null,
+       "marks": 0.0
+      },
+      {
+       "proportion": 1.0,
+       "max_marks": 1.0,
+       "feedback": "Correct.",
+       "method_label": "Custom Code",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": null,
+       "marks": 1.0
+      }
+     ]
+    },
+    {
+     "description": "Python code decides the marks:\n\n```python\nword = answer.strip().lower()\ncorrect = len(word) > 1 and word == word[::-1]\nfeedback = \"Correct.\" if correct else \"Expected a word that reads the same backwards.\"\n```",
+     "results": [
+      {
+       "proportion": 1.0,
+       "max_marks": 1.0,
+       "feedback": "Correct.",
+       "method_label": "Custom Code",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": null,
+       "marks": 1.0
+      },
+      {
+       "proportion": 1.0,
+       "max_marks": 1.0,
+       "feedback": "Correct.",
+       "method_label": "Custom Code",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": null,
+       "marks": 1.0
+      },
+      {
+       "proportion": 1.0,
+       "max_marks": 1.0,
+       "feedback": "Correct.",
+       "method_label": "Custom Code",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": null,
+       "marks": 1.0
+      },
+      {
+       "proportion": 0.0,
+       "max_marks": 1.0,
+       "feedback": "Expected a word that reads the same backwards.",
+       "method_label": "Custom Code",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": null,
+       "marks": 0.0
+      },
+      {
+       "proportion": 0.0,
+       "max_marks": 1.0,
+       "feedback": "Expected a word that reads the same backwards.",
+       "method_label": "Custom Code",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": null,
+       "marks": 0.0
+      }
+     ]
+    }
+   ]
+  },
+  "conditional": {
+   "method_label": "Conditional",
+   "method_summary": "Marks questions differently depending on another answer.",
+   "variants": [
+    {
+     "description": "Chooses exactly `away`.",
+     "results": [
+      {
+       "proportion": 1.0,
+       "max_marks": 1.0,
+       "feedback": "Correct.",
+       "method_label": "Multiple Choice",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": null,
+       "marks": 1.0
+      },
+      {
+       "proportion": 0.0,
+       "max_marks": 1.0,
+       "feedback": "Expected “away”.",
+       "method_label": "Multiple Choice",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": null,
+       "marks": 0.0
+      },
+      {
+       "proportion": 0.0,
+       "max_marks": 1.0,
+       "feedback": "Expected “away”.",
+       "method_label": "Multiple Choice",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": null,
+       "marks": 0.0
+      },
+      {
+       "proportion": 1.0,
+       "max_marks": 1.0,
+       "feedback": "Correct.",
+       "method_label": "Multiple Choice",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": null,
+       "marks": 1.0
+      }
+     ]
+    },
+    {
+     "description": "If all are correct:\n- **Q4a:** Chooses exactly `artery`.\n\nThen:\n- **Q4b:** Chooses exactly `away`.",
+     "results": [
+      {
+       "proportion": 1.0,
+       "max_marks": 1.0,
+       "feedback": "Correct.",
+       "method_label": "Conditional",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": {
+        "title": "If all are correct",
+        "effect": "earned",
+        "marks": null,
+        "details": [],
+        "children": [
+         {
+          "title": "**Q4a:** Chooses exactly `artery`.",
+          "effect": "met",
+          "marks": null,
+          "details": [],
+          "children": []
+         },
+         {
+          "title": "Chooses exactly `away`.",
+          "effect": "earned",
+          "marks": null,
+          "details": [],
+          "children": []
+         }
+        ]
+       },
+       "marks": 1.0
+      },
+      {
+       "proportion": 0.0,
+       "max_marks": 1.0,
+       "feedback": "",
+       "method_label": "Conditional",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": null,
+       "marks": 0.0
+      },
+      {
+       "proportion": 0.0,
+       "max_marks": 1.0,
+       "feedback": "Expected “away”.",
+       "method_label": "Conditional",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": {
+        "title": "If all are correct",
+        "effect": "no_marks",
+        "marks": null,
+        "details": [],
+        "children": [
+         {
+          "title": "**Q4a:** Chooses exactly `artery`.",
+          "effect": "met",
+          "marks": null,
+          "details": [],
+          "children": []
+         },
+         {
+          "title": "Chooses exactly `away`.",
+          "effect": "no_marks",
+          "marks": null,
+          "details": [],
+          "children": []
+         }
+        ]
+       },
+       "marks": 0.0
+      },
+      {
+       "proportion": 0.0,
+       "max_marks": 1.0,
+       "feedback": "",
+       "method_label": "Conditional",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": null,
+       "marks": 0.0
+      }
+     ]
+    },
+    {
+     "description": "If all are correct:\n- **Q4a:** Chooses exactly `artery`.\n\nThen:\n- **Q4b:** Chooses exactly `away`.\n\nOtherwise:\n- **Q4b:** Chooses exactly `towards`.",
+     "results": [
+      {
+       "proportion": 1.0,
+       "max_marks": 1.0,
+       "feedback": "Correct.",
+       "method_label": "Conditional",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": {
+        "title": "If all are correct",
+        "effect": "earned",
+        "marks": null,
+        "details": [],
+        "children": [
+         {
+          "title": "**Q4a:** Chooses exactly `artery`.",
+          "effect": "met",
+          "marks": null,
+          "details": [],
+          "children": []
+         },
+         {
+          "title": "Chooses exactly `away`.",
+          "effect": "earned",
+          "marks": null,
+          "details": [],
+          "children": []
+         }
+        ]
+       },
+       "marks": 1.0
+      },
+      {
+       "proportion": 1.0,
+       "max_marks": 1.0,
+       "feedback": "Correct.",
+       "method_label": "Conditional",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": {
+        "title": "If all are correct",
+        "effect": "earned",
+        "marks": null,
+        "details": [],
+        "children": [
+         {
+          "title": "**Q4a:** Chooses exactly `artery`.",
+          "effect": "not_met",
+          "marks": null,
+          "details": [],
+          "children": []
+         },
+         {
+          "title": "Chooses exactly `towards`.",
+          "effect": "earned",
+          "marks": null,
+          "details": [],
+          "children": []
+         }
+        ]
+       },
+       "marks": 1.0
+      },
+      {
+       "proportion": 0.0,
+       "max_marks": 1.0,
+       "feedback": "Expected “away”.",
+       "method_label": "Conditional",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": {
+        "title": "If all are correct",
+        "effect": "no_marks",
+        "marks": null,
+        "details": [],
+        "children": [
+         {
+          "title": "**Q4a:** Chooses exactly `artery`.",
+          "effect": "met",
+          "marks": null,
+          "details": [],
+          "children": []
+         },
+         {
+          "title": "Chooses exactly `away`.",
+          "effect": "no_marks",
+          "marks": null,
+          "details": [],
+          "children": []
+         }
+        ]
+       },
+       "marks": 0.0
+      },
+      {
+       "proportion": 0.0,
+       "max_marks": 1.0,
+       "feedback": "Expected “towards”.",
+       "method_label": "Conditional",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": {
+        "title": "If all are correct",
+        "effect": "no_marks",
+        "marks": null,
+        "details": [],
+        "children": [
+         {
+          "title": "**Q4a:** Chooses exactly `artery`.",
+          "effect": "not_met",
+          "marks": null,
+          "details": [],
+          "children": []
+         },
+         {
+          "title": "Chooses exactly `towards`.",
+          "effect": "no_marks",
+          "marks": null,
+          "details": [],
+          "children": []
+         }
+        ]
+       },
+       "marks": 0.0
+      }
+     ]
+    }
+   ]
+  },
+  "answer_sets": {
+   "method_label": "Answer Sets",
+   "method_summary": "Marks for the best of several sets of answers.",
+   "variants": [
+    {
+     "description": "Any one of these:\n- **Takes g = 9.8:** All of these:\n  - **Q3a:** Matches `3.03`.\n  - **Q3b:** Matches `29.7`.",
+     "results": [
+      {
+       "proportion": 1.0,
+       "max_marks": 1.0,
+       "feedback": "Correct.",
+       "method_label": "Answer Sets",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": {
+        "title": "**Takes g = 9.8:** Any one of these",
+        "effect": "earned",
+        "marks": null,
+        "details": [],
+        "children": [
+         {
+          "title": "Matches `29.7`.",
+          "effect": "earned",
+          "marks": null,
+          "details": [],
+          "children": []
+         }
+        ]
+       },
+       "marks": 1.0
+      },
+      {
+       "proportion": 0.0,
+       "max_marks": 1.0,
+       "feedback": "Expected 29.7.",
+       "method_label": "Answer Sets",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": {
+        "title": "**Takes g = 9.8:** Any one of these",
+        "effect": "no_marks",
+        "marks": null,
+        "details": [],
+        "children": [
+         {
+          "title": "Matches `29.7`.",
+          "effect": "no_marks",
+          "marks": null,
+          "details": [],
+          "children": []
+         }
+        ]
+       },
+       "marks": 0.0
+      },
+      {
+       "proportion": 0.0,
+       "max_marks": 1.0,
+       "feedback": "Expected 29.7.",
+       "method_label": "Answer Sets",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": {
+        "title": "**Takes g = 9.8:** Any one of these",
+        "effect": "no_marks",
+        "marks": null,
+        "details": [],
+        "children": [
+         {
+          "title": "Matches `29.7`.",
+          "effect": "no_marks",
+          "marks": null,
+          "details": [],
+          "children": []
+         }
+        ]
+       },
+       "marks": 0.0
+      },
+      {
+       "proportion": 0.0,
+       "max_marks": 1.0,
+       "feedback": "Expected 29.7.",
+       "method_label": "Answer Sets",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": {
+        "title": "**Takes g = 9.8:** Any one of these",
+        "effect": "no_marks",
+        "marks": null,
+        "details": [],
+        "children": [
+         {
+          "title": "Matches `29.7`.",
+          "effect": "no_marks",
+          "marks": null,
+          "details": [],
+          "children": []
+         }
+        ]
+       },
+       "marks": 0.0
+      },
+      {
+       "proportion": 0.0,
+       "max_marks": 1.0,
+       "feedback": "Expected 29.7.",
+       "method_label": "Answer Sets",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": {
+        "title": "**Takes g = 9.8:** Any one of these",
+        "effect": "no_marks",
+        "marks": null,
+        "details": [],
+        "children": [
+         {
+          "title": "Matches `29.7`.",
+          "effect": "no_marks",
+          "marks": null,
+          "details": [],
+          "children": []
+         }
+        ]
+       },
+       "marks": 0.0
+      }
+     ]
+    },
+    {
+     "description": "Any one of these:\n- **Takes g = 9.8:** All of these:\n  - **Q3a:** Matches `3.03`.\n  - **Q3b:** Matches `29.7`.\n- **Takes g = 10:** All of these:\n  - **Q3a:** Matches `3`.\n  - **Q3b:** Matches `30`.",
+     "results": [
+      {
+       "proportion": 1.0,
+       "max_marks": 1.0,
+       "feedback": "Correct.",
+       "method_label": "Answer Sets",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": {
+        "title": "Any one of these",
+        "effect": "earned",
+        "marks": null,
+        "details": [],
+        "children": [
+         {
+          "title": "**Takes g = 9.8**",
+          "effect": "earned",
+          "marks": null,
+          "details": [],
+          "children": [
+           {
+            "title": "Matches `29.7`.",
+            "effect": "earned",
+            "marks": null,
+            "details": [],
+            "children": []
+           }
+          ]
+         },
+         {
+          "title": "**Takes g = 10**",
+          "effect": "uncounted",
+          "marks": null,
+          "details": [],
+          "children": [
+           {
+            "title": "Matches `30`.",
+            "effect": "no_marks",
+            "marks": null,
+            "details": [],
+            "children": []
+           }
+          ]
+         }
+        ]
+       },
+       "marks": 1.0
+      },
+      {
+       "proportion": 1.0,
+       "max_marks": 1.0,
+       "feedback": "Correct.",
+       "method_label": "Answer Sets",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": {
+        "title": "Any one of these",
+        "effect": "earned",
+        "marks": null,
+        "details": [],
+        "children": [
+         {
+          "title": "**Takes g = 9.8**",
+          "effect": "uncounted",
+          "marks": null,
+          "details": [],
+          "children": [
+           {
+            "title": "Matches `29.7`.",
+            "effect": "no_marks",
+            "marks": null,
+            "details": [],
+            "children": []
+           }
+          ]
+         },
+         {
+          "title": "**Takes g = 10**",
+          "effect": "earned",
+          "marks": null,
+          "details": [],
+          "children": [
+           {
+            "title": "Matches `30`.",
+            "effect": "earned",
+            "marks": null,
+            "details": [],
+            "children": []
+           }
+          ]
+         }
+        ]
+       },
+       "marks": 1.0
+      },
+      {
+       "proportion": 0.0,
+       "max_marks": 1.0,
+       "feedback": "Expected 30.",
+       "method_label": "Answer Sets",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": {
+        "title": "Any one of these",
+        "effect": "no_marks",
+        "marks": null,
+        "details": [],
+        "children": [
+         {
+          "title": "**Takes g = 9.8**",
+          "effect": "no_marks",
+          "marks": null,
+          "details": [],
+          "children": [
+           {
+            "title": "Matches `29.7`.",
+            "effect": "no_marks",
+            "marks": null,
+            "details": [],
+            "children": []
+           }
+          ]
+         },
+         {
+          "title": "**Takes g = 10**",
+          "effect": "no_marks",
+          "marks": null,
+          "details": [],
+          "children": [
+           {
+            "title": "Matches `30`.",
+            "effect": "no_marks",
+            "marks": null,
+            "details": [],
+            "children": []
+           }
+          ]
+         }
+        ]
+       },
+       "marks": 0.0
+      },
+      {
+       "proportion": 0.0,
+       "max_marks": 1.0,
+       "feedback": "Expected 29.7.",
+       "method_label": "Answer Sets",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": {
+        "title": "Any one of these",
+        "effect": "no_marks",
+        "marks": null,
+        "details": [],
+        "children": [
+         {
+          "title": "**Takes g = 9.8**",
+          "effect": "no_marks",
+          "marks": null,
+          "details": [],
+          "children": [
+           {
+            "title": "Matches `29.7`.",
+            "effect": "no_marks",
+            "marks": null,
+            "details": [],
+            "children": []
+           }
+          ]
+         },
+         {
+          "title": "**Takes g = 10**",
+          "effect": "no_marks",
+          "marks": null,
+          "details": [],
+          "children": [
+           {
+            "title": "Matches `30`.",
+            "effect": "no_marks",
+            "marks": null,
+            "details": [],
+            "children": []
+           }
+          ]
+         }
+        ]
+       },
+       "marks": 0.0
+      },
+      {
+       "proportion": 0.0,
+       "max_marks": 1.0,
+       "feedback": "Expected 29.7.",
+       "method_label": "Answer Sets",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": {
+        "title": "Any one of these",
+        "effect": "no_marks",
+        "marks": null,
+        "details": [],
+        "children": [
+         {
+          "title": "**Takes g = 9.8**",
+          "effect": "no_marks",
+          "marks": null,
+          "details": [],
+          "children": [
+           {
+            "title": "Matches `29.7`.",
+            "effect": "no_marks",
+            "marks": null,
+            "details": [],
+            "children": []
+           }
+          ]
+         },
+         {
+          "title": "**Takes g = 10**",
+          "effect": "earned",
+          "marks": null,
+          "details": [],
+          "children": [
+           {
+            "title": "Matches `30`.",
+            "effect": "earned",
+            "marks": null,
+            "details": [],
+            "children": []
+           }
+          ]
+         }
+        ]
+       },
+       "marks": 0.0
+      }
+     ]
+    },
+    {
+     "description": "Any one of these:\n- **Takes g = 9.8:** All of these:\n  - **Q3a:** Matches `3.03`.\n  - **Q3b:** Matches `29.7`.\n- **Takes g = 10:** All of these:\n  - **Q3a:** Matches `3`.\n  - **Q3b:** Matches `30`.\n- **Rounds the time first** (75% of the marks): All of these:\n  - **Q3a:** Matches `3`.\n  - **Q3b:** Matches `29.4`.",
+     "results": [
+      {
+       "proportion": 1.0,
+       "max_marks": 1.0,
+       "feedback": "Correct.",
+       "method_label": "Answer Sets",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": {
+        "title": "Any one of these",
+        "effect": "earned",
+        "marks": null,
+        "details": [],
+        "children": [
+         {
+          "title": "**Takes g = 9.8**",
+          "effect": "earned",
+          "marks": null,
+          "details": [],
+          "children": [
+           {
+            "title": "Matches `29.7`.",
+            "effect": "earned",
+            "marks": null,
+            "details": [],
+            "children": []
+           }
+          ]
+         },
+         {
+          "title": "**Takes g = 10**",
+          "effect": "uncounted",
+          "marks": null,
+          "details": [],
+          "children": [
+           {
+            "title": "Matches `30`.",
+            "effect": "no_marks",
+            "marks": null,
+            "details": [],
+            "children": []
+           }
+          ]
+         },
+         {
+          "title": "**Rounds the time first**",
+          "effect": "uncounted",
+          "marks": null,
+          "details": [],
+          "children": [
+           {
+            "title": "Matches `29.4`.",
+            "effect": "no_marks",
+            "marks": null,
+            "details": [],
+            "children": []
+           }
+          ]
+         }
+        ]
+       },
+       "marks": 1.0
+      },
+      {
+       "proportion": 1.0,
+       "max_marks": 1.0,
+       "feedback": "Correct.",
+       "method_label": "Answer Sets",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": {
+        "title": "Any one of these",
+        "effect": "earned",
+        "marks": null,
+        "details": [],
+        "children": [
+         {
+          "title": "**Takes g = 9.8**",
+          "effect": "uncounted",
+          "marks": null,
+          "details": [],
+          "children": [
+           {
+            "title": "Matches `29.7`.",
+            "effect": "no_marks",
+            "marks": null,
+            "details": [],
+            "children": []
+           }
+          ]
+         },
+         {
+          "title": "**Takes g = 10**",
+          "effect": "earned",
+          "marks": null,
+          "details": [],
+          "children": [
+           {
+            "title": "Matches `30`.",
+            "effect": "earned",
+            "marks": null,
+            "details": [],
+            "children": []
+           }
+          ]
+         },
+         {
+          "title": "**Rounds the time first**",
+          "effect": "uncounted",
+          "marks": null,
+          "details": [],
+          "children": [
+           {
+            "title": "Matches `29.4`.",
+            "effect": "no_marks",
+            "marks": null,
+            "details": [],
+            "children": []
+           }
+          ]
+         }
+        ]
+       },
+       "marks": 1.0
+      },
+      {
+       "proportion": 0.75,
+       "max_marks": 1.0,
+       "feedback": "Rounds the time first (75% of the marks).",
+       "method_label": "Answer Sets",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": {
+        "title": "Any one of these",
+        "effect": "partial",
+        "marks": null,
+        "details": [],
+        "children": [
+         {
+          "title": "**Takes g = 9.8**",
+          "effect": "uncounted",
+          "marks": null,
+          "details": [],
+          "children": [
+           {
+            "title": "Matches `29.7`.",
+            "effect": "no_marks",
+            "marks": null,
+            "details": [],
+            "children": []
+           }
+          ]
+         },
+         {
+          "title": "**Takes g = 10**",
+          "effect": "uncounted",
+          "marks": null,
+          "details": [],
+          "children": [
+           {
+            "title": "Matches `30`.",
+            "effect": "no_marks",
+            "marks": null,
+            "details": [],
+            "children": []
+           }
+          ]
+         },
+         {
+          "title": "**Rounds the time first**",
+          "effect": "earned",
+          "marks": null,
+          "details": [],
+          "children": [
+           {
+            "title": "Matches `29.4`.",
+            "effect": "earned",
+            "marks": null,
+            "details": [],
+            "children": []
+           }
+          ]
+         }
+        ]
+       },
+       "marks": 0.75
+      },
+      {
+       "proportion": 0.0,
+       "max_marks": 1.0,
+       "feedback": "Expected 29.7.",
+       "method_label": "Answer Sets",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": {
+        "title": "Any one of these",
+        "effect": "no_marks",
+        "marks": null,
+        "details": [],
+        "children": [
+         {
+          "title": "**Takes g = 9.8**",
+          "effect": "no_marks",
+          "marks": null,
+          "details": [],
+          "children": [
+           {
+            "title": "Matches `29.7`.",
+            "effect": "no_marks",
+            "marks": null,
+            "details": [],
+            "children": []
+           }
+          ]
+         },
+         {
+          "title": "**Takes g = 10**",
+          "effect": "no_marks",
+          "marks": null,
+          "details": [],
+          "children": [
+           {
+            "title": "Matches `30`.",
+            "effect": "no_marks",
+            "marks": null,
+            "details": [],
+            "children": []
+           }
+          ]
+         },
+         {
+          "title": "**Rounds the time first**",
+          "effect": "no_marks",
+          "marks": null,
+          "details": [],
+          "children": [
+           {
+            "title": "Matches `29.4`.",
+            "effect": "no_marks",
+            "marks": null,
+            "details": [],
+            "children": []
+           }
+          ]
+         }
+        ]
+       },
+       "marks": 0.0
+      },
+      {
+       "proportion": 0.0,
+       "max_marks": 1.0,
+       "feedback": "Expected 29.7.",
+       "method_label": "Answer Sets",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": {
+        "title": "Any one of these",
+        "effect": "no_marks",
+        "marks": null,
+        "details": [],
+        "children": [
+         {
+          "title": "**Takes g = 9.8**",
+          "effect": "no_marks",
+          "marks": null,
+          "details": [],
+          "children": [
+           {
+            "title": "Matches `29.7`.",
+            "effect": "no_marks",
+            "marks": null,
+            "details": [],
+            "children": []
+           }
+          ]
+         },
+         {
+          "title": "**Takes g = 10**",
+          "effect": "earned",
+          "marks": null,
+          "details": [],
+          "children": [
+           {
+            "title": "Matches `30`.",
+            "effect": "earned",
+            "marks": null,
+            "details": [],
+            "children": []
+           }
+          ]
+         },
+         {
+          "title": "**Rounds the time first**",
+          "effect": "no_marks",
+          "marks": null,
+          "details": [],
+          "children": [
+           {
+            "title": "Matches `29.4`.",
+            "effect": "no_marks",
+            "marks": null,
+            "details": [],
+            "children": []
+           }
+          ]
+         }
+        ]
+       },
+       "marks": 0.0
+      }
+     ]
+    }
+   ]
+  },
+  "equivalent_expression": {
+   "method_label": "Equivalent Expression",
+   "method_summary": "Full marks for any expression equal to yours.",
+   "variants": [
+    {
+     "description": "Equals `x - 1`.",
+     "results": [
+      {
+       "proportion": 1.0,
+       "max_marks": 1.0,
+       "feedback": "Correct.",
+       "method_label": "Equivalent Expression",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": null,
+       "marks": 1.0
+      },
+      {
+       "proportion": 0.0,
+       "max_marks": 1.0,
+       "feedback": "Expected an expression equal to “x - 1”.",
+       "method_label": "Equivalent Expression",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": null,
+       "marks": 0.0
+      },
+      {
+       "proportion": 0.0,
+       "max_marks": 1.0,
+       "feedback": "Expected an expression equal to “x - 1”.",
+       "method_label": "Equivalent Expression",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": null,
+       "marks": 0.0
+      },
+      {
+       "proportion": 1.0,
+       "max_marks": 1.0,
+       "feedback": "Correct.",
+       "method_label": "Equivalent Expression",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": null,
+       "marks": 1.0
+      },
+      {
+       "proportion": 0.0,
+       "max_marks": 1.0,
+       "feedback": "Expected an expression equal to “x - 1”.",
+       "method_label": "Equivalent Expression",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": null,
+       "marks": 0.0
+      },
+      {
+       "proportion": 0.0,
+       "max_marks": 1.0,
+       "feedback": "Expected an expression equal to “x - 1”.",
+       "method_label": "Equivalent Expression",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": null,
+       "marks": 0.0
+      }
+     ]
+    },
+    {
+     "description": "Equals `x - 1` or `x + 1`.",
+     "results": [
+      {
+       "proportion": 1.0,
+       "max_marks": 1.0,
+       "feedback": "Correct.",
+       "method_label": "Equivalent Expression",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": null,
+       "marks": 1.0
+      },
+      {
+       "proportion": 1.0,
+       "max_marks": 1.0,
+       "feedback": "Correct.",
+       "method_label": "Equivalent Expression",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": null,
+       "marks": 1.0
+      },
+      {
+       "proportion": 1.0,
+       "max_marks": 1.0,
+       "feedback": "Correct.",
+       "method_label": "Equivalent Expression",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": null,
+       "marks": 1.0
+      },
+      {
+       "proportion": 1.0,
+       "max_marks": 1.0,
+       "feedback": "Correct.",
+       "method_label": "Equivalent Expression",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": null,
+       "marks": 1.0
+      },
+      {
+       "proportion": 0.0,
+       "max_marks": 1.0,
+       "feedback": "Expected an expression equal to “x - 1” or “x + 1”.",
+       "method_label": "Equivalent Expression",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": null,
+       "marks": 0.0
+      },
+      {
+       "proportion": 0.0,
+       "max_marks": 1.0,
+       "feedback": "Expected an expression equal to “x - 1” or “x + 1”.",
+       "method_label": "Equivalent Expression",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": null,
+       "marks": 0.0
+      }
+     ]
+    },
+    {
+     "description": "Equals `x - 1`, `x + 1` or `1 - x`.",
+     "results": [
+      {
+       "proportion": 1.0,
+       "max_marks": 1.0,
+       "feedback": "Correct.",
+       "method_label": "Equivalent Expression",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": null,
+       "marks": 1.0
+      },
+      {
+       "proportion": 1.0,
+       "max_marks": 1.0,
+       "feedback": "Correct.",
+       "method_label": "Equivalent Expression",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": null,
+       "marks": 1.0
+      },
+      {
+       "proportion": 1.0,
+       "max_marks": 1.0,
+       "feedback": "Correct.",
+       "method_label": "Equivalent Expression",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": null,
+       "marks": 1.0
+      },
+      {
+       "proportion": 1.0,
+       "max_marks": 1.0,
+       "feedback": "Correct.",
+       "method_label": "Equivalent Expression",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": null,
+       "marks": 1.0
+      },
+      {
+       "proportion": 0.0,
+       "max_marks": 1.0,
+       "feedback": "Expected an expression equal to “x - 1”, “x + 1” or “1 - x”.",
+       "method_label": "Equivalent Expression",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": null,
+       "marks": 0.0
+      },
+      {
+       "proportion": 1.0,
+       "max_marks": 1.0,
+       "feedback": "Correct.",
+       "method_label": "Equivalent Expression",
+       "is_marked": true,
+       "model_names": [],
+       "breakdown": null,
+       "marks": 1.0
+      }
+     ]
+    }
+   ]
+  }
+ },
+ "other_methods": [
+  "Accepted Answers",
+  "Full Marks",
+  "Key Points",
+  "Length",
+  "Multiple Choice",
+  "Number Range",
+  "Custom Code for a Group",
+  "Not Allowed",
+  "Pattern",
+  "Code Uses",
+  "Formula of Answers"
+ ]
+}

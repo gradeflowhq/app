@@ -10,7 +10,7 @@ from django.http import Http404
 from django.template.loader import render_to_string
 from django.urls import reverse
 from gradeflow_core import QuestionResult, Step
-from gradeflow_core.editing import DECISIONS, can_mark_by_example
+from gradeflow_core.editing import DECISIONS, Decision, can_mark_by_example
 
 from gradeflow_app.assessments.models import Assessment, AssessmentAccess
 from gradeflow_app.jobs.runs import RunState
@@ -170,7 +170,7 @@ def answers_context(
             if question.key in results
         }
         for group in groups:
-            group.preview = _preview_marks(group, preview_by_student)
+            group.preview = preview_marks(group, preview_by_student)
     filters = {name: label for name, (label, _) in FILTERS.items() if name != "changed" or preview_by_student}
     filter_name = view["filter"] if view.get("filter") in filters else "all"
     shows = FILTERS[filter_name][1]
@@ -193,7 +193,7 @@ def answers_context(
         "filter": filter_name,
         "filters": filters,
         "preview_job": job,
-        "preview_summary": _preview_summary(groups) if preview_by_student is not None else None,
+        "preview_summary": preview_summary(groups) if preview_by_student is not None else None,
         "marking_job": _marking_job(access.assessment, [question.key]),
         "grouping_job": grouping_job,
         "needs_grouping": needs_comparison and not grouping_job and not failed_grouping_job,
@@ -251,7 +251,7 @@ def combinations_context(
         "answers_url": url,
         "filter": "changed" if only_changed else "all",
         "preview_job": job,
-        "preview_summary": _combinations_preview_summary(rows) if results is not None else None,
+        "preview_summary": _combinationspreview_summary(rows) if results is not None else None,
         "marking_job": _marking_job(assessment, keys),
         "is_question_group": True,
         **draft_context(workspace, job),
@@ -330,7 +330,12 @@ def _set_group_decisions(
         )
     else:
         draft = workspace.draft
-    decisions = draft.answer_decisions()
+    set_decisions(groups, draft.answer_decisions())
+
+
+def set_decisions(groups: list[AnswerGroup], decisions: Mapping[str, Decision]) -> None:
+    """Badges each group with the decisions marking by example gave its answers, from `decisions` by normalized
+    answer."""
     for group in groups:
         group_decisions = {decisions.get(entry.normalized) for entry in group.student_answers}
         group.decisions = [
@@ -341,7 +346,7 @@ def _set_group_decisions(
         group.has_mixed_decisions = bool(group.decisions) and (None in group_decisions or len(group.decisions) > 1)
 
 
-def _preview_marks(group: AnswerGroup, preview_by_student: dict[str, QuestionResult]) -> answer_groups.Preview | None:
+def preview_marks(group: AnswerGroup, preview_by_student: dict[str, QuestionResult]) -> answer_groups.Preview | None:
     entry_results = [
         (entry, preview_by_student[entry.encrypted_student_id])
         for entry in group.student_answers
@@ -369,7 +374,7 @@ def _preview_marks(group: AnswerGroup, preview_by_student: dict[str, QuestionRes
     )
 
 
-def _preview_summary(groups: list[AnswerGroup]) -> PreviewSummary:
+def preview_summary(groups: list[AnswerGroup]) -> PreviewSummary:
     group_previews = [group.preview for group in groups if group.preview]
     return PreviewSummary(
         changed_count=sum(preview.changed_count for preview in group_previews),
@@ -381,7 +386,7 @@ def _preview_summary(groups: list[AnswerGroup]) -> PreviewSummary:
     )
 
 
-def _combinations_preview_summary(rows: list[Combination]) -> PreviewSummary:
+def _combinationspreview_summary(rows: list[Combination]) -> PreviewSummary:
     unmarked = [row for row in rows if any(cell.problem for cell in row.cells)]
     return PreviewSummary(
         changed_count=sum(row.changed_count for row in rows),

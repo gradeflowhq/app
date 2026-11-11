@@ -1,0 +1,12 @@
+{# The marking beside the answers: its summary, or the app's editor. #}
+<aside class="workspace-marking flex h-full flex-col" aria-label="Marking">
+  {% if panel.editor %}
+  {% include "marking/editor.html" with editor=panel.editor %}
+  {% else %}
+  <div class="column-head"><h2>Marking</h2><span class="btn btn-ghost btn-square btn-sm ml-auto">{% icon "ellipsis-horizontal" "size-5" %}</span></div>
+  <div class="grid gap-5 p-5">
+    <c-marking-summary :summary="panel.summary" />
+    <div><span class="btn btn-primary" data-edit-marking>{% icon "pencil-square" "size-4" %}Edit marking</span></div>
+  </div>
+  {% endif %}
+</aside>

@@ -1,43 +1,19 @@
-<c-landing.app-frame course="{{ workspace.course }}" assessment="{{ workspace.assessment }}" class="relative mx-auto mt-14 max-w-6xl sm:mt-18" inert role="img" aria-label="The marking workspace: one question's answers, grouped and marked.">
-  <div class="grid h-150 overflow-hidden md:grid-cols-[minmax(0,1fr)_20rem] lg:grid-cols-[15rem_minmax(0,1fr)_21rem]">
+{# The marking workspace, frame by frame: Q5's marking edited, previewed, saved and run. #}
+<c-landing.app-frame course="{{ hero.course }}" assessment="{{ hero.assessment }}" class="landing-scene relative mx-auto mt-14 max-w-6xl text-left sm:mt-18" inert role="img" aria-label="The marking workspace: a question's marking edited, previewed and saved, then its answers marked again." x-data="scene" data-durations="{{ hero.scene.durations_attribute }}" data-presses="{{ hero.scene.presses_attribute }}">
+  <div class="grid h-160 overflow-hidden md:grid-cols-[minmax(0,1fr)_20rem] lg:grid-cols-[15rem_minmax(0,1fr)_21rem]">
     <div class="max-lg:hidden">
-      <div class="column-head"><h2 class="text-base font-semibold">Questions</h2><span class="text-sm text-muted">{{ workspace.marked_count }} of {{ workspace.questions|length }} marked</span></div>
-      <ul class="grid gap-1 p-2">
-        {% for question, method in workspace.questions_with_methods %}
-        <li><span class="question-link"{% if question.question_key == workspace.question_key %} aria-current="page"{% endif %}>
-          <span class="min-w-0 flex-1"><span class="block font-medium">{{ question.question_key }}</span><span class="flex items-center gap-1.5 text-sm text-muted">{% if question.grouped %}{% icon "link" "size-3.5" mini=True %}{% endif %}{% if not method %}<span class="status status-warning" aria-hidden="true"></span>{% endif %}{{ method|default:"Not marked" }}</span></span>
-          {% if question.average %}<span class="tabular-nums text-sm text-muted">{{ question.average }}%</span>{% endif %}
-        </span></li>
-        {% endfor %}
-      </ul>
+      {% for question_list in hero.question_lists %}
+      <nav class="workspace-questions h-full" aria-label="Questions" data-frames="{{ question_list.frames_attribute }}"{% if not forloop.first %} hidden{% endif %}>
+        <div class="column-head column-sticky"><h2 class="text-base font-semibold">Questions</h2><span class="tabular-nums ml-auto whitespace-nowrap text-sm text-muted">{{ hero.marked_count }} of {{ question_list.content|length }} marked</span></div>
+        <ul class="grid gap-0.5 p-2">{% for item in question_list.content %}{% with question=item.question %}{% include "marking/question_list.html#question_item" %}{% endwith %}{% endfor %}</ul>
+        <div class="mt-auto border-t border-base-300 p-2">
+          <p class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-muted">{% icon "chevron-down" "size-4" %}Question groups<span class="badge badge-sm badge-soft tabular-nums ml-auto">{{ hero.question_groups|length }}</span></p>
+          <ul class="grid gap-0.5 pt-1">{% for question_group in hero.question_groups %}{% include "marking/question_list.html#question_group_item" %}{% endfor %}</ul>
+        </div>
+      </nav>
+      {% endfor %}
     </div>
-    <div class="min-w-0 border-base-300 lg:border-l">
-      <header class="border-b border-base-300">
-        <div class="column-head border-b-0"><h2 class="text-base font-semibold">{{ workspace.question_key }}</h2><span class="truncate text-sm text-muted">{{ workspace.method_label }} · <span class="tabular-nums">{{ workspace.max_marks|marks }}</span> marks</span></div>
-        <p class="-mt-2 px-4 pb-3 text-sm text-muted">{{ workspace.question_text }}</p>
-        <div class="flex items-center gap-2 px-4 pb-3"><span class="text-sm text-muted">Answer groups</span><span class="select select-sm w-40">Same feedback</span></div>
-      </header>
-      {% with code=workspace.question_set|code_language:workspace.question_key %}<ul class="@container divide-y divide-base-300">
-        {% for group, marks, checks in workspace.rows %}
-        <li class="landing-answer">
-          <div class="min-w-0 flex-1">
-            <pre class="code-block">{{ group.answer|highlight:code }}</pre>
-            <p class="mt-1.5 text-sm text-muted">and {{ group.other_answer_count }} other answers</p>
-            <p class="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-sm">{% for check, correct in checks %}<span class="flex items-center gap-1 {% if correct %}text-success{% else %}text-error{% endif %}">{% if correct %}{% icon "check" "size-3.5" %}{% else %}{% icon "x-mark" "size-3.5" %}{% endif %}{{ check.name }}</span>{% endfor %}</p>
-          </div>
-          <div><c-marks :low="marks" :high="marks" :max_marks="workspace.max_marks" /><span class="tabular-nums text-sm text-muted">{{ group.student_count }} student{{ group.student_count|pluralize }}</span></div>
-        </li>
-        {% endfor %}
-      </ul>{% endwith %}
-    </div>
-    <div class="border-l border-base-300 max-md:hidden">
-      <div class="column-head"><h2 class="text-base font-semibold">Marking</h2></div>
-      <div class="grid gap-5 p-5">
-        <h3 class="text-lg font-semibold">{{ workspace.method_label }}</h3>
-        <p>{% with setting_label=workspace.setting_label %}<span class="font-medium">{{ setting_label.0 }}:</span> {{ setting_label.1 }}{% endwith %}</p>
-        <section class="grid gap-2"><h3 class="font-medium">Steps</h3><ul class="grid gap-2">{% for label, text in workspace.check_descriptions %}<li class="card-box grid gap-1 p-3"><span class="font-medium">{{ label }}</span><div class="prose-core grid gap-1 text-sm text-muted">{{ text|markdown }}</div></li>{% endfor %}</ul></section>
-      </div>
-    </div>
+    <div class="relative min-w-0">{% for answer_column in hero.answer_columns %}<div class="h-full" data-frames="{{ answer_column.frames_attribute }}"{% if not forloop.first %} hidden{% endif %}>{% with column=answer_column.content %}{% include "landing/answers_column.html" %}{% endwith %}</div>{% endfor %}<div class="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-linear-to-b from-transparent to-base-200"></div></div>
+    <div class="max-md:hidden">{% for marking_panel in hero.marking_panels %}<div class="h-full" data-frames="{{ marking_panel.frames_attribute }}"{% if not forloop.first %} hidden{% endif %}>{% with panel=marking_panel.content %}{% include "landing/marking_column.html" %}{% endwith %}</div>{% endfor %}</div>
   </div>
-  <div class="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-linear-to-b from-transparent to-base-100"></div>
 </c-landing.app-frame>

@@ -9,67 +9,53 @@
   </c-slot>
 </c-topbar>
 <main id="main">
-<section class="landing-glow px-4 pb-12 pt-14 sm:px-6 sm:pt-22">
+<section class="relative isolate overflow-hidden px-4 pb-12 pt-14 sm:px-6 sm:pt-22">
+  {% include "landing/marks.html" %}
   <div class="mx-auto grid max-w-5xl justify-items-center gap-6 text-center">
     <a class="inline-flex items-center gap-2 rounded-full border border-base-300 bg-base-100 px-3.5 py-1.5 text-sm font-medium text-muted hover:text-base-content" href="{{ github_url }}" target="_blank" rel="noopener" hx-boost="false"><c-github class="size-4 text-base-content" />Open source on GitHub{% icon "arrow-right" "size-3.5" mini=True %}</a>
-    <h1 class="text-balance text-3xl font-semibold leading-none tracking-tight sm:text-5xl md:text-6xl lg:text-7xl">Mark a whole cohort the way you'd mark one script.</h1>
-    <p class="max-w-xl text-pretty text-lg text-muted sm:text-xl">Import results from ExamSoft, CSV or Excel. Mark each question with checks you can combine and preview, then send the marks to Canvas.</p>
-    <div class="mt-2 flex w-full max-w-sm flex-col gap-3 sm:w-auto sm:max-w-none sm:flex-row"><a class="btn btn-primary btn-lg" href="{% url 'account_signup' %}">Create an account</a><a class="btn btn-lg" href="#grouping" hx-boost="false">See how it works</a></div>
+    <h1 class="text-balance text-3xl font-semibold leading-none tracking-tight sm:text-5xl md:text-6xl lg:text-7xl">A mark scheme that marks the assessment for you.</h1>
+    <p class="max-w-2xl text-pretty text-lg text-muted sm:text-xl">Set it up once and every student is marked the same way. Review answers in groups, change the scheme any time, and send the marks to Canvas or download them as a spreadsheet.</p>
+    <div class="mt-2 flex w-full max-w-sm flex-col gap-3 sm:w-auto sm:max-w-none sm:flex-row"><a class="btn btn-primary btn-lg" href="{% url 'account_signup' %}">Create an account</a><a class="btn btn-lg" href="#methods" hx-boost="false">See how it works</a></div>
   </div>
   {% include "landing/workspace.html" %}
 </section>
 
-<section id="grouping" class="scroll-mt-14 px-4 py-24 sm:px-6 sm:py-32">
-  <div class="mx-auto mb-12 grid max-w-4xl justify-items-center gap-3.5 text-center">
-    <h2 class="text-balance text-2xl font-semibold tracking-tight sm:text-4xl md:text-5xl">Mark each answer once.</h2>
-    <p class="max-w-2xl text-pretty text-lg text-muted">GradeFlow groups answers that say the same thing, so one mark covers every student who wrote them.</p>
-  </div>
-  {% include "landing/grouping.html" %}
-</section>
-
-<section id="methods" class="scroll-mt-14 px-4 pb-24 sm:px-6 sm:pb-32">
-  <div class="mx-auto mb-12 grid max-w-4xl justify-items-center gap-3.5 text-center">
-    <h2 class="text-balance text-2xl font-semibold tracking-tight sm:text-4xl md:text-5xl">Mark it the way you would by hand.</h2>
-    <p class="max-w-2xl text-pretty text-lg text-muted">Use one method, or combine several into the mark scheme you already use.</p>
+<section id="methods" class="scroll-mt-14 px-4 py-24 sm:px-6 sm:py-32">
+  <div class="mx-auto mb-12 grid max-w-4xl justify-items-center gap-3.5 text-center sm:mb-16">
+    <p class="landing-eyebrow">Methods</p>
+    <h2 class="text-balance text-2xl font-semibold tracking-tight sm:text-4xl md:text-5xl">A method for every question.</h2>
+    <p class="max-w-2xl text-pretty text-lg text-muted">Use one, or combine several into your mark scheme.</p>
   </div>
   <div class="mx-auto max-w-6xl">
     {% include "landing/examples.html" %}
-    <p class="mt-6 text-balance text-center text-sm text-muted">Also {{ other_methods }}.</p>
+    <p class="mx-auto mt-8 max-w-3xl text-balance text-center text-sm text-muted">Also {{ other_methods }}.</p>
   </div>
 </section>
 
-<section class="px-4 pb-24 sm:px-6 sm:pb-32">
-  <div class="mx-auto grid max-w-6xl gap-6 lg:grid-cols-2">
-    <article id="canvas" class="flex scroll-mt-20 flex-col gap-2.5 rounded-[1.25rem] border border-base-300 bg-base-100 p-6 sm:p-9">
-      <h2 class="text-2xl font-semibold tracking-tight">Send marks to Canvas.</h2>
-      <p class="text-muted">Students are matched by login, SIS ID or email.</p>
-      <div class="flex-1 pt-7" x-data="canvasSend">
-        <c-card title="Canvas" class="h-full" body_class="grid gap-5 p-5">
-          <div class="flex items-center gap-3 rounded-box bg-base-200/70 p-3"><span class="initial-badge size-9" aria-hidden="true">I</span><div class="min-w-0 flex-1"><p class="text-sm text-muted">Canvas course</p><p class="font-medium">Introductory Biology, 2026</p></div></div>
-          <div class="grid gap-1.5"><span class="font-medium">Assignment</span><div class="flex items-center gap-3 rounded-box border border-base-300 p-3"><span class="initial-badge size-9" aria-hidden="true">F</span><div class="min-w-0 flex-1"><p class="font-medium">Final Exam</p><p class="text-sm text-muted">60 points</p></div></div></div>
-          <div class="rounded-box border border-base-300 p-4"><p class="font-medium">808 matched in Canvas, 4 not found</p><p class="mt-1 text-sm text-muted">Not in this Canvas course: <span class="font-mono">24120093, 24098317, 24064582, 24131776</span></p></div>
-          <div class="flex flex-wrap items-center gap-3"><button type="button" class="btn btn-primary" x-on:click="send" :disabled="sending">{% icon "paper-airplane" "size-4" %}Send to Canvas</button><span class="flex items-center gap-2 text-sm text-muted" x-show="sending"><span class="loading loading-spinner loading-sm"></span>Sending marks…</span></div>
-        </c-card>
-      </div>
-    </article>
-    <article id="privacy" class="flex scroll-mt-20 flex-col gap-2.5 rounded-[1.25rem] border border-base-300 bg-base-100 p-6 sm:p-9">
-      <h2 class="text-2xl font-semibold tracking-tight">Student IDs stay encrypted.</h2>
-      <p class="text-muted">Only the course's members can read them.</p>
-      <div class="flex-1 pt-7" x-data="{ isShown: false }">
-        <c-card title="Students" class="flex h-full flex-col" body_class="flex flex-1 flex-col">
-          <table class="table"><thead><tr><th>Student ID</th><th class="text-right">Total marks</th></tr></thead>
-            <tbody>{% for student, total in privacy_students %}<tr><td><span class="font-mono tabular-nums" x-show="isShown">{{ student }}</span><span class="font-mono tabular-nums" data-student-id-state="encrypted" x-show="!isShown" x-on:click="isShown = true"><span class="sr-only">Encrypted</span></span></td><td class="tabular-nums text-right">{{ total|marks }} / 60</td></tr>{% endfor %}</tbody>
-          </table>
-          <div class="mt-auto flex flex-wrap items-center gap-3 border-t border-base-300 px-5 py-4"><span x-show="!isShown">{% icon "lock-closed" "size-5 text-muted" %}</span><span x-show="isShown">{% icon "lock-open" "size-5 text-muted" %}</span><span x-text="isShown ? 'Decrypted in this browser' : 'Student IDs are encrypted'"></span><button type="button" class="btn btn-sm ml-auto" :class="isShown ? '' : 'btn-primary'" x-on:click="isShown = !isShown" x-text="isShown ? 'Forget' : 'Show IDs'"></button></div>
-        </c-card>
-      </div>
-    </article>
+<section id="review" class="scroll-mt-14 border-y border-base-300 bg-base-200/50 px-4 py-24 sm:px-6 sm:py-32">
+  <div class="mx-auto mb-12 grid max-w-4xl justify-items-center gap-3.5 text-center sm:mb-16">
+    <p class="landing-eyebrow">Review</p>
+    <h2 class="text-balance text-2xl font-semibold tracking-tight sm:text-4xl md:text-5xl">Review every answer, once.</h2>
+    <p class="max-w-2xl text-pretty text-lg text-muted">Students who wrote the same thing share an answer group. Check it, mark it by example, or adjust it by hand.</p>
   </div>
+  {% include "landing/answer_steps.html" %}
+</section>
+
+<section id="features" class="scroll-mt-14 px-4 py-24 sm:px-6 sm:py-32">
+  <div class="mx-auto mb-12 grid max-w-4xl justify-items-center gap-3.5 text-center sm:mb-16">
+    <p class="landing-eyebrow">Features</p>
+    <h2 class="text-balance text-2xl font-semibold tracking-tight sm:text-4xl md:text-5xl">From the assessment to the gradebook.</h2>
+  </div>
+  <ul class="mx-auto grid max-w-6xl gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    {% for icon_name, title, text in features %}
+    <li class="card-box flex gap-4 p-5 sm:p-6"><span class="landing-feature-icon">{% icon icon_name "size-5" %}</span><div class="grid content-start gap-1"><h3 class="font-semibold">{{ title }}</h3><p class="text-sm text-muted">{{ text }}</p></div></li>
+    {% endfor %}
+  </ul>
 </section>
 
 <section class="px-4 pb-24 sm:px-6 sm:pb-32">
   <div class="landing-glow mx-auto grid max-w-6xl justify-items-center gap-7 rounded-3xl border border-base-300 bg-base-100 px-6 py-18 text-center">
-    <div class="grid gap-3"><h2 class="text-balance text-2xl font-semibold tracking-tight sm:text-4xl md:text-5xl">Try it on an exam you've already marked.</h2><p class="text-lg text-muted">GradeFlow is open source under the MIT licence.</p></div>
+    <h2 class="text-balance text-2xl font-semibold tracking-tight sm:text-4xl md:text-5xl">Mark your next assessment with GradeFlow.</h2>
     <div class="flex w-full max-w-sm flex-col gap-3 sm:w-auto sm:max-w-none sm:flex-row"><a class="btn btn-primary btn-lg" href="{% url 'account_signup' %}">Create an account</a><a class="btn btn-lg" href="{{ github_url }}" target="_blank" rel="noopener" hx-boost="false"><c-github />View on GitHub</a></div>
   </div>
 </section>

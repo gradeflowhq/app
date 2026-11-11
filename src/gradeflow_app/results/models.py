@@ -1,3 +1,5 @@
+from typing import Any, Self
+
 from django.db import models
 from gradeflow_core import CheckResult, QuestionResult
 from pydantic import ValidationError
@@ -29,6 +31,19 @@ class Result(models.Model):
 
     def __str__(self) -> str:
         return f"{self.proportion:.0%}"
+
+    @classmethod
+    def from_question_result(cls, result: QuestionResult, **fields: Any) -> Self:
+        """The core's `result`, with the model's other `fields`."""
+        return cls(
+            proportion=result.proportion,
+            feedback=result.feedback,
+            method_label=result.method_label,
+            is_marked=result.is_marked,
+            model_names=list(result.model_names),
+            breakdown=result.breakdown and result.breakdown.model_dump(mode="json"),
+            **fields,
+        )
 
     def question_result(self, max_marks: float) -> QuestionResult:
         """The core's result, out of the question's `max_marks` as they are now; without the breakdown if an earlier

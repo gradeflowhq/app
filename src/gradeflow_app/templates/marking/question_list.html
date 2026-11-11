@@ -10,6 +10,25 @@
   <div class="contents" hx-target:inherited="#question-work" hx-select:inherited="#question-work" hx-select-oob:inherited="#question-list:outerMorph, #live-stream" hx-swap:inherited="outerHTML">
   <ul class="grid gap-0.5 p-2">
     {% for item in question_list.questions %}{% with question=item.question %}
+    {% partial question_item %}
+    {% endwith %}{% endfor %}
+  </ul>
+  <details class="group/groups mt-auto border-t border-base-300 p-2" open>
+    <summary class="flex cursor-pointer list-none items-center gap-2 rounded-field px-3 py-2 text-sm font-medium text-muted hover:bg-base-200">
+      {% icon "chevron-right" "size-4 transition-transform group-open/groups:rotate-90" %}Question groups{% if question_list.question_groups %}<span class="badge badge-sm badge-soft tabular-nums ml-auto">{{ question_list.question_groups|length }}</span>{% endif %}
+    </summary>
+    <ul class="grid gap-0.5 pt-1">
+      {% for question_group in question_list.question_groups %}
+      {% partial question_group_item %}
+      {% endfor %}
+      {% if access.can_edit %}<li><a href="{% url 'question_group_new' access.assessment.pk %}" class="question-link text-sm text-primary"{% if question_list.adding %} aria-current="page"{% endif %}>{% icon "plus" "size-4" %}New question group</a></li>{% endif %}
+    </ul>
+  </details>
+  </div>
+</nav>
+{% endpartialdef %}
+
+{% partialdef question_item %}
     <li>
       <a href="{% url 'question' access.assessment.pk question.pk %}" class="question-link"{% if item.is_shown %} aria-current="page"{% endif %}>
         <span class="min-w-0 flex-1">
@@ -24,19 +43,8 @@
         {% if item.progress %}<progress class="progress progress-primary absolute inset-x-3 bottom-1 h-0.5 w-auto" value="{{ item.progress|floatformat:2 }}" max="1" aria-hidden="true"></progress>{% endif %}
       </a>
     </li>
-    {% endwith %}{% endfor %}
-  </ul>
-  <details class="group/groups mt-auto border-t border-base-300 p-2" open>
-    <summary class="flex cursor-pointer list-none items-center gap-2 rounded-field px-3 py-2 text-sm font-medium text-muted hover:bg-base-200">
-      {% icon "chevron-right" "size-4 transition-transform group-open/groups:rotate-90" %}Question groups{% if question_list.question_groups %}<span class="badge badge-sm badge-soft tabular-nums ml-auto">{{ question_list.question_groups|length }}</span>{% endif %}
-    </summary>
-    <ul class="grid gap-0.5 pt-1">
-      {% for question_group in question_list.question_groups %}
+{% endpartialdef %}
+
+{% partialdef question_group_item %}
       <li><a href="{{ question_group.url }}" class="question-link"{% if question_group.is_shown %} aria-current="page"{% endif %}><span class="min-w-0"><span class="flex items-center gap-2"><span class="truncate font-medium">{% if question_group.marked_keys %}{{ question_group.marked_keys|join:", " }}{% else %}New{% endif %}</span>{% if question_group.has_draft %}<span class="badge badge-primary badge-soft badge-sm" title="Your unsaved changes">Draft</span>{% endif %}</span>{% if question_group.method_label %}<span class="block truncate text-sm text-muted">{{ question_group.method_label }}</span>{% elif not question_group.has_draft %}<span class="block truncate text-sm text-warning">Not set up yet</span>{% endif %}</span></a></li>
-      {% endfor %}
-      {% if access.can_edit %}<li><a href="{% url 'question_group_new' access.assessment.pk %}" class="question-link text-sm text-primary"{% if question_list.adding %} aria-current="page"{% endif %}>{% icon "plus" "size-4" %}New question group</a></li>{% endif %}
-    </ul>
-  </details>
-  </div>
-</nav>
 {% endpartialdef %}

@@ -156,15 +156,10 @@ def _store_results(run: Run, outcome: Any) -> None:
     students = dict(assessment.students.values_list("encrypted_id", "id"))
     Result.objects.filter(question__in=questions.values()).delete()
     Result.objects.bulk_create(
-        Result(
+        Result.from_question_result(
+            result,
             student_id=students[submission.sheet.student_id],
             question=question,
-            proportion=result.proportion,
-            feedback=result.feedback,
-            method_label=result.method_label,
-            is_marked=result.is_marked,
-            model_names=list(result.model_names),
-            breakdown=result.breakdown and result.breakdown.model_dump(mode="json"),
             marking=marking,
             revision=marking.revision,
         )

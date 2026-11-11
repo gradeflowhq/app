@@ -1,22 +1,19 @@
-"""The landing page's examples, in examples.json, and the marks the core gave them ahead of time, in marks.json."""
+"""The landing page's content, in examples.json, and what the core gives for it, in core.json."""
 
-import json
-from dataclasses import dataclass
 from functools import cache
 from pathlib import Path
 from typing import Any
 
-from gradeflow_core import BUILTINS, Method, QuestionSet
-from gradeflow_core.editing import MarkingDraft, Position, compatible_methods
+from gradeflow_core import QuestionResult, QuestionSet
+from gradeflow_core.editing import Decision, StepsSetting
 from pydantic import BaseModel, ConfigDict
 
-from gradeflow_app.ui.schemaforms.schema import hint, resolve
+from gradeflow_app.editor.presenters import StepCard
+from gradeflow_app.marking.presenters import MarkingSummary
 
 EXAMPLES = Path(__file__).with_name("examples.json")
-MARKS = Path(__file__).with_name("marks.json")
-"""What the core marks: each example's answers with every value of its setting, the workspace's answers with its
-marking and each of its checks, and Q1's answers before and after they are all accepted. tests/test_landing.py checks
-them, and writes them when run."""
+CORE = Path(__file__).with_name("core.json")
+"""What the core gives for examples.json. tests/test_landing.py checks it, and writes it when run."""
 
 
 type MarkingJson = dict[str, Any]
@@ -28,130 +25,95 @@ class LandingModel(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
 
-@dataclass(frozen=True)
-class MarkRange:
-    """Marks from low to high: one mark when they are the same."""
-
-    low: float
-    high: float
+# The hero: one question's answers in the workspace, grouped by their feedback.
 
 
-# The workspace in the hero: one question's answers grouped by the checks they pass.
+class Answer(LandingModel):
+    text: str
+    student_count: int
 
 
 class WorkspaceQuestion(LandingModel):
     question_key: str
     method: str | None = None
+    """The method of its own marking."""
+    in_question_group: bool = False
     average: int | None = None
-    grouped: bool = False
+    """Its average mark, as a percentage."""
 
 
-class WorkspaceCheck(LandingModel):
-    name: str
-    """What it checks, in a word or two, beside each answer."""
-    marking: MarkingJson
-    """It alone, as Q5's marking."""
-
-
-class WorkspaceAnswerGroup(LandingModel):
-    answer: str
-    other_answer_count: int
-    student_count: int
+class WorkspaceQuestionGroup(LandingModel):
+    questions: list[str]
+    method: str
 
 
 class Workspace(LandingModel):
     course: str
     assessment: str
     question_key: str
-    question_text: str
     question_set: QuestionSet
     questions: list[WorkspaceQuestion]
+    question_groups: list[WorkspaceQuestionGroup]
     marking: MarkingJson
-    """The marking combining the checks."""
-    setting_name: str
-    """The marking's setting shown beside it."""
-    checks: list[WorkspaceCheck]
-    answer_groups: list[WorkspaceAnswerGroup]
-
-    def marking_draft(self, marking: MarkingJson) -> MarkingDraft:
-        return MarkingDraft(marking, self.question_set, self.question_key)
-
-    @property
-    def method_label(self) -> str:
-        return self.marking_draft(self.marking).label("")
-
-    @property
-    def setting_label(self) -> tuple[str, str]:
-        """The core's title for the marking's setting, and its label for the value it has."""
-        draft = self.marking_draft(self.marking)
-        schema = draft.schema("")
-        setting = resolve(schema["properties"][self.setting_name], schema.get("$defs", {}))
-        return setting["title"], hint(setting)["labels"][draft.values("")[self.setting_name]]
-
-    @property
-    def check_descriptions(self) -> list[tuple[str, str]]:
-        """Each check, as the core names and describes it."""
-        drafts = (self.marking_draft(check.marking) for check in self.checks)
-        return [(draft.label(""), draft.describe("")) for draft in drafts]
-
-    @property
-    def questions_with_methods(self) -> list[tuple[WorkspaceQuestion, str | None]]:
-        """Each question, with the name of the method that marks it."""
-        return [(question, question.method and BUILTINS.find(question.method).label) for question in self.questions]
-
-    @property
-    def max_marks(self) -> float:
-        return self.question_set[self.question_key].max_marks
-
-    @property
-    def marked_count(self) -> int:
-        return sum(1 for question in self.questions if question.method)
-
-    @property
-    def rows(self) -> list[tuple[WorkspaceAnswerGroup, float, list[tuple[WorkspaceCheck, bool]]]]:
-        workspace_marks = core_marks()["workspace"]
-        return [
-            (group, mark, list(zip(self.checks, correct, strict=True)))
-            for group, (mark, _), correct in zip(
-                self.answer_groups,
-                workspace_marks["marks"],
-                zip(*workspace_marks["correct"], strict=True),
-                strict=True,
-            )
-        ]
+    edited_marking: MarkingJson
+    """The marking without its Docstring step."""
+    answer_groups: list[list[Answer]]
+    """Answers with the same feedback, the commonest first."""
 
 
-# Grouping: Q1's answers, alone or with others that mean the same, and marked by the answers accepted.
+# The review section: Q1's answers grouped, marked by example and adjusted.
 
 
-class Answer(LandingModel):
-    text: str
-    student_count: int
+class ReviewAnswer(Answer):
     meaning_group: str
-    """The group BAAI/bge-small-en-v1.5 puts it in, at GradeFlow's default of 85% similar."""
+    """Its group by meaning, at GradeFlow's default of 85% similar."""
 
 
-class Grouping(LandingModel):
+class ReviewDecision(LandingModel):
+    answers: list[str]
+    decision: Decision
+
+
+class ReviewAdjustment(LandingModel):
+    answer: str
+    marks: float
+    feedback: str
+
+
+class Review(LandingModel):
     question_key: str
-    question_text: str
     question_set: QuestionSet
-    accepted_answers: list[str]
-    answers: list[Answer]
-    markings: dict[str, list[MarkingJson]]
-    """Its marking before and after all its answers are accepted."""
+    answers: list[ReviewAnswer]
+    """The commonest first."""
+    marking: MarkingJson
+    """The marking before marking by example."""
+    decisions: list[ReviewDecision]
+    decided_answer: str
+    """The answer marked by example that shows open."""
+    adjustment: ReviewAdjustment
 
-    @property
-    def accepted_json(self) -> str:
-        return json.dumps(self.accepted_answers)
 
-
-# The methods: an example of each, with one setting to change.
+# The methods: an example of each, its settings changed one step at a time.
 
 
 class ExampleAnswer(LandingModel):
     answers: dict[str, str]
     """Each answer, by question."""
     student_count: int
+
+
+class LanguageModelResult(LandingModel):
+    marks: float | None
+    """None if unmarked."""
+    feedback: str
+
+
+class ExampleVariant(LandingModel):
+    change: str
+    """What changed from the variant before, or how the first starts."""
+    marking: MarkingJson
+    results: list[LanguageModelResult] | None = None
+    """Its answers' results when a language model marks them, from the core's example of the method."""
 
 
 class Example(LandingModel):
@@ -162,10 +124,7 @@ class Example(LandingModel):
     """The question whose marks it shows."""
     question_set: QuestionSet
     answers: list[ExampleAnswer]
-    choices: dict[str, str] = {}
-    """Its setting's values and their labels, when it has a list of them."""
-    markings: dict[str, list[MarkingJson]]
-    """Its markings for each value of its setting, as the browser submits it."""
+    variants: list[ExampleVariant]
 
     @property
     def max_marks(self) -> float:
@@ -174,10 +133,8 @@ class Example(LandingModel):
 
 class LandingContent(LandingModel):
     workspace: Workspace
-    grouping: Grouping
+    review: Review
     examples: dict[str, Example]
-    privacy_students: list[tuple[str, float]]
-    """The privacy example's students: ID and total, out of 60."""
 
 
 @cache
@@ -185,22 +142,72 @@ def landing_content() -> LandingContent:
     return LandingContent.model_validate_json(EXAMPLES.read_text())
 
 
-@cache
-def core_marks() -> dict[str, Any]:
-    marks: dict[str, Any] = json.loads(MARKS.read_text())
-    return marks
+# What the core gives for the content.
+
+
+class StepCards(LandingModel):
+    setting: StepsSetting
+    cards: list[StepCard]
+
+
+class EditorContent(LandingModel):
+    """What the editor shows of a marking."""
+
+    label: str
+    description: str
+    form_schema: dict[str, Any]
+    values: dict[str, Any]
+    steps: list[StepCards]
+
+
+class CoreWorkspace(LandingModel):
+    method_labels: dict[str, str]
+    """The label of each method the questions and question groups use, by reference."""
+    normalized: list[list[str]]
+    """Each answer of each answer group, as the question reads it."""
+    results: list[list[QuestionResult]]
+    summary: MarkingSummary
+    editor: EditorContent
+    edited_results: list[QuestionResult]
+    """Each answer's result with the edited marking, in the order of the answer groups."""
+    edited_summary: MarkingSummary
+    edited_editor: EditorContent
+
+
+class CoreReview(LandingModel):
+    normalized: list[str]
+    """Each answer, as the question reads it."""
+    results: list[QuestionResult]
+    summary: MarkingSummary
+    editor: EditorContent
+    decided_results: list[QuestionResult]
+    """Each answer's result once marked by example."""
+    decided_summary: MarkingSummary
+    decided_editor: EditorContent
+    decisions: dict[str, Decision]
+    """The decisions marking by example gave, by answer as the question reads it."""
+
+
+class CoreVariant(LandingModel):
+    description: str
+    results: list[QuestionResult]
+    """Each answer's result for the question the example shows."""
+
+
+class CoreExample(LandingModel):
+    method_label: str
+    method_summary: str
+    variants: list[CoreVariant]
+
+
+class CoreOutput(LandingModel):
+    workspace: CoreWorkspace
+    review: CoreReview
+    examples: dict[str, CoreExample]
+    other_methods: list[str]
+    """The labels of the methods for the page's questions that have no example, simplest first."""
 
 
 @cache
-def compatible_landing_methods() -> list[Method]:
-    """The core's methods for the page's questions."""
-    landing = landing_content()
-    question_sets = [landing.workspace.question_set, landing.grouping.question_set]
-    question_sets += [example.question_set for example in landing.examples.values()]
-    methods = (
-        method
-        for question_set in question_sets
-        for question in [None, *question_set]
-        for method in compatible_methods(Position(question_set, question, is_in_group=question is None))
-    )
-    return list({method.ref: method for method in methods}.values())
+def core_output() -> CoreOutput:
+    return CoreOutput.model_validate_json(CORE.read_text())

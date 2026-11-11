@@ -25,7 +25,7 @@ import { collapsible } from "./components/collapsible.js";
 import { fileDrop } from "./components/file-drop.js";
 import { histogram } from "./components/histogram.js";
 import { importer } from "./components/import/importer.js";
-import { answerGroup, canvasSend, markingExamples } from "./components/landing-demos.js";
+import { methodSlideshow, openAnswerGroup, scene } from "./components/landing-demos.js";
 import { markdownEditor } from "./components/markdown-editor.js";
 import { math } from "./components/math.js";
 import { modelServiceCard, modelServiceNotice } from "./components/model-service-card.js";
@@ -64,11 +64,9 @@ for (const behaviour of [
 
 const components = {
   adjustForm,
-  answerGroup,
   canvasConnection,
   canvasCourse,
   canvasExport,
-  canvasSend,
   choiceList,
   codeEditor,
   collapsible,
@@ -76,14 +74,16 @@ const components = {
   histogram,
   importer,
   markdownEditor,
-  markingExamples,
   math,
   methodPicker,
+  methodSlideshow,
   modelServiceCard,
   modelServiceNotice,
+  openAnswerGroup,
   openOnLoad,
   orderedChoices,
   recoveryKeyCard,
+  scene,
   searchList,
   studentTable,
   tagInput,

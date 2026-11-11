@@ -1,0 +1,18 @@
+{# Q1's answers grouped, marked by example and adjusted, frame by frame. A step's tab jumps to its first frame. #}
+<div class="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[17rem_minmax(0,1fr)] lg:gap-10" x-data="scene" x-on:click="jump" data-durations="{{ review.scene.durations_attribute }}" data-presses="{{ review.scene.presses_attribute }}">
+  <div class="grid content-start gap-2 max-lg:grid-cols-3" role="tablist" aria-label="Steps" aria-orientation="vertical">
+    {% for step in review.steps %}
+    <button type="button" class="landing-review-tab" role="tab" data-tab-frames="{{ step.frames_attribute }}" aria-selected="{% if forloop.first %}true{% else %}false{% endif %}">
+      <span class="landing-review-tab-number">{{ forloop.counter }}</span>
+      <span class="grid gap-1"><span class="font-semibold">{{ step.content.title }}</span><span class="text-sm text-muted max-sm:hidden">{{ step.content.description }}</span></span>
+    </button>
+    {% endfor %}
+  </div>
+  {% for step in review.steps %}<p class="-mt-2 text-pretty text-center text-sm text-muted sm:hidden" data-frames="{{ step.frames_attribute }}"{% if not forloop.first %} hidden{% endif %}>{{ step.content.description }}</p>{% endfor %}
+  <c-landing.app-frame course="Introductory Biology" assessment="Final Exam" class="landing-scene min-w-0">
+    <div class="grid h-150 overflow-hidden text-left md:grid-cols-[minmax(0,1fr)_18rem]" inert>
+      <div class="min-w-0">{% for answer_column in review.answer_columns %}<div class="h-full" data-frames="{{ answer_column.frames_attribute }}"{% if not forloop.first %} hidden{% endif %}>{% with column=answer_column.content %}{% include "landing/answers_column.html" %}{% endwith %}</div>{% endfor %}</div>
+      <div class="max-md:hidden">{% for marking_panel in review.marking_panels %}<div class="h-full" data-frames="{{ marking_panel.frames_attribute }}"{% if not forloop.first %} hidden{% endif %}>{% with panel=marking_panel.content %}{% include "landing/marking_column.html" %}{% endwith %}</div>{% endfor %}</div>
+    </div>
+  </c-landing.app-frame>
+</div>

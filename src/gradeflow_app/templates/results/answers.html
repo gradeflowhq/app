@@ -2,6 +2,31 @@
 <div id="answers" class="flex min-h-full flex-col"{% if out_of_band %} hx-swap-oob="outerMorph"{% endif %}
      hx-get="{% url 'answers' question.assessment_id question.pk %}" hx-target="this" hx-swap="outerMorph"
      hx-trigger="{% listen 'marks' question.assessment_id %}, {% listen 'jobs' question.assessment_id %}, {% listen 'grouping' question.assessment_id %}, {% listen 'preview' question.assessment_id request.user.pk %}">
+  {% partial header %}
+
+  <div class="grid content-start gap-3 p-4">
+    {% partial column_notices %}
+    {% if failed_grouping_job %}
+      <div role="alert" class="alert alert-warning alert-soft">{% icon "exclamation-triangle" %}<span class="flex-1">Couldn't group by meaning, so the same answers are grouped instead.</span><button class="btn btn-sm" hx-post="{% url 'answer_grouping' question.assessment_id question.pk %}" hx-target="#answers" hx-swap="outerMorph">Try again</button></div>
+    {% endif %}
+    {% if too_many_to_compare %}
+      <p class="rounded-box bg-base-100 px-4 py-3 text-sm text-muted" role="status">Too many answers to compare. Showing the same answers only.</p>
+    {% elif grouping_job or needs_grouping %}
+      <div class="relative flex items-center gap-3 overflow-hidden rounded-box bg-base-100 px-4 py-3 text-sm text-muted" role="status"{% if needs_grouping %} hx-post="{% url 'answer_grouping' question.assessment_id question.pk %}" hx-trigger="load" hx-target="#answers" hx-swap="outerMorph"{% endif %}><span class="loading loading-spinner loading-sm"></span>Grouping by meaning. Equal answers are grouped meanwhile.{% if grouping_job.progress %}<progress class="progress progress-primary absolute inset-x-0 bottom-0 h-0.5 rounded-none" value="{{ grouping_job.progress|floatformat:2 }}" max="1" aria-hidden="true"></progress>{% endif %}</div>
+    {% endif %}
+    {% if answer_groups %}
+      <ul class="answer-groups divide-y divide-base-300" aria-label="Answers">
+        {% for answer_group in answer_groups %}{% include "results/answer_group.html" %}{% endfor %}
+      </ul>
+      {% if hidden_count %}<button class="btn btn-ghost btn-sm justify-self-center" hx-get="{% url 'answers' question.assessment_id question.pk %}?shown_count={{ show_more }}" hx-target="#answers" hx-swap="outerMorph">Show more<span class="badge badge-sm badge-soft tabular-nums">{{ hidden_count }}</span></button>{% endif %}
+    {% else %}
+      <c-empty-state class="card-box" icon="inbox" title="{% if filter == 'all' %}No answers{% else %}No answers match{% endif %}" />
+    {% endif %}
+  </div>
+</div>
+{% endpartialdef %}
+
+{% partialdef header %}
   <header class="column-sticky">
     <div class="column-head">
       <c-questions-toggle />
@@ -36,27 +61,6 @@
     </form>
     {% partial preview_bar %}
   </header>
-
-  <div class="grid content-start gap-3 p-4">
-    {% partial column_notices %}
-    {% if failed_grouping_job %}
-      <div role="alert" class="alert alert-warning alert-soft">{% icon "exclamation-triangle" %}<span class="flex-1">Couldn't group by meaning, so the same answers are grouped instead.</span><button class="btn btn-sm" hx-post="{% url 'answer_grouping' question.assessment_id question.pk %}" hx-target="#answers" hx-swap="outerMorph">Try again</button></div>
-    {% endif %}
-    {% if too_many_to_compare %}
-      <p class="rounded-box bg-base-100 px-4 py-3 text-sm text-muted" role="status">Too many answers to compare. Showing the same answers only.</p>
-    {% elif grouping_job or needs_grouping %}
-      <div class="relative flex items-center gap-3 overflow-hidden rounded-box bg-base-100 px-4 py-3 text-sm text-muted" role="status"{% if needs_grouping %} hx-post="{% url 'answer_grouping' question.assessment_id question.pk %}" hx-trigger="load" hx-target="#answers" hx-swap="outerMorph"{% endif %}><span class="loading loading-spinner loading-sm"></span>Grouping by meaning. Equal answers are grouped meanwhile.{% if grouping_job.progress %}<progress class="progress progress-primary absolute inset-x-0 bottom-0 h-0.5 rounded-none" value="{{ grouping_job.progress|floatformat:2 }}" max="1" aria-hidden="true"></progress>{% endif %}</div>
-    {% endif %}
-    {% if answer_groups %}
-      <ul class="answer-groups divide-y divide-base-300" aria-label="Answers">
-        {% for answer_group in answer_groups %}{% include "results/answer_group.html" %}{% endfor %}
-      </ul>
-      {% if hidden_count %}<button class="btn btn-ghost btn-sm justify-self-center" hx-get="{% url 'answers' question.assessment_id question.pk %}?shown_count={{ show_more }}" hx-target="#answers" hx-swap="outerMorph">Show more<span class="badge badge-sm badge-soft tabular-nums">{{ hidden_count }}</span></button>{% endif %}
-    {% else %}
-      <c-empty-state class="card-box" icon="inbox" title="{% if filter == 'all' %}No answers{% else %}No answers match{% endif %}" />
-    {% endif %}
-  </div>
-</div>
 {% endpartialdef %}
 
 {% partialdef column_notices %}
