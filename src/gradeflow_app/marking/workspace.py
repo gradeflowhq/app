@@ -10,8 +10,8 @@ from uuid import UUID
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
-from gradeflow_core import Methods, ModelEndpoint, QuestionSet
-from gradeflow_core.editing import MarkingDraft, Position, dump_yaml
+from gradeflow_core import Methods, ModelEndpoint, QuestionSet, Step
+from gradeflow_core.editing import EditingError, MarkingDraft, Position, dump_yaml
 
 from gradeflow_app.accounts.models import User
 from gradeflow_app.assessments.models import Assessment, AssessmentAccess
@@ -36,7 +36,7 @@ PREVIEW = "preview"
 class MarkingWorkspace(StepWorkspace):
     """Build one per request: it reads every student's answer."""
 
-    draft: MarkingDraftRecord
+    record: MarkingDraftRecord
 
     @classmethod
     def of(
@@ -51,7 +51,7 @@ class MarkingWorkspace(StepWorkspace):
 
     @cached_property
     def subject(self) -> MarkingSubject:
-        return self.draft.subject
+        return self.record.subject
 
     @property
     def course(self) -> Course:
@@ -59,11 +59,11 @@ class MarkingWorkspace(StepWorkspace):
 
     @cached_property
     def offers(self) -> OfferedMethods:
-        return offers(self.draft.user, self.course)
+        return offers(self.record.user, self.course)
 
     @property
     def actions(self) -> EditorActions:
-        args = [self.draft.assessment_id, self.draft.pk]
+        args = [self.record.assessment_id, self.record.pk]
         return EditorActions(
             update=reverse("draft", args=args),
             methods=reverse("draft_methods", args=args),
@@ -86,8 +86,8 @@ class MarkingWorkspace(StepWorkspace):
         saved = self.subject.marking
         return (
             saved is not None
-            and self.draft.saved_marking_updated_at is not None
-            and saved.updated_at > self.draft.saved_marking_updated_at
+            and self.record.saved_marking_updated_at is not None
+            and saved.updated_at > self.record.saved_marking_updated_at
         )
 
     @cached_property
@@ -96,39 +96,45 @@ class MarkingWorkspace(StepWorkspace):
 
     @cached_property
     def methods(self) -> Methods:
-        return usable(self.draft.user, self.course)
+        return usable(self.record.user, self.course)
 
     @cached_property
-    def marking_draft(self) -> MarkingDraft:
-        return marking_draft_of(self.draft.definition, self.questions, self.subject.key, self.methods)
+    def draft(self) -> MarkingDraft:
+        return marking_draft_of(self.record.definition, self.questions, self.subject.key, self.methods)
+
+    @property
+    def finalized(self) -> Step | None:
+        """The marking, once the core finds nothing wrong with it."""
+        try:
+            return self.draft.finalized()
+        except EditingError:
+            return None
 
     def save(self) -> None:
         """Saves the draft; once it is finished, as the core writes it, without what it leaves at defaults."""
-        if not self.marking_draft.data:
+        if not self.draft.data:
             return
-        self.draft.definition = dump_yaml(
-            self.marking_draft.data if self.marking_draft.problems else self.marking_draft.finalized().dump()
-        )
-        self.draft.save(update_fields=["definition"])
+        self.record.definition = dump_yaml(self.draft.data if self.draft.problems else self.draft.finalized().dump())
+        self.record.save(update_fields=["definition"])
 
     def save_marking(self, model_endpoint: ModelEndpoint | None) -> Marking:
         """Save the draft as the subject's marking, end the draft, and mark the students with it, asking language
         models at `model_endpoint` if it does."""
         subject = self.subject
         marking = subject.marking or Marking(assessment=subject.assessment, question=subject.question)
-        marking.definition = self.draft.definition
+        marking.definition = self.record.definition
         marking.save()
-        runs.stop(PREVIEW, self.draft.pk)
-        self.draft.delete()
-        schedule_marking(marking, self.draft.user, model_endpoint)
+        runs.stop(PREVIEW, self.record.pk)
+        self.record.delete()
+        schedule_marking(marking, self.record.user, model_endpoint)
         notify_change(topic("questions", subject.assessment.pk))
         return marking
 
     def discard(self) -> None:
         """End the draft, leaving the saved marking as it was."""
-        runs.stop(PREVIEW, self.draft.pk)
-        self.draft.delete()
-        notify_drafts_changed(self.draft.assessment, self.draft.user)
+        runs.stop(PREVIEW, self.record.pk)
+        self.record.delete()
+        notify_drafts_changed(self.record.assessment, self.record.user)
 
     @cached_property
     def suggestions(self) -> dict[str, int]:

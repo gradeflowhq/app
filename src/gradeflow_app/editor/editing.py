@@ -4,8 +4,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, NamedTuple
 
-from gradeflow_core import GradeFlowError, Methods, Problem, Step
-from gradeflow_core.editing import Condition, EditingError, MarkingDraft, Position
+from gradeflow_core import GradeFlowError, Methods, Problem
+from gradeflow_core.editing import Condition, Draft, Position
 
 from gradeflow_app.libraries.collection import OfferedMethods
 from gradeflow_app.ui.schemaforms.forms import ObjectForm
@@ -34,18 +34,18 @@ class Conflict(NamedTuple):
     url: str
 
 
-def problem_text(marking_draft: MarkingDraft, problem: Problem, open_path: str = "") -> str:
+def problem_text(draft: Draft, problem: Problem, open_path: str = "") -> str:
     """`problem` in words, after its step's `label`, unless that step is at `open_path`, and the title of the field
     at fault. As the core words it if the core can't say where."""
     try:
         where = (
             []
             if problem.step_path == open_path
-            else [marking_draft.label(problem.step_path) if problem.step_path else "The marking"]
+            else [draft.label(problem.step_path) if problem.step_path else "The marking"]
         )
         if problem.field:
             name = str(problem.field[0])
-            where.append(marking_draft.schema(problem.step_path)["properties"].get(name, {}).get("title", name))
+            where.append(draft.schema(problem.step_path)["properties"].get(name, {}).get("title", name))
     except GradeFlowError:
         return str(problem)
     return f"{', '.join(where)}: {problem.message}" if where else problem.message
@@ -54,7 +54,7 @@ def problem_text(marking_draft: MarkingDraft, problem: Problem, open_path: str =
 class StepWorkspace(ABC):
     @property
     @abstractmethod
-    def marking_draft(self) -> MarkingDraft: ...
+    def draft(self) -> Draft: ...
 
     @property
     @abstractmethod
@@ -91,8 +91,8 @@ class StepWorkspace(ABC):
         return {}
 
     def form(self, path: str, **kwargs: Any) -> ObjectForm:
-        schema = self.marking_draft.schema(path)
-        if suggestions := self.suggestions_at(self.marking_draft.position(path)):
+        schema = self.draft.schema(path)
+        if suggestions := self.suggestions_at(self.draft.position(path)):
             properties = {
                 name: {**property_schema, SUGGESTIONS_KEY: suggestions}
                 if hint(property_schema).get("lists_answers")
@@ -100,9 +100,9 @@ class StepWorkspace(ABC):
                 for name, property_schema in schema["properties"].items()
             }
             schema = {**schema, "properties": properties}
-        form = ObjectForm(schema, self.marking_draft.values(path), path=path, **kwargs)
+        form = ObjectForm(schema, self.draft.values(path), path=path, **kwargs)
         if conditions := [field for field in form.fields.values() if isinstance(field.widget, ConditionWidget)]:
-            earlier = [(at, self.marking_draft.label(at)) for at in self.marking_draft.earlier_checks(path)]
+            earlier = [(at, self.draft.label(at)) for at in self.draft.earlier_checks(path)]
             for field in conditions:
                 field.widget.checks = earlier
         return form
@@ -110,36 +110,24 @@ class StepWorkspace(ABC):
     def editor_structure(self, path: str) -> tuple[object, ...]:
         """What redraws the editor at `path` when it changes: schema, methods offered, condition rows and the
         problems of the steps it holds."""
-        marking_draft = self.marking_draft
-        rows = [value for value in marking_draft.values(path).values() if isinstance(value, Condition)]
-        methods_and_conditions: list[object] = [tuple(method.ref for method in marking_draft.methods(path)), *rows]
-        for setting in marking_draft.settings_holding_steps(path):
+        draft = self.draft
+        rows = [value for value in draft.values(path).values() if isinstance(value, Condition)]
+        methods_and_conditions: list[object] = [tuple(method.ref for method in draft.methods(path)), *rows]
+        for setting in draft.settings_holding_steps(path):
             try:
-                methods_and_conditions.append(
-                    tuple(method.ref for method in marking_draft.methods(setting.new_step_path))
-                )
+                methods_and_conditions.append(tuple(method.ref for method in draft.methods(setting.new_step_path)))
             except GradeFlowError as error:
                 methods_and_conditions.append(str(error))
-        inner_problems = tuple(
-            problem for problem in marking_draft.problems if problem.step_path.startswith(f"{path}/")
-        )
-        return marking_draft.schema(path), tuple(methods_and_conditions), inner_problems
-
-    @property
-    def finalized(self) -> Step | None:
-        """The marking, once the core finds nothing wrong with it."""
-        try:
-            return self.marking_draft.finalized()
-        except EditingError:
-            return None
+        inner_problems = tuple(problem for problem in draft.step_problems if problem.step_path.startswith(f"{path}/"))
+        return draft.schema(path), tuple(methods_and_conditions), inner_problems
 
     def problems_at(self, path: str, *, saving: bool) -> list[Problem]:
         return [
             problem
-            for problem in self.marking_draft.problems
+            for problem in self.draft.step_problems
             if problem.step_path == path and (saving or not problem.is_incomplete)
         ]
 
     @property
     def valid(self) -> bool:
-        return not self.marking_draft.problems
+        return not self.draft.step_problems

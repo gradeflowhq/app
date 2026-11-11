@@ -51,7 +51,7 @@ def workspace_context(
     state = state_of(request, workspace) | {
         key: extra.pop(key) for key in ("question", "path", "tab", "setting") if key in extra
     }
-    draft, tests_record, problems = workspace.draft, workspace.tests_record, workspace.marking_draft.problems
+    draft, tests_record, problems = workspace.draft, workspace.tests_record, workspace.draft.step_problems
     run, run_out_of_date = run_state(tests_record)
     if run is not None and not run.is_active and tests_record.results and workspace.last_results() is None:
         run = None  # its results were written by an earlier core and can't be read
@@ -70,7 +70,7 @@ def workspace_context(
         "read_only": _read_only_questions(workspace),
         "used_by": dependents(workspace.method, request.user),
         "first_problem_step": problems[0].step_path if problems else None,
-        "first_problem_label": workspace.marking_draft.label(problems[0].step_path) if problems else "",
+        "first_problem_label": workspace.draft.label(problems[0].step_path) if problems else "",
         "first_problem_unfilled": problems[0].is_incomplete if problems else False,
         "rows": _rows(workspace, state["question"]),
         "run": run,
@@ -100,14 +100,12 @@ def workspace_context(
 
 
 def _problems(workspace: MethodWorkspace, problems: list[Problem]) -> list[str]:
-    """The problems listed above the method: the marking's own `problems`, while there is no editor to show them in
-    place, and then the method's, once the marking has none."""
+    """The problems listed above the method: its step problems, while there is no editor to show them in
+    place, and then the method's, once there are none."""
     if not problems:
         declared_settings = workspace.draft.declared_settings
         return [_method_problem_text(problem, declared_settings) for problem in workspace.draft.problems]
-    return (
-        [problem_text(workspace.marking_draft, problem) for problem in problems] if workspace.yaml_only_reasons else []
-    )
+    return [problem_text(workspace.draft, problem) for problem in problems] if workspace.yaml_only_reasons else []
 
 
 def _method_problem_text(problem: Problem, declared_settings: Mapping[str, Mapping[str, Any]]) -> str:

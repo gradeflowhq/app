@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from django.utils.text import get_text_list
 from gradeflow_core import GradeFlowError, Methods, Problem
 from gradeflow_core import Method as CoreMethod
-from gradeflow_core.editing import MarkingDraft, StepsSetting
+from gradeflow_core.editing import Draft, StepsSetting
 
 from gradeflow_app.editor.editing import Conflict, EditorActions, StepWorkspace, problem_text
 from gradeflow_app.editor.guide import choices, question_choice
@@ -66,38 +66,36 @@ def _made_by(method: CoreMethod | None, offers: OfferedMethods) -> str:
 
 def _problem_elsewhere_text(workspace: StepWorkspace, problem: Problem, open_path: str) -> str:
     """A problem of a step other than the one at `open_path`; one not filled in yet, as what to do."""
-    label = workspace.marking_draft.label(problem.step_path) if problem.step_path else "The marking"
-    return f"Finish {label}." if problem.is_incomplete else problem_text(workspace.marking_draft, problem, open_path)
+    label = workspace.draft.label(problem.step_path) if problem.step_path else "The marking"
+    return f"Finish {label}." if problem.is_incomplete else problem_text(workspace.draft, problem, open_path)
 
 
 def _card(workspace: StepWorkspace, path: str) -> StepCard:
     """The step at `path` as a card, with the first problem of it or a step it holds."""
-    marking_draft = workspace.marking_draft
-    problems = [
-        each for each in marking_draft.problems if each.step_path == path or each.step_path.startswith(f"{path}/")
-    ]
+    draft = workspace.draft
+    problems = [each for each in draft.step_problems if each.step_path == path or each.step_path.startswith(f"{path}/")]
     problem = next((each for each in problems if not each.is_incomplete), None)
     return StepCard(
         path=path,
-        label=marking_draft.label(path),
-        description=marking_draft.describe(path),
+        label=draft.label(path),
+        description=draft.describe(path),
         has_problems=bool(problems),
-        problem=problem_text(marking_draft, problem, path) if problem else "",
-        notes=marking_draft.notes(path),
+        problem=problem_text(draft, problem, path) if problem else "",
+        notes=draft.notes(path),
     )
 
 
 def _steps_setting_view(
     workspace: StepWorkspace, setting: StepsSetting, errors: list[str], label_controls: str, needs_steps: bool
 ) -> StepsSettingView:
-    marking_draft = workspace.marking_draft
+    draft = workspace.draft
     children = [_card(workspace, child) for child in setting.step_paths]
     methods, unavailable_reason, questions = Methods(), "", []
     if not setting.is_full:
-        choice = question_choice(marking_draft, setting.new_step_path)
+        choice = question_choice(draft, setting.new_step_path)
         questions = choice.questions if choice else []
         try:
-            methods = marking_draft.methods(setting.new_step_path, choice.question if choice else None)
+            methods = draft.methods(setting.new_step_path, choice.question if choice else None)
         except GradeFlowError as error:
             unavailable_reason = str(error)
     add_prompt = _add_prompt(setting)
@@ -167,21 +165,21 @@ def editor(workspace: StepWorkspace, path: str, *, saving: bool = False, more_op
         return Editor(actions=workspace.actions, path="", form=form, label="Can't show this marking")
 
 
-def _ancestor_paths(marking_draft: MarkingDraft, path: str) -> list[str]:
+def _ancestor_paths(draft: Draft, path: str) -> list[str]:
     """The paths of the steps from the top of the marking down to the one at `path`, which is last."""
     path_parts = path.split("/")
     ancestors = ("/".join(path_parts[:length]) for length in range(1, len(path_parts) + 1))
-    return [ancestor for ancestor in ancestors if marking_draft.is_step(ancestor)]
+    return [ancestor for ancestor in ancestors if draft.is_step(ancestor)]
 
 
 def _editor(workspace: StepWorkspace, path: str, *, saving: bool, more_open: bool) -> Editor:
-    marking_draft = workspace.marking_draft
-    if not marking_draft.is_step(path):
+    draft = workspace.draft
+    if not draft.is_step(path):
         path = ""
     form = workspace.form(path)
     form.add_problems(workspace.problems_at(path, saving=saving))
-    unfilled = [problem for problem in marking_draft.problems if problem.step_path == path and problem.is_incomplete]
-    method = marking_draft.method(path)
+    unfilled = [problem for problem in draft.step_problems if problem.step_path == path and problem.is_incomplete]
+    method = draft.method(path)
     return Editor(
         actions=workspace.actions,
         path=path,
@@ -194,19 +192,17 @@ def _editor(workspace: StepWorkspace, path: str, *, saving: bool, more_open: boo
                 form.label_controls.get(setting.name, ""),
                 any(problem.field[:1] == (setting.name,) for problem in unfilled),
             )
-            for setting in marking_draft.settings_holding_steps(path)
+            for setting in draft.settings_holding_steps(path)
         ],
-        label=marking_draft.label(path),
-        description=marking_draft.describe(path),
-        breadcrumbs=[(ancestor, marking_draft.label(ancestor)) for ancestor in _ancestor_paths(marking_draft, path)]
-        if path
-        else [],
+        label=draft.label(path),
+        description=draft.describe(path),
+        breadcrumbs=[(ancestor, draft.label(ancestor)) for ancestor in _ancestor_paths(draft, path)] if path else [],
         problems_elsewhere=[
             (problem.step_path, _problem_elsewhere_text(workspace, problem, path))
-            for problem in marking_draft.problems
+            for problem in draft.step_problems
             if saving and problem.step_path != path
         ],
-        can_change_method=len(choices(marking_draft.methods(path), workspace.offers)) > 1,
+        can_change_method=len(choices(draft.methods(path), workspace.offers)) > 1,
         newer_version=workspace.offers.newer_version(method, workspace.methods)
         if method and workspace.editable
         else None,

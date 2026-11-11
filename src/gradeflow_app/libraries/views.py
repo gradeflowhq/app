@@ -93,7 +93,7 @@ def _library_method(
         failed = loaded.failed.get(ref)
         at_fault = services.version_name(failed.ref if failed else ref)
         return LibraryMethod(
-            method, number, draft.label, draft.summary, [], marking_count, incompatible_version=at_fault
+            method, number, draft.method_label, draft.summary, [], marking_count, incompatible_version=at_fault
         )
     newer_version = offered.newer_version(method_version, loaded.methods) if offered else None
     newer_number = newer_version.version if newer_version else None
@@ -150,7 +150,7 @@ def _unpublished_draft(record: MethodDraftRecord) -> UnpublishedDraft:
         draft = services.method_draft(method, record.definition, record.tests, Methods())
     except EditingError, InvalidError:
         return UnpublishedDraft(record, method.name, "", [])
-    return UnpublishedDraft(record, draft.label or method.name, draft.summary, works_with(draft))
+    return UnpublishedDraft(record, draft.method_label or method.name, draft.summary, works_with(draft))
 
 
 def _library_context(request: Request, library: Library, **extra: Any) -> dict[str, Any]:

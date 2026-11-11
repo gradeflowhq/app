@@ -108,7 +108,9 @@ def taken_label(library: Library, label: str, *, excluding: Method | None = None
     first_drafts = MethodDraftRecord.objects.filter(method__in=others, method__versions__isnull=True).select_related(
         "method__library"
     )
-    drafted = [method_draft(draft.method, draft.definition, draft.tests, Methods()).label for draft in first_drafts]
+    drafted = [
+        method_draft(draft.method, draft.definition, draft.tests, Methods()).method_label for draft in first_drafts
+    ]
     return next((taken for taken in [*published, *drafted] if taken.casefold() == label.casefold()), None)
 
 
@@ -177,7 +179,9 @@ def version_name(ref: str) -> str:
 
 def label_of(version: MethodVersion) -> str:
     """The name people see for `version`."""
-    return method_draft(version.method, version.definition, version.tests, Methods(), version=version.number).label
+    return method_draft(
+        version.method, version.definition, version.tests, Methods(), version=version.number
+    ).method_label
 
 
 @transaction.atomic

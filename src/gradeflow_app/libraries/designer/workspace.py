@@ -11,7 +11,7 @@ from django.template.loader import render_to_string
 from django.urls import reverse
 from gradeflow_core import GradeFlowError, MethodFileError, Methods, QuestionSet, Step
 from gradeflow_core import Method as CoreMethod
-from gradeflow_core.editing import LoadedFiles, MarkingDraft, MethodDraft, RowResult
+from gradeflow_core.editing import LoadedFiles, MethodDraft, RowResult
 from pydantic import TypeAdapter
 from pydantic import ValidationError as PydanticValidationError
 
@@ -133,10 +133,6 @@ class MethodWorkspace(StepWorkspace):
             if "default" in declaration
         }
 
-    @property
-    def marking_draft(self) -> MarkingDraft:
-        return self.draft.steps_draft
-
     def url(self, name: str) -> str:
         """The workspace's own address for the view `name`."""
         kwargs: dict[str, Any] = {"method": self.method.pk}
@@ -180,7 +176,7 @@ class MethodWorkspace(StepWorkspace):
     @property
     def summary(self) -> str:
         """What the method marks, in the core's words."""
-        return self.marking_draft.describe("")
+        return self.draft.describe("")
 
     @cached_property
     def yaml_only_reasons(self) -> list[str]:
@@ -190,8 +186,8 @@ class MethodWorkspace(StepWorkspace):
         try:
             shown = [
                 title
-                for path in self.marking_draft.paths()
-                for title in unrepresentable_fields(self.marking_draft.schema(path), self.marking_draft.values(path))
+                for path in self.draft.paths()
+                for title in unrepresentable_fields(self.draft.schema(path), self.draft.values(path))
             ]
         except GradeFlowError as error:
             return [str(error)]
@@ -207,7 +203,7 @@ class MethodWorkspace(StepWorkspace):
         """The fields a declared setting fills: each one's step path and label."""
         fields = [field for field in self.draft.configurable_fields() if field.bound_setting == name]
         step_paths = list(dict.fromkeys(field.step_path for field in fields))
-        labels = dict(zip(step_paths, self.marking_draft.numbered_labels(step_paths), strict=True))
+        labels = dict(zip(step_paths, self.draft.numbered_labels(step_paths), strict=True))
         return [(field.step_path, f"{labels[field.step_path]} · {field.title}") for field in fields]
 
     def current_results(self) -> list[RowResult] | None:
@@ -242,7 +238,7 @@ class MethodWorkspace(StepWorkspace):
             assert self.version is not None
             raise ValidationError(f"Nothing changed since version {self.version.number}.")
         if not self.valid:
-            raise ValidationError(f"Finish the marking first: {self.marking_draft.problems[0].message}")
+            raise ValidationError(f"Finish the marking first: {self.draft.step_problems[0].message}")
         if self.untested:
             raise ValidationError("Run the tests first, so the examples show their marks.")
         self.record_examples()

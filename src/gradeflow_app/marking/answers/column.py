@@ -133,7 +133,7 @@ def answers_column_html(
 
 def preview_bar(request: Request, workspace: MarkingWorkspace) -> str:
     """The bar offering to preview the draft, to swap in as it changes."""
-    context = {"out_of_band": True} | draft_context(workspace, previews.preview_state(workspace.draft))
+    context = {"out_of_band": True} | draft_context(workspace, previews.preview_state(workspace.record))
     return render_to_string("results/answers.html#preview_bar", context, request)
 
 
@@ -225,7 +225,7 @@ def combinations_context(
     if subject.marking is not None:
         url = reverse("question_group_answers", args=[assessment.pk, subject.marking.pk])
     elif workspace is not None:
-        url = reverse("question_group_draft_answers", args=[assessment.pk, workspace.draft.pk])
+        url = reverse("question_group_draft_answers", args=[assessment.pk, workspace.record.pk])
     else:
         raise Http404  # new marking of questions together exists only as its draft
     accepted = assessment_checks(assessment) if accepted is None else accepted
@@ -292,9 +292,9 @@ def draft_context(workspace: MarkingWorkspace | None, preview: RunState | None) 
     if workspace is None:
         return {"draft": None}
     needs_preview = previews.preview_is_stale(workspace) or (
-        workspace.draft.preview_input is not None and preview is None
+        workspace.record.preview_input is not None and preview is None
     )
-    return {"draft": workspace.draft, "needs_preview": needs_preview, "can_preview": needs_preview and workspace.valid}
+    return {"draft": workspace.record, "needs_preview": needs_preview, "can_preview": needs_preview and workspace.valid}
 
 
 def _marking_job(assessment: Assessment, keys: Iterable[str]) -> RunState | None:
@@ -329,7 +329,7 @@ def _set_group_decisions(
             course_methods(assessment.course),
         )
     else:
-        draft = workspace.marking_draft
+        draft = workspace.draft
     decisions = draft.answer_decisions()
     for group in groups:
         group_decisions = {decisions.get(entry.normalized) for entry in group.student_answers}

@@ -6,7 +6,7 @@ from django.http import Http404, HttpResponse
 from django.shortcuts import render
 from django.utils.http import urlencode
 from gradeflow_core import GradeFlowError
-from gradeflow_core.editing import MarkingDraft
+from gradeflow_core.editing import Draft
 
 from gradeflow_app.courses.access import course_from_query
 from gradeflow_app.courses.models import Course
@@ -74,7 +74,7 @@ def picker(
 
 def step_picker(
     request: Request,
-    marking_draft: MarkingDraft,
+    draft: Draft,
     offered: OfferedMethods,
     course: Course | None,
     picker_form: PickerForm,
@@ -84,16 +84,16 @@ def step_picker(
     adding one there (`operation=add`). A step added to a question group reads the question chosen with it."""
     target = request.GET.get("target", "")
     changing_method = request.GET.get("operation") == "change_method"
-    if changing_method and not marking_draft.is_step(target):
+    if changing_method and not draft.is_step(target):
         raise Http404
     try:
-        position = marking_draft.position(target)
-        choice = None if changing_method else question_choice(marking_draft, target, request.GET.get("question"))
+        position = draft.position(target)
+        choice = None if changing_method else question_choice(draft, target, request.GET.get("question"))
         question = choice.question if choice else None
-        methods = marking_draft.methods(target, question)
+        methods = draft.methods(target, question)
     except GradeFlowError:
         raise Http404 from None
-    method = marking_draft.method(target) if changing_method else None
+    method = draft.method(target) if changing_method else None
     picker_form = dataclasses.replace(
         picker_form,
         current_method=method.ref if method else "",
@@ -104,11 +104,11 @@ def step_picker(
             picker_form,
             questions=choice.questions,
             question=question or "",
-            allows_group_methods=allows_group_methods(marking_draft, target),
+            allows_group_methods=allows_group_methods(draft, target),
             reload_url=f"{picker_url}?{urlencode(picker_form.fields)}",
         )
     question_key = question or position.question
-    question_type = marking_draft.questions[question_key].type if question_key else ""
+    question_type = draft.questions[question_key].type if question_key else ""
     return picker(
         request, sections_of(methods, offered), picker_form.current_method, picker_form, course, question_type
     )

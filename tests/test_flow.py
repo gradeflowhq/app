@@ -84,7 +84,7 @@ def test_saving_an_incomplete_marking_shows_what_is_missing(client: Client, asse
     response = client.post(reverse("draft_save", args=[assessment.pk, draft.pk]), {"path": "", "operation": "save"})
     assert response.status_code == 200
     assert not Marking.objects.exists()
-    missing = [escape(problem.message) for problem in MarkingWorkspace(draft).marking_draft.problems]
+    missing = [escape(problem.message) for problem in MarkingWorkspace(draft).draft.problems]
     assert missing
     assert all(message in response.text for message in missing)
 
@@ -493,7 +493,7 @@ def test_complete_answer_sets_say_what_they_check(client: Client, assessment: As
     draft.definition = dump_yaml({"uses": "gradeflow/answer-sets@1", "with": {"sets": [answer_set]}})
     draft.save()
     page = client.get(reverse("question_group_draft", args=[assessment.pk, draft.pk])).text
-    assert markdown(MarkingWorkspace(draft).marking_draft.describe("/with/sets/0")) in page
+    assert markdown(MarkingWorkspace(draft).draft.describe("/with/sets/0")) in page
     assert "Not set up yet" not in page
 
 

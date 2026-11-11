@@ -26,7 +26,7 @@ def draft_yaml(request: Request, access: AssessmentAccess, draft_id: UUID) -> Ht
     """The draft as YAML; posting saves the marking it reads as, of its question, then shows what else is wrong, if
     anything, with the editor behind brought up to date."""
     workspace = MarkingWorkspace.of(request, access, draft_id, lock=request.method == "POST")
-    draft_record = workspace.draft
+    draft_record = workspace.record
     text = draft_record.definition
     problems: list[str] = []
     action = reverse("draft_yaml", args=[access.assessment.pk, draft_record.pk])

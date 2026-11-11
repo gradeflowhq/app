@@ -7,7 +7,7 @@ from typing import Any, NamedTuple
 from django.http import Http404
 from django.utils.text import get_text_list
 from gradeflow_core import GradeFlowError, Method, Methods, QuestionSet
-from gradeflow_core.editing import Example, MarkingDraft, MethodDraft, Position
+from gradeflow_core.editing import Draft, Example, MethodDraft, Position
 
 from gradeflow_app.libraries.collection import BUILTIN_NAMES, OfferedMethods
 from gradeflow_app.questions.models import QUESTION_TYPE_LABELS
@@ -76,23 +76,21 @@ class QuestionChoice(NamedTuple):
     """The one it reads; none for a method of several questions."""
 
 
-def question_choice(
-    marking_draft: MarkingDraft, target: str, chosen_question: str | None = None
-) -> QuestionChoice | None:
+def question_choice(draft: Draft, target: str, chosen_question: str | None = None) -> QuestionChoice | None:
     """The questions a step added at `target` of a question group may read, and the one it reads: `chosen_question`
     or the first; none if it is `""` and methods of several questions can go there. None for any other step."""
-    position = marking_draft.position(target)
+    position = draft.position(target)
     if not position.is_in_group or position.question is not None:
         return None
-    keys = list(marking_draft.questions)
-    if chosen_question == "" and allows_group_methods(marking_draft, target):
+    keys = list(draft.questions)
+    if chosen_question == "" and allows_group_methods(draft, target):
         return QuestionChoice(keys, None)
     return QuestionChoice(keys, chosen_question if chosen_question in keys else next(iter(keys), None))
 
 
-def allows_group_methods(marking_draft: MarkingDraft, target: str) -> bool:
+def allows_group_methods(draft: Draft, target: str) -> bool:
     """Whether methods of several questions can go at `target`."""
-    return any(method.marks_question_group for method in marking_draft.methods(target, None))
+    return any(method.marks_question_group for method in draft.methods(target, None))
 
 
 def _labels(question_types: Iterable[str]) -> list[str]:

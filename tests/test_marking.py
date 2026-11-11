@@ -59,9 +59,7 @@ def accepted_answers_check(question: str, answer: str) -> dict[str, Any]:
 def problem_message(draft: MarkingDraftRecord, part: str | int) -> str:
     """What the core says is wrong with the draft's field whose location holds `part`."""
     draft.refresh_from_db()
-    return escape(
-        next(problem.message for problem in MarkingWorkspace(draft).marking_draft.problems if part in problem.field)
-    )
+    return escape(next(problem.message for problem in MarkingWorkspace(draft).draft.problems if part in problem.field))
 
 
 def question_group_marking(assessment: Assessment) -> Marking:
@@ -343,7 +341,7 @@ def test_breadcrumbs_name_each_check_as_its_card_does(assessment: Assessment) ->
     for path in ("/with/steps/0", "/with/steps/1"):
         breadcrumbs = editor(workspace, path).breadcrumbs
         assert breadcrumbs == [
-            (breadcrumb_path, workspace.marking_draft.label(breadcrumb_path)) for breadcrumb_path in ("", path)
+            (breadcrumb_path, workspace.draft.label(breadcrumb_path)) for breadcrumb_path in ("", path)
         ]
 
 
@@ -571,7 +569,7 @@ def test_a_values_check_suggests_that_values_answers(assessment: Assessment) -> 
     ]
     values = {"question": "Q1", "uses": "gradeflow/multiple-values@1", "with": {"checks": checks}}
     workspace = workspace_of(assessment, values)
-    assert workspace.suggestions_at(workspace.marking_draft.position("/with/checks/1")) == {"water": 1}
+    assert workspace.suggestions_at(workspace.draft.position("/with/checks/1")) == {"water": 1}
 
 
 def test_answers_the_question_reads_as_blank_arent_suggested(assessment: Assessment) -> None:
@@ -726,15 +724,15 @@ def marked_by_example(draft: MarkingDraftRecord, answer: str, decision: Decision
     """The draft as the core marks `answer` by example, written as the draft is saved."""
     draft.refresh_from_db()
     workspace = MarkingWorkspace(draft)
-    workspace.marking_draft.mark_by_example([answer], decision)
-    return MarkScheme.load([workspace.marking_draft.data], methods=workspace.methods).dump()[0]
+    workspace.draft.mark_by_example([answer], decision)
+    return MarkScheme.load([workspace.draft.data], methods=workspace.methods).dump()[0]
 
 
 def decision_count(draft: MarkingDraftRecord) -> int:
     """How many answers the core says the draft decided, each of which the answers column offers to clear."""
     draft.refresh_from_db()
     workspace = MarkingWorkspace(draft)
-    return len(workspace.marking_draft.answer_decisions())
+    return len(workspace.draft.answer_decisions())
 
 
 def test_an_answer_group_is_marked_by_example(client: Client, assessment: Assessment) -> None:
@@ -770,7 +768,7 @@ def test_each_answer_marked_by_example_redraws_the_editor(client: Client, assess
         assert workspace.valid
         cards = page.text.split('id="editor-notices"', 1)[1]
         steps = definition_tree(draft)["with"]["steps"]
-        descriptions = [workspace.marking_draft.describe(f"/with/steps/{index}") for index in range(len(steps))]
+        descriptions = [workspace.draft.describe(f"/with/steps/{index}") for index in range(len(steps))]
         assert all(markdown(description) in cards for description in descriptions)
 
 
@@ -782,7 +780,7 @@ def test_a_problem_shows_on_its_checks_card_and_on_its_form_where_no_field_holds
 
     def save_and_get_problem_message(*steps: dict[str, Any]) -> str:
         save_definition(draft, {**definition_tree(draft), "with": {"steps": list(steps)}})
-        [single_problem] = MarkingWorkspace(draft).marking_draft.problems
+        [single_problem] = MarkingWorkspace(draft).draft.problems
         return escape(single_problem.message)
 
     misplaced_reference_message = save_and_get_problem_message(

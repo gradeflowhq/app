@@ -234,7 +234,7 @@ def method_choices(request: Request, access: MethodAccess) -> HttpResponse:
     )
     return step_picker(
         request,
-        workspace.marking_draft,
+        workspace.draft,
         workspace.offers,
         workspace.course,
         picker_form,

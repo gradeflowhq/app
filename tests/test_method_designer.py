@@ -560,7 +560,7 @@ def test_the_default_explains_the_field_beside_the_description_of_the_setting(cl
     assert page.count("How close it must be.") == 1
     method_draft = core_draft(method)
     field = next(field for field in method_draft.configurable_fields() if field.path == WHOLE_WORDS_PATH)
-    setting = method_draft.steps_draft.schema(field.step_path)["properties"][field.key]
+    setting = method_draft.schema(field.step_path)["properties"][field.key]
     assert html.unescape(setting["description"]) in html.unescape(page)
 
 
@@ -625,7 +625,7 @@ def test_a_second_question_keeps_the_checks_on_the_first(client: Client, method:
     post_to_designer(client, method, "method_question", save="1", type="number", max_marks="2")
     method_draft = core_draft(method)
     assert method_draft.question is None
-    assert {method_draft.steps_draft.data["with"]["steps"][0].get("question")} == {"Q1"}
+    assert {method_draft.data["with"]["steps"][0].get("question")} == {"Q1"}
     assert method_draft.problems == []
 
 
@@ -1026,7 +1026,7 @@ def test_a_method_gives_marks_or_a_steps_output(client: Client, method: Method) 
     saved_definition = definition_data(draft(method).definition)
     assert (saved_definition["output"], saved_definition["output_step"]) == ("step_output", output_step)
     assert marks_by_and_output_step_hidden() == (True, False), "as reloaded"
-    steps_settings = core_draft(method).steps_draft.data["with"]
+    steps_settings = core_draft(method).data["with"]
     assert (steps_settings["output"], steps_settings["output_step"]) == ("step_output", output_step)
 
     post_top_level_fields(output="marks", marks_by="total")

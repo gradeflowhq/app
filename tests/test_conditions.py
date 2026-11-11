@@ -26,7 +26,7 @@ def test_a_condition_on_an_earlier_check_names_that_check(client: Client, assess
     for index, method in enumerate(("gradeflow/key-points@1", "gradeflow/length@1")):
         client.post(url, {"path": "", "operation": "add", "target": f"/with/steps/{index}", "method": method})
     draft.refresh_from_db()
-    earlier_step_label = escape(MarkingWorkspace(draft).marking_draft.label("/with/steps/0"))
+    earlier_step_label = escape(MarkingWorkspace(draft).draft.label("/with/steps/0"))
     page = client.post(url, {"path": "", "operation": "open", "target": "/with/steps/1"}).text
     assert f'<option value="/with/steps/0">{earlier_step_label}</option>' in page
     tests = [(test, escape(label)) for test, label in Condition.test_labels.items()]

@@ -179,9 +179,9 @@ def draft_view(request: Request, access: AssessmentAccess, draft_id: UUID) -> Ht
             )
         return render(request, "marking/panel.html", {"access": access, "editor": _editor(request, workspace, path)})
     fields_only = not request.POST.get("operation")
-    structure_before = workspace.editor_structure(path) if workspace.marking_draft.is_step(path) else None
-    decisions = workspace.marking_draft.answer_decisions()
-    method = drafted_method(workspace.marking_draft)
+    structure_before = workspace.editor_structure(path) if workspace.draft.is_step(path) else None
+    decisions = workspace.draft.answer_decisions()
+    method = drafted_method(workspace.draft)
     next_editor = _editor(request, workspace, _apply(request, workspace, path))
     _refresh_list_if_method_changed(request, workspace, method)
     context: dict[str, Any] = {"access": access, "editor": next_editor}
@@ -191,7 +191,7 @@ def draft_view(request: Request, access: AssessmentAccess, draft_id: UUID) -> Ht
         answers_html = (
             answers_column_html(request, access, workspace.subject, workspace, out_of_band=True)
             if workspace.subject.question is None
-            or decisions != workspace.marking_draft.answer_decisions()
+            or decisions != workspace.draft.answer_decisions()
             or not previews.preview_is_stale(workspace)
             else preview_bar(request, workspace)
         )
@@ -204,7 +204,7 @@ def draft_view(request: Request, access: AssessmentAccess, draft_id: UUID) -> Ht
 
 def _refresh_list_if_method_changed(request: Request, workspace: MarkingWorkspace, before: str) -> None:
     """Refresh the user's question list where it names the draft's method, once that changed from `before`."""
-    if drafted_method(workspace.marking_draft) != before:
+    if drafted_method(workspace.draft) != before:
         notify_drafts_changed(workspace.subject.assessment, request.user)
 
 
@@ -256,7 +256,7 @@ def save(request: Request, access: AssessmentAccess, draft_id: UUID) -> HttpResp
         path = (
             path
             if workspace.problems_at(path, saving=True)
-            else next((problem.step_path for problem in workspace.marking_draft.problems), path)
+            else next((problem.step_path for problem in workspace.draft.step_problems), path)
         )
         context = {"access": access, "editor": _editor(request, workspace, path)}
         return render(request, "marking/editor.html", context)
@@ -343,9 +343,9 @@ def mark_example(request: Request, access: AssessmentAccess, question_id: UUID) 
         raise Http404
     workspace = MarkingWorkspace(draft)
     decision = cast("Decision | Literal['cancel']", request.POST.get("decision", ""))
-    method = drafted_method(workspace.marking_draft)
+    method = drafted_method(workspace.draft)
     try:
-        workspace.marking_draft.mark_by_example(request.POST.getlist("answer"), decision)
+        workspace.draft.mark_by_example(request.POST.getlist("answer"), decision)
     except GradeFlowError as error:
         messages.error(request, str(error))
     else:
@@ -396,7 +396,7 @@ def question_methods(request: Request, access: AssessmentAccess, question_id: UU
 def draft_methods(request: Request, access: AssessmentAccess, draft_id: UUID) -> HttpResponse:
     """The method picker for the step at `target` of the draft, which opens the editor at `path` after."""
     workspace = MarkingWorkspace.of(request, access, draft_id)
-    args = [access.assessment.pk, workspace.draft.pk]
+    args = [access.assessment.pk, workspace.record.pk]
     picker_form = PickerForm(
         action=reverse("draft", args=args),
         target="#marking-panel",
@@ -404,7 +404,7 @@ def draft_methods(request: Request, access: AssessmentAccess, draft_id: UUID) ->
         fields={"path": request.GET.get("path", request.GET.get("target", ""))},
     )
     picker_url = reverse("draft_methods", args=args)
-    return step_picker(request, workspace.marking_draft, workspace.offers, access.course, picker_form, picker_url)
+    return step_picker(request, workspace.draft, workspace.offers, access.course, picker_form, picker_url)
 
 
 @assessment_member(Role.EDITOR)
@@ -442,11 +442,11 @@ def question_group_edit(request: Request, access: AssessmentAccess, marking_id: 
 @assessment_member(Role.EDITOR)
 def question_group_draft(request: Request, access: AssessmentAccess, draft_id: UUID) -> HttpResponse:
     workspace = MarkingWorkspace.of(request, access, draft_id, question=None)
-    if workspace.draft.marking is not None:
-        return redirect("question_group", access.assessment.pk, workspace.draft.marking.pk)
+    if workspace.record.marking is not None:
+        return redirect("question_group", access.assessment.pk, workspace.record.marking.pk)
     context = {
         "access": access,
-        "question_list": presenters.question_list(access, str(workspace.draft.pk)),
+        "question_list": presenters.question_list(access, str(workspace.record.pk)),
         "editor": _editor(request, workspace, request.GET.get("path", "")),
         "answers": answers_column_html(request, access, workspace.subject, workspace),
     }
