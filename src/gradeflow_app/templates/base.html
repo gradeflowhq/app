@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}{% block page_title %}{% endblock %}GradeFlow{% endblock %}</title>
   <link rel="icon" href="{% static 'gradeflow/logo.svg' %}" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="{% static 'gradeflow/apple-touch-icon.png' %}">
   <script {% csp_nonce_attr %}>
     try {
       const theme = localStorage.getItem("theme");
