@@ -1,13 +1,13 @@
 """What the method designer shows, for its templates: the workspace, the test values and a declared setting."""
 
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any, cast
 
 from django import forms
 from django.http import QueryDict
 from gradeflow_core import GradeFlowError, Problem
-from gradeflow_core.editing import EditingError
+from gradeflow_core.editing import EditingError, field_in_values
 
 from gradeflow_app.editor.editing import field_parts, problem_text
 from gradeflow_app.editor.presenters import editor
@@ -150,9 +150,21 @@ def values_form(
         return None
     current = initial_object if initial_object is not None else workspace.defaults | workspace.draft.test_values
     form = ObjectForm(schema, current, prefix="values", data=data)
+    if data is None:
+        form.add_problems(_test_value_problems(workspace))
     if not workspace.editable:
         form.disable()
     return form
+
+
+def _test_value_problems(workspace: MethodWorkspace) -> list[Problem]:
+    """The method's problems with the test value of a declared setting, each at its field."""
+    declared_settings = workspace.draft.declared_settings
+    return [
+        replace(problem, field=field_in_values(problem.field))
+        for problem in workspace.draft.problems
+        if not problem.step_path and (parts := field_parts(problem)) and parts[0] in declared_settings
+    ]
 
 
 def declared_setting_view(

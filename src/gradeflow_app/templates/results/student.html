@@ -4,7 +4,7 @@
 </c-drawer.head>
 <div class="p-6" id="student-detail">
   <ol class="card-box divide-y divide-base-300" aria-label="Questions">
-    {% for question, answer, award, marks_source in rows %}
+    {% for question, answer, blank, award, marks_source in rows %}
     {% with low=award.marks max_marks=question.core_question.max_marks adjustment=award.adjustment code=question.core_question|code_language %}
     <li class="grid gap-3 px-4 py-3"{% if access.can_edit %} x-data="adjustForm" data-feedback="{% if not adjustment or adjustment.feedback is None %}marking{% elif adjustment.feedback %}own{% else %}none{% endif %}"{% endif %}>
       <div class="flex items-start gap-4">

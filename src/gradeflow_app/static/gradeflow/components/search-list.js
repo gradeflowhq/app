@@ -71,6 +71,8 @@ export const methodPicker = () => ({
     this.query = this.$refs.search.value = "";
     this.filter();
     this.$refs.list.scrollTop = 0;
+    const listed = [...this.$root.querySelectorAll(`[data-section][data-tab="${this.tab}"] [data-method]`)];
+    if (listed.length && !listed.some((method) => method.dataset.method === this.selected)) listed[0].click();
   },
 
   // Arrow keys move to the other tab, as tabs do.

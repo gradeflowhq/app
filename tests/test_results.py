@@ -197,6 +197,13 @@ def test_a_students_page_shows_their_adjustments(client: Client, adjusted_assess
     assert "· </span>" not in page, "Q3 has no marking to name"
 
 
+def test_a_students_page_shows_their_answers_as_written(client: Client, assessment: Assessment) -> None:
+    student = assessment.students.get(encrypted_id=encrypted_id("S002"))
+    page = client.get(reverse("student", args=[assessment.pk, student.pk]), headers=HTMX_HEADERS).text
+    assert "Photosynthesis uses light.</p>" in page
+    assert ">42.0</p>" in page
+
+
 def test_the_students_list_refreshes_as_marks_change(client: Client, assessment: Assessment) -> None:
     url = reverse("students", args=[assessment.pk])
     page = client.get(url).text

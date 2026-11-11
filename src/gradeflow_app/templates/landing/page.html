@@ -5,7 +5,7 @@
   <c-slot name="actions">
     <a href="{{ github_url }}" class="btn btn-ghost btn-square btn-sm max-sm:hidden" target="_blank" rel="noopener" hx-boost="false" aria-label="GradeFlow on GitHub" title="GradeFlow on GitHub"><c-github /></a>
     <a href="{% url 'account_login' %}" class="btn btn-ghost btn-sm">Sign in</a>
-    <a href="{% url 'account_signup' %}" class="btn btn-primary btn-sm">Create an account</a>
+    <a href="{% url 'account_signup' %}" class="btn btn-primary btn-sm max-sm:hidden">Create an account</a>
   </c-slot>
 </c-topbar>
 <main id="main">

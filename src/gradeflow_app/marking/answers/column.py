@@ -251,7 +251,7 @@ def combinations_context(
         "answers_url": url,
         "filter": "changed" if only_changed else "all",
         "preview_job": job,
-        "preview_summary": _combinationspreview_summary(rows) if results is not None else None,
+        "preview_summary": _combinations_preview_summary(rows) if results is not None else None,
         "marking_job": _marking_job(assessment, keys),
         "is_question_group": True,
         **draft_context(workspace, job),
@@ -386,7 +386,7 @@ def preview_summary(groups: list[AnswerGroup]) -> PreviewSummary:
     )
 
 
-def _combinationspreview_summary(rows: list[Combination]) -> PreviewSummary:
+def _combinations_preview_summary(rows: list[Combination]) -> PreviewSummary:
     unmarked = [row for row in rows if any(cell.problem for cell in row.cells)]
     return PreviewSummary(
         changed_count=sum(row.changed_count for row in rows),

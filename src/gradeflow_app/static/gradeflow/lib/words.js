@@ -2,6 +2,11 @@
 export const counted = (count, word, words = `${word}s`) =>
   `${Number.isInteger(count) ? count.toLocaleString("en") : count} ${count === 1 ? word : words}`;
 
+const collator = new Intl.Collator(undefined, { numeric: true });
+
+/** Compares texts with their numbers by value: "Q2" before "Q10". */
+export const naturalOrder = (a, b) => collator.compare(a, b);
+
 /** Items as a sentence lists them: "a, b, and c". */
 export const formatList = (items) => new Intl.ListFormat("en").format(items);
 

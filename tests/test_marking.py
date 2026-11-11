@@ -887,12 +887,12 @@ def test_code_answers_show_as_typed_and_highlighted(client: Client, assessment: 
 
 
 def test_a_problem_with_a_checks_settings_as_a_whole_names_only_the_check() -> None:
-    questions = QuestionSet.load({"Q1": {"type": "text", "max_marks": 1}})
-    length = {"uses": "gradeflow/length@1", "with": {"min_length": 30, "max_length": 20}}
-    data = {"uses": "gradeflow/workflow@1", "with": {"steps": [length]}}
+    questions = QuestionSet.load({"Q1": {"type": "text", "reading": {"ignore_punctuation": True}}})
+    expression = {"uses": "gradeflow/equivalent-expression@1", "with": {"answers": ["x + 1"]}}
+    data = {"uses": "gradeflow/workflow@1", "with": {"steps": [expression]}}
     draft = MarkingDraft(data, questions, "Q1")
     (problem,) = draft.problems
-    assert problem_text(draft, problem) == f"Length: {problem.message}"
+    assert problem_text(draft, problem) == f"Equivalent Expression: {problem.message}"
 
 
 def test_text_answers_in_an_answer_group_are_listed_under_answers(client: Client, assessment: Assessment) -> None:

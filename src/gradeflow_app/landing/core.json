@@ -2688,14 +2688,14 @@
   ],
   "decided_summary": {
    "method_label": "Workflow",
-   "description": "Any one of these:\n- Matches `Release energy` or `Releases energy for the cell`.\n- **50% of the marks:** Matches `Produces ATP`.",
+   "description": "Any one of these:\n- Matches `Release energy` or `Releases energy for the cell`.\n- **Worth ½:** Matches `Produces ATP`.",
    "problems": [],
    "is_compatible": true,
    "incompatible_version": ""
   },
   "decided_editor": {
    "label": "Workflow",
-   "description": "Any one of these:\n- Matches `Release energy` or `Releases energy for the cell`.\n- **50% of the marks:** Matches `Produces ATP`.",
+   "description": "Any one of these:\n- Matches `Release energy` or `Releases energy for the cell`.\n- **Worth ½:** Matches `Produces ATP`.",
    "form_schema": {
     "$defs": {
      "StepData": {
@@ -5594,7 +5594,7 @@
      ]
     },
     {
-     "description": "Any one of these:\n- **Takes g = 9.8:** All of these:\n  - **Q3a:** Matches `3.03`.\n  - **Q3b:** Matches `29.7`.\n- **Takes g = 10:** All of these:\n  - **Q3a:** Matches `3`.\n  - **Q3b:** Matches `30`.\n- **Rounds the time first** (75% of the marks): All of these:\n  - **Q3a:** Matches `3`.\n  - **Q3b:** Matches `29.4`.",
+     "description": "Any one of these:\n- **Takes g = 9.8:** All of these:\n  - **Q3a:** Matches `3.03`.\n  - **Q3b:** Matches `29.7`.\n- **Takes g = 10:** All of these:\n  - **Q3a:** Matches `3`.\n  - **Q3b:** Matches `30`.\n- **Rounds the time first** (Worth ¾): All of these:\n  - **Q3a:** Matches `3`.\n  - **Q3b:** Matches `29.4`.",
      "results": [
       {
        "proportion": 1.0,

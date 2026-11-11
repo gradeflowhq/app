@@ -3,7 +3,6 @@ import { test } from "node:test";
 
 import {
   answerFromFiles,
-  decodeText,
   fileQuestionsFor,
   filesForQuestion,
   findSubmissions,
@@ -40,12 +39,6 @@ test("system files, folders and macOS metadata are ignored", () => {
   for (const path of ["__MACOSX/a/._x.py", "a/.DS_Store", "a/__pycache__/x.pyc", "a/.git/HEAD", "a/b/"])
     assert.ok(isIgnoredPath(path), path);
   assert.ok(!isIgnoredPath("a/b/x.py"));
-});
-
-test("text is UTF-8, else Windows-1252; NUL bytes mean binary", () => {
-  assert.equal(decodeText(new TextEncoder().encode('﻿print("é")\r\n')), 'print("é")\n');
-  assert.equal(decodeText(Uint8Array.of(0x23, 0x20, 0xe9, 0x0a)), "# é\n");
-  assert.equal(decodeText(Uint8Array.of(0x89, 0x50, 0x00, 0x01)), null);
 });
 
 test("a path splits into tokens and separators", () => {

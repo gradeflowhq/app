@@ -37,3 +37,19 @@ def test_a_condition_on_an_earlier_check_names_that_check(client: Client, assess
     reloaded_page = client.post(url, {"path": "", "operation": "open", "target": "/with/steps/1"}).text
     assert f'<option value="/with/steps/0" selected>{earlier_step_label}</option>' in reloaded_page
     assert '<option value="incorrect" selected>' in reloaded_page
+
+
+@pytest.mark.django_db
+def test_a_condition_on_a_removed_check_can_be_cleared(client: Client, assessment: Assessment) -> None:
+    url, draft = start_marking(client, assessment, "Q1", "gradeflow/workflow@1")
+    for index, method in enumerate(("gradeflow/key-points@1", "gradeflow/length@1")):
+        client.post(url, {"path": "", "operation": "add", "target": f"/with/steps/{index}", "method": method})
+    client.post(
+        url, {"path": "/with/steps/1", "fields_posted": "1", "if-check-0": "/with/steps/0", "if-test-0": "incorrect"}
+    )
+    client.post(url, {"path": "", "operation": "remove", "target": "/with/steps/0"})
+    page = client.post(url, {"path": "", "operation": "open", "target": "/with/steps/0"}).text
+    assert 'name="if-text" value="{{ not steps.key_points.output.correct }}"' in page
+    client.post(url, {"path": "/with/steps/0", "fields_posted": "1", "if-text": ""})
+    draft.refresh_from_db()
+    assert "if" not in MarkingWorkspace(draft).draft.data["with"]["steps"][0]

@@ -38,7 +38,8 @@ def student_page(request: Request, access: AssessmentAccess, student: Student) -
         )
         if award.result and award.result.model_names:
             method += f" ({', '.join(award.result.model_names)})"
-        rows.append((question, question.core_question.normalize(student.answers.get(question.key, "")), award, method))
+        answer = student.answers.get(question.key, "")
+        rows.append((question, answer, not question.core_question.normalize(answer), award, method))
     return render(
         request,
         "results/student.html",

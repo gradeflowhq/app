@@ -11,7 +11,7 @@
   {% endif %}
   <div id="course-cards">
     {% if cards %}
-    <ul class="grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4" aria-label="Courses">
+    <ul class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4" aria-label="Courses">
       {% for card in cards %}{% with member=card.member course=card.member.course %}
       <li>
         <a href="{% url 'course' course.pk %}" class="card-box flex h-full flex-col gap-1 p-5 transition-colors hover:bg-base-200/60">

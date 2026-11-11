@@ -1,11 +1,10 @@
 // A zip of submissions under review: the pattern finding each path's student and file, and each file's question.
 
-import { counted, formatList } from "../../lib/words.js";
+import { counted, formatList, naturalOrder } from "../../lib/words.js";
 import {
   findSubmissions,
   isCommon,
   MAX_ZIP_ENTRY_BYTES,
-  naturalOrder,
   pathTokens,
   patternFromTokens,
   patternRegex,

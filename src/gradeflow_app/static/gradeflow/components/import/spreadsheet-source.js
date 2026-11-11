@@ -2,6 +2,7 @@
 
 import { cellText, isBlankRow } from "../../lib/cells.js";
 import { detectColumns, detectHeaderRow, detectStudentRows, isAnswerKeyRow } from "../../lib/columns.js";
+import { decodeText } from "../../lib/text-files.js";
 import { loadScript } from "../../services/vendor.js";
 
 const ROLES = { id: "Student ID", answer: "Answer", marks: "Marks", unused: "Not used" };
@@ -16,8 +17,8 @@ const parseCsv = async (text) => {
 
 /** A CSV file's rows, blank ones included. Throws for a file that isn't text. */
 export async function readCsv(bytes) {
-  const text = new TextDecoder().decode(bytes);
-  if (text.includes("\0")) throw new Error("not text");
+  const text = decodeText(bytes);
+  if (text === null) throw new Error("not text");
   return parseCsv(text);
 }
 

@@ -1,28 +1,15 @@
 // A zip of submissions: a pattern such as `submissions/{student}/{file}` finds each path's student and file, and each
 // student's top-level files and folders answer questions.
 
-const collator = new Intl.Collator(undefined, { numeric: true });
-export const naturalOrder = (a, b) => collator.compare(a, b);
+import { decodeText } from "./text-files.js";
+import { naturalOrder } from "./words.js";
 
 const IGNORED_PATH = /(?:^|\/)(?:__MACOSX|__pycache__|\.[^/]*)(?:\/|$)|\/$/;
 
 /** Whether a zip entry is a folder, macOS metadata, a cache or a hidden file. */
 export const isIgnoredPath = (path) => IGNORED_PATH.test(path);
 
-const BINARY_PROBE_BYTES = 8000;
 export const MAX_ZIP_ENTRY_BYTES = 2 ** 20;
-
-/** A file's text, read as UTF-8 or else Windows-1252, with Unix line endings; null for a binary file. */
-export function decodeText(bytes) {
-  if (bytes.subarray(0, BINARY_PROBE_BYTES).includes(0)) return null;
-  let text;
-  try {
-    text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
-  } catch {
-    text = new TextDecoder("windows-1252").decode(bytes);
-  }
-  return text.replaceAll("\r\n", "\n");
-}
 
 /** A zip's text files by path, in order, and how many it left out: hidden, binary or over `MAX_ZIP_ENTRY_BYTES`.
  * Awaits `onProgress(read, total)` every 4% of the entries. */

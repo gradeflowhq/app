@@ -321,6 +321,22 @@ def test_a_checks_problems_show_while_a_setting_has_no_value_or_only_a_test_valu
     assert (page.context["first_problem_step"], page.context["problems"]) == ("/with/steps/1", [])
 
 
+def test_a_test_value_the_method_refuses_shows_at_its_field(client: Client, method: Method) -> None:
+    definition = {
+        "label": "Light",
+        "summary": "Says light.",
+        "question_types": ["text"],
+        "settings": {"prefix": {"title": "Prefix pattern", "default": "^light"}},
+        "steps": [{"uses": "gradeflow/pattern@1", "with": {"pattern": "{{ settings.prefix }}"}}],
+    }
+    post_to_designer(client, method, "method_yaml", definition=dump_yaml(definition))
+    post_to_designer(client, method, "method_values", None, **{"values-prefix": "^(light"})
+    page = client.get(designer_url(method, "method_page"))
+    message = "Not a valid pattern: missing ) at position 7."
+    assert page.context["problems"] == [f"Prefix pattern: {message}"]
+    assert page.context["values"].errors["prefix"] == [message]
+
+
 def test_every_part_of_a_setting_declaration_is_edited(client: Client, method: Method) -> None:
     marks_by_path = "/with/steps/0/with/marks_by"
     post_to_designer(client, method, "method_field", operation="bind_new_setting", field=marks_by_path)

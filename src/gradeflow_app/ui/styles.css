@@ -148,9 +148,12 @@
   @apply grid max-w-3xl gap-6;
 }
 
-/* One-action settings in a card, divided. */
+/* One-action settings in a card, divided; a dialog among them is no row. */
 @utility setting-rows {
-  @apply divide-y divide-base-300 px-5;
+  @apply px-5;
+  & > :not(dialog) ~ :not(dialog) {
+    @apply border-t border-base-300;
+  }
 }
 
 @utility card-box {
@@ -236,7 +239,7 @@
 
 /* A segmented control: a `segment` label around each radio input, or a `segment` tab or pressed button. */
 @utility segmented {
-  @apply inline-flex w-fit gap-0.5 rounded-field border border-base-300 bg-base-200 p-0.5;
+  @apply relative inline-flex w-fit gap-0.5 rounded-field border border-base-300 bg-base-200 p-0.5;
 }
 @utility segment {
   @apply flex cursor-pointer items-center rounded-[calc(var(--radius-field)-0.125rem)] px-3 py-1.5 text-sm font-medium text-muted transition-colors hover:text-base-content has-checked:bg-base-100 has-checked:text-base-content has-checked:shadow-xs aria-selected:bg-base-100 aria-selected:text-base-content aria-selected:shadow-xs aria-pressed:bg-base-100 aria-pressed:text-base-content aria-pressed:shadow-xs has-focus-visible:outline-2 has-focus-visible:outline-primary focus-visible:outline-2 focus-visible:outline-primary has-disabled:cursor-not-allowed has-disabled:opacity-40;
