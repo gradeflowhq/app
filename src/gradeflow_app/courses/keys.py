@@ -19,7 +19,9 @@ from gradeflow_app.courses.models import Course, CourseKey, Member, Role
 from gradeflow_app.requests import Request
 
 KEY_NOT_SHARED_YET = "You'll see student IDs once another member of this course opens GradeFlow."
-KEY_LOST = "No member holds this course's key any more, so its student IDs can't be read."
+KEY_LOST = (
+    "No member holds this course's key any more, so its student IDs can't be read. Import them again to read them."
+)
 
 
 class CourseKeyForm(forms.ModelForm[CourseKey]):
@@ -62,13 +64,14 @@ def _has_encrypted_student_ids(course_id: UUID) -> bool:
 @require_POST
 @course_member(Role.EDITOR)
 def create_course_key(request: Request, member: Member) -> HttpResponse:
-    """409 if the course has a key already, or student IDs encrypted with a lost one."""
+    """409 if a member holds the course's key already. A lost key is replaced: IDs encrypted with it stay unreadable
+    until they're imported again."""
     form = CourseKeyForm(request.POST)
     if not form.is_valid():
         return HttpResponse(status=400)
     with transaction.atomic():
         Course.objects.select_for_update().get(pk=member.course_id)
-        if _any_member_has_key(member.course_id) or _has_encrypted_student_ids(member.course_id):
+        if _any_member_has_key(member.course_id):
             return HttpResponse(status=409)
         CourseKey.objects.create(member=member, encrypted_key=form.cleaned_data["encrypted_key"])
     return HttpResponse(status=204)

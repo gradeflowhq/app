@@ -192,12 +192,12 @@ def test_the_first_import_gives_the_course_its_key_once(client: Client, course: 
     assert client.post(key_url, {"encrypted_key": ENCRYPTED_KEY}).status_code == 409
 
 
-def test_a_lost_course_key_is_never_replaced_while_ids_need_it(client: Client, course: Course) -> None:
+def test_a_lost_course_key_is_replaced_by_the_next_import(client: Client, course: Course) -> None:
     Student.objects.create(assessment=course.assessments.get(), encrypted_id="enc:v1:aaaa:bbbb", answers={})
     assert course_key_on_page(client, course) == ("", KEY_LOST)
-    assert (
-        client.post(reverse("create_course_key", args=[course.pk]), {"encrypted_key": ENCRYPTED_KEY}).status_code == 409
-    )
+    key_url = reverse("create_course_key", args=[course.pk])
+    assert client.post(key_url, {"encrypted_key": ENCRYPTED_KEY}).status_code == 204
+    assert course_key_on_page(client, course) == (ENCRYPTED_KEY, "")
 
 
 def test_a_viewer_cant_start_the_course_key_and_outsiders_cant_post_one(course: Course, bo: User) -> None:

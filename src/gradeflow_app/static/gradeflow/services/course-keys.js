@@ -10,11 +10,14 @@ const courseKeyContext = (courseId, userId) => `gradeflow:course-key:${courseId}
 const decryptCourseKey = (keyPair, courseId, encryptedCourseKey) =>
   decryptWithKeyPair(keyPair, encryptedCourseKey, courseKeyContext(courseId, signedInAccount().userId));
 
-/** The assessment's keys, or null without a key pair or course key. With `create`, creates the course key if none. */
+/**
+ * The assessment's keys, or null without a key pair or course key. With `create`, creates the course key when no member
+ * holds it.
+ */
 export async function assessmentKeysFor(assessmentElement, { create = false } = {}) {
-  const { course, assessment, encryptedCourseKey, courseKeyUnavailableReason } = assessmentElement.dataset;
+  const { course, assessment, encryptedCourseKey } = assessmentElement.dataset;
   const keyPair = await loadKeyPair();
-  const canCreate = create && keyPair && !encryptedCourseKey && !courseKeyUnavailableReason;
+  const canCreate = create && keyPair && !encryptedCourseKey;
   const courseKey = encryptedCourseKey || (canCreate ? await createCourseKey(assessmentElement) : "");
   if (!keyPair || !courseKey) return null;
   return assessmentKeys(await importCourseKey(await decryptCourseKey(keyPair, course, courseKey)), assessment);
@@ -23,7 +26,7 @@ export async function assessmentKeysFor(assessmentElement, { create = false } = 
 export const missingCourseKeyMessage = (assessmentElement) =>
   assessmentElement.dataset.courseKeyUnavailableReason || "Reload the page to see student IDs.";
 
-/** The new course key, encrypted for this member; empty when another member created one first. */
+/** The new course key, encrypted for this member; empty when another member holds one. */
 async function createCourseKey(assessmentElement) {
   const courseId = assessmentElement.dataset.course;
   const { publicKey, userId } = signedInAccount();
