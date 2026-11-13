@@ -143,6 +143,8 @@ class TestAnswerView:
 
     index: int
     answer: str
+    normalized: str
+    """The answer as the question reads it."""
     is_example: bool
     result: QuestionResult | None
     marks: float | None
@@ -152,6 +154,11 @@ class TestAnswerView:
     @property
     def number(self) -> int:
         return self.index + 1
+
+    @property
+    def unmarked(self) -> bool:
+        """Whether the last run couldn't mark it."""
+        return self.result is not None and not self.result.is_marked
 
 
 def answer_rows(
@@ -167,6 +174,7 @@ def answer_rows(
         question_result = result.results.get(question) if result is not None else None
         marks = question_result.marks if question_result is not None else None
         answer = row["answers"].get(question, "")
+        normalized = shown_question.normalize(answer) if shown_question is not None else answer
         form = answer_form(shown_question, answer, f"answer{index}")
-        views.append(TestAnswerView(index, answer, row["is_example"], question_result, marks, form))
+        views.append(TestAnswerView(index, answer, normalized, row["is_example"], question_result, marks, form))
     return views

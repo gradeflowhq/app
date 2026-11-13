@@ -240,7 +240,7 @@ class MethodWorkspace(StepWorkspace):
         if not self.valid:
             raise ValidationError(f"Finish the marking first: {self.draft.step_problems[0].message}")
         if self.untested:
-            raise ValidationError("Run the tests first, so the examples show their marks.")
+            raise ValidationError("Preview the examples before publishing, so they show their marks.")
         self.record_examples()
         tested = self.current_results() is not None
         version = publish(self.draft_record, user, self.draft)

@@ -34,7 +34,7 @@
       <c-question-subtitle :question="question.core_question" />
       {% if access.can_edit %}<button class="btn btn-ghost btn-sm ml-auto" hx-get="{% url 'question_settings' question.assessment_id question.pk %}" hx-target="#drawer-body" hx-swap="innerHTML" data-dialog="drawer">{% icon "adjustments-horizontal" "size-4" %}Settings</button>{% endif %}
     </div>
-    {% if question.definition.description %}<details class="group/about -mt-2 px-4 pb-3 text-muted"><summary class="cursor-pointer list-none"><div class="prose-core preview-two-lines wrap-break-word text-sm group-open/about:max-h-[40vh] group-open/about:overflow-y-auto" x-data="math">{{ question.definition.description|math_markdown }}</div></summary></details>{% endif %}
+    {% with description=question.core_question.description %}{% partial question_description %}{% endwith %}
     <form class="flex items-center gap-2 px-4 pb-3" hx-get="{% url 'answers' question.assessment_id question.pk %}" hx-target="#answers" hx-swap="outerMorph" hx-trigger="change delay:150ms" hx-sync="this:replace">
       <label class="select select-sm min-w-0 max-w-52 flex-1" title="Answer groups">
         {% icon "rectangle-stack" "size-4 text-muted" %}
@@ -63,24 +63,28 @@
   </header>
 {% endpartialdef %}
 
+{# A question's description, shortened to two lines until opened. #}
+{% partialdef question_description %}{% if description %}<details class="group/about -mt-2 px-4 pb-3 text-muted"><summary class="cursor-pointer list-none"><div class="prose-core preview-two-lines wrap-break-word text-sm group-open/about:max-h-[40vh] group-open/about:overflow-y-auto" x-data="math">{{ description|math_markdown }}</div></summary></details>{% endif %}{% endpartialdef %}
+
 {% partialdef column_notices %}
 {% if not draft %}{% for notice in out_of_date_notices %}<p role="status" class="alert alert-warning alert-soft text-sm">{{ notice }}</p>{% endfor %}{% endif %}
 {% if asks_models %}<div x-data="modelServiceNotice"><p role="status" class="alert alert-info alert-soft text-sm" x-show="loaded && !connected" x-cloak>{% icon "information-circle" %}<span>This marking uses AI, and you aren't connected to an AI service. <a class="link" href="{% url 'integrations' %}">Connect one</a> to mark these answers.</span></p></div>{% endif %}
 {% endpartialdef %}
 
+{# The bar that offers to preview the draft and says how its preview went; the preview replaces `preview_target`, `#answers` unless given. #}
 {% partialdef preview_bar %}
 <div id="preview-bar" aria-live="polite"{% if out_of_band %} hx-swap-oob="outerMorph"{% endif %}{% if needs_preview or marking_job and not draft %} data-outdated{% endif %}>
   {% if draft %}
-    {% url 'draft_preview' draft.assessment_id draft.pk as preview_url %}
+    {% firstof preview_target "#answers" as preview_target %}
     {% if needs_preview %}
       <div class="preview-bar">
-        {% if can_preview %}<span class="font-medium">Marking changed</span>{% else %}<span class="min-w-0 text-sm text-muted">Finish the marking to preview</span>{% endif %}
-        <button class="btn btn-sm ml-auto shrink-0" hx-post="{{ preview_url }}" hx-target="#answers" hx-swap="outerMorph"{% if not can_preview %} disabled{% endif %}>{% icon "eye" "size-4" %}Preview</button>
+        {% if can_preview %}<span class="font-medium">Marking changed</span>{% else %}<span class="min-w-0 text-sm text-muted">Finish setting up to preview</span>{% endif %}
+        <button class="btn btn-sm ml-auto shrink-0" hx-post="{{ preview_url }}" hx-target="{{ preview_target }}" hx-swap="outerMorph"{% if not can_preview %} disabled{% endif %}>{% icon "eye" "size-4" %}Preview</button>
       </div>
     {% elif preview_job.status == "failed" %}
       <div class="preview-bar text-error" role="alert">
         {% icon "exclamation-circle" "size-5" %}<span class="min-w-0 flex-1">Preview failed</span>
-        <button class="btn btn-sm" hx-post="{{ preview_url }}" hx-target="#answers" hx-swap="outerMorph">Try again</button>
+        <button class="btn btn-sm" hx-post="{{ preview_url }}" hx-target="{{ preview_target }}" hx-swap="outerMorph">Try again</button>
       </div>
       {% if preview_job.error %}<p class="wrap-break-word border-t border-error/20 bg-error/10 px-4 py-2 text-sm text-error">{{ preview_job.error }}</p>{% endif %}
     {% elif preview_job and not preview_summary %}
@@ -98,7 +102,7 @@
       {% if preview_summary.unmarked_count %}
       <div class="flex items-start gap-2 border-t border-warning/30 bg-warning/10 px-4 py-2 text-sm" role="alert">
         {% icon "exclamation-triangle" "size-4 mt-0.5 shrink-0 text-warning" %}
-        <p class="min-w-0"><span class="font-medium">Couldn't mark {{ preview_summary.unmarked_count }} student{{ preview_summary.unmarked_count|pluralize }}</span>{% if preview_summary.problem %}<span class="block wrap-break-word text-muted">{{ preview_summary.problem|truncatechars:300 }}</span>{% endif %}</p>
+        <p class="min-w-0"><span class="font-medium">Couldn't mark {{ preview_summary.unmarked_count }} answer{{ preview_summary.unmarked_count|pluralize }}</span>{% if preview_summary.problem %}<span class="block wrap-break-word text-muted">{{ preview_summary.problem|truncatechars:300 }}</span>{% endif %}</p>
       </div>
       {% endif %}
     {% endif %}

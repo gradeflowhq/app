@@ -1,14 +1,19 @@
-<c-drawer.form action="{% url 'question_settings' access.assessment.pk question.pk %}" title="{{ question.key }} settings">
+<c-drawer.form action="{{ action }}" title="{{ question.key }} settings">
   <div class="grid gap-5 p-6">
   <p class="text-sm text-muted">Changes other than Maximum marks mark the question again.</p>
-  <div class="grid gap-1.5">
-    <label class="font-medium" for="question-type">Question type</label>
-    <select id="question-type" name="question_type" class="select w-full" aria-describedby="question-type-summary" hx-post="{% url 'question_settings' access.assessment.pk question.pk %}" hx-trigger="change" hx-target="#drawer-body">
-      {% for kind, label in types %}<option value="{{ kind }}"{% if kind == question_type %} selected{% endif %}>{{ label }}</option>{% endfor %}
-    </select>
-    <p id="question-type-summary" class="text-sm text-muted">{{ summary }}</p>
-  </div>
+  {% partial question_type %}
   {{ form }}
   </div>
   <c-slot name="footer"><c-drawer.footer submit="Save" name="save" value="1" /></c-slot>
 </c-drawer.form>
+
+{# The question type, which posts its form to show the chosen type's settings. #}
+{% partialdef question_type %}
+  <div class="grid gap-1.5">
+    <label class="font-medium" for="question-type">Question type</label>
+    <select id="question-type" name="question_type" class="select w-full" aria-describedby="question-type-summary" hx-post="{{ action }}" hx-trigger="change" hx-target="#drawer-body" hx-swap="innerHTML">
+      {% for kind, label in types %}<option value="{{ kind }}"{% if kind == question_type %} selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+    <p id="question-type-summary" class="text-sm text-muted">{{ summary }}</p>
+  </div>
+{% endpartialdef %}

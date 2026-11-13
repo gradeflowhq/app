@@ -1,5 +1,6 @@
 """What the method designer shows, for its templates: the workspace, the test values and a declared setting."""
 
+from collections import Counter
 from collections.abc import Mapping
 from dataclasses import dataclass, replace
 from typing import Any, cast
@@ -17,6 +18,7 @@ from gradeflow_app.libraries.designer.runs import run_state, tests_topic
 from gradeflow_app.libraries.designer.workspace import MethodWorkspace
 from gradeflow_app.libraries.services import dependents
 from gradeflow_app.requests import Request
+from gradeflow_app.results.marks import PreviewSummary, level_of
 from gradeflow_app.ui.schemaforms.forms import ObjectForm, allow_unset
 
 WORKSPACE_TABS = ("steps", "settings")
@@ -55,6 +57,13 @@ def workspace_context(
     run, run_out_of_date = run_state(tests_record)
     if run is not None and not run.is_active and tests_record.results and workspace.last_results() is None:
         run = None  # its results were written by an earlier core and can't be read
+    selected_question = workspace.questions.get(state["question"])
+    read_only = _read_only_questions(workspace)
+    rows = _rows(workspace, state["question"])
+    method_problems = _problems(workspace, problems)
+    can_edit_tests = access.can_edit or not workspace.editable
+    needs_preview = bool(rows) and (run is None or run_out_of_date)
+    run_is_current = run is not None and run.status == "completed" and not run_out_of_date
     context: dict[str, Any] = {
         "access": access,
         "member": access.member,
@@ -65,20 +74,25 @@ def workspace_context(
         "metadata": draft.metadata,
         "versions": list(workspace.method.versions.order_by("-number")),
         "has_own_draft": workspace.editable or workspace.method.drafts.filter(user=request.user).exists(),
-        "selected_question": workspace.questions.get(state["question"]),
-        "new_answer": method_tests.answer_form(workspace.questions.get(state["question"]), "", "answer-new"),
-        "read_only": _read_only_questions(workspace),
+        "selected_question": selected_question,
+        "new_answer": method_tests.answer_form(selected_question, "", "answer-new"),
+        "read_only": read_only,
         "used_by": dependents(workspace.method, request.user),
         "first_problem_step": problems[0].step_path if problems else None,
         "first_problem_label": workspace.draft.label(problems[0].step_path) if problems else "",
         "first_problem_unfilled": problems[0].is_incomplete if problems else False,
-        "rows": _rows(workspace, state["question"]),
-        "run": run,
-        "run_out_of_date": run_out_of_date,
+        "rows": rows,
+        "needs_preview": needs_preview,
+        "can_preview": needs_preview and can_edit_tests and not problems and not method_problems,
+        "preview_job": run if run is not None and run.status != "completed" else None,
+        "preview_summary": _preview_summary(rows, selected_question.max_marks)
+        if run_is_current and selected_question and state["question"] not in read_only
+        else None,
+        "asks_models": _asks_models(workspace),
         "urls": _urls(workspace),
-        "can_edit_tests": access.can_edit or not workspace.editable,
+        "can_edit_tests": can_edit_tests,
         "topic": tests_topic(tests_record),
-        "problems": _problems(workspace, problems),
+        "problems": method_problems,
         "untested": workspace.untested,
         "yaml_only_reasons": workspace.yaml_only_reasons,
         **extra,
@@ -124,6 +138,28 @@ def _read_only_questions(workspace: MethodWorkspace) -> set[str]:
         return step.questions_read() - questions_marked if questions_marked else set()
     except GradeFlowError:
         return set()
+
+
+def _asks_models(workspace: MethodWorkspace) -> bool:
+    """Whether a test run asks a language model, which needs a model service."""
+    try:
+        return workspace.test_run_asks_models()
+    except GradeFlowError:
+        return False
+
+
+def _preview_summary(rows: list[method_tests.TestAnswerView], max_marks: float) -> PreviewSummary:
+    """What the last run gave these test answers."""
+    problems = [row.result.feedback for row in rows if row.result is not None and not row.result.is_marked]
+    levels = Counter(level_of(row.marks, row.marks, max_marks) for row in rows if row.marks is not None)
+    return PreviewSummary(
+        changed_count=0,
+        unmarked_count=len(problems),
+        problem=problems[0] if problems else "",
+        full_marks_count=levels["full"],
+        partial_marks_count=levels["partial"],
+        no_marks_count=levels["no_marks"],
+    )
 
 
 def _rows(workspace: MethodWorkspace, question: str) -> list[method_tests.TestAnswerView]:

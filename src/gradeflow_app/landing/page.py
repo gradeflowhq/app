@@ -16,16 +16,10 @@ from gradeflow_app.editor.presenters import Editor, StepsSettingView
 from gradeflow_app.jobs.runs import RunState
 from gradeflow_app.landing.content import Answer, EditorContent, Example, core_output, landing_content
 from gradeflow_app.marking.answers.answer_groups import AnswerGroup, GroupingOptions, StudentAnswer
-from gradeflow_app.marking.answers.column import (
-    FILTERS,
-    GROUPINGS,
-    PreviewSummary,
-    preview_marks,
-    preview_summary,
-    set_decisions,
-)
+from gradeflow_app.marking.answers.column import FILTERS, GROUPINGS, preview_marks, preview_summary, set_decisions
 from gradeflow_app.marking.presenters import ListedQuestion, MarkingSummary, QuestionGroup, marking_badge
 from gradeflow_app.questions.models import Question
+from gradeflow_app.results.marks import PreviewSummary
 from gradeflow_app.results.models import Adjustment, Result
 from gradeflow_app.ui.schemaforms.forms import ObjectForm
 

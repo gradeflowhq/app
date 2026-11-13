@@ -42,12 +42,10 @@
       {% include "results/answer_feedback.html" %}
     </div>
     <div class="flex shrink-0 flex-col items-end gap-0.5 text-right">
-      {% if answer_group.preview.all_unmarked or not answer_group.preview and answer_group.all_unmarked %}
-        <span class="text-sm text-warning" data-marks>Couldn't mark</span>
-      {% elif answer_group.preview %}
-        <c-marks :low="answer_group.preview.lowest_marks" :high="answer_group.preview.highest_marks" :previous_low="low" :previous_high="high" :max_marks="max_marks" />
+      {% if answer_group.preview %}
+        <c-marks :low="answer_group.preview.lowest_marks" :high="answer_group.preview.highest_marks" :previous_low="low" :previous_high="high" :max_marks="max_marks" :unmarked="answer_group.preview.all_unmarked" />
       {% else %}
-        <c-marks :low="low" :high="high" :max_marks="max_marks" />
+        <c-marks :low="low" :high="high" :max_marks="max_marks" :unmarked="answer_group.all_unmarked" />
       {% endif %}
       <span class="tabular-nums text-sm text-muted">{{ answer_group.student_count }} student{{ answer_group.student_count|pluralize }}</span>
       {% if answer_group.adjusted_count %}<span class="badge badge-info badge-soft badge-sm">{{ answer_group.adjusted_count }} adjusted</span>{% endif %}

@@ -67,7 +67,7 @@ def test_marking_a_question_with_key_points(client: Client, assessment: Assessme
     response = client.post(url, {"path": "", "fields_posted": "1", "points": ["light"], "marks_by": "proportional"})
     assert response.status_code == 200
     assert b'id="preview-bar"' in response.content, "a changed draft offers to preview it"
-    assert b"Finish the marking to preview" not in response.content
+    assert b"Finish setting up to preview" not in response.content
     response = save_draft(client, draft)
     assert response.status_code == 200
     marking = Marking.objects.get(question=draft.question)

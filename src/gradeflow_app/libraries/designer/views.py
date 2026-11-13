@@ -320,7 +320,7 @@ def question(request: Request, access: MethodAccess, number: int | None = None) 
     type_source = existing or next(reversed(list(workspace.questions.values())), None)
     default_type = next(iter(QUESTION_CLASSES))
     question_type = question_type_named(
-        data.get("type", type_source.type if type_source else default_type), default_type
+        data.get("question_type", type_source.type if type_source else default_type), default_type
     )
     answers = method_tests.answers_to(workspace.tests, key)
     question = retyped(existing, question_type, answers) if existing else new_question(question_type)
@@ -355,6 +355,7 @@ def question(request: Request, access: MethodAccess, number: int | None = None) 
         "key": key,
         "question_type": question_type,
         "types": QUESTION_TYPE_LABELS.items(),
+        "summary": QUESTION_CLASSES[question_type].summary,
         "form": form,
     }
     return render(request, "methods/question.html", context, status=422 if saving else 200)

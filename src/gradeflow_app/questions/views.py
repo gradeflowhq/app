@@ -4,6 +4,7 @@ from django.contrib import messages
 from django.db import transaction
 from django.http import HttpResponse
 from django.shortcuts import render
+from django.urls import reverse
 from django_htmx.http import HttpResponseClientRefresh
 from gradeflow_core.editing import QUESTION_CLASSES
 
@@ -48,6 +49,7 @@ def question_settings(request: Request, access: AssessmentAccess, question_id: U
         "questions/settings.html",
         {
             "access": access,
+            "action": reverse("question_settings", args=[access.assessment.pk, question.pk]),
             "question": question,
             "types": QUESTION_TYPE_LABELS.items(),
             "question_type": question_type,

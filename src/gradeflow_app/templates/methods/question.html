@@ -1,9 +1,9 @@
 {# A question of the method's tests: its question type and settings. #}
 <c-method-form action="{{ action }}" class="{% if not workspace.editable %}read-only-fields{% endif %}">
   <input type="hidden" name="key" value="{{ key }}">
-  <c-drawer.head title="{% if key %}{{ key }}{% else %}New question{% endif %}" />
+  <c-drawer.head title="{% if key %}{{ key }} settings{% else %}New question{% endif %}" />
   <fieldset class="grid gap-5 p-6"{% if not workspace.editable %} disabled{% endif %}>
-    <label class="grid gap-1.5"><span class="font-medium">Question type</span><select class="select w-full" name="type" hx-get="{{ action }}" hx-include="closest form" hx-trigger="change" hx-target="#drawer-body" hx-swap="innerHTML">{% for kind, label in types %}<option value="{{ kind }}"{% if kind == question_type %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+    {% include "questions/settings.html#question_type" %}
     {{ form }}
   </fieldset>
   {% if workspace.editable %}

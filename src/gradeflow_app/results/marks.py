@@ -98,6 +98,19 @@ class Award:
         return None if (marks := self.marks) is None else level_of(marks, marks, self.max_marks)
 
 
+@dataclass(frozen=True)
+class PreviewSummary:
+    """How many students a preview changes the marks of, and how many it couldn't mark (`problem` says why for the
+    first). For a single question, also how many it gives full, partial and no marks."""
+
+    changed_count: int
+    unmarked_count: int
+    problem: str
+    full_marks_count: int = 0
+    partial_marks_count: int = 0
+    no_marks_count: int = 0
+
+
 def level_of(lowest_marks: float, highest_marks: float, max_marks: float) -> Level:
     """Full, partial or no marks, for marks from `lowest_marks` to `highest_marks`. Full marks are the core's, which
     allow for rounding."""

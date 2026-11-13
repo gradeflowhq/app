@@ -3,7 +3,7 @@
 import math
 from collections import Counter
 from collections.abc import Callable, Iterable, Mapping
-from dataclasses import dataclass, replace
+from dataclasses import replace
 from typing import Any
 
 from django.http import Http404
@@ -25,6 +25,7 @@ from gradeflow_app.marking.remarks import NO_MODEL_SERVICE, running_remarks
 from gradeflow_app.marking.workspace import MarkingWorkspace
 from gradeflow_app.questions.models import Question
 from gradeflow_app.requests import Request
+from gradeflow_app.results.marks import PreviewSummary
 
 GROUPINGS: dict[str, tuple[str, answer_groups.GroupingOptions]] = {
     "answers": ("Same answers", answer_groups.GroupingOptions()),
@@ -51,19 +52,6 @@ DECISION_BADGES = {"full_marks": "badge-success", "partial_marks": "badge-warnin
 _VIEW_PARAMS = ("group", "threshold", "filter", "shown_count")
 ANSWER_GROUPS_PER_PAGE = 100
 """How many answer groups the column shows at first, and how many more each "Show more" adds."""
-
-
-@dataclass(frozen=True)
-class PreviewSummary:
-    """How many students a preview changes the marks of, and how many it couldn't mark (`problem` says why for the
-    first). For a single question, also how many it gives full, partial and no marks."""
-
-    changed_count: int
-    unmarked_count: int
-    problem: str
-    full_marks_count: int = 0
-    partial_marks_count: int = 0
-    no_marks_count: int = 0
 
 
 def answers_view(request: Request, question: Question) -> dict[str, str]:
@@ -294,7 +282,13 @@ def draft_context(workspace: MarkingWorkspace | None, preview: RunState | None) 
     needs_preview = previews.preview_is_stale(workspace) or (
         workspace.record.preview_input is not None and preview is None
     )
-    return {"draft": workspace.record, "needs_preview": needs_preview, "can_preview": needs_preview and workspace.valid}
+    record = workspace.record
+    return {
+        "draft": record,
+        "preview_url": reverse("draft_preview", args=[record.assessment_id, record.pk]),
+        "needs_preview": needs_preview,
+        "can_preview": needs_preview and workspace.valid,
+    }
 
 
 def _marking_job(assessment: Assessment, keys: Iterable[str]) -> RunState | None:

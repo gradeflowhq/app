@@ -6,7 +6,7 @@
   <div class="column-head questions-collapsed:justify-center questions-collapsed:px-0">
     <h1 class="text-base font-semibold questions-collapsed:sr-only">Questions</h1>
     <span class="tabular-nums ml-auto whitespace-nowrap text-sm text-muted questions-collapsed:hidden">{{ question_list.marked_count }} of {{ question_list.questions|length }}<span class="sr-only"> marked</span></span>
-    <button type="button" class="btn btn-ghost btn-square btn-sm -mr-2 max-lg:hidden questions-collapsed:mr-0" x-data="questionsCollapse" @click="toggle" :aria-expanded="!collapsed" :aria-label="collapsed ? 'Expand questions' : 'Collapse questions'" :title="collapsed ? 'Expand questions' : 'Collapse questions'" aria-controls="question-list">{% icon "chevron-left" "size-4 questions-collapsed:rotate-180" %}</button>
+    <c-questions-collapse />
   </div>
   <div class="contents" hx-target:inherited="#question-work" hx-select:inherited="#question-work" hx-select-oob:inherited="#question-list:outerMorph, #live-stream" hx-swap:inherited="outerHTML">
   <ul class="grid flex-1 content-start gap-0.5 overflow-y-auto p-2">

@@ -131,6 +131,13 @@ def test_test_answers_are_added_changed_and_removed_whole(client: Client, method
     assert "This answer is no longer there." in response.text
 
 
+def test_test_answers_show_as_read_and_edit_as_written(client: Client, method: Method) -> None:
+    post_to_designer(client, method, "method_answers", operation="add", answer="  Sun Light ")
+    page = client.get(designer_url(method, "method_page")).text
+    assert re.search(r'font-medium">sun light</p>', page), "as the questions page shows it"
+    assert re.search(r'aria-label="Answer of submission 1"[^>]*>  Sun Light </textarea>', page)
+
+
 def test_chosen_answers_become_the_methods_example(client: Client, method: Method) -> None:
     post_to_designer(client, method, "method_answers", operation="add", answer="light")
     post_to_designer(client, method, "method_answers", operation="example", row="0")
@@ -151,18 +158,18 @@ def test_running_the_tests_shows_the_marks_until_the_answers_change(
     assert run_state(tests) == (COMPLETED, False), tests.failure
     answers = [row["sheet"]["answers"] for row in tests.results or []]
     assert answers == [{"Q1": "light"}, {"Q1": "dark"}], "a result per answer"
-    assert "Results are up to date" in page
+    assert "1 full · 0 partial · 1 no marks" in page
     flat_results = [{**row["sheet"], "results": row["results"], "max_marks": 1} for row in tests.results or []]
     MethodDraftRecord.objects.filter(pk=tests.pk).update(results=flat_results)
     assert MethodWorkspace(method, draft(method)).last_results() is None, "as an earlier core wrote them"
     assert client.get(designer_url(method, "method_page")).status_code == 200
     MethodDraftRecord.objects.filter(pk=tests.pk).update(results=tests.results)
     results = client.get(designer_url(method, "method_results")).text
-    assert "Results are up to date" in results
+    assert "1 full · 0 partial · 1 no marks" in results
     post_to_designer(client, method, "method_step", operation="open", target="/with/steps/0")
-    assert "Results are up to date" in client.get(designer_url(method, "method_results")).text, "only looked"
+    assert "1 full · 0 partial · 1 no marks" in client.get(designer_url(method, "method_results")).text, "only looked"
     post_to_designer(client, method, "method_answers", operation="add", answer="lights")
-    assert "Changed since the last run" in client.get(designer_url(method, "method_results")).text
+    assert "Marking changed" in client.get(designer_url(method, "method_results")).text
 
 
 def test_test_answers_show_how_each_check_marked_them(
@@ -313,9 +320,13 @@ def test_a_checks_problems_show_while_a_setting_has_no_value_or_only_a_test_valu
         post_to_designer(client, method, "method_yaml", definition=dump_yaml(definition))
         return client.get(designer_url(method, "method_page"))
 
-    assert page_with(key_points).context["problems"] == ["Give “Points” a test value or a default."]
+    post_to_designer(client, method, "method_answers", operation="add", answer="light")
+    page = page_with(key_points)
+    assert page.context["problems"] == ["Give “Points” a test value or a default."]
+    assert "Finish setting up to preview" in page.text
     page = page_with(key_points, expression)
     assert (page.context["first_problem_step"], page.context["problems"]) == ("/with/steps/1", [])
+    assert "Finish setting up to preview" in page.text
     post_to_designer(client, method, "method_values", None, **{"values-points": ["sun"]})
     page = client.get(designer_url(method, "method_page"))
     assert (page.context["first_problem_step"], page.context["problems"]) == ("/with/steps/1", [])
@@ -627,7 +638,7 @@ def test_rows_of_a_setting_are_added_and_removed_before_saving(client: Client, m
 
 def test_questions_are_added_and_removed_with_their_answers(client: Client, method: Method) -> None:
     post_to_designer(client, method, "method_answers", operation="add", answer="light")
-    post_to_designer(client, method, "method_question", save="1", type="number", max_marks="2")
+    post_to_designer(client, method, "method_question", save="1", question_type="number", max_marks="2")
     tests = saved_tests(method)
     assert list(tests["questions"]) == ["Q1", "Q2"]
     assert tests["rows"] == [{"answers": {"Q1": "light", "Q2": ""}, "is_example": False}]
@@ -638,7 +649,7 @@ def test_questions_are_added_and_removed_with_their_answers(client: Client, meth
 
 
 def test_a_second_question_keeps_the_checks_on_the_first(client: Client, method: Method) -> None:
-    post_to_designer(client, method, "method_question", save="1", type="number", max_marks="2")
+    post_to_designer(client, method, "method_question", save="1", question_type="number", max_marks="2")
     method_draft = core_draft(method)
     assert method_draft.question is None
     assert {method_draft.data["with"]["steps"][0].get("question")} == {"Q1"}
@@ -797,18 +808,18 @@ def test_publishing_records_what_the_tests_gave_the_examples(
     post_to_designer(client, method, "method_answers", operation="add", answer="light")
     post_to_designer(client, method, "method_answers", operation="add", answer="dark")
     post_to_designer(client, method, "method_answers", operation="example", row="1")
-    assert "Run the tests to publish" in client.get(designer_url(method, "method_page")).text
-    assert "Run the tests first" in post_publish(client, method).text
+    assert "Preview to publish" in client.get(designer_url(method, "method_page")).text
+    assert "Preview the examples before publishing" in post_publish(client, method).text
     with django_capture_on_commit_callbacks(execute=True):
         post_to_designer(client, method, "method_run")
     results = client.get(designer_url(method, "method_results")).text
     assert re.search(r'id="method-publish" hx-swap-oob="outerMorph".*?>Publish</button>', results, re.DOTALL)
-    assert "Run the tests to publish" not in results
+    assert "Preview to publish" not in results
     results_given = draft(method).results
     assert results_given is not None
     dark_result = results_given[1]
     post_publish(client, method)
-    assert "Results are up to date" in client.get(designer_url(method, "method_page", 1)).text, "as tested"
+    assert "1 full · 0 partial · 1 no marks" in client.get(designer_url(method, "method_page", 1)).text, "as tested"
     version = method.versions.get()
     published_method = BUILTINS.with_files([(method.full_name, version.definition)]).find(version.ref)
     [row] = published_method.examples[0].rows
