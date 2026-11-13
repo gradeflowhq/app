@@ -596,8 +596,21 @@ def test_a_values_check_suggests_that_values_answers(assessment: Assessment) -> 
 def test_answers_the_question_reads_as_blank_arent_suggested(assessment: Assessment) -> None:
     assessment.students.filter(encrypted_id=encrypted_id("S001")).update(answers={"Q1": "N/A"})
     workspace = workspace_of(assessment, {"question": "Q1", "uses": "gradeflow/accepted-answers@1"})
-    assert "N/A" not in workspace.suggestions
-    assert "respiration" in workspace.suggestions
+    suggestions = workspace.suggestions_at(workspace.draft.position(""))
+    assert "N/A" not in suggestions
+    assert "respiration" in suggestions
+
+
+def test_a_question_groups_checks_suggest_their_questions_answers(client: Client, assessment: Assessment) -> None:
+    marking = question_group_marking(assessment)
+    client.post(reverse("question_group_edit", args=[assessment.pk, marking.pk]))
+    url = reverse("draft", args=[assessment.pk, MarkingDraftRecord.objects.get().pk])
+
+    def opened(target: str) -> str:
+        return client.post(url, {"path": "", "operation": "open", "target": target}).text
+
+    assert '<option value="respiration" data-data=\'{"count": 1}\'>' in opened("/with/condition/0")
+    assert '<option value="41" data-data=\'{"count": 1}\'>' in opened("/with/then/0")
 
 
 def test_the_marking_opens_from_its_breadcrumb_whose_path_is_empty(client: Client, assessment: Assessment) -> None:

@@ -137,24 +137,28 @@ class MarkingWorkspace(StepWorkspace):
         notify_drafts_changed(self.record.assessment, self.record.user)
 
     @cached_property
-    def suggestions(self) -> dict[str, int]:
-        """The question's commonest answers, with how many gave each."""
-        question = self.subject.question
-        if question is None:
-            return {}
-        answers = self.subject.assessment.students.values_list(answer_expression(question.key), flat=True)
-        normalize = cache(question.core_question.normalize)
-        counts = Counter(text for answer in answers if normalize(answer) and (text := answer.strip()))
-        return dict(counts.most_common(MAX_SUGGESTIONS))
+    def _answer_counts(self) -> dict[str, dict[str, int]]:
+        """The most common answers to each question read so far, with how many gave each."""
+        return {}
+
+    def _most_common_answers(self, key: str) -> dict[str, int]:
+        """Question `key`'s most common answers, with how many gave each."""
+        if key not in self._answer_counts:
+            answers = self.subject.assessment.students.values_list(answer_expression(key), flat=True)
+            normalize = cache(self.questions[key].normalize)
+            counts = Counter(text for answer in answers if normalize(answer) and (text := answer.strip()))
+            self._answer_counts[key] = dict(counts.most_common(MAX_SUGGESTIONS))
+        return self._answer_counts[key]
 
     def suggestions_at(self, position: Position) -> dict[str, int]:
-        """What a step at `position` reads of the commonest answers, with how many gave each."""
-        if position.question != self.subject.key:
+        """What a step at `position` reads of the most common answers, with how many gave each."""
+        if position.question is None or position.question not in self.questions:
             return {}
+        suggestions = self._most_common_answers(position.question)
         if position.value is None:
-            return self.suggestions
+            return suggestions
         counts: Counter[str] = Counter()
-        for answer, count in self.suggestions.items():
+        for answer, count in suggestions.items():
             if value := position.answer_value(answer):
                 counts[value] += count
         return dict(counts.most_common())
