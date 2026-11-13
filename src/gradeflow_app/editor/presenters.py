@@ -2,14 +2,15 @@
 
 from collections.abc import Sequence
 from dataclasses import dataclass, field, replace
+from typing import NamedTuple
 
 from django.utils.text import get_text_list
-from gradeflow_core import GradeFlowError, Methods, Problem
+from gradeflow_core import GradeFlowError, Problem
 from gradeflow_core import Method as CoreMethod
 from gradeflow_core.editing import Draft, StepsSetting, field_in_values
 
 from gradeflow_app.editor.editing import Conflict, EditorActions, StepWorkspace, field_parts, problem_text
-from gradeflow_app.editor.guide import choices, question_choice
+from gradeflow_app.editor.guide import allows_group_methods, choices, chooses_question
 from gradeflow_app.libraries.collection import BUILTIN_NAMES, OfferedMethods
 from gradeflow_app.ui.schemaforms.forms import ObjectForm
 
@@ -28,20 +29,34 @@ class StepCard:
     """What its place says about it: the question it reads, its weight, its condition."""
 
 
+class QuestionOption(NamedTuple):
+    """A question a step added to a question group may read."""
+
+    key: str
+    question_type: str
+
+
 @dataclass(frozen=True)
 class StepsSettingView:
     setting: StepsSetting
     errors: list[str]
     children: list[StepCard]
-    questions: list[str]
-    """In a question group, the questions an added step may read, chosen before its method."""
+    questions: list[QuestionOption]
+    """In a question group, the questions an added step may read."""
     can_add: bool
+    offers_several_questions: bool = False
+    """Whether a method of several questions can be added."""
     unavailable_reason: str = ""
     """Why steps can't be added yet, as the core says."""
     label_controls: str = ""
     needs_steps: bool = False
     """Whether it still needs steps."""
     add_prompt: str = ""
+
+    @property
+    def searches_questions(self) -> bool:
+        """Whether the questions get a search field: more than 8."""
+        return len(self.questions) > 8
 
     @property
     def has_fixed_count(self) -> bool:
@@ -90,12 +105,15 @@ def _steps_setting_view(
 ) -> StepsSettingView:
     draft = workspace.draft
     children = [_card(workspace, child) for child in setting.step_paths]
-    methods, unavailable_reason, questions = Methods(), "", []
+    can_add, unavailable_reason, questions, offers_several_questions = False, "", [], False
     if not setting.is_full:
-        choice = question_choice(draft, setting.new_step_path)
-        questions = choice.questions if choice else []
         try:
-            methods = draft.methods(setting.new_step_path, choice.question if choice else None)
+            if chooses_question(draft, setting.new_step_path):
+                questions = [QuestionOption(key, question.label) for key, question in draft.questions.items()]
+                offers_several_questions = allows_group_methods(draft, setting.new_step_path)
+                can_add = bool(questions) or offers_several_questions
+            else:
+                can_add = bool(choices(draft.methods(setting.new_step_path), workspace.offers))
         except GradeFlowError as error:
             unavailable_reason = str(error)
     add_prompt = _add_prompt(setting)
@@ -106,7 +124,8 @@ def _steps_setting_view(
         errors,
         children,
         questions,
-        bool(choices(methods, workspace.offers)),
+        can_add,
+        offers_several_questions=offers_several_questions,
         unavailable_reason=unavailable_reason,
         label_controls=label_controls,
         needs_steps=needs_steps or bool(setting.minimum),

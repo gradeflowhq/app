@@ -403,8 +403,7 @@ def draft_methods(request: Request, access: AssessmentAccess, draft_id: UUID) ->
         swap="outerHTML",
         fields={"path": request.GET.get("path", request.GET.get("target", ""))},
     )
-    picker_url = reverse("draft_methods", args=args)
-    return step_picker(request, workspace.draft, workspace.offers, access.course, picker_form, picker_url)
+    return step_picker(request, workspace.draft, workspace.offers, access.course, picker_form)
 
 
 @assessment_member(Role.EDITOR)

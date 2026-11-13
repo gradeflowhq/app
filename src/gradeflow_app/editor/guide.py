@@ -69,23 +69,19 @@ def sections_of(methods: Methods, offers: OfferedMethods) -> list[Section]:
     ]
 
 
-class QuestionChoice(NamedTuple):
-    questions: list[str]
-    """The questions it may read."""
-    question: str | None
-    """The one it reads; none for a method of several questions."""
-
-
-def question_choice(draft: Draft, target: str, chosen_question: str | None = None) -> QuestionChoice | None:
-    """The questions a step added at `target` of a question group may read, and the one it reads: `chosen_question`
-    or the first; none if it is `""` and methods of several questions can go there. None for any other step."""
+def chooses_question(draft: Draft, target: str) -> bool:
+    """Whether a step added at `target` needs a question chosen: in a question group, outside any step that reads
+    one."""
     position = draft.position(target)
-    if not position.is_in_group or position.question is not None:
+    return position.is_in_group and position.question is None
+
+
+def chosen_question(draft: Draft, target: str, key: str | None) -> str | None:
+    """The question `key` names for a step added at `target`: None for `""` where a method of several questions can
+    go, else the first question if `key` names none."""
+    if key == "" and allows_group_methods(draft, target):
         return None
-    keys = list(draft.questions)
-    if chosen_question == "" and allows_group_methods(draft, target):
-        return QuestionChoice(keys, None)
-    return QuestionChoice(keys, chosen_question if chosen_question in keys else next(iter(keys), None))
+    return key if key in draft.questions else next(iter(draft.questions), None)
 
 
 def allows_group_methods(draft: Draft, target: str) -> bool:

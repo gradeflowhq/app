@@ -92,7 +92,25 @@
       <c-field-errors :errors="setting_view.errors" id="steps-setting-{{ setting_view.setting.name }}-error" />
       {% if editor.editable %}
         {% if setting_view.can_add %}
+        {% if setting_view.questions|length > 1 or setting_view.offers_several_questions %}
+        {# In a question group, a menu of the questions comes before the method picker. #}
+        <div{% if setting_view.searches_questions %} x-data="searchList"{% endif %}><c-popover id="add-{{ setting_view.setting.name }}-{{ editor.path|slugify }}" label="Add {{ setting_view.setting.item_label }}" button_class="btn" panel_class="w-64 [--anchor-h:span-inline-end]">
+          <c-slot name="trigger">{% icon "plus" "size-4" %}Add {{ setting_view.setting.item_label }}{% icon "chevron-down" "size-4 text-muted" mini=True %}</c-slot>
+          <div class="flex max-h-[min(24rem,60vh)] flex-col">
+            {% if setting_view.searches_questions %}<div class="p-2 pb-1"><c-search class="input-sm w-full" label="Search" autofocus x-on:input="search" /></div>{% endif %}
+            <ul class="menu min-h-0 w-full flex-1 flex-nowrap overflow-y-auto p-1">
+              <li class="menu-title">Question</li>
+              {% for option in setting_view.questions %}
+              <li data-search="{{ option.key|lower }} {{ option.question_type|lower }}"><button type="button" hx-get="{{ editor.actions.methods }}?operation=add&amp;target={{ setting_view.setting.new_step_path|urlencode }}&amp;path={{ editor.path|urlencode }}&amp;question={{ option.key|urlencode }}" hx-target="#picker-body" hx-swap="innerHTML" data-dialog="picker"><span class="font-medium">{{ option.key }}</span><span class="ml-auto text-sm text-muted">{{ option.question_type }}</span></button></li>
+              {% endfor %}
+              {% if setting_view.searches_questions %}<li class="px-3 py-2 text-sm text-muted" data-empty hidden>Nothing matches.</li>{% endif %}
+            </ul>
+            {% if setting_view.offers_several_questions %}<ul class="menu w-full border-t border-base-300 p-1"><li><button type="button" hx-get="{{ editor.actions.methods }}?operation=add&amp;target={{ setting_view.setting.new_step_path|urlencode }}&amp;path={{ editor.path|urlencode }}&amp;question=" hx-target="#picker-body" hx-swap="innerHTML" data-dialog="picker"><span class="font-medium">Several questions</span></button></li></ul>{% endif %}
+          </div>
+        </c-popover></div>
+        {% else %}
         <div><button type="button" class="btn" hx-get="{{ editor.actions.methods }}?operation=add&amp;target={{ setting_view.setting.new_step_path|urlencode }}&amp;path={{ editor.path|urlencode }}" hx-target="#picker-body" hx-swap="innerHTML" data-dialog="picker">{% icon "plus" "size-4" %}Add {{ setting_view.setting.item_label }}</button></div>
+        {% endif %}
         {% elif setting_view.unavailable_reason %}
         <p class="text-sm text-muted">{{ setting_view.unavailable_reason }}</p>
         {% endif %}

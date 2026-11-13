@@ -1,5 +1,6 @@
-{# Marking methods to choose from: a searchable list beside the selected method's guide, and a form using it as `picker_form` says. #}
-<div class="grid h-[min(44rem,78vh)] min-h-0 grid-cols-1 md:grid-cols-[18rem_minmax(0,1fr)]" x-data="methodPicker" data-selected="{{ method.ref }}" data-current-method="{{ picker_form.current_method|default:'' }}" data-tab="{{ tab }}">
+{# The picker dialog's title, then marking methods to choose from: a searchable list beside the selected method's guide, and a form using it as `picker_form` says. #}
+<c-dialog.head id="picker" title="{{ picker_form.title }}" />
+<div class="grid h-[min(44rem,78vh)] min-h-0 grid-cols-1 border-t border-base-300 md:grid-cols-[18rem_minmax(0,1fr)]" x-data="methodPicker" data-selected="{{ method.ref }}" data-current-method="{{ picker_form.current_method|default:'' }}" data-tab="{{ tab }}">
   <aside class="flex min-h-0 min-w-0 flex-col border-base-300 max-md:border-b md:border-r" aria-label="Methods">
     <div class="grid gap-2.5 p-3">
       <c-search class="input-sm w-full" label="Search" x-ref="search" x-on:input="search" />
@@ -36,14 +37,6 @@
       {% csrf_token %}
       {% for name, value in picker_form.fields.items %}<input type="hidden" name="{{ name }}" value="{{ value }}">{% endfor %}
       <input type="hidden" name="method" value="{{ method.ref }}" :value="selected">
-      {% if picker_form.questions %}
-      <label class="mr-auto flex w-full items-center gap-2 text-sm sm:w-auto">Question
-        <select name="question" aria-label="Question" class="select select-sm w-auto" hx-get="{{ picker_form.reload_url }}" hx-include="this" hx-target="#picker-body" hx-swap="innerHTML">
-          {% for key in picker_form.questions %}<option value="{{ key }}"{% if key == picker_form.question %} selected{% endif %}>{{ key }}</option>{% endfor %}
-          {% if picker_form.allows_group_methods %}<option value=""{% if not picker_form.question %} selected{% endif %}>Several questions</option>{% endif %}
-        </select>
-      </label>
-      {% endif %}
       <button type="button" class="btn btn-ghost" data-close>Cancel</button>
       <button class="btn btn-primary" :disabled="isCurrentMethod"><span x-show="!isCurrentMethod"{% if method.ref == picker_form.current_method %} x-cloak{% endif %}>Use <span x-text="selectedLabel">{{ method.label }}</span></span><span x-show="isCurrentMethod"{% if method.ref != picker_form.current_method %} x-cloak{% endif %}>Current method</span></button>
     </form>

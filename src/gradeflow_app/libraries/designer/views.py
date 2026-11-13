@@ -232,14 +232,7 @@ def method_choices(request: Request, access: MethodAccess) -> HttpResponse:
         swap="outerMorph",
         include="#method-state",
     )
-    return step_picker(
-        request,
-        workspace.draft,
-        workspace.offers,
-        workspace.course,
-        picker_form,
-        workspace.url("method_choices"),
-    )
+    return step_picker(request, workspace.draft, workspace.offers, workspace.course, picker_form)
 
 
 @require_POST

@@ -13,9 +13,9 @@ from gradeflow_app.courses.models import Course
 from gradeflow_app.editor.guide import (
     PICKER_TABS,
     Section,
-    allows_group_methods,
+    chooses_question,
+    chosen_question,
     guide_context,
-    question_choice,
     sections_of,
 )
 from gradeflow_app.libraries.collection import OfferedMethods, offers, usable
@@ -34,12 +34,7 @@ class PickerForm:
     current_method: str = ""
     """The method of the step being changed."""
     fields: dict[str, str] = dataclasses.field(default_factory=dict)
-    questions: list[str] = dataclasses.field(default_factory=list)
-    """For a new step of a question group, the questions it may read, `question` chosen, or none if
-    `allows_group_methods`; choosing another opens the picker at `reload_url`."""
-    question: str = ""
-    allows_group_methods: bool = False
-    reload_url: str = ""
+    title: str = "Choose a method"
 
 
 def picker(
@@ -78,36 +73,31 @@ def step_picker(
     offered: OfferedMethods,
     course: Course | None,
     picker_form: PickerForm,
-    picker_url: str,
 ) -> HttpResponse:
-    """The picker, at `picker_url`, for changing the method of the step at `target` (`operation=change_method`) or
-    adding one there (`operation=add`). A step added to a question group reads the question chosen with it."""
+    """The picker for changing the method of the step at `target` (`operation=change_method`) or adding one there
+    (`operation=add`). A step added to a question group reads `?question=`."""
     target = request.GET.get("target", "")
     changing_method = request.GET.get("operation") == "change_method"
     if changing_method and not draft.is_step(target):
         raise Http404
     try:
         position = draft.position(target)
-        choice = None if changing_method else question_choice(draft, target, request.GET.get("question"))
-        question = choice.question if choice else None
+        choosing = not changing_method and chooses_question(draft, target)
+        question = chosen_question(draft, target, request.GET.get("question")) if choosing else None
         methods = draft.methods(target, question)
     except GradeFlowError:
         raise Http404 from None
     method = draft.method(target) if changing_method else None
+    question_key = question or position.question
+    fields = {"operation": "change_method" if changing_method else "add", "target": target} | picker_form.fields
     picker_form = dataclasses.replace(
         picker_form,
         current_method=method.ref if method else "",
-        fields={"operation": "change_method" if changing_method else "add", "target": target} | picker_form.fields,
+        fields=fields | {"question": question or ""} if choosing else fields,
+        title=f"Choose a method for {question_key or 'several questions'}"
+        if position.is_in_group
+        else picker_form.title,
     )
-    if choice:
-        picker_form = dataclasses.replace(
-            picker_form,
-            questions=choice.questions,
-            question=question or "",
-            allows_group_methods=allows_group_methods(draft, target),
-            reload_url=f"{picker_url}?{urlencode(picker_form.fields)}",
-        )
-    question_key = question or position.question
     question_type = draft.questions[question_key].type if question_key else ""
     return picker(
         request, sections_of(methods, offered), picker_form.current_method, picker_form, course, question_type

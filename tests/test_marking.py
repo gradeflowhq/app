@@ -25,6 +25,7 @@ from gradeflow_app.marking.answers.comparisons import GROUPING
 from gradeflow_app.marking.checks import definition_data
 from gradeflow_app.marking.models import Marking, MarkingDraftRecord
 from gradeflow_app.marking.workspace import MarkingWorkspace
+from gradeflow_app.questions import models as question_models
 from gradeflow_app.ui.middleware import MESSAGES_HEADER
 from gradeflow_app.ui.templatetags.ui import markdown
 from tests.conftest import (
@@ -357,9 +358,11 @@ def test_a_check_inside_a_groups_check_marks_that_checks_question(client: Client
     draft = MarkingDraftRecord.objects.get()
     url = reverse("draft", args=[assessment.pk, draft.pk])
     picker = client.get(
-        reverse("draft_methods", args=[assessment.pk, draft.pk]), {"operation": "add", "target": "/with/then/0"}
-    )
-    assert 'name="question"' in picker.text, "its methods depend on the question"
+        reverse("draft_methods", args=[assessment.pk, draft.pk]),
+        {"operation": "add", "target": "/with/then/0", "question": "Q3"},
+    ).text
+    assert "Choose a method for Q3" in picker
+    assert '<input type="hidden" name="question" value="Q3">' in picker
     add_step_fields = {
         "path": "",
         "operation": "add",
@@ -621,31 +624,43 @@ def test_the_marking_opens_from_its_breadcrumb_whose_path_is_empty(client: Clien
     assert 'name="path" value=""' in page.text
 
 
-def test_choosing_another_question_in_the_picker_keeps_where_the_check_goes(
-    client: Client, assessment: Assessment
-) -> None:
+def test_a_question_groups_check_is_added_by_question_then_method(client: Client, assessment: Assessment) -> None:
     client.post(reverse("question_group_new", args=[assessment.pk]), {"method": "gradeflow/conditional@1"})
     draft = MarkingDraftRecord.objects.get()
-    methods = reverse("draft_methods", args=[assessment.pk, draft.pk])
-    picker = client.get(methods, {"operation": "add", "target": "/with/condition/0", "path": ""}).text
-    reload = html.unescape(re.findall(r'hx-get="([^"]*)" hx-include="this"', picker)[0])
-    again = client.get(f"{reload}&question=Q3").text
+    url = reverse("draft", args=[assessment.pk, draft.pk])
+    page = client.post(url, {"path": "", "operation": "open", "target": ""}).text
+    menu = [html.unescape(each) for each in re.findall(r'hx-get="([^"]*target=/with/condition/0[^"]*)"', page)]
+    assert [each.rsplit("question=", 1)[1] for each in menu] == ["Q1", "Q2", "Q3", ""], "then several questions"
+    again = client.get(menu[2]).text
+    assert "Choose a method for Q3" in again
     assert '<input type="hidden" name="target" value="/with/condition/0">' in again
     assert '<input type="hidden" name="path" value="">' in again
     assert 'data-method="gradeflow/multiple-choice@1"' in again, "Q3's methods"
+
+
+def test_a_long_list_of_questions_to_add_a_check_for_has_a_search_field(client: Client, assessment: Assessment) -> None:
+    client.post(reverse("question_group_new", args=[assessment.pk]), {"method": "gradeflow/workflow@1"})
+    url = reverse("draft", args=[assessment.pk, MarkingDraftRecord.objects.get().pk])
+    assert "Nothing matches." not in client.post(url, {"path": "", "operation": "open"}).text
+    question_models.Question.objects.bulk_create(
+        question_models.Question(assessment=assessment, key=f"Q{number}", position=number, definition={"type": "text"})
+        for number in range(4, 10)
+    )
+    assert "Nothing matches." in client.post(url, {"path": "", "operation": "open"}).text
 
 
 def test_a_question_groups_check_may_be_a_method_of_several_questions(client: Client, assessment: Assessment) -> None:
     client.post(reverse("question_group_new", args=[assessment.pk]), {"method": "gradeflow/workflow@1"})
     draft = MarkingDraftRecord.objects.get()
     methods = reverse("draft_methods", args=[assessment.pk, draft.pk])
+    page = client.post(reverse("draft", args=[assessment.pk, draft.pk]), {"path": "", "operation": "open"}).text
+    assert "Several questions" in page
     first_question_picker = client.get(methods, {"operation": "add", "target": "/with/steps/0", "path": ""}).text
-    assert '<option value="">Several questions</option>' in first_question_picker
     assert 'data-method="gradeflow/answer-sets@1"' not in first_question_picker, "the first question's methods"
     several_questions_picker = client.get(
         methods, {"operation": "add", "target": "/with/steps/0", "path": "", "question": ""}
     ).text
-    assert '<option value="" selected>Several questions</option>' in several_questions_picker
+    assert "Choose a method for several questions" in several_questions_picker
     assert 'data-method="gradeflow/answer-sets@1"' in several_questions_picker
     add_step_fields = {
         "path": "",
