@@ -6,7 +6,7 @@ from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from typing import Literal
 
-from gradeflow_core import AnswerComparison, CheckResult, compare_answers
+from gradeflow_core import AnswerComparison, CheckResult, Span, compare_answers
 
 from gradeflow_app.imports.models import answer_expression
 from gradeflow_app.questions.models import Question
@@ -129,6 +129,13 @@ class AnswerGroup:
     @property
     def answer(self) -> str:
         return self.normalized_answers[0][0]
+
+    @property
+    def spans(self) -> tuple[Span, ...]:
+        """The parts of its answer the marking's transforms extracted, if every student in the group has the same
+        answer and spans; none otherwise."""
+        answers_and_spans = {(entry.normalized, entry.spans) for entry in self.student_answers}
+        return answers_and_spans.pop()[1] if len(answers_and_spans) == 1 else ()
 
     @property
     def student_count(self) -> int:

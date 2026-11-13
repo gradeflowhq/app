@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from typing import Any, TypedDict
 
 from django import forms
-from gradeflow_core import GradeFlowError, Question, QuestionResult, QuestionSet
+from gradeflow_core import GradeFlowError, Question, QuestionResult, QuestionSet, Span
 from gradeflow_core.editing import ExampleRow, RowResult
 
 from gradeflow_app.ui.schemaforms.forms import ObjectForm
@@ -150,6 +150,8 @@ class TestAnswerView:
     marks: float | None
     form: ObjectForm | None = None
     """The answer's values to change one by one, for a question whose answers have them."""
+    spans: tuple[Span, ...] = ()
+    """The parts of the answer the last run's transforms extracted; none unless the last run is current."""
 
     @property
     def number(self) -> int:
@@ -162,9 +164,15 @@ class TestAnswerView:
 
 
 def answer_rows(
-    tests: MethodTests, question: str, results: list[RowResult] | None, shown_question: Question | None = None
+    tests: MethodTests,
+    question: str,
+    results: list[RowResult] | None,
+    shown_question: Question | None = None,
+    *,
+    run_is_current: bool,
 ) -> list[TestAnswerView]:
-    """Each row's test answer to `question`, with what the run of `results` gave it, if it marked these answers."""
+    """Each row's test answer to `question`, with what the run of `results` gave it if it marked these answers. Rows
+    get the run's spans only if `run_is_current`."""
     rows = tests.get("rows", [])
     row_results = results or []
     views = []
@@ -176,5 +184,6 @@ def answer_rows(
         answer = row["answers"].get(question, "")
         normalized = shown_question.normalize(answer) if shown_question is not None else answer
         form = answer_form(shown_question, answer, f"answer{index}")
-        views.append(TestAnswerView(index, answer, normalized, row["is_example"], question_result, marks, form))
+        spans = question_result.spans if question_result is not None and run_is_current else ()
+        views.append(TestAnswerView(index, answer, normalized, row["is_example"], question_result, marks, form, spans))
     return views

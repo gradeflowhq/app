@@ -1,5 +1,5 @@
 import pytest
-from gradeflow_core import GradeFlowError, QuestionSet
+from gradeflow_core import GradeFlowError, QuestionSet, Span
 from gradeflow_core.editing import RowResult
 
 from gradeflow_app.libraries import method_tests
@@ -20,7 +20,12 @@ def result(answers: dict[str, str]) -> RowResult:
             "matches_expected": None,
             "results": {
                 "Q1": {"proportion": 1, "max_marks": 2, "feedback": "First feedback"},
-                "Q2": {"proportion": 0.5, "max_marks": 3, "feedback": "Second feedback"},
+                "Q2": {
+                    "proportion": 0.5,
+                    "max_marks": 3,
+                    "feedback": "Second feedback",
+                    "spans": [{"start": 0, "end": 1}],
+                },
             },
             "max_marks": 5,
         }
@@ -63,9 +68,12 @@ def test_questions_added_duplicated_and_removed_keep_rows_whole(tests: MethodTes
 def test_results_show_one_questions_marks(tests: MethodTests) -> None:
     method_tests.add_answer(tests, "Q1", "a")
     method_tests.set_answer(tests, 0, "Q2", "b")
-    [row] = method_tests.answer_rows(tests, "Q2", [result({"Q1": "a", "Q2": "b"})])
-    assert (row.number, row.answer, row.marks) == (1, "b", 1.5)
+    results = [result({"Q1": "a", "Q2": "b"})]
+    [row] = method_tests.answer_rows(tests, "Q2", results, run_is_current=True)
+    assert (row.number, row.answer, row.marks, row.spans) == (1, "b", 1.5, (Span(0, 1),))
     assert row.result is not None
     assert row.result.feedback == "Second feedback"
-    [row] = method_tests.answer_rows(tests, "Q2", None)
+    [row] = method_tests.answer_rows(tests, "Q2", results, run_is_current=False)
+    assert (row.marks, row.spans) == (1.5, ())
+    [row] = method_tests.answer_rows(tests, "Q2", None, run_is_current=False)
     assert (row.answer, row.result, row.marks) == ("b", None, None)

@@ -207,7 +207,7 @@
 {% endwith %}
 
 {# A test answer as the question reads it; editing shows it as written. #}
-{% partialdef answer_shown %}{% include "results/answer_text.html" with answer=row.normalized core_question=selected_question expanded=True %}{% endpartialdef %}
+{% partialdef answer_shown %}{% include "results/answer_text.html" with answer=row.normalized core_question=selected_question expanded=True spans=row.spans %}{% endpartialdef %}
 
 {# A test answer's result in the last run. #}
 {% partialdef result %}{% include "results/answer_feedback.html" with feedback=row.result.feedback %}{% if row.result.breakdown %}<c-more-options label="Breakdown" class="mt-2"><c-breakdown :check="row.result.breakdown" :language="code" /></c-more-options>{% endif %}{% endpartialdef %}

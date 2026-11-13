@@ -10,7 +10,7 @@ from functools import cached_property
 from typing import Literal, NamedTuple
 from uuid import UUID
 
-from gradeflow_core import CheckResult, Marked, QuestionResult, Submission
+from gradeflow_core import CheckResult, Marked, QuestionResult, Span, Submission
 
 from gradeflow_app.assessments.models import Assessment
 from gradeflow_app.imports.models import Student
@@ -50,6 +50,14 @@ class Award:
         if self.preview_result is not None:
             return self.preview_result
         return self.result.question_result(self.max_marks) if self.result else None
+
+    @property
+    def spans(self) -> tuple[Span, ...]:
+        """The parts of the answer the marking's transforms extracted. A previous result has none: the question may
+        read the answer differently now."""
+        if self.preview_result is None and self.is_previous_result:
+            return ()
+        return self.marking_result.spans if self.marking_result else ()
 
     @property
     def is_previous_result(self) -> bool:

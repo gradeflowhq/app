@@ -140,6 +140,10 @@
   [x-cloak] {
     display: none !important;
   }
+  /* The parts of an answer the marking's transforms extracted. */
+  mark {
+    @apply rounded-xs bg-primary/15 text-inherit;
+  }
   /* A grid without columns of its own has one that fits its container, so long text wraps or truncates instead of
      widening the page. */
   .grid:not([class*="grid-cols-"]) {

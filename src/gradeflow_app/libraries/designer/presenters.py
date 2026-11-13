@@ -59,11 +59,11 @@ def workspace_context(
         run = None  # its results were written by an earlier core and can't be read
     selected_question = workspace.questions.get(state["question"])
     read_only = _read_only_questions(workspace)
-    rows = _rows(workspace, state["question"])
+    run_is_current = run is not None and run.status == "completed" and not run_out_of_date
+    rows = _rows(workspace, state["question"], run_is_current=run_is_current)
     method_problems = _problems(workspace, problems)
     can_edit_tests = access.can_edit or not workspace.editable
     needs_preview = bool(rows) and (run is None or run_out_of_date)
-    run_is_current = run is not None and run.status == "completed" and not run_out_of_date
     context: dict[str, Any] = {
         "access": access,
         "member": access.member,
@@ -162,9 +162,11 @@ def _preview_summary(rows: list[method_tests.TestAnswerView], max_marks: float) 
     )
 
 
-def _rows(workspace: MethodWorkspace, question: str) -> list[method_tests.TestAnswerView]:
+def _rows(workspace: MethodWorkspace, question: str, *, run_is_current: bool) -> list[method_tests.TestAnswerView]:
     shown_question = workspace.questions.get(question)
-    return method_tests.answer_rows(workspace.tests, question, workspace.last_results(), shown_question)
+    return method_tests.answer_rows(
+        workspace.tests, question, workspace.last_results(), shown_question, run_is_current=run_is_current
+    )
 
 
 def _urls(workspace: MethodWorkspace) -> dict[str, str]:

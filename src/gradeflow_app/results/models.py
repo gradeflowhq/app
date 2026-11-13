@@ -23,6 +23,8 @@ class Result(models.Model):
     """The language models that decided it, if any."""
     breakdown = models.JSONField(null=True)
     """How each check of the marking marked it, if the marking has several."""
+    spans = models.JSONField(default=list)
+    """The parts of the answer the marking's transforms extracted, as the core's spans."""
     marking = models.ForeignKey("marking.Marking", null=True, on_delete=models.SET_NULL, related_name="results")
     revision = models.PositiveIntegerField()
 
@@ -42,6 +44,7 @@ class Result(models.Model):
             is_marked=result.is_marked,
             model_names=list(result.model_names),
             breakdown=result.breakdown and result.breakdown.model_dump(mode="json"),
+            spans=result.model_dump(mode="json", include={"spans"})["spans"],
             **fields,
         )
 
@@ -60,6 +63,7 @@ class Result(models.Model):
             is_marked=self.is_marked,
             model_names=tuple(self.model_names),
             breakdown=breakdown,
+            spans=self.spans,
         )
 
 

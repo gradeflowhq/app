@@ -13,7 +13,7 @@ from django.utils.html import conditional_escape, format_html, json_script
 from django.utils.safestring import SafeString, mark_safe
 from django.utils.text import capfirst
 from django.utils.timesince import timesince
-from gradeflow_core import Question
+from gradeflow_core import Question, Span
 from gradeflow_core.editing import HINT_KEY
 from heroicons.templatetags.heroicons import heroicon_mini, heroicon_outline
 from markdown_it import MarkdownIt
@@ -167,6 +167,22 @@ def answer_values(answer: str, question: Question | None) -> list[tuple[str, str
         for name, property_schema in properties.items()
         for item in items[name]
     ]
+
+
+@register.simple_tag
+def highlight_spans(text: str, spans: Iterable[Span], value_number: int | None = None) -> SafeString:
+    """`text`, escaped, with each of `spans` in it wrapped in `<mark>`: those in value `value_number` of an answer,
+    from 1, or in the whole answer if that is None."""
+    html: list[str] = []
+    position = 0
+    for span in spans:
+        if span.value_number == value_number:
+            html += [
+                conditional_escape(text[position : span.start]),
+                format_html("<mark>{}</mark>", text[span.start : span.end]),
+            ]
+            position = span.end
+    return mark_safe("".join([*html, conditional_escape(text[position:])]))
 
 
 @cache
