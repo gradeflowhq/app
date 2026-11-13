@@ -82,7 +82,7 @@
 
     {% partialdef answers inline %}{% with draft=workspace.draft_record code=selected_question|code_language %}
     <section id="method-answers" class="workspace-answers" aria-label="Test answers" hx-get="{{ urls.results }}" hx-trigger="{% listen topic workspace.tests_record.pk %}" hx-target="this" hx-swap="outerMorph" hx-sync="this:replace">
-      <header class="column-sticky">
+      <header class="column-header">
         <div class="column-head">
           <c-questions-toggle />
           {% if selected_question %}
@@ -111,7 +111,7 @@
         {% endif %}
       </header>
 
-      <div class="grid content-start gap-3 p-4">
+      <div class="grid content-start gap-3 overflow-y-auto p-4">
         {% if values %}
         <c-more-options label="Test values{% if workspace.draft.test_values %} · {{ workspace.draft.test_values|length }} changed{% endif %}" :open="values_expanded" class="card-box px-4 py-3">
           <form class="grid gap-4{% if not draft %} read-only-fields{% endif %}" hx-post="{{ urls.values }}" hx-trigger="change">
@@ -186,7 +186,7 @@
 
     <c-marking-resizer />
     <aside class="workspace-marking" aria-label="Marking">
-      <div class="column-head column-sticky">
+      <div class="column-head">
         <h2>Marking</h2>
         {% if not yaml_only_reasons %}
         <div class="segmented ml-auto" role="radiogroup" aria-label="Show">
@@ -195,6 +195,7 @@
         </div>
         {% endif %}
       </div>
+      <div class="flex-1 overflow-y-auto">
       {% if yaml_only_reasons %}
         {% if workspace.summary %}<div class="prose-core px-5 pt-5">{{ workspace.summary|markdown }}</div>{% endif %}
         <c-empty-state icon="code-bracket" title="Written in YAML">{{ yaml_only_reasons|join:" " }}<c-slot name="action"><button type="button" class="btn" hx-get="{{ urls.yaml }}" hx-target="#drawer-body" hx-swap="innerHTML" data-dialog="drawer">{% icon "code-bracket" "size-4" %}{% if draft %}Edit as YAML{% else %}View as YAML{% endif %}</button></c-slot></c-empty-state>
@@ -203,6 +204,7 @@
       {% elif editor %}
         {% include "marking/step.html" %}
       {% endif %}
+      </div>
       {% if draft and problems %}
       <div class="border-t border-base-300 px-5 py-4">
         <h3 class="text-sm font-medium">Before publishing</h3>

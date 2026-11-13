@@ -1,13 +1,13 @@
 {# The editor of a question's or question group's marking: the step editor, between a header to edit it as YAML and a footer to save or discard the draft. #}
-<div id="marking-panel" class="flex min-h-full flex-col"{% if out_of_band_editor %} hx-swap-oob="outerMorph"{% endif %} hx-target:inherited="#marking-panel" hx-swap:inherited="outerMorph">
+<div id="marking-panel" class="flex min-h-0 flex-1 flex-col"{% if out_of_band_editor %} hx-swap-oob="outerMorph"{% endif %} hx-target:inherited="#marking-panel" hx-swap:inherited="outerMorph">
   <div class="column-head">
     <h2>Marking</h2>
     <c-menu id="editor-menu" button_class="btn btn-ghost btn-square btn-sm ml-auto">
       <li><button type="button" hx-get="{{ editor.actions.yaml }}" hx-target="#drawer-body" hx-swap="innerHTML" data-dialog="drawer">{% icon "code-bracket" "size-4" %}Edit as YAML</button></li>
     </c-menu>
   </div>
-  {% include "marking/step.html" %}
-  <footer class="sticky bottom-0 mt-auto flex items-center gap-2 border-t border-base-300 bg-base-100 px-5 py-3">
+  <div class="flex-1 overflow-y-auto">{% include "marking/step.html" %}</div>
+  <footer class="flex items-center gap-2 border-t border-base-300 px-5 py-3">
     {% partialdef editor-status inline %}<span id="editor-status"{% if fields_only_update %} hx-swap-oob="true"{% endif %} class="text-sm text-muted">{% if request.method == "POST" %}Draft saved{% endif %}</span>{% endpartialdef %}
     <button type="button" class="btn btn-ghost ml-auto text-error" hx-post="{{ editor.actions.discard }}" data-confirm="Discard your changes?" data-confirm-detail="{{ editor.discard_note }}" data-confirm-button="Discard">Discard</button>
     <button type="button" class="btn btn-primary" hx-post="{{ editor.actions.save }}" hx-include="#marking-form" hx-vals="{% hx_vals operation="save" %}">Save</button>

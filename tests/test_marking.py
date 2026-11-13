@@ -758,7 +758,7 @@ def test_a_draft_is_edited_as_yaml_with_problems_on_their_lines(client: Client, 
     shows_what_the_core_says(wrong, typed)
     assert definition_tree(draft)["with"] == {"points": []}, "kept as typed, to fix in either editor"
     assert "Saved to your draft" in wrong.text
-    assert 'id="marking-panel" class="flex min-h-full flex-col" hx-swap-oob' in wrong.text
+    assert 'id="marking-panel" class="flex min-h-0 flex-1 flex-col" hx-swap-oob' in wrong.text
     unparsable = client.post(yaml_url, {"definition": "uses: [\n"}, headers=HTMX_HEADERS)
     shows_what_the_core_says(unparsable, "uses: [\n")
     assert "Not saved" in unparsable.text

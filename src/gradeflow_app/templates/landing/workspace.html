@@ -1,12 +1,12 @@
 {# The marking workspace, frame by frame: Q5's marking edited, previewed, saved and run. #}
 <c-landing.app-frame course="{{ hero.course }}" assessment="{{ hero.assessment }}" class="landing-scene relative mx-auto mt-14 max-w-6xl text-left sm:mt-18" inert role="img" aria-label="The marking workspace: a question's marking edited, previewed and saved, then its answers marked again." x-data="scene" data-durations="{{ hero.scene.durations_attribute }}" data-presses="{{ hero.scene.presses_attribute }}">
-  <div class="grid h-160 overflow-hidden md:grid-cols-[minmax(0,1fr)_20rem] lg:grid-cols-[15rem_minmax(0,1fr)_21rem]">
+  <div class="grid h-160 grid-rows-[minmax(0,1fr)] overflow-hidden md:grid-cols-[minmax(0,1fr)_20rem] lg:grid-cols-[15rem_minmax(0,1fr)_21rem]">
     <div class="max-lg:hidden">
       {% for question_list in hero.question_lists %}
       <nav class="workspace-questions h-full" aria-label="Questions" data-frames="{{ question_list.frames_attribute }}"{% if not forloop.first %} hidden{% endif %}>
-        <div class="column-head column-sticky"><h2 class="text-base font-semibold">Questions</h2><span class="tabular-nums ml-auto whitespace-nowrap text-sm text-muted">{{ hero.marked_count }} of {{ question_list.content|length }} marked</span></div>
-        <ul class="grid gap-0.5 p-2">{% for item in question_list.content %}{% with question=item.question %}{% include "marking/question_list.html#question_item" %}{% endwith %}{% endfor %}</ul>
-        <div class="mt-auto border-t border-base-300 p-2">
+        <div class="column-head"><h2 class="text-base font-semibold">Questions</h2><span class="tabular-nums ml-auto whitespace-nowrap text-sm text-muted">{{ hero.marked_count }} of {{ question_list.content|length }} marked</span></div>
+        <ul class="grid flex-1 content-start gap-0.5 overflow-y-auto p-2">{% for item in question_list.content %}{% with question=item.question %}{% include "marking/question_list.html#question_item" %}{% endwith %}{% endfor %}</ul>
+        <div class="border-t border-base-300 p-2">
           <p class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-muted">{% icon "chevron-down" "size-4" %}Question groups<span class="badge badge-sm badge-soft tabular-nums ml-auto">{{ hero.question_groups|length }}</span></p>
           <ul class="grid gap-0.5 pt-1">{% for question_group in hero.question_groups %}{% include "marking/question_list.html#question_group_item" %}{% endfor %}</ul>
         </div>

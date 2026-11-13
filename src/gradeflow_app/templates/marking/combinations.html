@@ -1,9 +1,9 @@
 {# The answers column of a question group: students grouped by their answers to the questions it marks and reads. #}
 {% partialdef answers inline %}
-<div id="answers" class="flex min-h-full flex-col"{% if out_of_band %} hx-swap-oob="outerMorph"{% endif %}
+<div id="answers" class="flex min-h-0 flex-col"{% if out_of_band %} hx-swap-oob="outerMorph"{% endif %}
      hx-get="{{ answers_url }}" hx-target="this" hx-swap="outerMorph"
      hx-trigger="{% listen 'marks' access.assessment.pk %}, {% listen 'questions' access.assessment.pk %}, {% listen 'preview' access.assessment.pk request.user.pk %}">
-  <header class="column-sticky">
+  <header class="column-header">
     <div class="column-head">
       <c-questions-toggle />
       <h2 class="truncate">{% if question_keys %}{{ question_keys|join:", " }}{% else %}Answers{% endif %}</h2>
@@ -17,7 +17,7 @@
     </div>
     {% include "results/answers.html#preview_bar" %}
   </header>
-  <div class="grid content-start gap-3 p-4">
+  <div class="grid content-start gap-3 overflow-y-auto p-4">
     {% include "results/answers.html#column_notices" %}
     {% if not question_keys %}
       <c-empty-state class="card-box" icon="squares-2x2" title="No questions yet">Choose the questions this question group marks, and their answers show here.</c-empty-state>

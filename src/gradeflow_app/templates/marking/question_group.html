@@ -17,7 +17,7 @@
           <form id="question-group-remove" method="post" action="{% url 'question_group_remove' access.assessment.pk group.marking.pk %}" hidden>{% csrf_token %}</form>
           {% endif %}
         </div>
-        <div class="grid gap-5 p-5">
+        <div class="grid gap-5 overflow-y-auto p-5">
           <c-marking-summary :summary="group.summary" question_group="{{ group.involved_keys|join:', ' }}" />
           {% if access.can_edit %}<form method="post" action="{% url 'question_group_edit' access.assessment.pk group.marking.pk %}">{% csrf_token %}<button class="btn btn-primary">{% icon "pencil-square" "size-4" %}Edit marking</button></form>{% endif %}
         </div>

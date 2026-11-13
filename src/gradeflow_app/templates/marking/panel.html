@@ -2,7 +2,7 @@
 {% if editor %}
   {% include "marking/editor.html" %}
 {% else %}
-<div id="marking-panel" hx-get="{% url 'marking' question.assessment_id question.pk %}" hx-trigger="{% listen 'questions' question.assessment_id %}" hx-target="this" hx-swap="outerMorph">
+<div id="marking-panel" class="flex min-h-0 flex-col" hx-get="{% url 'marking' question.assessment_id question.pk %}" hx-trigger="{% listen 'questions' question.assessment_id %}" hx-target="this" hx-swap="outerMorph">
   <div class="column-head">
     <h2>Marking</h2>
     {% if panel.mode == "summary" and access.can_edit %}
@@ -13,7 +13,7 @@
     </c-menu>
     {% endif %}
   </div>
-  <div class="grid gap-5 p-5">
+  <div class="grid gap-5 overflow-y-auto p-5">
   {% if panel.mode == "summary" %}
     <c-marking-summary :summary="panel.summary" :archived="panel.archived" />
     {% if access.can_edit %}<div><button class="btn btn-primary" hx-post="{% url 'marking_start' question.assessment_id question.pk %}" hx-target="#marking-panel" hx-swap="outerHTML">{% icon "pencil-square" "size-4" %}Edit marking</button></div>{% endif %}

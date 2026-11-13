@@ -1,10 +1,10 @@
 {% partialdef answers inline %}
-<div id="answers" class="flex min-h-full flex-col"{% if out_of_band %} hx-swap-oob="outerMorph"{% endif %}
+<div id="answers" class="flex min-h-0 flex-col"{% if out_of_band %} hx-swap-oob="outerMorph"{% endif %}
      hx-get="{% url 'answers' question.assessment_id question.pk %}" hx-target="this" hx-swap="outerMorph"
      hx-trigger="{% listen 'marks' question.assessment_id %}, {% listen 'jobs' question.assessment_id %}, {% listen 'grouping' question.assessment_id %}, {% listen 'preview' question.assessment_id request.user.pk %}">
   {% partial header %}
 
-  <div class="grid content-start gap-3 p-4">
+  <div class="grid content-start gap-3 overflow-y-auto p-4">
     {% partial column_notices %}
     {% if failed_grouping_job %}
       <div role="alert" class="alert alert-warning alert-soft">{% icon "exclamation-triangle" %}<span class="flex-1">Couldn't group by meaning, so the same answers are grouped instead.</span><button class="btn btn-sm" hx-post="{% url 'answer_grouping' question.assessment_id question.pk %}" hx-target="#answers" hx-swap="outerMorph">Try again</button></div>
@@ -27,7 +27,7 @@
 {% endpartialdef %}
 
 {% partialdef header %}
-  <header class="column-sticky">
+  <header class="column-header">
     <div class="column-head">
       <c-questions-toggle />
       <h2>{{ question.key }}</h2>

@@ -193,25 +193,22 @@
 @utility workspace-questions {
   @apply relative flex min-h-0 flex-col overflow-hidden border-r border-base-300 bg-base-100 max-lg:fixed max-lg:bottom-0 max-lg:left-(--sidebar,0px) max-lg:top-14 max-lg:z-30 max-lg:w-72 max-lg:shadow-xl max-lg:not-group-has-[#questions-shown:checked]/workspace:hidden;
 }
+/* The answers and marking columns: the part below a column's head scrolls, not the column. */
 @utility workspace-answers {
-  @apply relative min-w-0 overflow-y-auto bg-base-200;
+  @apply relative flex min-w-0 flex-col overflow-hidden bg-base-200;
 }
 @utility workspace-marking {
-  @apply relative overflow-y-auto border-l border-base-300 bg-base-100;
+  @apply relative flex flex-col overflow-hidden border-l border-base-300 bg-base-100;
 }
 
-/* The header row every workspace column starts with, so their borders line up. Tailwind orders column-sticky
-   before it, so it is positioned only when not sticky. */
+/* The header row every workspace column starts with, so their borders line up. */
 @utility column-head {
-  @apply flex h-14 shrink-0 items-center gap-3 border-b border-base-300 px-4;
-  &:not(.column-sticky) {
-    @apply relative;
-  }
+  @apply relative flex h-14 shrink-0 items-center gap-3 border-b border-base-300 px-4;
 }
 
-/* A column's head that stays in view as the column scrolls. */
-@utility column-sticky {
-  @apply sticky top-0 z-10 border-b border-base-300 bg-base-100;
+/* A column's head with rows below it. */
+@utility column-header {
+  @apply border-b border-base-300 bg-base-100;
   /* A head inside one leaves its bottom line to it, so the line sits where the neighbouring columns' lines do. */
   & > .column-head {
     height: calc(var(--spacing) * 14 - 1px);
