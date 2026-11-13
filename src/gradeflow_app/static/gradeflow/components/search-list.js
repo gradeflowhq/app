@@ -44,11 +44,13 @@ export const choiceList = () => ({
 });
 
 // The method picker: its Built-in, Yours and Public tabs each list their own methods, and a search covers all three.
+// On phones it shows the list or the chosen method's guide, not both.
 export const methodPicker = () => ({
   ...searchList(),
   tab: "",
   selected: "",
   selectedLabel: "",
+  guideShown: false,
 
   init() {
     this.tab = this.$root.dataset.tab;
@@ -73,6 +75,7 @@ export const methodPicker = () => ({
     this.$refs.list.scrollTop = 0;
     const listed = [...this.$root.querySelectorAll(`[data-section][data-tab="${this.tab}"] [data-method]`)];
     if (listed.length && !listed.some((method) => method.dataset.method === this.selected)) listed[0].click();
+    this.guideShown = false;
   },
 
   // Arrow keys move to the other tab, as tabs do.
@@ -94,5 +97,12 @@ export const methodPicker = () => ({
     this.selectedLabel = chosen.dataset.label;
     for (const method of this.$root.querySelectorAll("[data-method]"))
       method.setAttribute("aria-current", String(method === chosen));
+    this.guideShown = true;
+    this.$nextTick(() => this.$refs.back.focus());
+  },
+
+  showList() {
+    this.guideShown = false;
+    this.$nextTick(() => this.$refs.list.querySelector('[aria-current="true"]')?.focus());
   },
 });
