@@ -91,7 +91,9 @@ def test_a_preview_that_died_can_be_tried_again(
         client.post(preview_url, headers=HTMX_HEADERS)
     [run_id] = idle_runner.run_ids(PREVIEW)
     idle_runner.end(run_id)
-    assert f"Preview failed: {ENDING_REASONS[Ending.FAILED]}" in answers_column(client, draft)
+    column = answers_column(client, draft)
+    assert "Preview failed" in column
+    assert ENDING_REASONS[Ending.FAILED] in column
     with django_capture_on_commit_callbacks(execute=True):
         client.post(preview_url, headers=HTMX_HEADERS)
     assert len(idle_runner.run_ids(PREVIEW)) == 2
@@ -105,7 +107,9 @@ def test_a_preview_fails_while_the_runner_is_down(
     client.post(url, {"path": "", "fields_posted": "1", "answers": ["41"]})
     fake_runner.is_down = True
     preview_draft(client, draft)
-    assert f"Preview failed: {UNAVAILABLE_REASON}" in answers_column(client, draft)
+    column = answers_column(client, draft)
+    assert "Preview failed" in column
+    assert UNAVAILABLE_REASON in column
     fake_runner.is_down = False
     preview_draft(client, draft)
     draft.refresh_from_db()

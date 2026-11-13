@@ -13,7 +13,7 @@
     </c-menu>
     {% endif %}
   </div>
-  <div class="grid gap-5 overflow-y-auto p-5">
+  <div class="grid gap-5 p-5 md:overflow-y-auto">
   {% if panel.mode == "summary" %}
     <c-marking-summary :summary="panel.summary" :archived="panel.archived" />
     {% if access.can_edit %}<div><button class="btn btn-primary" hx-post="{% url 'marking_start' question.assessment_id question.pk %}" hx-target="#marking-panel" hx-swap="outerHTML">{% icon "pencil-square" "size-4" %}Edit marking</button></div>{% endif %}

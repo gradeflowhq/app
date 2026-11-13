@@ -1,7 +1,10 @@
 {% extends layout %}
 {% block page_title %}{{ metadata.label|default:"Method" }} · {% endblock %}
 {% block page %}
-{% include "methods/work.html" %}
+<div class="group/workspace">
+  {% include "methods/work.html" %}
+  <c-workspace-switch />
+</div>
 <c-dialog id="copy" body_id="copy-body" />
 <c-workspace-dialogs />
 {% endblock %}

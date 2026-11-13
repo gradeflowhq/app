@@ -4,6 +4,7 @@
   {% include "marking/question_list.html" %}
   <div id="question-work" class="contents" hx-sync:inherited="#question-work:queue all">
     {% block work %}
+    <c-workspace-switch />
     <section class="workspace-answers" aria-label="Answers">
       {{ answers }}
     </section>

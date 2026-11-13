@@ -1,0 +1,9 @@
+{# Below 768 px the answers and marking columns stack; this shows one of them at a time. #}
+<div class="workspace-switch" x-data="workspaceSwitch" x-on:scroll.window.passive="remember" x-on:change="show">
+  <div class="fixed right-0 bottom-0 left-(--sidebar,0px) z-20 flex h-14 items-center border-t border-base-300 bg-base-100/90 px-4 backdrop-blur">
+    <div class="segmented w-full" role="radiogroup" aria-label="Show">
+      <label class="segment flex-1 justify-center"><input type="radio" name="shown-column" value="answers" class="sr-only" checked>Answers</label>
+      <label class="segment flex-1 justify-center"><input type="radio" name="shown-column" value="marking" class="sr-only">Marking</label>
+    </div>
+  </div>
+</div>

@@ -4,7 +4,7 @@
      hx-trigger="{% listen 'marks' question.assessment_id %}, {% listen 'jobs' question.assessment_id %}, {% listen 'grouping' question.assessment_id %}, {% listen 'preview' question.assessment_id request.user.pk %}">
   {% partial header %}
 
-  <div class="grid content-start gap-3 overflow-y-auto p-4">
+  <div class="grid content-start gap-3 p-4 md:overflow-y-auto">
     {% partial column_notices %}
     {% if failed_grouping_job %}
       <div role="alert" class="alert alert-warning alert-soft">{% icon "exclamation-triangle" %}<span class="flex-1">Couldn't group by meaning, so the same answers are grouped instead.</span><button class="btn btn-sm" hx-post="{% url 'answer_grouping' question.assessment_id question.pk %}" hx-target="#answers" hx-swap="outerMorph">Try again</button></div>
@@ -79,19 +79,20 @@
       </div>
     {% elif preview_job.status == "failed" %}
       <div class="preview-bar text-error" role="alert">
-        {% icon "exclamation-circle" "size-5" %}<span class="min-w-0 flex-1">Preview failed: {{ preview_job.error|default:"something went wrong" }}</span>
+        {% icon "exclamation-circle" "size-5" %}<span class="min-w-0 flex-1">Preview failed</span>
         <button class="btn btn-sm" hx-post="{{ preview_url }}" hx-target="#answers" hx-swap="outerMorph">Try again</button>
       </div>
+      {% if preview_job.error %}<p class="wrap-break-word border-t border-error/20 bg-error/10 px-4 py-2 text-sm text-error">{{ preview_job.error }}</p>{% endif %}
     {% elif preview_job and not preview_summary %}
       {% with job=preview_job running_label="Previewing…" %}{% partial job_bar %}{% endwith %}
     {% elif preview_summary %}
       <div class="preview-bar" role="status">
-        {% icon "eye" "size-4 text-primary" %}<span class="font-medium">Preview</span>
+        {% icon "eye" "size-4 shrink-0 text-primary" %}<span class="font-medium max-sm:sr-only">Preview</span>
         {% if is_question_group %}
           <span class="tabular-nums text-sm text-muted">{{ preview_summary.changed_count }} {% if preview_summary.changed_count == 1 %}student's results change{% else %}students' results change{% endif %}</span>
         {% else %}
-          <span class="tabular-nums text-sm text-muted">{{ preview_summary.full_marks_count }} full · {{ preview_summary.partial_marks_count }} partial · {{ preview_summary.no_marks_count }} no marks</span>
-          {% if preview_summary.changed_count %}<span class="badge badge-primary badge-soft badge-sm ml-auto">{{ preview_summary.changed_count }} changed</span>{% endif %}
+          <span class="min-w-0 tabular-nums text-sm text-muted max-md:truncate">{{ preview_summary.full_marks_count }} full · {{ preview_summary.partial_marks_count }} partial · {{ preview_summary.no_marks_count }} no marks</span>
+          {% if preview_summary.changed_count %}<span class="badge badge-primary badge-soft badge-sm ml-auto shrink-0">{{ preview_summary.changed_count }} changed</span>{% endif %}
         {% endif %}
       </div>
       {% if preview_summary.unmarked_count %}
@@ -108,7 +109,7 @@
 {% endpartialdef %}
 
 {% partialdef job_bar %}
-<div class="preview-bar relative" role="status">
+<div class="preview-bar" role="status">
   <span class="loading loading-spinner loading-sm text-primary"></span>
   {% if job.status == "queued" %}Waiting to start…{% else %}{{ running_label }}{% endif %}
   {% if job.progress_text %}<span class="min-w-0 truncate text-sm text-muted">{{ job.progress_text }}</span>{% endif %}

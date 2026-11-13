@@ -1,6 +1,6 @@
 {# A method's workspace: its questions, the person's test answers to the one shown, and its marking. Every edit swaps it whole; `#method-state` goes with each request, so the page's revision guards against edits from an older tab. #}
 {% with draft=workspace.draft_record version=workspace.version %}
-<div id="method-work" class="workspace group/workspace flex min-w-0 flex-col bg-base-100" hx-target:inherited="#method-work" hx-swap:inherited="outerMorph" hx-sync:inherited="#method-work:queue all" hx-include:inherited="#method-state" hx-status:409:inherited="swap:innerHTML target:#method-notice">
+<div id="method-work" class="workspace flex min-w-0 flex-col bg-base-100" hx-target:inherited="#method-work" hx-swap:inherited="outerMorph" hx-sync:inherited="#method-work:queue all" hx-include:inherited="#method-state" hx-status:409:inherited="swap:innerHTML target:#method-notice">
   <div id="method-state" hidden>
     <input type="hidden" name="revision" value="{{ workspace.tests_record.revision }}">
     <input type="hidden" name="shown_question" value="{{ state.question }}">
@@ -111,7 +111,7 @@
         {% endif %}
       </header>
 
-      <div class="grid content-start gap-3 overflow-y-auto p-4">
+      <div class="grid content-start gap-3 p-4 md:overflow-y-auto">
         {% if values %}
         <c-more-options label="Test values{% if workspace.draft.test_values %} · {{ workspace.draft.test_values|length }} changed{% endif %}" :open="values_expanded" class="card-box px-4 py-3">
           <form class="grid gap-4{% if not draft %} read-only-fields{% endif %}" hx-post="{{ urls.values }}" hx-trigger="change">
@@ -195,7 +195,7 @@
         </div>
         {% endif %}
       </div>
-      <div class="flex-1 overflow-y-auto">
+      <div class="flex-1 md:overflow-y-auto">
       {% if yaml_only_reasons %}
         {% if workspace.summary %}<div class="prose-core px-5 pt-5">{{ workspace.summary|markdown }}</div>{% endif %}
         <c-empty-state icon="code-bracket" title="Written in YAML">{{ yaml_only_reasons|join:" " }}<c-slot name="action"><button type="button" class="btn" hx-get="{{ urls.yaml }}" hx-target="#drawer-body" hx-swap="innerHTML" data-dialog="drawer">{% icon "code-bracket" "size-4" %}{% if draft %}Edit as YAML{% else %}View as YAML{% endif %}</button></c-slot></c-empty-state>

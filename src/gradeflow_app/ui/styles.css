@@ -169,9 +169,9 @@
   @apply rounded-box border border-base-300 bg-base-100;
 }
 
-/* The question workspace, as marking and a method's page show it: columns that each scroll, under the top bar. Each
-   column is `relative`, so absolutely positioned content, screen-reader text included, scrolls inside it instead of
-   lengthening the page. */
+/* The question workspace, as marking and a method's page show it: from md, columns that each scroll, under the top
+   bar; below md, the page scrolls. Each column is `relative`, so absolutely positioned content, screen-reader text
+   included, scrolls inside it instead of lengthening the page. */
 @utility workspace {
   @apply md:h-[calc(100dvh-3.5rem)];
 }
@@ -193,12 +193,27 @@
 @utility workspace-questions {
   @apply relative flex min-h-0 flex-col overflow-hidden border-r border-base-300 bg-base-100 max-lg:fixed max-lg:bottom-0 max-lg:left-(--sidebar,0px) max-lg:top-14 max-lg:z-30 max-lg:w-72 max-lg:shadow-xl max-lg:not-group-has-[#questions-shown:checked]/workspace:hidden;
 }
-/* The answers and marking columns: the part below a column's head scrolls, not the column. */
+/* The answers and marking columns: from md, the part below a column's head scrolls, not the column. Below md the
+   workspace shows one of them, as its switch sets; with the marking, the answers keep only their head row, which names
+   the question and opens the question list. */
 @utility workspace-answers {
-  @apply relative flex min-w-0 flex-col overflow-hidden bg-base-200;
+  @apply relative flex min-w-0 flex-col bg-base-200 md:overflow-hidden;
+  [data-marking-shown] .group\/workspace & > :not(header, #answers),
+  [data-marking-shown] .group\/workspace & #answers > :not(header),
+  [data-marking-shown] .group\/workspace & header > :not(.column-head) {
+    @apply max-md:hidden;
+  }
 }
 @utility workspace-marking {
-  @apply relative flex flex-col overflow-hidden border-l border-base-300 bg-base-100;
+  @apply relative flex flex-col border-base-300 bg-base-100 md:overflow-hidden md:border-l;
+  :root:not([data-marking-shown]) .group\/workspace & {
+    @apply max-md:hidden;
+  }
+}
+/* The switch's bar is fixed to the bottom of the screen, under the preview bar if there is one; this keeps room for
+   them at the workspace's end. */
+@utility workspace-switch {
+  @apply order-last h-14 group-has-[.preview-bar]/workspace:h-26 md:hidden;
 }
 
 /* The header row every workspace column starts with, so their borders line up. */
@@ -272,7 +287,12 @@
 }
 
 @utility preview-bar {
-  @apply flex min-h-12 items-center gap-2 border-t border-base-300 bg-secondary/60 px-4 py-2;
+  @apply relative flex min-h-12 items-center gap-2 border-t border-base-300 bg-secondary/60 px-4 py-2;
+  /* Below md, in the workspace, it sits above the workspace switch, so it stays in reach as the answers scroll; its
+     colour is made opaque there. */
+  .group\/workspace & {
+    @apply max-md:fixed max-md:right-0 max-md:bottom-14 max-md:left-(--sidebar,0px) max-md:z-20 max-md:bg-[color-mix(in_oklab,var(--color-secondary)_60%,var(--color-base-100))];
+  }
 }
 
 /* Long content shortened to about ten lines and faded at the end, until shown in full (components/collapsible.js). */

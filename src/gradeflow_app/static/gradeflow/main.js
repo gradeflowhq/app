@@ -39,6 +39,7 @@ import { studentTable } from "./components/student-table.js";
 import { tagInput } from "./components/tag-input.js";
 import { testAnswer } from "./components/test-answer.js";
 import { themeChoice } from "./components/theme-choice.js";
+import { workspaceSwitch } from "./components/workspace-switch.js";
 import { toastStore } from "./services/toasts.js";
 
 Alpine.store("toasts", toastStore);
@@ -93,6 +94,7 @@ const components = {
   tagInput,
   testAnswer,
   themeChoice,
+  workspaceSwitch,
 };
 for (const [name, component] of Object.entries(components)) Alpine.data(name, component);
 window.Alpine = Alpine; // for htmx's alpine-compat extension
