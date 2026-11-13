@@ -1,3 +1,6 @@
+{% with values=answer|answer_values:core_question %}
 {% if blank or not answer %}<p class="font-medium italic text-muted">Blank</p>
+{% elif values %}{% include "results/answer_values.html" %}
 {% elif code %}<pre class="code-block"><code{% if not expanded %} class="line-clamp-4 group-open/answer:line-clamp-none"{% endif %}>{{ answer|highlight:code }}</code></pre>
 {% else %}<p class="whitespace-pre-wrap wrap-break-word font-medium{% if not expanded %} line-clamp-4 group-open/answer:line-clamp-none{% endif %}">{{ answer }}</p>{% endif %}
+{% endwith %}

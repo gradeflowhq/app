@@ -4,6 +4,8 @@ from collections import Counter
 from collections.abc import Sequence
 from dataclasses import dataclass, field, replace
 
+from gradeflow_core import Question as CoreQuestion
+
 from gradeflow_app.assessments.models import Assessment
 from gradeflow_app.marking.previews import PreviewResults
 from gradeflow_app.results.marks import awards
@@ -15,7 +17,7 @@ class Cell:
 
     key: str
     answer: str
-    max_marks: float
+    question: CoreQuestion
     read: bool = False
     """Whether the marking only reads this question's answer, as a condition does, rather than marking it."""
     marks: set[float | None] = field(default_factory=set)
@@ -80,7 +82,7 @@ def combinations(
         combination = by_answers.get(answers)
         if combination is None:
             cells = [
-                Cell(key, answer, questions[key].core_question.max_marks, read=key not in keys)
+                Cell(key, answer, questions[key].core_question, read=key not in keys)
                 for key, answer in zip(ordered_keys, answers, strict=True)
             ]
             combination = by_answers[answers] = Combination(cells)

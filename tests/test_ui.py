@@ -10,6 +10,7 @@ from django import forms
 from django.test import Client
 from django.urls import reverse
 from django.utils import timezone
+from gradeflow_core import Question
 from gradeflow_core.editing import new_question
 
 from gradeflow_app.assessments.models import Assessment
@@ -19,6 +20,7 @@ from gradeflow_app.ui.forms import MarkdownInput
 from gradeflow_app.ui.middleware import LIVE_REFRESH, MESSAGES_HEADER
 from gradeflow_app.ui.templatetags.ui import (
     ago,
+    answer_values,
     browser,
     code_language,
     duration,
@@ -251,3 +253,10 @@ def test_the_inline_script_carries_the_pages_nonce(client: Client) -> None:
 def test_the_browser_uses_the_names_the_server_reads_and_sends(name: str, value: str, script: str) -> None:
     path = Path(__file__).parents[1] / "src" / "gradeflow_app" / "static" / "gradeflow" / script
     assert f'const {name} = "{value}";' in path.read_text()
+
+
+def test_an_answer_of_several_values_shows_each_value_its_question_holds() -> None:
+    values = Question.load({"type": "values", "value_types": ["text", "number"], "reading": {"separator": "~"}})
+    assert answer_values("mitochondria~", values) == [("Value 1, text", "mitochondria"), ("Value 2, number", "")]
+    assert answer_values("mitochondria~36~ATP", values) is None, "more values than it holds"
+    assert answer_values("light", Question.load({"type": "text"})) is None

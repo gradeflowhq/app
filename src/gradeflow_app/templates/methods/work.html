@@ -138,7 +138,7 @@
                   <div class="{% if code %}rounded-box outline-hidden hover:*:border-base-content/25 focus-visible:*:border-primary focus-visible:*:ring-3 focus-visible:*:ring-primary/15{% else %}edit-in-place hover:bg-base-200/70{% endif %} cursor-text" tabindex="0" x-ref="focusReturn" x-on:click="edit" x-on:keydown.enter.prevent="edit">{% include "methods/work.html#answer_shown" %}</div>
                   {% include "methods/work.html#result" %}
                 </div>
-                {% include "methods/work.html#answer_editor" with operation="save" answer=row.answer %}
+                {% include "methods/work.html#answer_editor" with operation="save" answer=row.answer form=row.form %}
                 {% else %}
                 {% include "methods/work.html#answer_shown" %}
                 {% include "methods/work.html#result" %}
@@ -165,7 +165,7 @@
             {% if selected_question and can_edit_tests %}
             <li id="test-answer-new" class="flex items-start gap-3 border-base-300 px-4 py-3 not-first:border-t" x-show="editing" x-cloak>
               <span class="tabular-nums w-5 shrink-0 pt-0.5 text-sm text-subtle">{{ rows|length|add:1 }}</span>
-              <div class="min-w-0 flex-1">{% include "methods/work.html#answer_editor" with operation="add" answer="" %}</div>
+              <div class="min-w-0 flex-1">{% include "methods/work.html#answer_editor" with operation="add" answer="" form=new_answer %}</div>
               {% include "methods/work.html#answer_buttons" with operation="add" %}
             </li>
             {% endif %}
@@ -214,7 +214,7 @@
 {% endwith %}
 
 {# A test answer as written; one of several values, value by value. #}
-{% partialdef answer_shown %}{% if row.values %}<p class="flex flex-wrap gap-1.5">{% for label, value in row.values %}<span class="badge badge-ghost font-medium" title="{{ label }}">{{ value|default:"—" }}</span>{% endfor %}</p>{% else %}{% include "results/answer_text.html" with answer=row.answer expanded=True %}{% endif %}{% endpartialdef %}
+{% partialdef answer_shown %}{% include "results/answer_text.html" with answer=row.answer core_question=selected_question expanded=True %}{% endpartialdef %}
 
 {# A test answer's result in the last run, dimmed if what is here has changed since. #}
 {% partialdef result %}<div{% if run_out_of_date %} class="opacity-50"{% endif %}>{% include "results/answer_feedback.html" with feedback=row.result.feedback %}{% if row.result.breakdown %}<c-more-options label="Breakdown" class="mt-2"><c-breakdown :check="row.result.breakdown" :language="code" /></c-more-options>{% endif %}</div>{% endpartialdef %}
@@ -224,11 +224,11 @@
 <form id="test-answer-form-{% if operation == "save" %}{{ row.index }}{% else %}new{% endif %}" x-ref="form" hx-post="{{ urls.answers }}" x-on:htmx:after:request="afterSave" x-on:keydown.escape="escape"{% if operation == "save" %} x-show="editing" x-cloak{% endif %}>
   <input type="hidden" name="operation" value="{{ operation }}">
   {% if operation == "save" %}<input type="hidden" name="row" value="{{ row.index }}">{% endif %}
-  {% with form=row.form|default:new_answer %}{% if form %}
+  {% if form %}
   <div class="grid gap-2{% if form.fields|length > 1 %} sm:grid-cols-2{% endif %}" role="group" aria-label="{% if operation == "save" %}Answer of submission {{ row.number }}{% else %}New answer{% endif %}">{% for field in form %}{{ field }}{% endfor %}</div>
   {% else %}
   <textarea name="answer" x-on:keydown.enter="submit" rows="1" class="{% if code %}code-block{% else %}textarea edit-in-place block w-[calc(100%+1rem)] resize-none text-base font-medium{% endif %} field-sizing-content min-h-0" aria-label="{% if operation == "save" %}Answer of submission {{ row.number }}{% else %}New answer{% endif %}"{% if operation == "add" %} placeholder="Write an answer"{% endif %}>{{ answer }}</textarea>
-  {% endif %}{% endwith %}
+  {% endif %}
 </form>
 {% endpartialdef %}
 

@@ -113,11 +113,14 @@ def answers_to(tests: MethodTests, question: str) -> list[str]:
 def answer_form(
     question: Question | None, answer: str, key: str, data: Mapping[str, Any] | None = None
 ) -> ObjectForm | None:
-    """The values of an answer to `question` to fill in, for a question whose answers have them; `key` keeps its
-    fields' ids apart from other answers'."""
+    """The fields for filling in `answer` value by value. None if `question` doesn't split answers into values, or
+    `answer` doesn't fit them. `key` keeps the fields' ids apart from other answers'."""
     if question is None or (schema := question.answer_schema()).get("type") != "object":
         return None
-    value = question.answer_values(answer)
+    try:
+        value = question.answer_values(answer)
+    except ValueError:
+        return None
     form = ObjectForm(schema, value, prefix="value", auto_id=f"id_{key}_%s", data=data)
     for field in form.fields.values():
         if isinstance(field.widget, forms.TextInput):
@@ -128,29 +131,10 @@ def answer_form(
 def posted_answer(question: Question | None, data: Mapping[str, Any]) -> str:
     """The answer to `question` a test answer's form posted: written whole, or value by value."""
     form = answer_form(question, "", "posted", data)
-    if question is None or form is None:
+    if question is None or form is None or "answer" in data:
         return str(data.get("answer", ""))
     form.full_clean()
     return question.answer_from(form.values())
-
-
-def answer_value_pairs(question: Question | None, answer: str) -> list[tuple[str, str]] | None:
-    """Each value of an answer of several values, a list's items one by one, with what it is; None for an answer
-    written whole or as one value."""
-    if question is None or not answer or (schema := question.answer_schema()).get("type") != "object":
-        return None
-    values = question.answer_values(answer)
-    if len(schema["properties"]) < 2 and not any(isinstance(value, list) for value in values.values()):
-        return None
-    return [
-        (property_schema.get("title", name), "" if item is None else str(item))
-        for name, property_schema in schema["properties"].items()
-        for item in _as_list(values.get(name))
-    ]
-
-
-def _as_list(value: Any) -> list[Any]:
-    return value if isinstance(value, list) else [value]
 
 
 @dataclass(frozen=True)
@@ -164,8 +148,6 @@ class TestAnswerView:
     marks: float | None
     form: ObjectForm | None = None
     """The answer's values to change one by one, for a question whose answers have them."""
-    values: list[tuple[str, str]] | None = None
-    """Each value of an answer of several values, with what it is."""
 
     @property
     def number(self) -> int:
@@ -186,6 +168,5 @@ def answer_rows(
         marks = question_result.marks if question_result is not None else None
         answer = row["answers"].get(question, "")
         form = answer_form(shown_question, answer, f"answer{index}")
-        pairs = answer_value_pairs(shown_question, answer)
-        views.append(TestAnswerView(index, answer, row["is_example"], question_result, marks, form, pairs))
+        views.append(TestAnswerView(index, answer, row["is_example"], question_result, marks, form))
     return views

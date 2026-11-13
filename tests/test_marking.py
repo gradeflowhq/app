@@ -446,6 +446,20 @@ def htmx_page(client: Client, url: str) -> str:
     return client.get(url, headers=HTMX_HEADERS).text
 
 
+def test_a_question_groups_answers_show_each_option(client: Client, assessment: Assessment) -> None:
+    question = assessment.questions.get(key="Q3")
+    question.core_question = Question.load({**question.definition, "allow_multiple": True})
+    question.save()
+    choice_check = {"question": "Q3", "uses": "gradeflow/multiple-choice@1", "with": {"correct": ["a"]}}
+    conditional = {
+        "uses": "gradeflow/conditional@1",
+        "with": {"condition": [accepted_answers_check("Q1", "light")], "then": [choice_check]},
+    }
+    marking = Marking.objects.create(assessment=assessment, definition=dump_yaml(conditional))
+    page = htmx_page(client, reverse("question_group_answers", args=[assessment.pk, marking.pk]))
+    assert set(re.findall(r'<li class="badge[^"]*" title="Options">([^<]*)</li>', page)) == {"a", "b", "c", "d"}
+
+
 def test_a_question_groups_answers_show_by_combination(client: Client, assessment: Assessment) -> None:
     marking = question_group_marking(assessment)
     saved = htmx_page(client, reverse("question_group_answers", args=[assessment.pk, marking.pk]))

@@ -26,9 +26,9 @@
         {% for row in rows %}
         <li class="flex flex-col gap-x-4 gap-y-1 px-4 py-3 xl:flex-row xl:items-start{% if row.changed %} changed{% endif %}">
           <dl class="grid min-w-0 flex-1 grid-cols-[3rem_minmax(0,1fr)_7.5rem] items-baseline gap-x-3 gap-y-1">
-            {% for cell in row.cells %}{% with low=cell.lowest_marks high=cell.highest_marks max_marks=cell.max_marks %}
+            {% for cell in row.cells %}{% with low=cell.lowest_marks high=cell.highest_marks max_marks=cell.question.max_marks %}
               <dt class="text-sm font-semibold{% if cell.read %} text-muted{% endif %}">{{ cell.key }}</dt>
-              <dd class="line-clamp-2 wrap-break-word{% if cell.read %} text-muted{% endif %}" title="{{ cell.answer }}">{% if cell.answer %}{{ cell.answer }}{% else %}<span class="italic text-muted">Blank</span>{% endif %}</dd>
+              <dd class="line-clamp-2 wrap-break-word{% if cell.read %} text-muted{% endif %}" title="{{ cell.answer }}">{% with values=cell.answer|answer_values:cell.question %}{% if values %}{% include "results/answer_values.html" %}{% elif cell.answer %}{{ cell.answer }}{% else %}<span class="italic text-muted">Blank</span>{% endif %}{% endwith %}</dd>
               {% if cell.read %}<dd class="text-right text-sm text-subtle" title="Read, not marked, by this marking">Read only</dd>{% else %}
               <dd class="flex justify-end text-sm">{% if cell.changed %}<c-marks :low="cell.preview_lowest_marks" :high="cell.preview_highest_marks" :previous_low="low" :previous_high="high" :max_marks="max_marks" />{% else %}<c-marks :low="low" :high="high" :max_marks="max_marks" />{% endif %}</dd>
               {% if cell.feedback %}<dd class="col-span-2 col-start-2 -mt-1 whitespace-pre-line wrap-break-word text-sm text-muted">{{ cell.feedback }}</dd>{% endif %}

@@ -148,6 +148,27 @@ def code_language(question: Question | Mapping[str, Question] | None, key: str |
     return answer_hint.get("language", "text") if answer_hint.get("kind") == "code" else None
 
 
+@register.filter
+def answer_values(answer: str, question: Question | None) -> list[tuple[str, str]] | None:
+    """`answer` as (title, value) pairs, one per value or list item. None if `answer` doesn't split into several
+    values."""
+    if question is None or not answer:
+        return None
+    try:
+        values = question.answer_values(answer)
+    except ValueError:
+        return None
+    properties = question.answer_schema()["properties"]
+    if len(properties) < 2 and not any(isinstance(value, list) for value in values.values()):
+        return None
+    items = {name: value if isinstance(value, list) else [value] for name, value in values.items()}
+    return [
+        (property_schema.get("title", name), "" if item is None else str(item))
+        for name, property_schema in properties.items()
+        for item in items[name]
+    ]
+
+
 @cache
 def _lexer(language: str) -> Lexer | None:
     try:

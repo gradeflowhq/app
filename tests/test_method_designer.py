@@ -679,8 +679,18 @@ def test_an_answer_of_several_values_is_written_value_by_value(client: Client, m
     assert answer_rows(method) == [(answer, False) for answer in written]
     page = client.get(designer_url(method, "method_page"), headers=HTMX_HEADERS).text
     for name, value in question.answer_values(written[0]).items():
-        assert f'title="{titles[name]}">{escape(value)}</span>' in page
+        assert f'title="{titles[name]}">{escape(value)}</li>' in page
         assert f'name="value-{name}" value="{escape(value)}"' in page
+
+
+def test_an_answer_its_values_cant_hold_is_written_whole(client: Client, method: Method) -> None:
+    set_question_in_tests(method, {"type": "values", "value_types": ["number", "number"]})
+    post_to_designer(client, method, "method_answers", None, operation="add", answer="3, 4, 5")
+    assert answer_rows(method) == [("3, 4, 5", False)]
+    page = client.get(designer_url(method, "method_page"), headers=HTMX_HEADERS).text
+    assert ">3, 4, 5</textarea>" in page
+    post_to_designer(client, method, "method_answers", None, operation="save", row="0", answer="3, 4, 6")
+    assert answer_rows(method) == [("3, 4, 6", False)]
 
 
 def test_a_choice_answer_is_ticked_from_the_options(client: Client, method: Method) -> None:
@@ -699,7 +709,7 @@ def test_an_answer_of_several_options_shows_each_option(client: Client, method: 
     set_question_in_tests(method, {"type": "choice", "options": ["a", "b", "c"], "allow_multiple": True})
     post_to_designer(client, method, "method_answers", None, **{"operation": "add", "value-options": ["c", "a"]})
     page = client.get(designer_url(method, "method_page"), headers=HTMX_HEADERS).text
-    shown = re.findall(r'<span class="badge[^"]*" title="[^"]+">([^<]*)</span>', page)
+    shown = re.findall(r'<li class="badge[^"]*" title="[^"]+">([^<]*)</li>', page)
     assert shown == ["a", "c"]
 
 

@@ -7,6 +7,7 @@ import re
 import pytest
 from django.test import Client
 from django.urls import reverse
+from gradeflow_core import Question
 
 from gradeflow_app.assessments.models import Assessment
 from gradeflow_app.live.topics import topic
@@ -195,6 +196,18 @@ def test_a_students_page_shows_their_adjustments(client: Client, adjusted_assess
     assert "The marking gives" not in page
     assert page.count("Rounded.") == 2, "as the feedback and in the form"
     assert "· </span>" not in page, "Q3 has no marking to name"
+
+
+def test_answers_of_several_options_show_each_option(client: Client, assessment: Assessment) -> None:
+    question = assessment.questions.get(key="Q3")
+    question.core_question = Question.load({**question.definition, "allow_multiple": True})
+    question.save()
+    chips = r'<li class="badge[^"]*" title="Options">([^<]*)</li>'
+    page = client.get(reverse("question", args=[assessment.pk, question.pk])).text
+    assert set(re.findall(chips, page)) == {"a", "b", "c", "d"}
+    student = assessment.students.get(encrypted_id=encrypted_id("S001"))
+    page = client.get(reverse("student", args=[assessment.pk, student.pk]), headers=HTMX_HEADERS).text
+    assert re.findall(chips, page) == ["a"]
 
 
 def test_a_students_page_shows_their_answers_as_written(client: Client, assessment: Assessment) -> None:
