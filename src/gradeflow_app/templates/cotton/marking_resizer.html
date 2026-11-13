@@ -1,0 +1,2 @@
+{# Dragging resizes the marking column; double-clicking resets it. #}
+<div class="marking-resizer" role="separator" aria-orientation="vertical" x-data="markingResizer" x-on:pointerdown="start" x-on:pointermove="drag" x-on:lostpointercapture="keep" x-on:dblclick="reset"></div>

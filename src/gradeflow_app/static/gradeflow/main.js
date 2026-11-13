@@ -27,6 +27,7 @@ import { histogram } from "./components/histogram.js";
 import { importer } from "./components/import/importer.js";
 import { methodSlideshow, openAnswerGroup, scene } from "./components/landing-demos.js";
 import { markdownEditor } from "./components/markdown-editor.js";
+import { markingResizer } from "./components/marking-resizer.js";
 import { math } from "./components/math.js";
 import { modelServiceCard, modelServiceNotice } from "./components/model-service-card.js";
 import { openOnLoad } from "./components/open-on-load.js";
@@ -74,6 +75,7 @@ const components = {
   histogram,
   importer,
   markdownEditor,
+  markingResizer,
   math,
   methodPicker,
   methodSlideshow,

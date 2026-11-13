@@ -10,6 +10,8 @@
     try {
       const theme = localStorage.getItem("theme");
       if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
+      const markingWidth = Number(localStorage.getItem("marking-width"));
+      if (markingWidth > 0) document.documentElement.style.setProperty("--marking-width", `${markingWidth}px`);
     } catch {}
   </script>
   {% tailwind_css %}

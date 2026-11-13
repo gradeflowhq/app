@@ -166,8 +166,14 @@
 @utility workspace {
   @apply md:h-[calc(100dvh-3.5rem)];
 }
+/* The marking column takes the width its resizer saved, between 20rem and half the workspace. */
 @utility workspace-columns {
-  @apply grid md:grid-cols-[minmax(0,1fr)_20rem] lg:grid-cols-[14rem_minmax(0,1fr)_22rem] xl:grid-cols-[15rem_minmax(0,1fr)_24rem] 2xl:grid-cols-[16rem_minmax(0,1fr)_27rem];
+  @apply relative grid [--marking-default:20rem] md:grid-cols-[minmax(0,1fr)_var(--marking)] lg:grid-cols-[14rem_minmax(0,1fr)_var(--marking)] lg:[--marking-default:22rem] xl:grid-cols-[15rem_minmax(0,1fr)_var(--marking)] xl:[--marking-default:24rem] 2xl:grid-cols-[16rem_minmax(0,1fr)_var(--marking)] 2xl:[--marking-default:27rem];
+  --marking: clamp(20rem, var(--marking-width, var(--marking-default)), 50%);
+}
+/* The handle on the marking column's left edge. */
+@utility marking-resizer {
+  @apply absolute inset-y-0 left-[calc(100%-var(--marking))] z-20 w-2 -translate-x-1/2 cursor-col-resize after:absolute after:inset-y-0 after:left-1/2 after:w-0.5 after:-translate-x-1/2 after:transition-colors hover:after:bg-primary hover:after:delay-150 active:after:bg-primary max-md:hidden;
 }
 /* The questions column, over the page below lg while the questions toggle is on, beside the narrowed sidebar if
    there is one. */
