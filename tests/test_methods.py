@@ -289,6 +289,15 @@ def test_the_methods_pages_list_a_librarys_methods_and_what_a_course_uses_from_e
     assert "Bright" not in yours
 
 
+def test_a_method_that_uses_the_ai_service_is_marked_in_the_library(client: Client, user: User) -> None:
+    publish_light_method(user.library, user, label="Mine")
+    criteria = {"uses": "gradeflow/answer-criteria@1", "with": {"criteria": [{"text": "Says ice floats", "marks": 1}]}}
+    definition = dump_yaml({"label": "Judged", "summary": "Fits.", "question_types": ["text"], "steps": [criteria]})
+    publish_version(Method.objects.create(library=user.library, name="judged"), user, definition)
+    page = client.get(reverse("your_methods")).text
+    assert re.findall(r'>([^<>]+)</a>\s*<span[^>]* title="Uses AI">', page) == ["Judged"]
+
+
 def test_your_methods_are_a_page_of_their_own_not_the_accounts(client: Client, user: User, bo: User) -> None:
     mine = publish_light_method(user.library, user, label="Mine")
     theirs = publish_light_method(bo.library, bo, label="Bright")

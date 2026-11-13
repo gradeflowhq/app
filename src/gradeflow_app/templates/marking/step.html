@@ -17,7 +17,7 @@
       </nav>
       {% endif %}
       <div class="flex items-center gap-2">
-        <h3 class="min-w-0 flex-1 font-semibold">{{ editor.label }}{% if editor.archived %} <span class="badge badge-ghost badge-sm align-middle font-normal">Archived</span>{% endif %}</h3>
+        <div class="flex min-w-0 flex-1 items-center gap-1.5"><h3 class="min-w-0 font-semibold">{{ editor.label }}{% if editor.archived %} <span class="badge badge-ghost badge-sm align-middle font-normal">Archived</span>{% endif %}</h3>{% if editor.needs_model_endpoint %}<c-ai-service id="ai-service-{{ editor.path|slugify|default:'marking' }}" />{% endif %}</div>
         {% if editor.editable and editor.can_change_method %}<button type="button" class="btn btn-ghost btn-sm" hx-get="{{ editor.actions.methods }}?operation=change_method&amp;target={{ editor.path|urlencode }}" hx-target="#picker-body" hx-swap="innerHTML" data-dialog="picker">{% icon "arrows-right-left" "size-4" %}Change</button>{% endif %}
       </div>
       {% if editor.made_by %}<p class="text-sm text-muted">{{ editor.made_by }}</p>{% endif %}
@@ -35,7 +35,7 @@
         {% if editor.saved_by_someone_else %}<div role="alert" class="alert alert-warning alert-soft">{% icon "exclamation-triangle" %}<div class="grid justify-items-start gap-2"><p>Someone saved this marking after you started. Saving replaces their version.</p><button type="button" class="btn btn-sm" hx-post="{{ editor.actions.discard }}" data-confirm="Discard your changes?" data-confirm-detail="{{ editor.discard_note }}" data-confirm-button="Discard">Use theirs</button></div></div>{% endif %}
         {% if editor.conflicts %}
           <c-alert class="items-start">
-            <div class="grid gap-2"><p>{{ editor.conflict_message }} A question has one marking.</p><div class="flex flex-wrap gap-2">{% for conflict in editor.conflicts %}<a class="btn btn-sm" href="{{ conflict.url }}">Open {{ conflict.name }}</a>{% endfor %}</div></div>
+            <div class="grid gap-2"><p>{{ editor.conflict_message }} A question has one marking.</p><div class="flex flex-wrap gap-2">{% for conflict in editor.conflicts %}<a class="btn btn-sm" href="{{ conflict.url }}" hx-target="body" hx-swap="innerHTML">Open {{ conflict.name }}</a>{% endfor %}</div></div>
           </c-alert>
         {% endif %}
         {% if editor.problems_elsewhere %}
@@ -70,7 +70,7 @@
         {% for child in setting_view.children %}
         <li class="card-box relative flex items-start gap-2 p-3 hover:border-primary/50">
           <div class="min-w-0 flex-1">
-            <button type="button" class="block text-left font-medium after:absolute after:inset-0 after:rounded-box" hx-post="{{ draft_url }}" hx-vals="{% hx_vals operation="open" target=child.path %}">{{ child.label }}</button>
+            <button type="button" class="flex items-center gap-1.5 text-left font-medium after:absolute after:inset-0 after:rounded-box" hx-post="{{ draft_url }}" hx-vals="{% hx_vals operation="open" target=child.path %}">{{ child.label }}{% if child.needs_model_endpoint %}<c-ai-service />{% endif %}</button>
             {% if child.notes %}<p class="text-sm text-muted">{{ child.notes|join:" · " }}</p>{% endif %}
             {% if child.has_problems and not child.problem %}<p class="text-sm text-warning">Not set up yet</p>{% elif child.description %}<c-collapsible class="prose-core text-sm text-muted [&_pre]:relative">{{ child.description|markdown }}</c-collapsible>{% endif %}
             {% if child.problem %}<p class="text-sm text-error">{{ child.problem }}</p>{% endif %}

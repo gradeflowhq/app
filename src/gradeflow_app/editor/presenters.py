@@ -27,6 +27,7 @@ class StepCard:
     """What is wrong with it or a step it holds, rather than not filled in yet."""
     notes: list[str]
     """What its place says about it: the question it reads, its weight, its condition."""
+    needs_model_endpoint: bool
 
 
 class QuestionOption(NamedTuple):
@@ -97,6 +98,7 @@ def _card(workspace: StepWorkspace, path: str) -> StepCard:
         has_problems=bool(problems),
         problem=problem_text(draft, problem, path) if problem else "",
         notes=draft.notes(path),
+        needs_model_endpoint=draft.needs_model_endpoint(path),
     )
 
 
@@ -151,6 +153,7 @@ class Editor:
     newer_version: CoreMethod | None = None
     """The latest version of the step's method, when it uses an earlier one."""
     archived: bool = False
+    needs_model_endpoint: bool = False
     made_by: str = ""
     """Who made a saved method, and its version: "by Quinn QA · Version 2"; empty for a built-in one."""
     editable: bool = False
@@ -228,6 +231,7 @@ def _editor(workspace: StepWorkspace, path: str, *, saving: bool, more_open: boo
         if method and workspace.editable
         else None,
         archived=method is not None and method.name in workspace.offers.archived,
+        needs_model_endpoint=draft.needs_model_endpoint(path),
         made_by=_made_by(method, workspace.offers),
         editable=workspace.editable,
         saved_by_someone_else=workspace.saved_by_someone_else,

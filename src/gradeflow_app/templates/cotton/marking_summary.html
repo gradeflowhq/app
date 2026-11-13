@@ -3,7 +3,7 @@
 {% if question_group or summary.method_label or summary.description %}
 <div>
   {% if question_group %}<p class="text-sm text-muted">Question group {{ question_group }}</p>{% endif %}
-  {% if summary.method_label %}<h3 class="{% if question_group %}mt-0.5 {% endif %}font-semibold">{{ summary.method_label }}{% if archived %} <span class="badge badge-ghost badge-sm align-middle font-normal">Archived</span>{% endif %}</h3>{% endif %}
+  {% if summary.method_label %}<div class="{% if question_group %}mt-0.5 {% endif %}flex items-center gap-1.5"><h3 class="font-semibold">{{ summary.method_label }}{% if archived %} <span class="badge badge-ghost badge-sm align-middle font-normal">Archived</span>{% endif %}</h3>{% if summary.needs_model_endpoint %}<c-ai-service id="ai-service-summary" />{% endif %}</div>{% endif %}
   {% if summary.description %}<c-collapsible class="prose-core mt-1">{{ summary.description|markdown }}</c-collapsible>{% endif %}
 </div>
 {% endif %}

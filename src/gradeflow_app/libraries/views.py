@@ -75,6 +75,7 @@ class LibraryMethod:
     type_labels: list[str]
     marking_count: int
     newer_version_number: int | None = None
+    needs_model_endpoint: bool = False
     incompatible_version: str = ""
     """The version at fault, such as “Light” version 2, when the core can't load the one shown."""
 
@@ -105,6 +106,7 @@ def _library_method(
         works_with(method_version),
         marking_count,
         newer_number,
+        method_version.needs_model_endpoint,
     )
 
 

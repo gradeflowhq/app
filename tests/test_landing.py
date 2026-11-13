@@ -104,7 +104,15 @@ def editor_content(question_set: QuestionSet, marking: MarkingJson) -> EditorCon
             StepCards(
                 setting=setting,
                 cards=[
-                    StepCard(path, draft.label(path), draft.describe(path), False, "", draft.notes(path))
+                    StepCard(
+                        path,
+                        draft.label(path),
+                        draft.describe(path),
+                        False,
+                        "",
+                        draft.notes(path),
+                        draft.needs_model_endpoint(path),
+                    )
                     for path in setting.step_paths
                 ],
             )

@@ -42,12 +42,13 @@ class MarkingSummary:
     """False when the core can no longer read it: an earlier core saved it, or a version it uses."""
     incompatible_version: str = ""
     """The version at fault, such as “Light” version 2, when it's one the marking uses."""
+    needs_model_endpoint: bool = False
 
 
 def summary_of(check: Step) -> MarkingSummary:
     """A marking the core accepts."""
     try:
-        return MarkingSummary(check.method_label, check.describe())
+        return MarkingSummary(check.method_label, check.describe(), needs_model_endpoint=check.needs_model_endpoint())
     except GradeFlowError as error:
         return MarkingSummary(check.method_label, "", (str(error),))
 

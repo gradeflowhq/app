@@ -1,0 +1,10 @@
+<c-vars id="" />
+{# Marks what sends answers to the person's AI service: a button that says so, or, without an `id`, the icon alone, for inside another button. #}
+{% if id %}
+<c-popover id="{{ id }}" label="Uses AI" button_class="btn btn-ghost btn-square btn-sm -my-1 text-muted" panel_class="w-60 p-3 text-sm [--anchor-h:span-inline-end] [position-try-fallbacks:flip-inline]">
+  <c-slot name="trigger">{% icon "sparkles" "size-4" %}</c-slot>
+  <div x-data="modelServiceNotice" class="grid justify-items-start gap-2"><p>Answers go to your AI service.</p><a class="btn btn-primary btn-sm" href="{% url 'integrations' %}" hx-target="body" hx-swap="innerHTML" x-show="loaded && !connected" x-cloak>Connect</a></div>
+</c-popover>
+{% else %}
+<span class="inline-flex text-muted" title="Uses AI">{% icon "sparkles" "size-4" %}<span class="sr-only">Uses AI</span></span>
+{% endif %}
