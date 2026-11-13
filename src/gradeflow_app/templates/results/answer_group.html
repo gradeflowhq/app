@@ -16,7 +16,7 @@
   {% if access.can_edit and not draft and not answer_group.joined_by_similarity %}<label class="btn btn-sm has-checked:btn-active ml-auto">{% icon "pencil-square" "size-4" %}Adjust marks<input type="checkbox" class="sr-only" data-adjust></label>{% endif %}
 </div>
 {% if distinct_answers|length > 1 %}
-<ul class="hidden gap-2 group-has-[[data-answers]:checked]/body:grid" aria-label="Answers">
+<ul class="hidden grid-cols-1 gap-2 group-has-[[data-answers]:checked]/body:grid" aria-label="Answers">
   {% for answer, count in distinct_answers %}{% if not code or forloop.counter <= 3 %}
   <li>{% include "results/answer_text.html" with expanded=True %}<p class="tabular-nums mt-1 text-sm text-muted">{{ count }} student{{ count|pluralize }}</p></li>
   {% endif %}{% endfor %}
@@ -24,9 +24,9 @@
 </ul>
 {% endif %}
 {% if answer_group.original_answers %}
-<ul class="hidden gap-2 group-has-[[data-original]:checked]/body:grid" aria-label="Original">
+<ul class="hidden grid-cols-1 gap-2 group-has-[[data-original]:checked]/body:grid" aria-label="Original">
   {% for answer, count in answer_group.original_answers|slice:":3" %}
-  <li><pre class="code-block">{{ answer }}</pre><p class="tabular-nums mt-1 text-sm text-muted">{{ count }} student{{ count|pluralize }}</p></li>
+  <li>{% if code %}<pre class="code-block">{{ answer }}</pre>{% else %}<p class="whitespace-pre-wrap wrap-break-word font-medium">{{ answer }}</p>{% endif %}<p class="tabular-nums mt-1 text-sm text-muted">{{ count }} student{{ count|pluralize }}</p></li>
   {% endfor %}
   {% if answer_group.original_answers|length > 3 %}<li class="tabular-nums text-sm text-muted">and {{ answer_group.original_answers|length|add:"-3" }} more</li>{% endif %}
 </ul>
