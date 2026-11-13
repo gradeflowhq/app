@@ -189,9 +189,9 @@
   @apply absolute inset-y-0 left-[calc(100%-var(--marking))] z-20 w-2 -translate-x-1/2 cursor-col-resize after:absolute after:inset-y-0 after:left-1/2 after:w-0.5 after:-translate-x-1/2 after:transition-colors hover:after:bg-primary hover:after:delay-150 active:after:bg-primary max-md:hidden;
 }
 /* The questions column, over the page below lg while the questions toggle is on, beside the narrowed sidebar if
-   there is one. */
+   there is one. Its lists scroll, not the column. */
 @utility workspace-questions {
-  @apply relative flex min-h-0 flex-col overflow-y-auto border-r border-base-300 bg-base-100 max-lg:fixed max-lg:bottom-0 max-lg:left-(--sidebar,0px) max-lg:top-14 max-lg:z-30 max-lg:w-72 max-lg:shadow-xl max-lg:not-group-has-[#questions-shown:checked]/workspace:hidden;
+  @apply relative flex min-h-0 flex-col overflow-hidden border-r border-base-300 bg-base-100 max-lg:fixed max-lg:bottom-0 max-lg:left-(--sidebar,0px) max-lg:top-14 max-lg:z-30 max-lg:w-72 max-lg:shadow-xl max-lg:not-group-has-[#questions-shown:checked]/workspace:hidden;
 }
 @utility workspace-answers {
   @apply relative min-w-0 overflow-y-auto bg-base-200;

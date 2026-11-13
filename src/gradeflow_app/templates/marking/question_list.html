@@ -3,28 +3,28 @@
 <nav id="question-list" class="workspace-questions" aria-label="Questions" data-collapsible
      hx-get="{% url 'question_list' access.assessment.pk %}?question={{ question_list.shown_id }}" hx-target="this" hx-swap="outerMorph"
      hx-trigger="{% listen 'questions' access.assessment.pk %}, {% listen 'marks' access.assessment.pk %}, {% listen 'jobs' access.assessment.pk %}, {% listen 'drafts' access.assessment.pk request.user.pk %}">
-  <div class="column-head column-sticky questions-collapsed:justify-center questions-collapsed:px-0">
+  <div class="column-head questions-collapsed:justify-center questions-collapsed:px-0">
     <h1 class="text-base font-semibold questions-collapsed:sr-only">Questions</h1>
     <span class="tabular-nums ml-auto whitespace-nowrap text-sm text-muted questions-collapsed:hidden">{{ question_list.marked_count }} of {{ question_list.questions|length }}<span class="sr-only"> marked</span></span>
     <button type="button" class="btn btn-ghost btn-square btn-sm -mr-2 max-lg:hidden questions-collapsed:mr-0" x-data="questionsCollapse" @click="toggle" :aria-expanded="!collapsed" :aria-label="collapsed ? 'Expand questions' : 'Collapse questions'" :title="collapsed ? 'Expand questions' : 'Collapse questions'" aria-controls="question-list">{% icon "chevron-left" "size-4 questions-collapsed:rotate-180" %}</button>
   </div>
   <div class="contents" hx-target:inherited="#question-work" hx-select:inherited="#question-work" hx-select-oob:inherited="#question-list:outerMorph, #live-stream" hx-swap:inherited="outerHTML">
-  <ul class="grid gap-0.5 p-2">
+  <ul class="grid flex-1 content-start gap-0.5 overflow-y-auto p-2">
     {% for item in question_list.questions %}{% with question=item.question %}
     {% partial question_item %}
     {% endwith %}{% endfor %}
   </ul>
-  <div class="mt-auto border-t border-base-300 p-2">
-  <details class="group/groups" open>
+  <div class="flex max-h-1/2 flex-col border-t border-base-300 p-2">
+  <details class="group/groups flex min-h-0 flex-col open:details-content:contents" open>
     <summary class="flex cursor-pointer list-none items-center gap-2 rounded-field px-3 py-2 text-sm font-medium text-muted hover:bg-base-200 questions-collapsed:justify-center questions-collapsed:px-1">
       {% icon "chevron-up" "size-4 transition-transform group-open/groups:rotate-180" %}<span class="questions-collapsed:sr-only">Question groups</span>{% if question_list.question_groups %}<span class="badge badge-sm badge-soft tabular-nums ml-auto questions-collapsed:hidden">{{ question_list.question_groups|length }}</span>{% endif %}
     </summary>
-    <ul class="grid gap-0.5 pt-1">
+    <ul class="grid gap-0.5 overflow-y-auto pt-1">
       {% for question_group in question_list.question_groups %}
       {% partial question_group_item %}
       {% endfor %}
-      {% if access.can_edit %}<li><a href="{% url 'question_group_new' access.assessment.pk %}" class="question-link text-sm text-primary questions-collapsed:justify-center questions-collapsed:px-1"{% if question_list.adding %} aria-current="page"{% endif %} title="New question group">{% icon "plus" "size-4" %}<span class="questions-collapsed:sr-only">New question group</span></a></li>{% endif %}
     </ul>
+    {% if access.can_edit %}<a href="{% url 'question_group_new' access.assessment.pk %}" class="question-link mt-0.5 text-sm text-primary questions-collapsed:justify-center questions-collapsed:px-1"{% if question_list.adding %} aria-current="page"{% endif %} title="New question group">{% icon "plus" "size-4" %}<span class="questions-collapsed:sr-only">New question group</span></a>{% endif %}
   </details>
   </div>
   </div>
