@@ -32,6 +32,7 @@ import { math } from "./components/math.js";
 import { modelServiceCard, modelServiceNotice } from "./components/model-service-card.js";
 import { openOnLoad } from "./components/open-on-load.js";
 import { orderedChoices } from "./components/ordered-choices.js";
+import { questionsCollapse } from "./components/questions-collapse.js";
 import { recoveryKeyCard } from "./components/recovery-key-card.js";
 import { choiceList, methodPicker, searchList } from "./components/search-list.js";
 import { studentTable } from "./components/student-table.js";
@@ -84,6 +85,7 @@ const components = {
   openAnswerGroup,
   openOnLoad,
   orderedChoices,
+  questionsCollapse,
   recoveryKeyCard,
   scene,
   searchList,

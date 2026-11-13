@@ -1,11 +1,12 @@
 {# Opening a question or questions marked together swaps the other columns, the list (morphed, so it keeps its place) and the live stream, which then listens for what the page shows. #}
 {% partialdef list inline %}
-<nav id="question-list" class="workspace-questions" aria-label="Questions"
+<nav id="question-list" class="workspace-questions" aria-label="Questions" data-collapsible
      hx-get="{% url 'question_list' access.assessment.pk %}?question={{ question_list.shown_id }}" hx-target="this" hx-swap="outerMorph"
      hx-trigger="{% listen 'questions' access.assessment.pk %}, {% listen 'marks' access.assessment.pk %}, {% listen 'jobs' access.assessment.pk %}, {% listen 'drafts' access.assessment.pk request.user.pk %}">
-  <div class="column-head column-sticky">
-    <h1 class="text-base font-semibold">Questions</h1>
-    <span class="tabular-nums ml-auto whitespace-nowrap text-sm text-muted">{{ question_list.marked_count }} of {{ question_list.questions|length }} marked</span>
+  <div class="column-head column-sticky questions-collapsed:justify-center questions-collapsed:px-0">
+    <h1 class="text-base font-semibold questions-collapsed:sr-only">Questions</h1>
+    <span class="tabular-nums ml-auto whitespace-nowrap text-sm text-muted questions-collapsed:hidden">{{ question_list.marked_count }} of {{ question_list.questions|length }}<span class="sr-only"> marked</span></span>
+    <button type="button" class="btn btn-ghost btn-square btn-sm -mr-2 max-lg:hidden questions-collapsed:mr-0" x-data="questionsCollapse" @click="toggle" :aria-expanded="!collapsed" :aria-label="collapsed ? 'Expand questions' : 'Collapse questions'" :title="collapsed ? 'Expand questions' : 'Collapse questions'" aria-controls="question-list">{% icon "chevron-left" "size-4 questions-collapsed:rotate-180" %}</button>
   </div>
   <div class="contents" hx-target:inherited="#question-work" hx-select:inherited="#question-work" hx-select-oob:inherited="#question-list:outerMorph, #live-stream" hx-swap:inherited="outerHTML">
   <ul class="grid gap-0.5 p-2">
@@ -13,38 +14,40 @@
     {% partial question_item %}
     {% endwith %}{% endfor %}
   </ul>
-  <details class="group/groups mt-auto border-t border-base-300 p-2" open>
-    <summary class="flex cursor-pointer list-none items-center gap-2 rounded-field px-3 py-2 text-sm font-medium text-muted hover:bg-base-200">
-      {% icon "chevron-right" "size-4 transition-transform group-open/groups:rotate-90" %}Question groups{% if question_list.question_groups %}<span class="badge badge-sm badge-soft tabular-nums ml-auto">{{ question_list.question_groups|length }}</span>{% endif %}
+  <div class="mt-auto border-t border-base-300 p-2">
+  <details class="group/groups" open>
+    <summary class="flex cursor-pointer list-none items-center gap-2 rounded-field px-3 py-2 text-sm font-medium text-muted hover:bg-base-200 questions-collapsed:justify-center questions-collapsed:px-1">
+      {% icon "chevron-up" "size-4 transition-transform group-open/groups:rotate-180" %}<span class="questions-collapsed:sr-only">Question groups</span>{% if question_list.question_groups %}<span class="badge badge-sm badge-soft tabular-nums ml-auto questions-collapsed:hidden">{{ question_list.question_groups|length }}</span>{% endif %}
     </summary>
     <ul class="grid gap-0.5 pt-1">
       {% for question_group in question_list.question_groups %}
       {% partial question_group_item %}
       {% endfor %}
-      {% if access.can_edit %}<li><a href="{% url 'question_group_new' access.assessment.pk %}" class="question-link text-sm text-primary"{% if question_list.adding %} aria-current="page"{% endif %}>{% icon "plus" "size-4" %}New question group</a></li>{% endif %}
+      {% if access.can_edit %}<li><a href="{% url 'question_group_new' access.assessment.pk %}" class="question-link text-sm text-primary questions-collapsed:justify-center questions-collapsed:px-1"{% if question_list.adding %} aria-current="page"{% endif %} title="New question group">{% icon "plus" "size-4" %}<span class="questions-collapsed:sr-only">New question group</span></a></li>{% endif %}
     </ul>
   </details>
+  </div>
   </div>
 </nav>
 {% endpartialdef %}
 
 {% partialdef question_item %}
     <li>
-      <a href="{% url 'question' access.assessment.pk question.pk %}" class="question-link"{% if item.is_shown %} aria-current="page"{% endif %}>
-        <span class="min-w-0 flex-1">
+      <a href="{% url 'question' access.assessment.pk question.pk %}" class="question-link questions-collapsed:justify-center questions-collapsed:px-1"{% if item.is_shown %} aria-current="page"{% endif %} title="{{ question.key }} · {{ item.badge.label }}{% if item.proportion is not None %} · {{ item.proportion|percent }}{% endif %}">
+        <span class="min-w-0 flex-1 questions-collapsed:flex-initial">
           <span class="flex items-center gap-2">
-            <span class="truncate font-medium">{{ question.key }}</span>
-            {% if item.has_draft %}<span class="badge badge-primary badge-soft badge-sm" title="Your unsaved changes">Draft</span>{% endif %}
+            <span class="truncate font-medium{% if item.badge.style == 'warning' %} questions-collapsed:text-warning{% endif %}">{{ question.key }}</span>
+            {% if item.has_draft %}<span class="badge badge-primary badge-soft badge-sm questions-collapsed:hidden" title="Your unsaved changes">Draft</span>{% endif %}
             {% if item.progress is not None %}<span class="loading loading-spinner loading-xs text-primary" aria-label="Marking"></span>{% endif %}
           </span>
-          <c-question-status :badge="item.badge" />
+          <c-question-status :badge="item.badge" class="questions-collapsed:hidden" />
         </span>
-        {% if item.proportion is not None %}<span class="tabular-nums shrink-0 text-sm text-muted" title="Average mark">{{ item.proportion|percent }}</span>{% endif %}
+        {% if item.proportion is not None %}<span class="tabular-nums shrink-0 text-sm text-muted questions-collapsed:hidden" title="Average mark">{{ item.proportion|percent }}</span>{% endif %}
         {% if item.progress %}<progress class="progress progress-primary absolute inset-x-3 bottom-1 h-0.5 w-auto" value="{{ item.progress|floatformat:2 }}" max="1" aria-hidden="true"></progress>{% endif %}
       </a>
     </li>
 {% endpartialdef %}
 
 {% partialdef question_group_item %}
-      <li><a href="{{ question_group.url }}" class="question-link"{% if question_group.is_shown %} aria-current="page"{% endif %}><span class="min-w-0"><span class="flex items-center gap-2"><span class="truncate font-medium">{% if question_group.marked_keys %}{{ question_group.marked_keys|join:", " }}{% else %}New{% endif %}</span>{% if question_group.has_draft %}<span class="badge badge-primary badge-soft badge-sm" title="Your unsaved changes">Draft</span>{% endif %}</span>{% if question_group.method_label %}<span class="block truncate text-sm text-muted">{{ question_group.method_label }}</span>{% elif not question_group.has_draft %}<span class="block truncate text-sm text-warning">Not set up yet</span>{% endif %}</span></a></li>
+      <li><a href="{{ question_group.url }}" class="question-link questions-collapsed:justify-center questions-collapsed:px-1"{% if question_group.is_shown %} aria-current="page"{% endif %} title="{% if question_group.marked_keys %}{{ question_group.marked_keys|join:", " }}{% else %}New{% endif %}{% if question_group.method_label %} · {{ question_group.method_label }}{% elif not question_group.has_draft %} · Not set up yet{% endif %}"><span class="min-w-0"><span class="flex items-center gap-2"><span class="truncate font-medium{% if not question_group.method_label and not question_group.has_draft %} questions-collapsed:text-warning{% endif %}">{% if question_group.marked_keys %}{{ question_group.marked_keys|join:", " }}{% else %}New{% endif %}</span>{% if question_group.has_draft %}<span class="badge badge-primary badge-soft badge-sm questions-collapsed:hidden" title="Your unsaved changes">Draft</span>{% endif %}</span>{% if question_group.method_label %}<span class="block truncate text-sm text-muted questions-collapsed:hidden">{{ question_group.method_label }}</span>{% elif not question_group.has_draft %}<span class="block truncate text-sm text-warning questions-collapsed:hidden">Not set up yet</span>{% endif %}</span></a></li>
 {% endpartialdef %}

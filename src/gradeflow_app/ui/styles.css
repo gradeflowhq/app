@@ -111,6 +111,15 @@
   --color-subtle: color-mix(in oklab, var(--color-base-content) 42%, transparent);
 }
 
+/* Inside the marking workspace's question list while it is collapsed to its keys: from lg up, where it is a column. */
+@custom-variant questions-collapsed {
+  @media (width >= 64rem) {
+    &:where([data-questions-collapsed] [data-collapsible] *) {
+      @slot;
+    }
+  }
+}
+
 @layer base {
   html {
     font-feature-settings: "ss01";
@@ -166,10 +175,14 @@
 @utility workspace {
   @apply md:h-[calc(100dvh-3.5rem)];
 }
-/* The marking column takes the width its resizer saved, between 20rem and half the workspace. */
+/* The marking column takes the width its resizer saved, between 20rem and half the workspace; a collapsible question
+   list narrows to its keys while collapsed. */
 @utility workspace-columns {
-  @apply relative grid [--marking-default:20rem] md:grid-cols-[minmax(0,1fr)_var(--marking)] lg:grid-cols-[14rem_minmax(0,1fr)_var(--marking)] lg:[--marking-default:22rem] xl:grid-cols-[15rem_minmax(0,1fr)_var(--marking)] xl:[--marking-default:24rem] 2xl:grid-cols-[16rem_minmax(0,1fr)_var(--marking)] 2xl:[--marking-default:27rem];
+  @apply relative grid [--marking-default:20rem] md:grid-cols-[minmax(0,1fr)_var(--marking)] lg:grid-cols-[var(--questions)_minmax(0,1fr)_var(--marking)] lg:[--questions:14rem] lg:[--marking-default:22rem] xl:[--questions:15rem] xl:[--marking-default:24rem] 2xl:[--questions:16rem] 2xl:[--marking-default:27rem];
   --marking: clamp(20rem, var(--marking-width, var(--marking-default)), 50%);
+  [data-questions-collapsed] &:has(> [data-collapsible]) {
+    --questions: 4.5rem;
+  }
 }
 /* The handle on the marking column's left edge. */
 @utility marking-resizer {

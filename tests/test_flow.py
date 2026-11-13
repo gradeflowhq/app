@@ -320,7 +320,7 @@ def test_the_question_list_refreshes_on_its_own(client: Client, assessment: Asse
     question_page = reverse("question", args=[assessment.pk, question.pk])
     response = client.get(reverse("question_list", args=[assessment.pk]), {"question": str(question.pk)})
     assert response.status_code == 200
-    assert f'href="{question_page}" class="question-link" aria-current="page"'.encode() in response.content
+    assert re.search(f'href="{question_page}" class="question-link[^"]*" aria-current="page"', response.text)
     assert b'id="answers"' not in response.content
 
 
