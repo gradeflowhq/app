@@ -28,7 +28,6 @@ export const tagInput = () => ({
       // doesn't cover what's below.
       refreshThrottle: 0,
       closeAfterSelect: true,
-      persist: false,
       maxOptions: 100,
       plugins: ["remove_button", "drag_drop"],
       wrapperClass: "ts-wrapper input w-full",
@@ -49,6 +48,20 @@ export const tagInput = () => ({
     this.select.onClick = () => {
       if (!(this.select.isFocused && this.select.isOpen)) originalClick();
     };
+    // Tom Select listens for clicks on its control, which the box's padding surrounds.
+    this.select.wrapper.addEventListener("click", (event) => {
+      if (event.target === this.select.wrapper) this.select.onClick();
+    });
+    // A click on a value opens the suggestions, as a click elsewhere in the box does.
+    this.select.onItemSelect = () => false;
+    // A drag that leaves the order unchanged was a click that moved.
+    let order;
+    this.select.wrapper.addEventListener("dragstart", () => {
+      order = this.select.items.join("\n");
+    });
+    this.select.wrapper.addEventListener("dragend", () => {
+      if (this.select.items.join("\n") === order) this.select.focus();
+    });
     // Esc closes the list of suggestions, not the dialog the field is in, with what was typed in it.
     this.select.wrapper.addEventListener("keydown", (event) => {
       if (event.key === "Escape") event.preventDefault();
