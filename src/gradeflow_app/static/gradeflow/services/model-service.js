@@ -1,6 +1,7 @@
 // The person's AI service and token, kept in a secret (secrets.js). Requests that change something carry them in
 // headers: any change can start marking that calls a model.
 
+import { signedInAccount } from "./account.js";
 import { deleteSecret, readSecret, saveSecret } from "./secrets.js";
 
 const SECRET = "ai-service";
@@ -9,12 +10,18 @@ const TOKEN_HEADER = "X-Model-Token";
 
 let service = null; // { provider, token }
 let reading = null;
+let readFrom; // the encrypted secret `reading` decrypted
 
-/** The service, once its secret is decrypted; null without one. */
+/** The service, once its secret is decrypted; null without one. Decrypts again when a page brings a different
+ * secret, as one saved on another device. */
 export function readModelService() {
-  reading ??= readSecret(SECRET).then((stored) => {
-    service = stored?.provider && stored?.token ? stored : null;
-  });
+  const encryptedValue = signedInAccount()?.encryptedSecrets[SECRET];
+  if (!reading || encryptedValue !== readFrom) {
+    readFrom = encryptedValue;
+    reading = readSecret(SECRET).then((stored) => {
+      service = stored?.provider && stored?.token ? stored : null;
+    });
+  }
   return reading.then(() => service);
 }
 

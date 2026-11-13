@@ -7,7 +7,9 @@ const LIVE_REFRESH = "X-Live-Refresh";
 const TOPIC_PREFIX = "live-";
 
 export function start() {
-  readModelService(); // decrypts it now: modelHeaders reads it synchronously
+  // Decrypts it now, and again when a swapped-in page brings a new one: modelHeaders reads it synchronously.
+  readModelService();
+  document.addEventListener("htmx:after:settle", () => readModelService());
 
   // Changes carry the CSRF token, and the AI service in case they start marking. Live refreshes (events named
   // TOPIC_PREFIX… by live/topics.py) say so, and leave the messages to the next page.
