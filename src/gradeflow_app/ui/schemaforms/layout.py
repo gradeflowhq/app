@@ -17,6 +17,7 @@ from gradeflow_app.ui.schemaforms.schema import (
     title_of,
     unwrap_nullable,
 )
+from gradeflow_app.ui.templatetags.ui import inline_markdown
 
 NESTED_SEPARATOR = "__"
 """Joins a nested object's name and its field's in form field names, which become HTML IDs."""
@@ -147,7 +148,7 @@ def layout(schema: Schema, defs: Mapping[str, Schema] | None = None) -> Layout:
         property_schema = resolve(raw, defs)
         if not is_editable(property_schema):
             continue
-        label, help_text = title_of(property_schema, name), property_schema.get("description", "")
+        label, help_text = title_of(property_schema, name), inline_markdown(property_schema.get("description", ""))
         if hint(property_schema).get("advanced") and not _depends_on_basic_choice(
             property_schema, schema["properties"], defs
         ):

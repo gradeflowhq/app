@@ -417,11 +417,14 @@
   .code-c, .code-ch, .code-cm, .code-cp, .code-cpf, .code-c1, .code-cs {
     @apply text-muted italic;
   }
-  .prose-core {
-    @apply text-[15px] leading-relaxed wrap-break-word;
+  .prose-core,
+  .field-help {
     & code {
       @apply rounded bg-base-content/8 px-1 py-0.5 font-mono text-[0.9em];
     }
+  }
+  .prose-core {
+    @apply text-[15px] leading-relaxed wrap-break-word;
     & p + p {
       @apply mt-2;
     }

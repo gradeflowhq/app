@@ -188,6 +188,12 @@ def test_markdown_fields_have_formatting_buttons_and_a_preview() -> None:
     assert ">**Hi**</textarea>" in page
 
 
+def test_descriptions_show_their_markdown() -> None:
+    schema = object_schema(code={"type": "string", "description": "Reads `answer` <b>as text</b>."})
+    page = str(ObjectForm(schema, {}))
+    assert "Reads <code>answer</code> &lt;b&gt;as text&lt;/b&gt;." in page
+
+
 def test_a_code_editor_outlives_redraws_of_its_own_field_only() -> None:
     schema = {"type": "object", "properties": {"code": {"type": "string", HINT_KEY: {"kind": "code"}}}}
 

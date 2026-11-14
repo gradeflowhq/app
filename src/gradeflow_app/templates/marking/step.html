@@ -132,7 +132,7 @@
 {% partialdef field_set_head %}
         <legend class="mb-1 flex items-center gap-2 font-medium">{{ field_set.label }}{{ field_set.label_controls }}</legend>
         {% if not field_set.replaced_control %}
-        {% if field_set.help %}<p class="-mt-1 text-sm text-muted">{{ field_set.help }}</p>{% endif %}
+        {% if field_set.help %}<p class="field-help -mt-1 text-sm text-muted">{{ field_set.help }}</p>{% endif %}
         <input type="hidden" name="{{ field_set.name }}-posted" value="1">
         {% endif %}
 {% endpartialdef %}
