@@ -41,7 +41,7 @@
      "is_marked": true,
      "model_names": [],
      "breakdown": {
-      "title": "Each one counts",
+      "title": "A share for each of these",
       "effect": "partial",
       "marks": null,
       "details": [],
@@ -142,7 +142,7 @@
      "is_marked": true,
      "model_names": [],
      "breakdown": {
-      "title": "Each one counts",
+      "title": "A share for each of these",
       "effect": "partial",
       "marks": null,
       "details": [],
@@ -245,7 +245,7 @@
      "is_marked": true,
      "model_names": [],
      "breakdown": {
-      "title": "Each one counts",
+      "title": "A share for each of these",
       "effect": "earned",
       "marks": null,
       "details": [],
@@ -346,7 +346,7 @@
      "is_marked": true,
      "model_names": [],
      "breakdown": {
-      "title": "Each one counts",
+      "title": "A share for each of these",
       "effect": "earned",
       "marks": null,
       "details": [],
@@ -449,7 +449,7 @@
      "is_marked": true,
      "model_names": [],
      "breakdown": {
-      "title": "Each one counts",
+      "title": "A share for each of these",
       "effect": "partial",
       "marks": null,
       "details": [],
@@ -550,7 +550,7 @@
      "is_marked": true,
      "model_names": [],
      "breakdown": {
-      "title": "Each one counts",
+      "title": "A share for each of these",
       "effect": "partial",
       "marks": null,
       "details": [],
@@ -653,7 +653,7 @@
      "is_marked": true,
      "model_names": [],
      "breakdown": {
-      "title": "Each one counts",
+      "title": "A share for each of these",
       "effect": "partial",
       "marks": null,
       "details": [],
@@ -756,7 +756,7 @@
      "is_marked": true,
      "model_names": [],
      "breakdown": {
-      "title": "Each one counts",
+      "title": "A share for each of these",
       "effect": "partial",
       "marks": null,
       "details": [],
@@ -859,7 +859,7 @@
      "is_marked": true,
      "model_names": [],
      "breakdown": {
-      "title": "Each one counts",
+      "title": "A share for each of these",
       "effect": "partial",
       "marks": null,
       "details": [],
@@ -956,7 +956,7 @@
   ],
   "summary": {
    "method_label": "Workflow",
-   "description": "Each one counts:\n- Passes these tests, a share for each:\n  - `sum_digits(7)` gives `7`.\n  - `sum_digits(1234)` gives `10`.\n- **Recursive, no loops:** All of these:\n  - Uses recursion.\n  - **Not allowed:** Uses a loop.\n- **Docstring:** Matches the pattern `\"\"\"`.",
+   "description": "A share for each of these:\n- Passes these tests, a share for each:\n  - `sum_digits(7)` gives `7`.\n  - `sum_digits(1234)` gives `10`.\n- **Recursive, no loops:** All of these:\n  - Uses recursion.\n  - **Not allowed:** Uses a loop.\n- **Docstring:** Matches the pattern `\"\"\"`.",
    "problems": [],
    "is_compatible": true,
    "incompatible_version": "",
@@ -964,7 +964,7 @@
   },
   "editor": {
    "label": "Workflow",
-   "description": "Each one counts:\n- Passes these tests, a share for each:\n  - `sum_digits(7)` gives `7`.\n  - `sum_digits(1234)` gives `10`.\n- **Recursive, no loops:** All of these:\n  - Uses recursion.\n  - **Not allowed:** Uses a loop.\n- **Docstring:** Matches the pattern `\"\"\"`.",
+   "description": "A share for each of these:\n- Passes these tests, a share for each:\n  - `sum_digits(7)` gives `7`.\n  - `sum_digits(1234)` gives `10`.\n- **Recursive, no loops:** All of these:\n  - Uses recursion.\n  - **Not allowed:** Uses a loop.\n- **Docstring:** Matches the pattern `\"\"\"`.",
    "form_schema": {
     "$defs": {
      "StepData": {
@@ -1027,8 +1027,8 @@
         "all_correct": "All must be correct",
         "any_correct": "Any one must be correct",
         "none_correct": "None may be correct",
-        "proportional": "Proportional",
-        "total": "Total"
+        "proportional": "A share for each",
+        "total": "A mark for each"
        }
       }
      },
@@ -1187,7 +1187,7 @@
     "is_marked": true,
     "model_names": [],
     "breakdown": {
-     "title": "Each one counts",
+     "title": "A share for each of these",
      "effect": "earned",
      "marks": null,
      "details": [],
@@ -1281,7 +1281,7 @@
     "is_marked": true,
     "model_names": [],
     "breakdown": {
-     "title": "Each one counts",
+     "title": "A share for each of these",
      "effect": "earned",
      "marks": null,
      "details": [],
@@ -1375,7 +1375,7 @@
     "is_marked": true,
     "model_names": [],
     "breakdown": {
-     "title": "Each one counts",
+     "title": "A share for each of these",
      "effect": "earned",
      "marks": null,
      "details": [],
@@ -1469,7 +1469,7 @@
     "is_marked": true,
     "model_names": [],
     "breakdown": {
-     "title": "Each one counts",
+     "title": "A share for each of these",
      "effect": "earned",
      "marks": null,
      "details": [],
@@ -1563,7 +1563,7 @@
     "is_marked": true,
     "model_names": [],
     "breakdown": {
-     "title": "Each one counts",
+     "title": "A share for each of these",
      "effect": "partial",
      "marks": null,
      "details": [],
@@ -1657,7 +1657,7 @@
     "is_marked": true,
     "model_names": [],
     "breakdown": {
-     "title": "Each one counts",
+     "title": "A share for each of these",
      "effect": "partial",
      "marks": null,
      "details": [],
@@ -1751,7 +1751,7 @@
     "is_marked": true,
     "model_names": [],
     "breakdown": {
-     "title": "Each one counts",
+     "title": "A share for each of these",
      "effect": "partial",
      "marks": null,
      "details": [],
@@ -1845,7 +1845,7 @@
     "is_marked": true,
     "model_names": [],
     "breakdown": {
-     "title": "Each one counts",
+     "title": "A share for each of these",
      "effect": "partial",
      "marks": null,
      "details": [],
@@ -1939,7 +1939,7 @@
     "is_marked": true,
     "model_names": [],
     "breakdown": {
-     "title": "Each one counts",
+     "title": "A share for each of these",
      "effect": "partial",
      "marks": null,
      "details": [],
@@ -2028,7 +2028,7 @@
   ],
   "edited_summary": {
    "method_label": "Workflow",
-   "description": "Each one counts:\n- Passes these tests, a share for each:\n  - `sum_digits(7)` gives `7`.\n  - `sum_digits(1234)` gives `10`.\n- **Recursive, no loops:** All of these:\n  - Uses recursion.\n  - **Not allowed:** Uses a loop.",
+   "description": "A share for each of these:\n- Passes these tests, a share for each:\n  - `sum_digits(7)` gives `7`.\n  - `sum_digits(1234)` gives `10`.\n- **Recursive, no loops:** All of these:\n  - Uses recursion.\n  - **Not allowed:** Uses a loop.",
    "problems": [],
    "is_compatible": true,
    "incompatible_version": "",
@@ -2036,7 +2036,7 @@
   },
   "edited_editor": {
    "label": "Workflow",
-   "description": "Each one counts:\n- Passes these tests, a share for each:\n  - `sum_digits(7)` gives `7`.\n  - `sum_digits(1234)` gives `10`.\n- **Recursive, no loops:** All of these:\n  - Uses recursion.\n  - **Not allowed:** Uses a loop.",
+   "description": "A share for each of these:\n- Passes these tests, a share for each:\n  - `sum_digits(7)` gives `7`.\n  - `sum_digits(1234)` gives `10`.\n- **Recursive, no loops:** All of these:\n  - Uses recursion.\n  - **Not allowed:** Uses a loop.",
    "form_schema": {
     "$defs": {
      "StepData": {
@@ -2099,8 +2099,8 @@
         "all_correct": "All must be correct",
         "any_correct": "Any one must be correct",
         "none_correct": "None may be correct",
-        "proportional": "Proportional",
-        "total": "Total"
+        "proportional": "A share for each",
+        "total": "A mark for each"
        }
       }
      },
@@ -2801,8 +2801,8 @@
         "all_correct": "All must be correct",
         "any_correct": "Any one must be correct",
         "none_correct": "None may be correct",
-        "proportional": "Proportional",
-        "total": "Total"
+        "proportional": "A share for each",
+        "total": "A mark for each"
        }
       }
      },
@@ -2925,7 +2925,7 @@
    "method_summary": "Several steps combined into one mark.",
    "variants": [
     {
-     "description": "Each one counts:\n- Includes `mitochondria`.",
+     "description": "A share for each of these:\n- Includes `mitochondria`.",
      "results": [
       {
        "proportion": 1.0,
@@ -2985,7 +2985,7 @@
      ]
     },
     {
-     "description": "Each one counts:\n- Includes `mitochondria`.\n- Has at most `10` words.",
+     "description": "A share for each of these:\n- Includes `mitochondria`.\n- Has at most `10` words.",
      "results": [
       {
        "proportion": 1.0,
@@ -2995,7 +2995,7 @@
        "is_marked": true,
        "model_names": [],
        "breakdown": {
-        "title": "Each one counts",
+        "title": "A share for each of these",
         "effect": "earned",
         "marks": null,
         "details": [],
@@ -3027,7 +3027,7 @@
        "is_marked": true,
        "model_names": [],
        "breakdown": {
-        "title": "Each one counts",
+        "title": "A share for each of these",
         "effect": "partial",
         "marks": null,
         "details": [],
@@ -3059,7 +3059,7 @@
        "is_marked": true,
        "model_names": [],
        "breakdown": {
-        "title": "Each one counts",
+        "title": "A share for each of these",
         "effect": "partial",
         "marks": null,
         "details": [],
@@ -3091,7 +3091,7 @@
        "is_marked": true,
        "model_names": [],
        "breakdown": {
-        "title": "Each one counts",
+        "title": "A share for each of these",
         "effect": "partial",
         "marks": null,
         "details": [],
@@ -3123,7 +3123,7 @@
        "is_marked": true,
        "model_names": [],
        "breakdown": {
-        "title": "Each one counts",
+        "title": "A share for each of these",
         "effect": "no_marks",
         "marks": null,
         "details": [],
@@ -3150,7 +3150,7 @@
      ]
     },
     {
-     "description": "Each one counts:\n- Any one of these:\n  - Includes `mitochondria`.\n  - Includes `powerhouse`.\n- Has at most `10` words.",
+     "description": "A share for each of these:\n- Any one of these:\n  - Includes `mitochondria`.\n  - Includes `powerhouse`.\n- Has at most `10` words.",
      "results": [
       {
        "proportion": 1.0,
@@ -3160,7 +3160,7 @@
        "is_marked": true,
        "model_names": [],
        "breakdown": {
-        "title": "Each one counts",
+        "title": "A share for each of these",
         "effect": "earned",
         "marks": null,
         "details": [],
@@ -3207,7 +3207,7 @@
        "is_marked": true,
        "model_names": [],
        "breakdown": {
-        "title": "Each one counts",
+        "title": "A share for each of these",
         "effect": "earned",
         "marks": null,
         "details": [],
@@ -3254,7 +3254,7 @@
        "is_marked": true,
        "model_names": [],
        "breakdown": {
-        "title": "Each one counts",
+        "title": "A share for each of these",
         "effect": "partial",
         "marks": null,
         "details": [],
@@ -3301,7 +3301,7 @@
        "is_marked": true,
        "model_names": [],
        "breakdown": {
-        "title": "Each one counts",
+        "title": "A share for each of these",
         "effect": "partial",
         "marks": null,
         "details": [],
@@ -3348,7 +3348,7 @@
        "is_marked": true,
        "model_names": [],
        "breakdown": {
-        "title": "Each one counts",
+        "title": "A share for each of these",
         "effect": "no_marks",
         "marks": null,
         "details": [],
