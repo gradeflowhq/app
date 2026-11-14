@@ -6045,7 +6045,7 @@
   },
   "equivalent_expression": {
    "method_label": "Equivalent Expression",
-   "method_summary": "Full marks for any expression equal to yours.",
+   "method_summary": "Correct if the expression equals one of yours.",
    "variants": [
     {
      "description": "Equals `x - 1`.",

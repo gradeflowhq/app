@@ -14,7 +14,7 @@ summary_field = partial(forms.CharField, label="What it does", max_length=300)
 class NewMethodForm(forms.Form):
     label = label_field(widget=forms.TextInput(attrs={"placeholder": "Mentions photosynthesis"}))
     summary = summary_field(
-        required=False, widget=forms.TextInput(attrs={"placeholder": "Full marks for mentioning photosynthesis."})
+        required=False, widget=forms.TextInput(attrs={"placeholder": "Correct if the answer mentions photosynthesis."})
     )
     question_type = forms.ChoiceField(label="Question type", choices=QUESTION_TYPE_LABELS)
 
