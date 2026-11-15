@@ -81,6 +81,15 @@ class Award:
         """How each check of the marking marked the answer; None for a marking of one check."""
         return marking_result.breakdown if (marking_result := self.marking_result) is not None else None
 
+    @property
+    def is_marked(self) -> bool:
+        """False when the marking couldn't mark the answer and no one has set its marks."""
+        return (
+            (marking_result := self.marking_result) is None
+            or marking_result.is_marked
+            or (self.adjustment is not None and self.adjustment.marks is not None)
+        )
+
     def differs_from(self, other: Award) -> bool:
         """Whether `other`, such as this award with a preview's result, gives other marks or feedback."""
         return (self.marks, self.feedback) != (other.marks, other.feedback)
@@ -95,9 +104,7 @@ class Award:
             max_marks=self.max_marks,
             feedback=self.feedback,
             method_label=marking_result.method_label if marking_result else "",
-            is_marked=marking_result is None
-            or marking_result.is_marked
-            or (self.adjustment is not None and self.adjustment.marks is not None),
+            is_marked=self.is_marked,
         )
 
     @property

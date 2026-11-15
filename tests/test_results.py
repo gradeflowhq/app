@@ -106,6 +106,17 @@ def test_a_result_keeps_a_long_method_label(assessment: Assessment) -> None:
     assert Result.objects.get().method_label == label
 
 
+def test_marks_set_by_hand_show_for_answers_the_marking_could_not_mark(client: Client, assessment: Assessment) -> None:
+    question = assessment.questions.get(key="Q1")
+    for student in assessment.students.all():
+        Result.objects.create(student=student, question=question, proportion=0, is_marked=False, revision=0)
+    url = reverse("answers", args=[assessment.pk, question.pk])
+    assert "Couldn't mark</span>" in client.get(url).text
+    for student in assessment.students.all():
+        Adjustment.objects.create(student=student, question=question, marks=question.core_question.max_marks)
+    assert "Couldn't mark</span>" not in client.get(url).text
+
+
 def test_a_download_needs_a_student_id_column(client: Client, assessment: Assessment) -> None:
     response = client.post(reverse("download", args=[assessment.pk]), {"student_id_column": ""})
     assert response.status_code == 422

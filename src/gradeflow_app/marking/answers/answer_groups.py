@@ -171,8 +171,9 @@ class AnswerGroup:
 
     @property
     def unmarked_count(self) -> int:
-        """How many of its students the marking couldn't mark, such as answers it couldn't read."""
-        return sum(entry.result is not None and not entry.result.is_marked for entry in self.student_answers)
+        """How many of its students the marking couldn't mark, such as answers it couldn't read, and no one has set
+        marks for."""
+        return sum(not entry.is_marked for entry in self.student_answers)
 
     @property
     def all_unmarked(self) -> bool:

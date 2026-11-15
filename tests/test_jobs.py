@@ -26,7 +26,7 @@ from gradeflow_app.marking.checks import definition_data
 from gradeflow_app.marking.models import Marking, MarkingDraftRecord
 from gradeflow_app.marking.remarks import remark, running_remarks
 from gradeflow_app.results.marks import PreviewSummary
-from gradeflow_app.results.models import Result
+from gradeflow_app.results.models import Adjustment, Result
 from tests.conftest import (
     HTMX_HEADERS,
     FakeRunner,
@@ -566,6 +566,16 @@ def test_a_preview_says_when_answers_could_not_be_marked(client: Client, assessm
     unmarked = [card for card in page.split('<details class="group/answer')[1:] if "Couldn't mark</span>" in card]
     assert unmarked, "groups the draft couldn't mark say so instead of showing marks"
     assert not any("line-through" in card[: card.index("</summary>")] for card in unmarked)
+
+
+def test_a_preview_leaves_marks_set_by_hand_shown(client: Client, assessment: Assessment) -> None:
+    question = assessment.questions.get(key="Q1")
+    for student in assessment.students.all():
+        Adjustment.objects.create(student=student, question=question, marks=question.core_question.max_marks)
+    url, fields = code_draft(client, assessment)
+    client.post(url, fields | {"code": "raise ValueError('no such thing as results')"})
+    preview_draft(client, MarkingDraftRecord.objects.get())
+    assert "Couldn't mark" not in client.get(reverse("answers", args=[assessment.pk, question.pk])).text
 
 
 def test_failed_runs_and_refused_callbacks_are_logged(
