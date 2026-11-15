@@ -12,7 +12,7 @@ from gradeflow_app.ui.schemaforms.fields import MAX_SEGMENTS
 from gradeflow_app.ui.schemaforms.forms import ObjectForm
 from gradeflow_app.ui.schemaforms.layout import unrepresentable_fields
 from gradeflow_app.ui.schemaforms.schema import Schema
-from gradeflow_app.ui.schemaforms.widgets import DecimalInput
+from gradeflow_app.ui.schemaforms.widgets import NumberTextInput
 
 
 def object_schema(**properties: Schema) -> Schema:
@@ -121,7 +121,7 @@ def test_a_long_list_of_choices_starts_with_none_chosen_unless_one_is_the_defaul
 
 
 def test_numbers_read_as_people_write_them() -> None:
-    widget = DecimalInput()
+    widget = NumberTextInput()
     assert [widget.format_value(value) for value in (2.0, 1e-06, 12.57)] == ["2", "0.000001", "12.57"]
 
 

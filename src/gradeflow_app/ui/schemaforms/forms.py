@@ -14,7 +14,7 @@ from gradeflow_app.ui.forms import BoundField, posted_indexes
 from gradeflow_app.ui.schemaforms.fields import field_for
 from gradeflow_app.ui.schemaforms.layout import NESTED_SEPARATOR, FieldHints, Layout, Tag, TaggedMap, layout
 from gradeflow_app.ui.schemaforms.schema import Schema
-from gradeflow_app.ui.schemaforms.widgets import DecimalInput, Segmented
+from gradeflow_app.ui.schemaforms.widgets import NumberTextInput, Segmented
 
 FRACTIONS = {0.5: "½", 0.25: "¼", 0.75: "¾"}
 MINUS = "−"  # noqa: RUF001 - a minus sign, as people write it
@@ -24,7 +24,7 @@ def preset_label(value: float) -> str:
     """A preset as people write it: ½ for 0.5, with a minus sign when negative."""
     if value < 0:
         return MINUS + preset_label(-value)
-    return FRACTIONS.get(value) or DecimalInput().format_value(value) or str(value)
+    return FRACTIONS.get(value) or NumberTextInput().format_value(value) or str(value)
 
 
 class HintedField(BoundField):

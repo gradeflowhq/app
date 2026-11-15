@@ -18,8 +18,8 @@ from gradeflow_app.ui.schemaforms.schema import (
 from gradeflow_app.ui.schemaforms.widgets import (
     CodeInput,
     ConditionWidget,
-    DecimalInput,
     FeedbackWidget,
+    NumberTextInput,
     OrderedChoices,
     Segmented,
     TagsWidget,
@@ -46,7 +46,7 @@ class NumberField(forms.Field):
 
     def __init__(self, *, is_integer: bool, **kwargs: Any) -> None:
         self.is_integer = is_integer
-        widget = forms.NumberInput() if is_integer else DecimalInput(attrs={"step": "any"})
+        widget = forms.NumberInput() if is_integer else NumberTextInput()
         super().__init__(widget=widget, **kwargs)
 
     def to_python(self, value: Any) -> int | float | str | None:

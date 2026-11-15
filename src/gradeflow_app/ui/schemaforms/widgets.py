@@ -12,8 +12,9 @@ from gradeflow_app.ui.forms import posted_indexes
 DEFAULT_CONDITION_TEST = next(iter(Condition.test_labels))
 
 
-class DecimalInput(forms.NumberInput):
-    """Numbers as people write them: `2` and `0.000001`, not `2.0` and `1e-06`."""
+class NumberTextInput(forms.TextInput):
+    """Numbers as people write them: `2` and `0.000001`, not `2.0` and `1e-06`. A text box, so a fraction such as
+    `1/3` can be typed."""
 
     def format_value(self, value: Any) -> str | None:
         if isinstance(value, float):
