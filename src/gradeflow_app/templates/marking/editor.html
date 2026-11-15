@@ -2,7 +2,8 @@
 <div id="marking-panel" class="flex min-h-0 flex-1 flex-col"{% if out_of_band_editor %} hx-swap-oob="outerMorph"{% endif %} hx-target:inherited="#marking-panel" hx-swap:inherited="outerMorph">
   <div class="column-head">
     <h2>Marking</h2>
-    <c-menu id="editor-menu" button_class="btn btn-ghost btn-square btn-sm ml-auto">
+    <button type="button" class="btn btn-ghost btn-square btn-sm ml-auto text-muted" data-dialog="marking-guide" aria-label="How marking works">{% icon "question-mark-circle" %}</button>
+    <c-menu id="editor-menu" button_class="btn btn-ghost btn-square btn-sm">
       <li><button type="button" hx-get="{{ editor.actions.yaml }}" hx-target="#drawer-body" hx-swap="innerHTML" data-dialog="drawer">{% icon "code-bracket" "size-4" %}Edit as YAML</button></li>
     </c-menu>
   </div>
