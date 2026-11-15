@@ -41,13 +41,13 @@
      "is_marked": true,
      "model_names": [],
      "breakdown": {
-      "title": "A share for each of these",
+      "title": "Split by weight between these",
       "effect": "partial",
       "marks": null,
       "details": [],
       "children": [
        {
-        "title": "Passes these tests, a share for each",
+        "title": "Passes these tests, split by weight",
         "effect": "earned",
         "marks": 1.0,
         "details": [],
@@ -142,13 +142,13 @@
      "is_marked": true,
      "model_names": [],
      "breakdown": {
-      "title": "A share for each of these",
+      "title": "Split by weight between these",
       "effect": "partial",
       "marks": null,
       "details": [],
       "children": [
        {
-        "title": "Passes these tests, a share for each",
+        "title": "Passes these tests, split by weight",
         "effect": "earned",
         "marks": 1.0,
         "details": [],
@@ -245,13 +245,13 @@
      "is_marked": true,
      "model_names": [],
      "breakdown": {
-      "title": "A share for each of these",
+      "title": "Split by weight between these",
       "effect": "earned",
       "marks": null,
       "details": [],
       "children": [
        {
-        "title": "Passes these tests, a share for each",
+        "title": "Passes these tests, split by weight",
         "effect": "earned",
         "marks": 1.0,
         "details": [],
@@ -346,13 +346,13 @@
      "is_marked": true,
      "model_names": [],
      "breakdown": {
-      "title": "A share for each of these",
+      "title": "Split by weight between these",
       "effect": "earned",
       "marks": null,
       "details": [],
       "children": [
        {
-        "title": "Passes these tests, a share for each",
+        "title": "Passes these tests, split by weight",
         "effect": "earned",
         "marks": 1.0,
         "details": [],
@@ -449,13 +449,13 @@
      "is_marked": true,
      "model_names": [],
      "breakdown": {
-      "title": "A share for each of these",
+      "title": "Split by weight between these",
       "effect": "partial",
       "marks": null,
       "details": [],
       "children": [
        {
-        "title": "Passes these tests, a share for each",
+        "title": "Passes these tests, split by weight",
         "effect": "earned",
         "marks": 1.0,
         "details": [],
@@ -550,13 +550,13 @@
      "is_marked": true,
      "model_names": [],
      "breakdown": {
-      "title": "A share for each of these",
+      "title": "Split by weight between these",
       "effect": "partial",
       "marks": null,
       "details": [],
       "children": [
        {
-        "title": "Passes these tests, a share for each",
+        "title": "Passes these tests, split by weight",
         "effect": "earned",
         "marks": 1.0,
         "details": [],
@@ -653,13 +653,13 @@
      "is_marked": true,
      "model_names": [],
      "breakdown": {
-      "title": "A share for each of these",
+      "title": "Split by weight between these",
       "effect": "partial",
       "marks": null,
       "details": [],
       "children": [
        {
-        "title": "Passes these tests, a share for each",
+        "title": "Passes these tests, split by weight",
         "effect": "no_marks",
         "marks": 0.0,
         "details": [],
@@ -756,13 +756,13 @@
      "is_marked": true,
      "model_names": [],
      "breakdown": {
-      "title": "A share for each of these",
+      "title": "Split by weight between these",
       "effect": "partial",
       "marks": null,
       "details": [],
       "children": [
        {
-        "title": "Passes these tests, a share for each",
+        "title": "Passes these tests, split by weight",
         "effect": "earned",
         "marks": 1.0,
         "details": [],
@@ -859,13 +859,13 @@
      "is_marked": true,
      "model_names": [],
      "breakdown": {
-      "title": "A share for each of these",
+      "title": "Split by weight between these",
       "effect": "partial",
       "marks": null,
       "details": [],
       "children": [
        {
-        "title": "Passes these tests, a share for each",
+        "title": "Passes these tests, split by weight",
         "effect": "no_marks",
         "marks": 0.0,
         "details": [],
@@ -956,7 +956,7 @@
   ],
   "summary": {
    "method_label": "Workflow",
-   "description": "A share for each of these:\n- Passes these tests, a share for each:\n  - `sum_digits(7)` gives `7`.\n  - `sum_digits(1234)` gives `10`.\n- **Recursive, no loops:** All of these:\n  - Uses recursion.\n  - **Not allowed:** Uses a loop.\n- **Docstring:** Matches the pattern `\"\"\"`.",
+   "description": "Split by weight between these:\n- Passes these tests, split by weight:\n  - `sum_digits(7)` gives `7`.\n  - `sum_digits(1234)` gives `10`.\n- **Recursive, no loops:** All of these:\n  - Uses recursion.\n  - **Not allowed:** Uses a loop.\n- **Docstring:** Matches the pattern `\"\"\"`.",
    "problems": [],
    "is_compatible": true,
    "incompatible_version": "",
@@ -964,7 +964,7 @@
   },
   "editor": {
    "label": "Workflow",
-   "description": "A share for each of these:\n- Passes these tests, a share for each:\n  - `sum_digits(7)` gives `7`.\n  - `sum_digits(1234)` gives `10`.\n- **Recursive, no loops:** All of these:\n  - Uses recursion.\n  - **Not allowed:** Uses a loop.\n- **Docstring:** Matches the pattern `\"\"\"`.",
+   "description": "Split by weight between these:\n- Passes these tests, split by weight:\n  - `sum_digits(7)` gives `7`.\n  - `sum_digits(1234)` gives `10`.\n- **Recursive, no loops:** All of these:\n  - Uses recursion.\n  - **Not allowed:** Uses a loop.\n- **Docstring:** Matches the pattern `\"\"\"`.",
    "form_schema": {
     "$defs": {
      "StepData": {
@@ -1027,8 +1027,8 @@
         "all_correct": "All must be correct",
         "any_correct": "Any one must be correct",
         "none_correct": "None may be correct",
-        "proportional": "A share for each",
-        "total": "A mark for each"
+        "proportional": "Split by weight",
+        "total": "Add up marks"
        }
       }
      },
@@ -1150,7 +1150,7 @@
       {
        "path": "/with/steps/0",
        "label": "Code Tests",
-       "description": "Passes these tests, a share for each:\n- `sum_digits(7)` gives `7`.\n- `sum_digits(1234)` gives `10`.",
+       "description": "Passes these tests, split by weight:\n- `sum_digits(7)` gives `7`.\n- `sum_digits(1234)` gives `10`.",
        "has_problems": false,
        "problem": "",
        "notes": [],
@@ -1187,13 +1187,13 @@
     "is_marked": true,
     "model_names": [],
     "breakdown": {
-     "title": "A share for each of these",
+     "title": "Split by weight between these",
      "effect": "earned",
      "marks": null,
      "details": [],
      "children": [
       {
-       "title": "Passes these tests, a share for each",
+       "title": "Passes these tests, split by weight",
        "effect": "earned",
        "marks": 1.5,
        "details": [],
@@ -1281,13 +1281,13 @@
     "is_marked": true,
     "model_names": [],
     "breakdown": {
-     "title": "A share for each of these",
+     "title": "Split by weight between these",
      "effect": "earned",
      "marks": null,
      "details": [],
      "children": [
       {
-       "title": "Passes these tests, a share for each",
+       "title": "Passes these tests, split by weight",
        "effect": "earned",
        "marks": 1.5,
        "details": [],
@@ -1375,13 +1375,13 @@
     "is_marked": true,
     "model_names": [],
     "breakdown": {
-     "title": "A share for each of these",
+     "title": "Split by weight between these",
      "effect": "earned",
      "marks": null,
      "details": [],
      "children": [
       {
-       "title": "Passes these tests, a share for each",
+       "title": "Passes these tests, split by weight",
        "effect": "earned",
        "marks": 1.5,
        "details": [],
@@ -1469,13 +1469,13 @@
     "is_marked": true,
     "model_names": [],
     "breakdown": {
-     "title": "A share for each of these",
+     "title": "Split by weight between these",
      "effect": "earned",
      "marks": null,
      "details": [],
      "children": [
       {
-       "title": "Passes these tests, a share for each",
+       "title": "Passes these tests, split by weight",
        "effect": "earned",
        "marks": 1.5,
        "details": [],
@@ -1563,13 +1563,13 @@
     "is_marked": true,
     "model_names": [],
     "breakdown": {
-     "title": "A share for each of these",
+     "title": "Split by weight between these",
      "effect": "partial",
      "marks": null,
      "details": [],
      "children": [
       {
-       "title": "Passes these tests, a share for each",
+       "title": "Passes these tests, split by weight",
        "effect": "earned",
        "marks": 1.5,
        "details": [],
@@ -1657,13 +1657,13 @@
     "is_marked": true,
     "model_names": [],
     "breakdown": {
-     "title": "A share for each of these",
+     "title": "Split by weight between these",
      "effect": "partial",
      "marks": null,
      "details": [],
      "children": [
       {
-       "title": "Passes these tests, a share for each",
+       "title": "Passes these tests, split by weight",
        "effect": "earned",
        "marks": 1.5,
        "details": [],
@@ -1751,13 +1751,13 @@
     "is_marked": true,
     "model_names": [],
     "breakdown": {
-     "title": "A share for each of these",
+     "title": "Split by weight between these",
      "effect": "partial",
      "marks": null,
      "details": [],
      "children": [
       {
-       "title": "Passes these tests, a share for each",
+       "title": "Passes these tests, split by weight",
        "effect": "no_marks",
        "marks": 0.0,
        "details": [],
@@ -1845,13 +1845,13 @@
     "is_marked": true,
     "model_names": [],
     "breakdown": {
-     "title": "A share for each of these",
+     "title": "Split by weight between these",
      "effect": "partial",
      "marks": null,
      "details": [],
      "children": [
       {
-       "title": "Passes these tests, a share for each",
+       "title": "Passes these tests, split by weight",
        "effect": "earned",
        "marks": 1.5,
        "details": [],
@@ -1939,13 +1939,13 @@
     "is_marked": true,
     "model_names": [],
     "breakdown": {
-     "title": "A share for each of these",
+     "title": "Split by weight between these",
      "effect": "partial",
      "marks": null,
      "details": [],
      "children": [
       {
-       "title": "Passes these tests, a share for each",
+       "title": "Passes these tests, split by weight",
        "effect": "no_marks",
        "marks": 0.0,
        "details": [],
@@ -2028,7 +2028,7 @@
   ],
   "edited_summary": {
    "method_label": "Workflow",
-   "description": "A share for each of these:\n- Passes these tests, a share for each:\n  - `sum_digits(7)` gives `7`.\n  - `sum_digits(1234)` gives `10`.\n- **Recursive, no loops:** All of these:\n  - Uses recursion.\n  - **Not allowed:** Uses a loop.",
+   "description": "Split by weight between these:\n- Passes these tests, split by weight:\n  - `sum_digits(7)` gives `7`.\n  - `sum_digits(1234)` gives `10`.\n- **Recursive, no loops:** All of these:\n  - Uses recursion.\n  - **Not allowed:** Uses a loop.",
    "problems": [],
    "is_compatible": true,
    "incompatible_version": "",
@@ -2036,7 +2036,7 @@
   },
   "edited_editor": {
    "label": "Workflow",
-   "description": "A share for each of these:\n- Passes these tests, a share for each:\n  - `sum_digits(7)` gives `7`.\n  - `sum_digits(1234)` gives `10`.\n- **Recursive, no loops:** All of these:\n  - Uses recursion.\n  - **Not allowed:** Uses a loop.",
+   "description": "Split by weight between these:\n- Passes these tests, split by weight:\n  - `sum_digits(7)` gives `7`.\n  - `sum_digits(1234)` gives `10`.\n- **Recursive, no loops:** All of these:\n  - Uses recursion.\n  - **Not allowed:** Uses a loop.",
    "form_schema": {
     "$defs": {
      "StepData": {
@@ -2099,8 +2099,8 @@
         "all_correct": "All must be correct",
         "any_correct": "Any one must be correct",
         "none_correct": "None may be correct",
-        "proportional": "A share for each",
-        "total": "A mark for each"
+        "proportional": "Split by weight",
+        "total": "Add up marks"
        }
       }
      },
@@ -2214,7 +2214,7 @@
       {
        "path": "/with/steps/0",
        "label": "Code Tests",
-       "description": "Passes these tests, a share for each:\n- `sum_digits(7)` gives `7`.\n- `sum_digits(1234)` gives `10`.",
+       "description": "Passes these tests, split by weight:\n- `sum_digits(7)` gives `7`.\n- `sum_digits(1234)` gives `10`.",
        "has_problems": false,
        "problem": "",
        "notes": [],
@@ -2730,7 +2730,7 @@
   ],
   "decided_summary": {
    "method_label": "Workflow",
-   "description": "Any one of these:\n- Matches `Release energy` or `Releases energy for the cell`.\n- **Worth ½:** Matches `Produces ATP`.",
+   "description": "Any one of these:\n- Matches `Release energy` or `Releases energy for the cell`.\n- **½ of the marks:** Matches `Produces ATP`.",
    "problems": [],
    "is_compatible": true,
    "incompatible_version": "",
@@ -2738,7 +2738,7 @@
   },
   "decided_editor": {
    "label": "Workflow",
-   "description": "Any one of these:\n- Matches `Release energy` or `Releases energy for the cell`.\n- **Worth ½:** Matches `Produces ATP`.",
+   "description": "Any one of these:\n- Matches `Release energy` or `Releases energy for the cell`.\n- **½ of the marks:** Matches `Produces ATP`.",
    "form_schema": {
     "$defs": {
      "StepData": {
@@ -2801,8 +2801,8 @@
         "all_correct": "All must be correct",
         "any_correct": "Any one must be correct",
         "none_correct": "None may be correct",
-        "proportional": "A share for each",
-        "total": "A mark for each"
+        "proportional": "Split by weight",
+        "total": "Add up marks"
        }
       }
      },
@@ -2905,7 +2905,7 @@
        "has_problems": false,
        "problem": "",
        "notes": [
-        "Worth ½"
+        "½ of the marks"
        ],
        "needs_model_endpoint": false
       }
@@ -2925,7 +2925,7 @@
    "method_summary": "Several steps combined into one mark.",
    "variants": [
     {
-     "description": "A share for each of these:\n- Includes `mitochondria`.",
+     "description": "Split by weight between these:\n- Includes `mitochondria`.",
      "results": [
       {
        "proportion": 1.0,
@@ -2985,7 +2985,7 @@
      ]
     },
     {
-     "description": "A share for each of these:\n- Includes `mitochondria`.\n- Has at most `10` words.",
+     "description": "Split by weight between these:\n- Includes `mitochondria`.\n- Has at most `10` words.",
      "results": [
       {
        "proportion": 1.0,
@@ -2995,7 +2995,7 @@
        "is_marked": true,
        "model_names": [],
        "breakdown": {
-        "title": "A share for each of these",
+        "title": "Split by weight between these",
         "effect": "earned",
         "marks": null,
         "details": [],
@@ -3027,7 +3027,7 @@
        "is_marked": true,
        "model_names": [],
        "breakdown": {
-        "title": "A share for each of these",
+        "title": "Split by weight between these",
         "effect": "partial",
         "marks": null,
         "details": [],
@@ -3059,7 +3059,7 @@
        "is_marked": true,
        "model_names": [],
        "breakdown": {
-        "title": "A share for each of these",
+        "title": "Split by weight between these",
         "effect": "partial",
         "marks": null,
         "details": [],
@@ -3091,7 +3091,7 @@
        "is_marked": true,
        "model_names": [],
        "breakdown": {
-        "title": "A share for each of these",
+        "title": "Split by weight between these",
         "effect": "partial",
         "marks": null,
         "details": [],
@@ -3123,7 +3123,7 @@
        "is_marked": true,
        "model_names": [],
        "breakdown": {
-        "title": "A share for each of these",
+        "title": "Split by weight between these",
         "effect": "no_marks",
         "marks": null,
         "details": [],
@@ -3150,7 +3150,7 @@
      ]
     },
     {
-     "description": "A share for each of these:\n- Any one of these:\n  - Includes `mitochondria`.\n  - Includes `powerhouse`.\n- Has at most `10` words.",
+     "description": "Split by weight between these:\n- Any one of these:\n  - Includes `mitochondria`.\n  - Includes `powerhouse`.\n- Has at most `10` words.",
      "results": [
       {
        "proportion": 1.0,
@@ -3160,7 +3160,7 @@
        "is_marked": true,
        "model_names": [],
        "breakdown": {
-        "title": "A share for each of these",
+        "title": "Split by weight between these",
         "effect": "earned",
         "marks": null,
         "details": [],
@@ -3207,7 +3207,7 @@
        "is_marked": true,
        "model_names": [],
        "breakdown": {
-        "title": "A share for each of these",
+        "title": "Split by weight between these",
         "effect": "earned",
         "marks": null,
         "details": [],
@@ -3254,7 +3254,7 @@
        "is_marked": true,
        "model_names": [],
        "breakdown": {
-        "title": "A share for each of these",
+        "title": "Split by weight between these",
         "effect": "partial",
         "marks": null,
         "details": [],
@@ -3301,7 +3301,7 @@
        "is_marked": true,
        "model_names": [],
        "breakdown": {
-        "title": "A share for each of these",
+        "title": "Split by weight between these",
         "effect": "partial",
         "marks": null,
         "details": [],
@@ -3348,7 +3348,7 @@
        "is_marked": true,
        "model_names": [],
        "breakdown": {
-        "title": "A share for each of these",
+        "title": "Split by weight between these",
         "effect": "no_marks",
         "marks": null,
         "details": [],
@@ -3959,7 +3959,7 @@
    "method_summary": "Marks for each test the student's code passes.",
    "variants": [
     {
-     "description": "Passes these tests, a share for each:\n- `is_even(4)` gives `True`.\n- `is_even(7)` gives `False`.",
+     "description": "Passes these tests, split by weight:\n- `is_even(4)` gives `True`.\n- `is_even(7)` gives `False`.",
      "results": [
       {
        "proportion": 1.0,
@@ -3969,7 +3969,7 @@
        "is_marked": true,
        "model_names": [],
        "breakdown": {
-        "title": "Passes these tests, a share for each",
+        "title": "Passes these tests, split by weight",
         "effect": "earned",
         "marks": null,
         "details": [],
@@ -4033,7 +4033,7 @@
        "is_marked": true,
        "model_names": [],
        "breakdown": {
-        "title": "Passes these tests, a share for each",
+        "title": "Passes these tests, split by weight",
         "effect": "earned",
         "marks": null,
         "details": [],
@@ -4097,7 +4097,7 @@
        "is_marked": true,
        "model_names": [],
        "breakdown": {
-        "title": "Passes these tests, a share for each",
+        "title": "Passes these tests, split by weight",
         "effect": "no_marks",
         "marks": null,
         "details": [],
@@ -4166,7 +4166,7 @@
      ]
     },
     {
-     "description": "Passes these tests, a share for each:\n- `is_even(4)` gives `True`.\n- `is_even(7)` gives `False`.\n- `is_even(0)` gives `True`.\n- `is_even(-2)` gives `True`.",
+     "description": "Passes these tests, split by weight:\n- `is_even(4)` gives `True`.\n- `is_even(7)` gives `False`.\n- `is_even(0)` gives `True`.\n- `is_even(-2)` gives `True`.",
      "results": [
       {
        "proportion": 1.0,
@@ -4176,7 +4176,7 @@
        "is_marked": true,
        "model_names": [],
        "breakdown": {
-        "title": "Passes these tests, a share for each",
+        "title": "Passes these tests, split by weight",
         "effect": "earned",
         "marks": null,
         "details": [],
@@ -4286,7 +4286,7 @@
        "is_marked": true,
        "model_names": [],
        "breakdown": {
-        "title": "Passes these tests, a share for each",
+        "title": "Passes these tests, split by weight",
         "effect": "partial",
         "marks": null,
         "details": [],
@@ -4396,7 +4396,7 @@
        "is_marked": true,
        "model_names": [],
        "breakdown": {
-        "title": "Passes these tests, a share for each",
+        "title": "Passes these tests, split by weight",
         "effect": "no_marks",
         "marks": null,
         "details": [],
@@ -5722,7 +5722,7 @@
      ]
     },
     {
-     "description": "Any one of these:\n- **Takes g = 9.8:** All of these:\n  - **Q3a:** Matches `3.03`.\n  - **Q3b:** Matches `29.7`.\n- **Takes g = 10:** All of these:\n  - **Q3a:** Matches `3`.\n  - **Q3b:** Matches `30`.\n- **Rounds the time first** (Worth ¾): All of these:\n  - **Q3a:** Matches `3`.\n  - **Q3b:** Matches `29.4`.",
+     "description": "Any one of these:\n- **Takes g = 9.8:** All of these:\n  - **Q3a:** Matches `3.03`.\n  - **Q3b:** Matches `29.7`.\n- **Takes g = 10:** All of these:\n  - **Q3a:** Matches `3`.\n  - **Q3b:** Matches `30`.\n- **Rounds the time first** (¾ of the marks): All of these:\n  - **Q3a:** Matches `3`.\n  - **Q3b:** Matches `29.4`.",
      "results": [
       {
        "proportion": 1.0,
