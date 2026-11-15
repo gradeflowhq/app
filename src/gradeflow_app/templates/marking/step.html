@@ -72,7 +72,7 @@
           <div class="min-w-0 flex-1">
             <button type="button" class="flex items-center gap-1.5 text-left font-medium after:absolute after:inset-0 after:rounded-box" hx-post="{{ draft_url }}" hx-vals="{% hx_vals operation="open" target=child.path %}">{{ child.label }}{% if child.needs_model_endpoint %}<c-ai-service />{% endif %}</button>
             {% if child.notes %}<p class="text-sm text-muted">{{ child.notes|join:" · " }}</p>{% endif %}
-            {% if child.has_problems and not child.problem %}<p class="text-sm text-warning">Not set up yet</p>{% elif child.description %}<c-collapsible class="prose-core text-sm text-muted [&_pre]:relative">{{ child.description|markdown }}</c-collapsible>{% endif %}
+            {% if child.has_problems and not child.problem %}<p class="text-sm text-warning">Not set up yet</p>{% elif child.description %}<c-collapsible class="prose-core pointer-events-none text-sm text-muted [&_pre]:pointer-events-auto [&_pre]:relative">{{ child.description|markdown }}</c-collapsible>{% endif %}
             {% if child.problem %}<p class="text-sm text-error">{{ child.problem }}</p>{% endif %}
           </div>
           {% if editor.editable and not setting_view.has_fixed_count %}
