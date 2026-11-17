@@ -15,7 +15,7 @@
         </li>
         <li class="flex items-center gap-3">
           {% include "assessments/step.html" with is_done=progress.all_marked number=2 is_next=True %}
-          <div><p class="font-medium">Marking</p><p class="tabular-nums text-sm text-muted">{{ progress.marked_count }} of {{ progress.question_count }} question{{ progress.question_count|pluralize }}</p></div>
+          <div><p class="font-medium">Marking</p><p class="tabular-nums text-sm text-muted">{{ progress.marked_count }} of {{ progress.question_count }} question{{ progress.question_count|pluralize }}</p>{% if results.unmarked_count %}<p class="tabular-nums text-sm text-warning">{{ results.unmarked_count }} answer{{ results.unmarked_count|pluralize:" needs,s need" }} marking</p>{% endif %}</div>
         </li>
         <li class="flex items-center gap-3">
           {% include "assessments/step.html" with is_done=progress.latest_sent_marks number=3 is_next=progress.all_marked %}

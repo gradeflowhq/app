@@ -80,7 +80,7 @@ def test_editors_get_the_rows_to_send_and_the_sending_form(client: Client, canva
     page, rows = response.text, response.context["canvas_rows"]
     assert '<script id="export-rows-data" type="application/json">' in page
     assert len(rows) == 10
-    assert {"studentId", "marks", "maxMarks", "comment"} == rows[0].keys()
+    assert {"studentId", "marks", "maxMarks", "comment", "unmarkedCount"} == rows[0].keys()
     assert encrypted_id("S001") in {row["studentId"] for row in rows}
     assert 'hx-post="{}"'.format(reverse("export_sending", args=[canvas_assessment.pk])) in page
     assert 'name="marks_mode"' in page

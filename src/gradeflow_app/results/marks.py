@@ -174,6 +174,11 @@ class StudentMarks:
     def adjusted_keys(self) -> list[str]:
         return [key for key, award in self.awards.items() if award.adjustment is not None]
 
+    @property
+    def unmarked_count(self) -> int:
+        """How many of the student's answers the markings couldn't mark and no one has set marks for."""
+        return sum(not award.is_marked for award in self.awards.values())
+
 
 @dataclass
 class QuestionSummary:
@@ -258,6 +263,10 @@ class Results:
     def has_adjustments(self) -> bool:
         return any(row.adjusted_keys for row in self.rows)
 
+    @cached_property
+    def unmarked_count(self) -> int:
+        return sum(row.unmarked_count for row in self.rows)
+
     def summaries(self) -> list[QuestionSummary]:
         summaries = []
         for question in self.questions:
@@ -320,19 +329,25 @@ def assessment_results(assessment: Assessment, students: Sequence[Student] | Non
     return Results(assessment, questions, rows)
 
 
-def average_proportions(assessment: Assessment) -> dict[UUID, float]:
-    """The average proportion of each question's marks, over the students with marks for it, by question ID: the
-    summaries' alone, without reading the answers."""
+class QuestionMarks(NamedTuple):
+    average_proportion: float | None
+    """The average proportion of the question's marks, over the students with marks for it."""
+    unmarked_count: int
+    """How many answers the marking couldn't mark and no one has set marks for."""
+
+
+def question_marks(assessment: Assessment) -> dict[UUID, QuestionMarks]:
+    """The marks of each question, by question ID, without reading the answers."""
     questions = list(assessment.questions.all())
     students = list(assessment.students.only("imported_marks"))
     student_awards = awards(questions, students)
-    averages = {}
+    summaries = {}
     for question in questions:
-        marks = [
-            student_marks
-            for student in students
-            if (student_marks := student_awards[student.pk, question.pk].marks) is not None
-        ]
-        if marks and question.core_question.max_marks:
-            averages[question.pk] = statistics.fmean(marks) / question.core_question.max_marks
-    return averages
+        question_awards = [student_awards[student.pk, question.pk] for student in students]
+        marks = [award.marks for award in question_awards if award.marks is not None]
+        max_marks = question.core_question.max_marks
+        summaries[question.pk] = QuestionMarks(
+            statistics.fmean(marks) / max_marks if marks and max_marks else None,
+            sum(not award.is_marked for award in question_awards),
+        )
+    return summaries

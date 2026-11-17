@@ -69,9 +69,14 @@ export const canvasExport = () => {
     },
     get sendLabel() {
       if (this.sending) return "Sending…";
+      if (this.unmarkedCount) return "Send anyway";
       return this.matched.length
         ? `Send ${counted(this.matched.length, "student's", "students'")} marks`
         : "Send marks";
+    },
+    /** How many of the matched students' answers need marking. */
+    get unmarkedCount() {
+      return this.matched.reduce((count, { row }) => count + row.unmarkedCount, 0);
     },
     get reviewTarget() {
       return `${this.assignment.card.name} · ${this.config.courseName}`;

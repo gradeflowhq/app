@@ -41,7 +41,7 @@ FILTERS: dict[str, tuple[str, Callable[[AnswerGroup], bool]]] = {
     "blank": ("Blank", lambda group: group.is_blank),
     "adjusted": ("Adjusted", lambda group: group.adjusted_count > 0),
     "unmarked": (
-        "Couldn't mark",
+        "Needs marking",
         lambda group: bool(group.preview.unmarked_count if group.preview else group.unmarked_count),
     ),
     "changed": ("Changed", lambda group: bool(group.preview and group.preview.changed)),

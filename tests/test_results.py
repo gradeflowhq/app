@@ -111,10 +111,38 @@ def test_marks_set_by_hand_show_for_answers_the_marking_could_not_mark(client: C
     for student in assessment.students.all():
         Result.objects.create(student=student, question=question, proportion=0, is_marked=False, revision=0)
     url = reverse("answers", args=[assessment.pk, question.pk])
-    assert "Couldn't mark</span>" in client.get(url).text
+    assert "Needs marking</span>" in client.get(url).text
     for student in assessment.students.all():
         Adjustment.objects.create(student=student, question=question, marks=question.core_question.max_marks)
-    assert "Couldn't mark</span>" not in client.get(url).text
+    assert "Needs marking</span>" not in client.get(url).text
+
+
+def test_answers_that_need_marking_are_counted_until_someone_marks_them(client: Client, assessment: Assessment) -> None:
+    question = assessment.questions.get(key="Q1")
+    students = list(assessment.students.all())
+    for student in students:
+        Result.objects.create(student=student, question=question, proportion=0, is_marked=False, revision=0)
+    count = len(students)
+
+    def pages() -> tuple[str, str, str]:
+        return (
+            client.get(reverse("question", args=[assessment.pk, question.pk])).text,
+            client.get(reverse("overview", args=[assessment.pk])).text,
+            client.get(reverse("export", args=[assessment.pk])).text,
+        )
+
+    question_page, overview, export = pages()
+    assert f" · {count} need marking" in question_page
+    assert f"{count} answers need marking" in overview
+    assert f"{count}</span> answers still need marking. They count as 0." in export
+    assert "Download anyway" in export
+    for student in students:
+        Adjustment.objects.create(student=student, question=question, marks=0)
+    question_page, overview, export = pages()
+    assert f"{count} need marking" not in question_page
+    assert "answers need marking" not in overview
+    assert "still need marking" not in export
+    assert "Download anyway" not in export
 
 
 def test_a_download_needs_a_student_id_column(client: Client, assessment: Assessment) -> None:

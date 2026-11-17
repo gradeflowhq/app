@@ -63,19 +63,21 @@ def send_marks(request: Request, access: AssessmentAccess) -> HttpResponse:
     canvas_available = bool(settings.GRADEFLOW_CORS_PROXY_URL)
     assessment_canvas = AssessmentCanvas.of(assessment)
     course_canvas = CourseCanvas.of(access.course)
+    results = assessment_results(assessment)
     context: dict[str, object] = {
         "access": access,
         "canvas_available": canvas_available,
         "course_canvas": course_canvas,
         "sending": effective_sending(assessment_canvas, course_canvas),
         "sent_marks": _sent_marks(assessment),
-        "student_count": assessment.students.count(),
+        "student_count": len(results.rows),
+        "unmarked_count": results.unmarked_count,
         "download_form": download_form(),
     }
     if canvas_available and course_canvas.canvas_course and access.can_edit:
         context |= {
             "form": AssessmentCanvasForm(instance=assessment_canvas),
-            "canvas_rows": _canvas_rows(access),
+            "canvas_rows": _canvas_rows(results),
             "config": _canvas_config(
                 course_canvas,
                 name=assessment.name,
@@ -93,19 +95,19 @@ def canvas_rows(request: Request, access: AssessmentAccess) -> HttpResponse:
     return render(
         request,
         "exports/export.html#canvas_rows",
-        {"access": access, "canvas_rows": _canvas_rows(access)},
+        {"access": access, "canvas_rows": _canvas_rows(assessment_results(access.assessment))},
     )
 
 
-def _canvas_rows(access: AssessmentAccess) -> list[dict[str, object]]:
-    """Each student's encrypted ID, total and comment, for the browser to send to Canvas."""
-    results = assessment_results(access.assessment)
+def _canvas_rows(results: Results) -> list[dict[str, object]]:
+    """Each student's row for the browser to send to Canvas."""
     return [
         {
             "studentId": row.student.encrypted_id,
             "marks": row.total,
             "maxMarks": results.max_marks,
             "comment": _comment(results, row),
+            "unmarkedCount": row.unmarked_count,
         }
         for row in results.rows
     ]

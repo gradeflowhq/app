@@ -222,7 +222,9 @@ def test_a_choice_of_numbers_is_posted_back_as_a_number() -> None:
     form = ObjectForm({"type": "object", "properties": {"value": value}}, {}, data={"value": "0"})
     assert form.is_valid()
     assert form.values() == {"value": 0}
-    assert list(form["value"].field.choices)[-2:] == [(1, "Yes"), (0, "No")], "labelled by the value as a JSON key"
+    assert re.findall(r'value="(\d)"[^>]*>(\w+)<', str(form["value"])) == [("1", "Yes"), ("0", "No")], (
+        "labelled by the value as a JSON key"
+    )
 
 
 def test_numbers_offer_quick_picks_as_people_write_them() -> None:

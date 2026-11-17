@@ -102,7 +102,7 @@
       {% if preview_summary.unmarked_count %}
       <div class="flex items-start gap-2 border-t border-warning/30 bg-warning/10 px-4 py-2 text-sm" role="alert">
         {% icon "exclamation-triangle" "size-4 mt-0.5 shrink-0 text-warning" %}
-        <p class="min-w-0"><span class="font-medium">Couldn't mark {{ preview_summary.unmarked_count }} answer{{ preview_summary.unmarked_count|pluralize }}</span>{% if preview_summary.problem %}<span class="block wrap-break-word text-muted">{{ preview_summary.problem|truncatechars:300 }}</span>{% endif %}</p>
+        <p class="min-w-0"><span class="font-medium">{{ preview_summary.unmarked_count }} answer{{ preview_summary.unmarked_count|pluralize:" needs,s need" }} marking</span>{% if preview_summary.problem %}<span class="block wrap-break-word text-muted">{{ preview_summary.problem|truncatechars:300 }}</span>{% endif %}</p>
       </div>
       {% endif %}
     {% endif %}

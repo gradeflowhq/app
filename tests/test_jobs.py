@@ -561,9 +561,9 @@ def test_a_preview_says_when_answers_could_not_be_marked(client: Client, assessm
     assert unmarked_count
     page = client.get(reverse("answers", args=[assessment.pk, question.pk])).text
     preview_bar = page[page.index("preview-bar") :][:3000]
-    assert f"Couldn't mark {unmarked_count} answers" in preview_bar
+    assert f"{unmarked_count} answers need marking" in preview_bar
     assert "no such thing as results" in preview_bar
-    unmarked = [card for card in page.split('<details class="group/answer')[1:] if "Couldn't mark</span>" in card]
+    unmarked = [card for card in page.split('<details class="group/answer')[1:] if "Needs marking</span>" in card]
     assert unmarked, "groups the draft couldn't mark say so instead of showing marks"
     assert not any("line-through" in card[: card.index("</summary>")] for card in unmarked)
 
@@ -575,7 +575,7 @@ def test_a_preview_leaves_marks_set_by_hand_shown(client: Client, assessment: As
     url, fields = code_draft(client, assessment)
     client.post(url, fields | {"code": "raise ValueError('no such thing as results')"})
     preview_draft(client, MarkingDraftRecord.objects.get())
-    assert "Couldn't mark" not in client.get(reverse("answers", args=[assessment.pk, question.pk])).text
+    assert "Needs marking</span>" not in client.get(reverse("answers", args=[assessment.pk, question.pk])).text
 
 
 def test_failed_runs_and_refused_callbacks_are_logged(

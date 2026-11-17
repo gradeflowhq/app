@@ -251,6 +251,7 @@ def hero() -> Hero:
                     is_marked=bool(item.method or item.in_question_group),
                     badge=marking_badge(label, has_problems=False, has_imported_marks=False),
                     proportion=proportion if is_shown else None if item.average is None else item.average / 100,
+                    unmarked_count=0,
                     progress=progress if is_shown else None,
                     has_draft=False,
                     is_shown=is_shown,

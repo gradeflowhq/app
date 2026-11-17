@@ -70,7 +70,12 @@ def download(request: Request, access: AssessmentAccess) -> HttpResponse:
             return HttpResponse(
                 data, content_type="text/csv; charset=utf-8", headers={"Content-Disposition": disposition}
             )
-    return render(request, "results/download.html#form", {"access": access, "download_form": form}, status=422)
+    context = {
+        "access": access,
+        "download_form": form,
+        "unmarked_count": assessment_results(access.assessment).unmarked_count,
+    }
+    return render(request, "results/download.html#form", context, status=422)
 
 
 def _csv(access: AssessmentAccess, csv_format: ResultsCsv) -> str:

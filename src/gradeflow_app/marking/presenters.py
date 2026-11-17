@@ -28,7 +28,7 @@ from gradeflow_app.marking.checks import (
 from gradeflow_app.marking.models import Marking, MarkingDraftRecord
 from gradeflow_app.marking.remarks import NO_MODEL_SERVICE, running_remarks
 from gradeflow_app.questions.models import Question
-from gradeflow_app.results.marks import average_proportions
+from gradeflow_app.results.marks import question_marks
 
 
 @dataclass(frozen=True)
@@ -145,6 +145,7 @@ class ListedQuestion:
     badge: MarkingBadge
     proportion: float | None
     """The average proportion of the question's marks."""
+    unmarked_count: int
     progress: float | None
     """How far a remark of it has got, while one runs."""
     has_draft: bool
@@ -191,7 +192,7 @@ def question_list(
     markings = list(assessment.markings.select_related("question"))
     saved_by_key = saved_markings(markings, accepted)
     group_markings = [marking for marking in markings if marking.question_id is None]
-    averages = average_proportions(assessment)
+    marks_by_question = question_marks(assessment)
     progress = {
         key: state.progress for marking, state in running_remarks(assessment) for key in marking.questions_marked
     }
@@ -223,7 +224,8 @@ def question_list(
                 else marking_badge(
                     method_label, has_problems=has_problems, has_imported_marks=question.key in imported_keys
                 ),
-                proportion=averages.get(question.pk),
+                proportion=marks_by_question[question.pk].average_proportion,
+                unmarked_count=marks_by_question[question.pk].unmarked_count,
                 progress=progress.get(question.key),
                 has_draft=has_draft,
                 is_shown=str(question.pk) == shown_id,
