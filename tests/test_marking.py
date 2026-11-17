@@ -123,6 +123,20 @@ def test_stale_or_unknown_editor_actions_change_nothing(client: Client, assessme
     assert client.get(url, {"path": "/with/setup"}).status_code == 200
 
 
+def test_changing_how_marks_are_given_redraws_the_steps_weight_notes(client: Client, assessment: Assessment) -> None:
+    url, _ = start_marking(client, assessment, "Q1", "gradeflow/workflow@1")
+    for index in (0, 1):
+        client.post(
+            url, {"path": "", "operation": "add", "target": f"/with/steps/{index}", "method": "gradeflow/key-points@1"}
+        )
+    client.post(url, {"path": "", "fields_posted": "1", "marks_by": "any_correct"})
+    client.post(url, {"path": "/with/steps/1", "fields_posted": "1", "points": ["light"], "weight": "1/2"})
+    assert "50% of the marks" in client.post(url, {"path": "", "operation": "open", "target": ""}).text
+    page = client.post(url, {"path": "", "fields_posted": "1", "marks_by": "total"}).text
+    assert "0.5 marks" in page
+    assert "50% of the marks" not in page
+
+
 def test_questions_opens_the_first_question(client: Client, assessment: Assessment) -> None:
     """Marked or not. A page load goes to its address; a click in the app gets it at once, with its address."""
     full_marks_marking(assessment, "Q1")

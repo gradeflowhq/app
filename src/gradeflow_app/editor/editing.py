@@ -115,18 +115,20 @@ class StepWorkspace(ABC):
         return form
 
     def editor_structure(self, path: str) -> tuple[object, ...]:
-        """What redraws the editor at `path` when it changes: schema, methods offered, condition rows and the
-        problems of the steps it holds."""
+        """What redraws the editor at `path` when it changes: schema, methods offered, condition rows, and the
+        notes and problems of the steps it holds."""
         draft = self.draft
         rows = [value for value in draft.values(path).values() if isinstance(value, Condition)]
         methods_and_conditions: list[object] = [tuple(method.ref for method in draft.methods(path)), *rows]
+        inner_notes: list[list[str]] = []
         for setting in draft.settings_holding_steps(path):
             try:
                 methods_and_conditions.append(tuple(method.ref for method in draft.methods(setting.new_step_path)))
             except GradeFlowError as error:
                 methods_and_conditions.append(str(error))
+            inner_notes.extend(draft.notes(step_path) for step_path in setting.step_paths)
         inner_problems = tuple(problem for problem in draft.step_problems if problem.step_path.startswith(f"{path}/"))
-        return draft.schema(path), tuple(methods_and_conditions), inner_problems
+        return draft.schema(path), tuple(methods_and_conditions), inner_notes, inner_problems
 
     def problems_at(self, path: str, *, saving: bool) -> list[Problem]:
         return [
