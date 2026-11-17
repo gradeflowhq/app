@@ -33,7 +33,7 @@
     <li><button type="button" class="card-box flex w-full items-start gap-3 p-4 text-left hover:border-primary/50" hx-get="{{ urls.settings }}" hx-vals="{% hx_vals setting=name %}">
       <span class="grid min-w-0 flex-1 gap-0.5">
         <span class="font-medium">{{ declaration.title|default:name }}</span>
-        {% if declaration.description %}<span class="line-clamp-2 text-sm text-muted">{{ declaration.description }}</span>{% endif %}
+        {% if declaration.description %}<span class="line-clamp-2 text-sm text-muted">{{ declaration.description|inline_markdown|striptags }}</span>{% endif %}
         <span class="truncate text-sm text-muted">{% if "default" in declaration %}Default: {{ default|short_value }}{% else %}No default{% endif %}</span>
       </span>
       {% icon "chevron-right" "mt-1 size-4 shrink-0 text-muted" %}
