@@ -55,8 +55,9 @@ export const scene = () => ({
   press(frame) {
     const selector = JSON.parse(this.$root.dataset.presses)[frame];
     if (!selector) return;
+    // A phone shows one column, so the control can be hidden.
     const control = [...this.$root.querySelectorAll(selector)].find((each) => each.checkVisibility());
-    control.setAttribute("data-pressed", "");
+    control?.setAttribute("data-pressed", "");
   },
 });
 
