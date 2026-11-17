@@ -171,6 +171,17 @@ def test_the_core_alone_says_what_is_required() -> None:
     assert page.count("(optional)") == 1, "only the field the core doesn't require"
 
 
+def test_a_field_shown_for_another_fields_choice_isnt_optional() -> None:
+    schema = {
+        "type": "object",
+        "properties": {
+            "looks_for": {"enum": ["call", "loop"], "type": "string"},
+            "function": {"type": "string", "x-gradeflow": {"applies_when": {"looks_for": ["call"]}}},
+        },
+    }
+    assert not ObjectForm(schema, {"looks_for": "call"})["function"].is_optional
+
+
 @pytest.mark.parametrize("kind", ["", "markdown", "code"])
 @pytest.mark.parametrize("value", [" ", "  a phrase\n"])
 def test_generated_text_fields_preserve_whitespace(kind: str, value: str) -> None:

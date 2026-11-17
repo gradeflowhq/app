@@ -51,7 +51,14 @@ class HintedField(BoundField):
 
     @property
     def is_optional(self) -> bool:
-        return not self._hints.required and self.field.initial is None and not self.field.disabled
+        """Whether it may be left empty. One shown only for another field's choice, as Function for a call, is
+        what that choice asks for."""
+        return (
+            not self._hints.required
+            and not self._hints.visible_when
+            and self.field.initial is None
+            and not self.field.disabled
+        )
 
     @property
     def is_shown(self) -> bool:
