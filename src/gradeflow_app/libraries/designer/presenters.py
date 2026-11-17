@@ -83,6 +83,7 @@ def workspace_context(
         "first_problem_unfilled": problems[0].is_incomplete if problems else False,
         "rows": rows,
         "needs_preview": needs_preview,
+        "never_previewed": run is None,
         "can_preview": needs_preview and can_edit_tests and not problems and not method_problems,
         "preview_job": run if run is not None and run.status != "completed" else None,
         "preview_summary": _preview_summary(rows, selected_question.max_marks)

@@ -78,7 +78,7 @@
     {% firstof preview_target "#answers" as preview_target %}
     {% if needs_preview %}
       <div class="preview-bar">
-        {% if can_preview %}<span class="font-medium">Marking changed</span>{% else %}<span class="min-w-0 text-sm text-muted">Finish setting up to preview</span>{% endif %}
+        {% if can_preview %}<span class="font-medium">{% if never_previewed %}Not previewed yet{% else %}Marking changed{% endif %}</span>{% else %}<span class="min-w-0 text-sm text-muted">Finish setting up to preview</span>{% endif %}
         <button class="btn btn-sm ml-auto shrink-0" hx-post="{{ preview_url }}" hx-target="{{ preview_target }}" hx-swap="outerMorph"{% if not can_preview %} disabled{% endif %}>{% icon "eye" "size-4" %}Preview</button>
       </div>
     {% elif preview_job.status == "failed" %}

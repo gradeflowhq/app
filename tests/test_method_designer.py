@@ -176,6 +176,7 @@ def test_test_answers_show_how_each_check_marked_them(
     client: Client, method_with_length_check: Method, django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks
 ) -> None:
     post_to_designer(client, method_with_length_check, "method_answers", operation="add", answer="dark")
+    assert "Not previewed yet" in client.get(designer_url(method_with_length_check, "method_results")).text
     with django_capture_on_commit_callbacks(execute=True):
         post_to_designer(client, method_with_length_check, "method_run")
     results = client.get(designer_url(method_with_length_check, "method_results")).text
