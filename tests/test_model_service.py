@@ -6,6 +6,7 @@ import pytest
 from django.http import HttpResponse
 from django.test import Client, RequestFactory, TestCase
 from django.urls import reverse
+from django.utils.html import strip_tags
 from gradeflow_core import GradeFlowError, ModelTrial, Progress
 from gradeflow_core.editing import dump_yaml
 from pytest_django import Settings
@@ -64,6 +65,11 @@ def request_with_model_service(user: User) -> Request:
     request = cast(Request, RequestFactory().post("/", headers=MODEL_SERVICE_HEADERS))
     request.user = user
     return request
+
+
+def shown_text(html: str) -> str:
+    """The text a page shows, without tags, with each run of whitespace as one space."""
+    return " ".join(strip_tags(html).split())
 
 
 def post_model_service(client: Client, name: str, data: dict[str, Any] | None = None) -> HttpResponse:
@@ -177,8 +183,8 @@ def test_the_models_dialog_lists_every_model_with_how_each_did(
         < dialog.index('data-search="tiny"')
         < dialog.index('data-search="reasoner"')
     ), "in use first, then passed, then the rest"
-    assert "6/6 · 4 s" in dialog
-    assert "0/6 · 2 s" in dialog, "a model that failed shows its time too"
+    assert "100% 4 s" in shown_text(dialog)
+    assert "0% 2 s" in shown_text(dialog), "a model that failed shows its time too"
     assert 'title="Missed 6 of 6 example answers."' in dialog
     assert 'value="decider" class="radio radio-xs radio-primary"' in dialog
     assert dialog.count(">Best</span>") == 1
@@ -283,7 +289,7 @@ def test_testing_a_model_shows_how_it_did_as_soon_as_it_finishes(client: Client,
     ]
     assert post_callback(job_ids[0], {"event": "tried", "trial": TRIALS[0]}) == 204
     table = post_model_service(client, "model_service_table", listed).text
-    assert "6/6 · 4 s" in table
+    assert "100% 4 s" in shown_text(table)
     assert table.count("Testing…") == 1
     time_out(idle_runner, job_ids[1])
     table = post_model_service(client, "model_service_table", listed).text
@@ -310,7 +316,7 @@ def test_a_model_the_service_failed_on_can_be_tried_again(
     post_model_service(client, "model_service_test", {"role": "fast", "model": "decider", "listed": "decider"})
     [run_id] = idle_runner.run_ids("model-trial")
     assert post_callback(run_id, {"event": "tried", "trial": TRIALS[0]}) == 204
-    assert "6/6 · 4 s" in post_model_service(client, "model_service_table", {"listed": "decider"}).text
+    assert "100% 4 s" in shown_text(post_model_service(client, "model_service_table", {"listed": "decider"}).text)
 
 
 def test_testing_again_keeps_the_last_result_until_a_new_one(
@@ -326,7 +332,7 @@ def test_testing_again_keeps_the_last_result_until_a_new_one(
     idle_runner.is_down = False
     table = post_model_service(client, "model_service_table", listed).text
     assert "Testing…" not in table
-    assert "6/6 · 4 s" in table
+    assert "100% 4 s" in shown_text(table)
     assert f"Couldn't test: {UNAVAILABLE_REASON}" in table
     assert 'aria-label="Test decider again as the fast model"' in table
 

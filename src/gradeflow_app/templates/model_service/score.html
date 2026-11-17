@@ -1,2 +1,5 @@
-{# How a model did when tested: sample answers marked as expected, of how many, and how long it took. #}
-<span class="whitespace-nowrap tabular-nums {% if trial.failure %}text-muted{% else %}font-medium text-success{% endif %}">{{ trial.rows_matched }}/{{ trial.rows_tried }} · {{ trial.seconds|duration }}</span>
+{# How a model did when tested: the share of sample answers marked as expected and how long it took. #}
+<span class="flex items-center gap-1.5 whitespace-nowrap tabular-nums">
+  <span class="flex items-center gap-0.5 {% if trial.failure %}text-muted{% else %}font-medium text-success{% endif %}">{% if trial.failure %}{% icon "exclamation-circle" "size-3.5 text-warning" mini=True %}{% else %}{% icon "check-circle" "size-3.5" mini=True %}{% endif %}{% widthratio trial.rows_matched trial.rows_tried 100 %}%</span>
+  <span class="flex items-center gap-0.5 text-muted">{% icon "clock" "size-3.5" mini=True %}{{ trial.seconds|duration }}</span>
+</span>

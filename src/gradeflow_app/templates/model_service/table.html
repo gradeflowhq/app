@@ -17,11 +17,11 @@
   {% if test_failure %}<c-alert>Couldn't test: {{ test_failure }}</c-alert>{% endif %}
   {% if searchable %}<c-search label="Search models" class="w-full" id="model-search" hx-preserve x-on:input="search" />{% endif %}
   <div role="table" aria-label="Models" class="max-h-[min(28rem,55vh)] overflow-y-auto rounded-box border border-base-300">
-    <div role="row" class="sticky top-0 z-10 grid grid-cols-[minmax(0,1fr)_12.5rem_12.5rem] gap-2 border-b border-base-300 bg-base-100 px-3 py-2 text-xs font-medium text-muted max-sm:hidden">
+    <div role="row" class="sticky top-0 z-10 grid grid-cols-[minmax(0,1fr)_14.5rem_14.5rem] gap-2 border-b border-base-300 bg-base-100 px-3 py-2 text-xs font-medium text-muted max-sm:hidden">
       <span role="columnheader">Model</span><span role="columnheader">Fast</span><span role="columnheader">Careful</span>
     </div>
     {% for row in rows %}
-      <div role="row" data-search="{{ row.model }}" class="group/row grid grid-cols-[minmax(0,1fr)_12.5rem_12.5rem] items-center gap-2 border-b border-base-300 px-3 py-1.5 last:border-b-0 max-sm:grid-cols-1 max-sm:gap-1 max-sm:py-3">
+      <div role="row" data-search="{{ row.model }}" class="group/row grid grid-cols-[minmax(0,1fr)_14.5rem_14.5rem] items-center gap-2 border-b border-base-300 px-3 py-1.5 last:border-b-0 max-sm:grid-cols-1 max-sm:gap-1 max-sm:py-3">
         <code role="cell" class="truncate text-xs" title="{{ row.model }}">{{ row.model }}</code>
         {% for cell in row.cells %}
           <div role="cell" class="flex min-w-0 items-center gap-2"><span class="w-14 shrink-0 text-xs text-muted sm:hidden">{{ cell.role|capfirst }}</span>{% include "model_service/cell.html" %}</div>
