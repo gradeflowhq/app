@@ -1,7 +1,7 @@
 // htmx on every page: what its requests carry, and how responses swap in.
 
 import { modelHeaders, readModelService } from "../services/model-service.js";
-import { csrfToken } from "../services/requests.js";
+import { csrfToken, redirectToSignIn } from "../services/requests.js";
 
 const LIVE_REFRESH = "X-Live-Refresh";
 const TOPIC_PREFIX = "live-";
@@ -17,6 +17,12 @@ export function start() {
     const { request, sourceEvent } = event.detail.ctx;
     if (request.method !== "GET") Object.assign(request.headers, { "X-CSRFToken": csrfToken(), ...modelHeaders() });
     if (sourceEvent?.type?.startsWith(TOPIC_PREFIX)) request.headers[LIVE_REFRESH] = "true";
+  });
+  // A signed-out request goes to sign in rather than swapping in its 401.
+  document.addEventListener("htmx:before:response", (event) => {
+    if (event.detail.ctx.response.status !== 401) return;
+    event.preventDefault();
+    redirectToSignIn();
   });
   // Search forms leave empty fields out of the URL.
   document.addEventListener("htmx:config:request", (event) => {

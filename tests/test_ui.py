@@ -260,3 +260,9 @@ def test_an_answer_of_several_values_shows_each_value_its_question_holds() -> No
     assert answer_values("mitochondria~", values) == [("Value 1, text", "mitochondria"), ("Value 2, number", "")]
     assert answer_values("mitochondria~36~ATP", values) is None, "more values than it holds"
     assert answer_values("light", Question.load({"type": "text"})) is None
+
+
+def test_signed_out_in_page_requests_get_a_401(assessment: Assessment) -> None:
+    url = reverse("question_list", args=[assessment.pk])
+    assert Client().get(url, headers=HTMX_HEADERS | {"Sec-Fetch-Mode": "cors"}).status_code == 401
+    assert Client().get(url, headers={"Sec-Fetch-Mode": "navigate"}).status_code == 302, "page loads go to sign in"

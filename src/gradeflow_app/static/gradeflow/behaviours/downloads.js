@@ -3,6 +3,7 @@
 import { decryptText, ENCRYPTED_IDS } from "../lib/assessment-crypto.js";
 import { naturalOrder } from "../lib/words.js";
 import { assessmentKeysFor, missingCourseKeyMessage } from "../services/course-keys.js";
+import { request } from "../services/requests.js";
 import { showToast } from "../services/toasts.js";
 import { loadScript } from "../services/vendor.js";
 
@@ -13,7 +14,7 @@ async function download(event) {
   const button = event.submitter;
   button?.classList.add("btn-disabled");
   try {
-    const response = await fetch(form.action, { method: "POST", body: new FormData(form, button) });
+    const response = await request(form.action, { method: "POST", body: new FormData(form, button) });
     if (response.status === 422) return showErrors(form, await response.text());
     if (!response.ok) throw new Error(response.statusText);
     // Kept whole: text() drops a byte order mark, which spreadsheets need to read the file as UTF-8.

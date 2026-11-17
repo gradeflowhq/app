@@ -10,6 +10,7 @@ import { assessmentKeysFor, missingCourseKeyMessage } from "../../services/cours
 import { confirmAction, openDialog } from "../../services/dialogs.js";
 import { readModelHeaders } from "../../services/model-service.js";
 import { readJson } from "../../services/page-data.js";
+import { request } from "../../services/requests.js";
 import { loadScript } from "../../services/vendor.js";
 import { dropZone } from "../file-drop.js";
 import { idMappingFile } from "./id-mapping-file.js";
@@ -237,7 +238,7 @@ export const importer = () => {
       }
     },
     async fetchBytes(url) {
-      const response = await fetch(url);
+      const response = await request(url);
       if (!response.ok) throw new Error(response.statusText);
       return response.bytes();
     },
@@ -301,7 +302,7 @@ export const importer = () => {
         };
         for (const [field, value] of Object.entries(fields)) body.set(field, value);
         if (keepMissing) body.set("keep_missing", "on");
-        const response = await fetch(form.action, { method: "POST", body, headers: await readModelHeaders() });
+        const response = await request(form.action, { method: "POST", body, headers: await readModelHeaders() });
         // A refusal says why in plain text; an error page doesn't.
         if (!response.ok)
           throw new Error(response.headers.get("Content-Type")?.startsWith("text/plain") ? await response.text() : "");

@@ -1,8 +1,10 @@
 import json
 from collections.abc import Callable, Iterable
+from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from django.contrib import messages
+from django.contrib.auth import middleware as auth_middleware
 from django.contrib.messages.storage.base import Message
 from django.http import HttpRequest, HttpResponse
 from django.http.response import HttpResponseBase
@@ -26,6 +28,23 @@ class CompressionMiddleware(GZipMiddleware):
         if response.get("Content-Type", "").startswith("text/event-stream"):
             return response
         return super().process_response(request, response)
+
+
+class LoginRequiredMiddleware(auth_middleware.LoginRequiredMiddleware):
+    """Answers a signed-out in-page request with a 401, on which behaviours/htmx.js and services/requests.js go to sign
+    in, rather than with the sign-in page, which htmx would swap into the page."""
+
+    def process_view(
+        self,
+        request: HttpRequest,
+        view_func: Callable[..., HttpResponseBase],
+        view_args: tuple[Any, ...],
+        view_kwargs: dict[str, Any],
+    ) -> HttpResponseBase | None:
+        response = super().process_view(request, view_func, view_args, view_kwargs)
+        if response is not None and request.headers.get("Sec-Fetch-Mode", "navigate") != "navigate":
+            return HttpResponse(status=401)
+        return response
 
 
 class HtmxMessagesMiddleware:

@@ -3,7 +3,7 @@
 // signed in, without student IDs.
 
 import { deleteWrappingKey, loadKeyPair, loadWrappingKey, signedInAccount } from "../services/account.js";
-import { send } from "../services/requests.js";
+import { redirectToSignIn, send } from "../services/requests.js";
 
 async function signOutWithoutKeyPair() {
   const keyPair = await loadKeyPair();
@@ -13,7 +13,7 @@ async function signOutWithoutKeyPair() {
   );
   if (keyPair || !signedInAccount()?.wrappedPrivateKey || !hasIndexedDb) return;
   await send("/accounts/logout/");
-  location.assign(`/accounts/login/?${new URLSearchParams({ next: location.pathname + location.search })}`);
+  redirectToSignIn();
 }
 
 export function start() {
