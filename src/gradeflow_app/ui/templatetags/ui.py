@@ -136,6 +136,13 @@ def percent(value: float | None, total: float = 1) -> str:
 
 
 @register.filter
+def capped_percent(count: int, total: int) -> str:
+    """`count` as a whole percentage of `total`, at most 99% until `count` is `total`: 199 of 200 is 99%."""
+    percent = round(100 * count / total)
+    return f"{percent if count == total else min(percent, 99)}%"
+
+
+@register.filter
 def code_language(question: Question | Mapping[str, Question] | None, key: str | None = None) -> str | None:
     """What the question's answers are written in when they are code, which only lines up in a fixed-width font:
     "text" for code in no named language. Of several questions, those of question ``key``."""

@@ -2,7 +2,7 @@
 {% url 'model_service_test' as test_url %}
 {% hx_vals role=cell.role model=row.model as test_values %}
 {% if cell.testing %}
-  <span class="flex h-8 flex-1 items-center gap-2 px-2 text-sm text-muted"><span class="loading loading-spinner loading-xs shrink-0"></span>{% if cell.testing.progress_text %}<span class="truncate" title="{{ cell.testing.progress_text }}">{{ cell.testing.progress_text }}</span>{% else %}Testing…{% endif %}</span>
+  <span class="flex h-8 min-w-0 flex-1 items-center gap-2 px-2 text-sm text-muted"><span class="loading loading-spinner loading-xs shrink-0"></span>{% if cell.testing.progress_text %}<span class="truncate" title="{{ cell.testing.progress_text }}">{{ cell.testing.progress_text }}</span>{% else %}Testing…{% endif %}</span>
 {% elif not cell.trial %}
   <button type="button" class="btn btn-ghost btn-sm h-8 px-2 font-normal text-muted hover:text-base-content" hx-post="{{ test_url }}" hx-vals="{{ test_values }}" aria-label="Test {{ row.model }} as the {{ cell.role }} model">Test</button>
 {% elif not cell.trial.rows_tried %}
