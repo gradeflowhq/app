@@ -226,7 +226,7 @@ def archive(request: Request, access: MethodAccess) -> HttpResponse:
     method = access.method
     method.archived = "unarchive" not in request.POST
     method.save(update_fields=["archived", "updated_at"])
-    messages.success(request, "Archived. What uses it keeps working." if method.archived else "Unarchived.")
+    messages.success(request, "Archived." if method.archived else "Unarchived.")
     return redirect_page(request, reverse("method_latest", args=[method.pk]))
 
 
