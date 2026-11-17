@@ -266,3 +266,5 @@ def test_signed_out_in_page_requests_get_a_401(assessment: Assessment) -> None:
     url = reverse("question_list", args=[assessment.pk])
     assert Client().get(url, headers=HTMX_HEADERS | {"Sec-Fetch-Mode": "cors"}).status_code == 401
     assert Client().get(url, headers={"Sec-Fetch-Mode": "navigate"}).status_code == 302, "page loads go to sign in"
+    no_cookies = Client(enforce_csrf_checks=True)
+    assert no_cookies.post(url, headers={"Sec-Fetch-Mode": "cors"}).status_code == 401, "before the CSRF check"
