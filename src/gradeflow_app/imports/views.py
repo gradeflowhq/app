@@ -49,6 +49,7 @@ def import_page(request: Request, access: AssessmentAccess) -> HttpResponse:
                 model_to_dict(latest_file, fields=IMPORT_SETTINGS) if latest_file and latest_file.has_original else None
             ),
             "questions": list(access.assessment.questions.values_list("key", flat=True)),
+            "student_ids": list(access.assessment.students.values_list("encrypted_id", flat=True)),
             "max_file_bytes": MAX_FILE_BYTES,
         },
     )
@@ -85,10 +86,16 @@ def upload(request: Request, access: AssessmentAccess) -> HttpResponse:
         return _import_error(first_error(form))
     import_settings = form.cleaned_data
     csv_text, key_row = import_settings.pop("answers_csv"), import_settings.pop("answer_key")
+    keep_missing = import_settings.pop("keep_missing")
     try:
         with transaction.atomic():
             summary = import_submissions(
-                assessment, request.user, SubmissionsFile(**import_settings), csv_text, key_row
+                assessment,
+                request.user,
+                SubmissionsFile(**import_settings),
+                csv_text,
+                key_row,
+                keep_missing=keep_missing,
             )
             remark(assessment, summary.changed_questions, request.user, endpoint(request))
     except ImportFailed as error:
@@ -107,7 +114,8 @@ def upload(request: Request, access: AssessmentAccess) -> HttpResponse:
             if count
         ]
         details = [
-            f"{summary.student_count} students" + (f" ({', '.join(student_changes)})" if student_changes else "")
+            f"{summary.student_count} student{pluralize(summary.student_count)}"
+            + (f" ({', '.join(student_changes)})" if student_changes else "")
         ]
         if summary.changed_students:
             details.append(f"{summary.changed_students} with changed answers")

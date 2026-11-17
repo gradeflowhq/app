@@ -41,8 +41,11 @@ def import_submissions(
     file: SubmissionsFile,
     csv_text: str,
     key_row: dict[str, str] | None = None,
+    *,
+    keep_missing: bool = False,
 ) -> ImportSummary:
     """Replace the assessment's students and answers with `csv_text`, a CSV whose student IDs are already encrypted.
+    Students it doesn't have are removed, unless `keep_missing`.
 
     Questions already set up keep their settings but accept the new answers, such as a choice's new options; new ones
     are worked out from the answers. Both read the answers and `key_row`, the file's answer key row by answer column.
@@ -68,7 +71,7 @@ def import_submissions(
     assessment.lock()
     existing = {student.encrypted_id: student for student in assessment.students.all()}
     incoming = {submission.student_id: submission for submission in submissions}
-    removed_keys = existing.keys() - incoming.keys()
+    removed_keys = set() if keep_missing else existing.keys() - incoming.keys()
     changed_by_student = {
         key: {
             question
@@ -119,7 +122,7 @@ def import_submissions(
         if question.definition != previous_questions.get(question.key)
     )
     changed_questions.update(previous_keys - updated_questions.keys())
-    if existing.keys() != incoming.keys():
+    if removed_keys or incoming.keys() - existing.keys():
         # A marking marks every student at once, so new or removed students mean marking every question again.
         changed_questions.update(previous_keys | updated_questions.keys())
     return ImportSummary(

@@ -2,12 +2,12 @@
 // readable, as CSV, and the whole file encrypted, to be reopened. The file under review is `source`, a spreadsheet
 // (spreadsheet-source.js) or a zip (zip-source.js).
 
-import { decryptFile, encryptFile, encryptId } from "../../lib/assessment-crypto.js";
+import { decryptFile, decryptId, encryptFile, encryptId } from "../../lib/assessment-crypto.js";
 import { cellText } from "../../lib/cells.js";
 import { counted, formatList } from "../../lib/words.js";
 import { readZip } from "../../lib/zip-files.js";
 import { assessmentKeysFor, missingCourseKeyMessage } from "../../services/course-keys.js";
-import { confirmAction } from "../../services/dialogs.js";
+import { confirmAction, openDialog } from "../../services/dialogs.js";
 import { readModelHeaders } from "../../services/model-service.js";
 import { readJson } from "../../services/page-data.js";
 import { loadScript } from "../../services/vendor.js";
@@ -42,6 +42,10 @@ export const importer = () => {
     isReviewOpen: false,
     progress: 0,
     questionKeys: [],
+    /** The assessment's students, by encrypted ID. */
+    studentIds: [],
+    /** Those of them the new file doesn't have, by ID. */
+    missingIds: [],
     /** The file under review: `spreadsheetSource` or `zipSource`. */
     source: null,
     idMapping: null,
@@ -52,6 +56,7 @@ export const importer = () => {
     init() {
       savedSettings = readJson("import-settings");
       this.questionKeys = readJson("import-questions", []);
+      this.studentIds = readJson("import-student-ids", []);
       this.idMapping = idMappingFile(() => this.fileIds);
     },
     get isZip() {
@@ -95,7 +100,29 @@ export const importer = () => {
       const marking = this.removedQuestionsNote
         ? `${this.removedQuestionsNote} Other marking is kept.`
         : "Marking is kept.";
-      return `Students' answers and imported marks are replaced. ${marking} Students not in the new file are removed, with their adjustments.`;
+      return `Students' answers and imported marks are replaced. ${marking}`;
+    },
+    get missingStudentsNote() {
+      const count = this.missingIds.length;
+      return `${counted(count, "student")} ${count === 1 ? "isn't" : "aren't"} in the new file.`;
+    },
+    /** Asks before replacing the submissions file. Resolves whether to keep the students the new file doesn't have, or
+     * null to stop. */
+    async askBeforeReplacing(encryptedIds, keys) {
+      const incoming = new Set(encryptedIds);
+      const missing = this.studentIds.filter((id) => !incoming.has(id));
+      if (!missing.length)
+        return (await confirmAction("Replace the submissions file?", this.replaceDetail, "Replace")) ? false : null;
+      // An ID encrypted with a lost course key can't be read.
+      this.missingIds = await Promise.all(missing.map((id) => decryptId(id, keys).catch(() => "Unreadable ID")));
+      const dialog = document.getElementById("missing-students");
+      dialog.returnValue = "";
+      openDialog(dialog);
+      return new Promise((resolve) =>
+        dialog.addEventListener("close", () => resolve({ keep: true, remove: false }[dialog.returnValue] ?? null), {
+          once: true,
+        }),
+      );
     },
     get readPercent() {
       const { done, total } = this.readProgress;
@@ -253,6 +280,12 @@ export const importer = () => {
           row[0] = await encryptId(this.idMapping.mappedId(cellText(row[0])), keys);
           this.progress = Math.round((++encryptedCount / rows.length) * 100);
         }
+        const encryptedIds = rows.map(([id]) => id);
+        const keepMissing = this.studentIds.length ? await this.askBeforeReplacing(encryptedIds, keys) : false;
+        if (keepMissing === null) {
+          this.step = "review";
+          return;
+        }
         const original = fileContents.encrypted ?? (await encryptFile(fileContents.bytes, keys));
         await loadScript("papaparse-5.7.0.min.js");
         const form = this.$refs.upload;
@@ -267,6 +300,7 @@ export const importer = () => {
           ...(await this.idMapping.formFields(keys)),
         };
         for (const [field, value] of Object.entries(fields)) body.set(field, value);
+        if (keepMissing) body.set("keep_missing", "on");
         const response = await fetch(form.action, { method: "POST", body, headers: await readModelHeaders() });
         // A refusal says why in plain text; an error page doesn't.
         if (!response.ok)

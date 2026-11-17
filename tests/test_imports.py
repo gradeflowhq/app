@@ -221,6 +221,26 @@ def test_a_replace_says_which_students_it_added_and_removed(client: Client, asse
     assert "Submissions file replaced: 10 students (1 new, 1 removed); 1 with changed answers." in page
 
 
+def test_a_replace_can_keep_the_students_the_new_file_lacks(client: Client, assessment: Assessment) -> None:
+    s001 = assessment.students.get(encrypted_id=encrypted_id("S001"))
+    Adjustment.objects.create(student=s001, question=assessment.questions.get(key="Q1"), marks=0.5)
+    csv = f"StudentID,Q1,Q1 Pts,Q2,Q3\n{encrypted_id('S002')},changed,1,42.0,B\n"
+    response = upload(client, assessment, csv, keep_missing="on")
+    page = client.get(response.headers["HX-Redirect"], follow=True).text
+    assert "Submissions file replaced: 1 student; 1 with changed answers." in page
+    assert assessment.students.count() == 10
+    assert assessment.students.get(encrypted_id=encrypted_id("S001")).answers == s001.answers
+    assert Adjustment.objects.get().student == s001
+
+
+def test_a_replace_knows_the_students_it_would_compare_the_new_file_with(
+    client: Client, assessment: Assessment
+) -> None:
+    page = client.get(reverse("import", args=[assessment.pk]))
+    assert sorted(page.context["student_ids"]) == sorted(assessment.students.values_list("encrypted_id", flat=True))
+    assert 'id="import-student-ids"' in page.text
+
+
 EXAM_WITHOUT_Q3 = "".join(line.rsplit(",", 1)[0] + "\n" for line in EXAM_CSV.splitlines())
 
 

@@ -24,6 +24,7 @@ class UploadForm(forms.Form):
     file_questions = forms.JSONField(required=False)
     id_mapping = forms.JSONField(required=False)
     id_mapping_file = forms.FileField(required=False)
+    keep_missing = forms.BooleanField(required=False)
 
     def clean_answers_csv(self) -> str:
         try:
