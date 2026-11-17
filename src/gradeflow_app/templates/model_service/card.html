@@ -39,8 +39,8 @@
                 <span class="flex min-w-0 flex-wrap items-center gap-x-2">{% if role.model %}<code class="truncate text-base-content">{{ role.model }}</code>{% if role.trial %}{% include "model_service/score.html" with trial=role.trial %}{% endif %}{% elif choosing_job %}Finding one…{% else %}None{% endif %}</span>
               {% endfor %}
             </span>
-            {% if choosing_job %}<span class="mt-2 flex min-w-0 items-center gap-2"><span class="loading loading-spinner loading-xs shrink-0"></span><span class="truncate">Testing models{% if tests_done %} · {{ tests_done }} done{% endif %}{% if testing_now %} · <code>{{ testing_now.model }}</code> as {{ testing_now.role }}{% elif not tests_done %}…{% endif %}</span></span>{% endif %}
-          {% elif failure_reason %}<span class="text-error">Couldn't choose automatically: {{ failure_reason }}</span>
+            {% if choosing_job %}<span class="mt-2 flex min-w-0 items-center gap-2"><span class="loading loading-spinner loading-xs shrink-0"></span><span class="truncate">{% if choosing_job.progress_text %}{{ choosing_job.progress_text }}{% else %}Testing models{% if tests_done %} · {{ tests_done }} done{% endif %}{% if testing_now %} · <code>{{ testing_now.model }}</code> as {{ testing_now.role }}{% elif not tests_done %}…{% endif %}{% endif %}</span></span>{% endif %}
+          {% elif failure_reason %}<div class="text-error"><c-failure :text="failure_reason">Couldn't choose automatically: {{ failure_reason.splitlines.0 }}</c-failure></div>
           {% else %}Not chosen yet.{% if model_count %} Choosing automatically tests up to {{ model_count }} models on sample answers.{% endif %}{% endif %}
         </c-slot>
         {% if models_loaded %}

@@ -8,13 +8,13 @@
       <span class="min-w-0"><span class="block font-medium">Use the best automatically</span><span class="block text-sm text-muted">The one with the most sample answers right, then the fastest.</span></span>
     </label>
     {% if choosing_job %}
-      <span class="flex items-center gap-2 text-sm text-muted"><span class="loading loading-spinner loading-xs"></span>{{ tests_done }} done</span>
+      <span class="flex items-center gap-2 text-sm text-muted"><span class="loading loading-spinner loading-xs"></span>{% if choosing_job.progress_text %}{{ choosing_job.progress_text }}{% else %}{{ tests_done }} done{% endif %}</span>
       <button type="button" class="btn btn-sm" hx-post="{% url 'model_service_stop' %}">Stop</button>
     {% else %}
       <button type="button" class="btn btn-sm" hx-post="{% url 'model_service_choose' %}">{% icon "beaker" "size-4" %}Test models</button>
     {% endif %}
   </div>
-  {% if test_failure %}<c-alert>Couldn't test: {{ test_failure }}</c-alert>{% endif %}
+  {% if test_failure %}<c-alert class="grid-cols-[auto_1fr] justify-items-stretch"><c-failure :text="test_failure">Couldn't test: {{ test_failure.splitlines.0 }}</c-failure></c-alert>{% endif %}
   {% if searchable %}<c-search label="Search models" class="w-full" id="model-search" hx-preserve x-on:input="search" />{% endif %}
   <div role="table" aria-label="Models" class="max-h-[min(28rem,55vh)] overflow-y-auto rounded-box border border-base-300">
     <div role="row" class="sticky top-0 z-10 grid grid-cols-[minmax(0,1fr)_14.5rem_14.5rem] gap-2 border-b border-base-300 bg-base-100 px-3 py-2 text-xs font-medium text-muted max-sm:hidden">

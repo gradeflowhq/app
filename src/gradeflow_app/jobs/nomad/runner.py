@@ -1,17 +1,30 @@
-"""The runner on Nomad: each run is a batch job with the run's ID."""
+"""The runner on Nomad: each run is a batch job with the run's ID, tried once."""
 
+import logging
 from collections.abc import Iterator
 from contextlib import contextmanager
 from typing import Any
 
-from gradeflow_app.jobs.nomad.client import JOB_VARIABLE_PATH, Job, JobState, NomadClient, NomadUnavailable
+from gradeflow_app.jobs.nomad.client import (
+    JOB_VARIABLE_PATH,
+    Ended,
+    Job,
+    JobState,
+    NomadClient,
+    NomadUnavailable,
+    Placement,
+)
+from gradeflow_app.jobs.nomad.client import Ending as NomadEnding
 from gradeflow_app.jobs.runner import RUN_ID_PREFIX, Ending, Launch, Listener, Run, RunnerUnavailable, State, id_prefix
 
+_LOG = logging.getLogger(__name__)
 ENVIRONMENT_TEMPLATE = (
     f'{{{{ with nomadVar (print "{JOB_VARIABLE_PATH}" (env "NOMAD_JOB_ID")) }}}}'
     "{{ range .Tuples }}{{ .K }}={{ .V | toJSON }}\n{{ end }}{{ end }}"
 )
 """The task's environment, from the job's variable."""
+_STATES = {JobState.QUEUED: State.QUEUED, JobState.UNPLACED: State.QUEUED, JobState.RUNNING: State.RUNNING}
+_WAITING_STATES = {Placement.NO_NODE: State.NO_MACHINE, Placement.NO_ROOM: State.NO_ROOM}
 
 
 class NomadRunner:
@@ -26,54 +39,47 @@ class NomadRunner:
             self.client.register(self._spec(run, launch))
             self.client.put_variable(run.id, launch.environment())
 
-    def stop(self, kind: str, owner: object) -> None:
-        with _runner_errors():
-            for job in self.client.jobs(id_prefix(kind, owner)):
-                self.client.stop(job.id)
-
     def forget(self, run: Run) -> None:
         with _runner_errors():
             self.client.stop(run.id)
 
     def active(self, kind: str, owner: object = "") -> list[tuple[Run, State]]:
         with _runner_errors():
-            jobs = self.client.jobs(id_prefix(kind, owner))
-        return [
-            (run, State(job.state.value))
-            for job in jobs
-            if job.state is not JobState.ENDED and (run := Run.parse(job.id)) is not None
-        ]
+            jobs, _ = self.client.jobs(id_prefix(kind, owner))
+            return [
+                (run, self._state(job))
+                for job in jobs
+                if job.state is not JobState.ENDED and (run := Run.parse(job.id)) is not None
+            ]
 
     def follow(self, listener: Listener) -> None:
-        known: dict[str, JobState] = {}
         with _runner_errors():
-            for jobs in self.client.watch(RUN_ID_PREFIX):
-                known = self._tell(listener, known, jobs)
-                self._delete_leftover_variables()
+            # Listed before the jobs, since a variable is put only after its job is registered.
+            variable_ids = self.client.variable_ids(RUN_ID_PREFIX)
+            jobs, index = self.client.jobs(RUN_ID_PREFIX)
+            for job_id in set(variable_ids) - {job.id for job in jobs if job.state is not JobState.ENDED}:
+                self.client.delete_variable(job_id)
+            for job in jobs:
+                self._tell(listener, self.client.ended(job.id) if job.state is JobState.ENDED else job)
+            for change in self.client.changes(index):
+                self._tell(listener, change)
 
-    def _delete_leftover_variables(self) -> None:
-        """Delete the variables of jobs that ended or are gone, left by a failed `forget`."""
-        # Listed before the jobs, since a variable is put only after its job is registered.
-        job_ids = self.client.variable_ids(RUN_ID_PREFIX)
-        active = {job.id for job in self.client.jobs(RUN_ID_PREFIX) if job.state is not JobState.ENDED}
-        for job_id in set(job_ids) - active:
-            self.client.delete_variable(job_id)
+    def _state(self, job: Job) -> State:
+        if job.state is JobState.UNPLACED and (placement := self.client.placement(job.id)) is not None:
+            return _WAITING_STATES[placement]
+        return _STATES[job.state]
 
-    def _tell(self, listener: Listener, known: dict[str, JobState], jobs: list[Job]) -> dict[str, JobState]:
-        """Tell `listener` what changed in `jobs` since `known`, and return their states now."""
-        current = {job.id: job.state for job in jobs}
-        changed = {job_id for job_id, state in current.items() if known.get(job_id) != state} | (known.keys() - current)
-        for job_id in sorted(changed):
-            if (run := Run.parse(job_id)) is None:
-                continue
-            if current.get(job_id) is JobState.ENDED:
-                listener.ended(run, Ending(self.client.ending(job_id).value))
-            else:
+    def _tell(self, listener: Listener, change: Job | Ended) -> None:
+        match change:
+            case Ended(job_id, ending, details, message) if (run := Run.parse(job_id)) is not None:
+                if ending is not NomadEnding.EXITED:
+                    _LOG.warning("Nomad job %s ended (%s): %s", job_id, ending, message)
+                listener.ended(run, Ending(ending.value), details)
+            case Job(job_id) if (run := Run.parse(job_id)) is not None:
                 listener.changed(run)
-        return current
 
     def _spec(self, run: Run, launch: Launch) -> dict[str, Any]:
-        """The Nomad job that runs `run`."""
+        """The Nomad job that runs `run` once."""
         return {
             "ID": run.id,
             "Name": run.id,
@@ -85,12 +91,8 @@ class NomadRunner:
                 {
                     "Name": launch.task,
                     "MaxRunDuration": launch.time_limit * 1_000_000_000,
-                    "RestartPolicy": {
-                        "Attempts": 1,
-                        "Delay": 5_000_000_000,
-                        "Interval": 86_400_000_000_000,
-                        "Mode": "fail",
-                    },
+                    "RestartPolicy": {"Attempts": 0, "Mode": "fail"},
+                    "ReschedulePolicy": {"Attempts": 0, "Unlimited": False},
                     "Tasks": [
                         {
                             "Name": launch.task,

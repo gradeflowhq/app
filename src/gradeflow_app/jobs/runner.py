@@ -41,19 +41,27 @@ def id_prefix(kind: str, owner: object = "") -> str:
 
 
 class State(StrEnum):
+    """How a run that hasn't ended is going."""
+
     QUEUED = "queued"
-    """Waiting for a place or for its image."""
+    """Waiting for its turn or its image."""
+    NO_MACHINE = "no machine"
+    """Waiting for a machine that can run it."""
+    NO_ROOM = "no room"
+    """Waiting for room on a machine that can run it."""
     RUNNING = "running"
-    ENDED = "ended"
 
 
 class Ending(StrEnum):
     EXITED = "exited"
     """By itself."""
+    NOT_STARTED = "not started"
+    """Before it started, such as when its image couldn't be pulled."""
     TIMED_OUT = "timed out"
     OUT_OF_MEMORY = "out of memory"
+    LOST = "lost"
+    """With the machine running it."""
     FAILED = "failed"
-    """A crash, a stop or a lost machine."""
 
 
 class RunnerUnavailable(Exception):
@@ -88,8 +96,8 @@ class Listener(Protocol):
     def changed(self, run: Run) -> None:
         """`run` was queued, started running or was forgotten."""
 
-    def ended(self, run: Run, ending: Ending) -> None:
-        """`run` ended; `ending` says how."""
+    def ended(self, run: Run, ending: Ending, details: str) -> None:
+        """`run` ended; `ending` says how, and `details` what the runner recorded, safe to show anyone."""
 
 
 class Runner(Protocol):
@@ -97,14 +105,12 @@ class Runner(Protocol):
 
     def start(self, run: Run, launch: Launch) -> None: ...
 
-    def stop(self, kind: str, owner: object) -> None:
-        """Stop and forget `owner`'s runs of `kind`."""
-
     def forget(self, run: Run) -> None:
-        """Stop and forget `run`, whose outcome is in."""
+        """Stop and forget `run`."""
 
     def active(self, kind: str, owner: object = "") -> list[tuple[Run, State]]:
         """The runs of `kind`, or `owner`'s, that haven't ended."""
 
     def follow(self, listener: Listener) -> None:
-        """Tell `listener` of each change to the runs until the runner can't be reached. It may tell a change twice."""
+        """Tell `listener` of each run the runner holds, then of each change until it can't be reached. It may tell a
+        change twice."""

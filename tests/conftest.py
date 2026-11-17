@@ -148,12 +148,6 @@ class FakeRunner:
         if self.runs_jobs and launch.task != "compare":
             self.run(run.id)
 
-    def stop(self, kind: str, owner: object) -> None:
-        self._check_up()
-        for run_id in [run_id for run_id in self.held if run_id.startswith(id_prefix(kind, owner))]:
-            self.stopped.append(run_id)
-            del self.held[run_id]
-
     def forget(self, run: Run) -> None:
         self._check_up()
         self.stopped.append(run.id)
@@ -164,7 +158,7 @@ class FakeRunner:
         return [
             (run, state)
             for run_id, state in self.held.items()
-            if run_id.startswith(id_prefix(kind, owner)) and state is not State.ENDED and (run := Run.parse(run_id))
+            if run_id.startswith(id_prefix(kind, owner)) and (run := Run.parse(run_id))
         ]
 
     def follow(self, listener: Listener) -> None:
@@ -176,12 +170,16 @@ class FakeRunner:
         launch = self.launches[run_id]
         sandbox(launch.environment())["main"](launch.task)
 
-    def end(self, run_id: str, ending: Ending = Ending.FAILED) -> None:
+    def end(
+        self,
+        run_id: str,
+        ending: Ending = Ending.FAILED,
+        details: str = "The task stopped (exit code 1).",
+    ) -> None:
         """End the run without its calling back, telling the app as the worker would."""
-        self.held[run_id] = State.ENDED
         run = Run.parse(run_id)
         assert run is not None
-        runs.listener.ended(run, ending)
+        runs.listener.ended(run, ending, details)
 
     def run_ids(self, kind: str) -> list[str]:
         """The IDs of the runs of `kind` started, oldest first."""

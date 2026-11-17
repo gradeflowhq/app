@@ -14,7 +14,7 @@ from pytest_django import Settings
 from gradeflow_app.accounts.models import User
 from gradeflow_app.assessments.models import Assessment
 from gradeflow_app.jobs import runs
-from gradeflow_app.jobs.runner import Ending, Run
+from gradeflow_app.jobs.runner import Ending, Run, State
 from gradeflow_app.jobs.runs import ENDING_REASONS, UNAVAILABLE_REASON
 from gradeflow_app.libraries.designer.workspace import MethodWorkspace
 from gradeflow_app.libraries.models import Method
@@ -26,7 +26,7 @@ from gradeflow_app.model_service import views
 from gradeflow_app.model_service.endpoints import SERVICE_HEADER, TOKEN_HEADER, endpoint
 from gradeflow_app.model_service.models import ANSWERS_PER_REQUEST_LIMITS, ModelService, ModelTest
 from gradeflow_app.requests import Request
-from tests.conftest import FakeRunner, create_method_draft, full_marks_marking, post_callback, signature
+from tests.conftest import FakeRunner, between, create_method_draft, full_marks_marking, post_callback, signature
 
 PROVIDER_URL = "https://models.example.com/v1"
 PROVIDER = "Example AI"
@@ -295,6 +295,21 @@ def test_testing_a_model_shows_how_it_did_as_soon_as_it_finishes(client: Client,
     table = post_model_service(client, "model_service_table", listed).text
     assert "Testing…" not in table, "a test whose job ended without a result can be run again"
     assert f"Couldn't test: {ENDING_REASONS[Ending.TIMED_OUT]}" in table
+    details = f"The task stopped (exit code 1). Reference {job_ids[1].rsplit('_', 1)[1]}."
+    assert details in between(table, "</summary>", "</details>")
+
+
+def test_tests_the_runner_cant_place_say_what_they_wait_for(client: Client, idle_runner: FakeRunner) -> None:
+    listed: dict[str, Any] = {"listed": ["decider", "reasoner"]}
+    post_model_service(client, "model_service_test", listed | {"role": "fast", "model": "decider"})
+    post_model_service(client, "model_service_choose", listed)
+    [trial_id], [choice_id] = idle_runner.run_ids("model-trial"), idle_runner.run_ids("model-choice")
+    idle_runner.held[trial_id] = State.NO_MACHINE
+    idle_runner.held[choice_id] = State.NO_ROOM
+    table = post_model_service(client, "model_service_table", listed).text
+    assert "Waiting until the marking service can run it." in table
+    assert "Waiting for the marking service to free up." in table
+    assert "Waiting for the marking service to free up." in post_model_service(client, "model_service").text
 
 
 def test_a_model_the_service_failed_on_can_be_tried_again(

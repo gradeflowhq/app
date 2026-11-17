@@ -15,6 +15,7 @@ from gradeflow_core import GradeFlowError, ModelTrial, best_models, list_models
 from pydantic import ValidationError as PydanticValidationError
 
 from gradeflow_app.jobs.payloads import ModelTrialRequest
+from gradeflow_app.jobs.runs import RunState
 from gradeflow_app.model_service import choosing
 from gradeflow_app.model_service.endpoints import SERVICE_HEADER, connected_service, endpoint
 from gradeflow_app.model_service.models import (
@@ -42,14 +43,14 @@ class RoleModel:
 
 @dataclass(frozen=True)
 class TrialCell:
-    """A model in one role in the table: how it did when tested, and whether it is in use, the best tested so far or
-    being tested."""
+    """A model in one role in the table: how it did when tested, whether it is in use or the best tested so far, and
+    how its test is going while one runs."""
 
     role: str
     trial: ModelTrial | None
     in_use: bool
     best: bool
-    testing: bool
+    testing: RunState | None
 
 
 @dataclass(frozen=True)
@@ -200,7 +201,7 @@ def _table(request: Request, service: ModelService | None, model_names: Sequence
     trials = {(test.model, test.role): test.trial() for test in tests if test.seconds is not None}
     best = dict(zip(ModelTest.Role.values, best_models(trials.values()), strict=True))
     in_use = dict(zip(ModelTest.Role.values, service.models_in_use(), strict=True))
-    testing = {(test.model, test.role) for test in choosing.being_tested(service)}
+    testing = choosing.being_tested(service)
     rows = [
         ModelRow(
             model,
@@ -210,7 +211,7 @@ def _table(request: Request, service: ModelService | None, model_names: Sequence
                     trials.get((model, role)),
                     model == in_use[role],
                     model == best[role],
-                    (model, role) in testing,
+                    testing.get((model, role)),
                 )
                 for role, _ in ROLES
             ],

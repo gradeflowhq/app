@@ -23,7 +23,7 @@ uv run manage.py tailwind watch  # downloads the Tailwind CLI on first run
 uv run uvicorn gradeflow_app.asgi:application --host 0.0.0.0 --port 8000 --reload \
   --reload-dir src --reload-include '*.html' --reload-include '*.txt'
 uv run manage.py db_worker       # sends invitation emails
-uv run manage.py job_worker      # follows sandbox jobs in Nomad, and fails those that end without calling back
+uv run manage.py job_worker      # follows Nomad's events for sandbox jobs, and fails those that end without calling back
 ```
 
 Then sign up at http://localhost:8000. Emails, sign-up codes included, are written to `GRADEFLOW_EMAIL_FILE_PATH`.
@@ -43,9 +43,15 @@ Tests run jobs in-process, so they need PostgreSQL but not Nomad. pytest keeps i
 
 ### Nomad
 
-Marking and grouping answers by meaning run as Nomad batch jobs in the sandbox image. For development, start an agent with `nomad agent -dev` and the Docker driver, and point `GRADEFLOW_APP_URL_FOR_JOBS` at an address of this machine its containers can reach. Uvicorn listens on all interfaces for that reason.
+Marking and grouping answers by meaning run as Nomad batch jobs in the sandbox image, each tried once. For development, run one agent with the Docker driver and a data directory, so its jobs survive restarts:
 
-Jobs pull the sandbox from a registry on port 5055, which runs as a Nomad service job. Submit it once, and again whenever the agent restarts:
+```sh
+nomad agent -server -client -bootstrap-expect 1 -data-dir "$HOME/.local/share/nomad"
+```
+
+Point `GRADEFLOW_APP_URL_FOR_JOBS` at an address of this machine its containers can reach. Uvicorn listens on all interfaces for that reason.
+
+Jobs pull the sandbox from a registry on port 5055, which runs as a Nomad service job. Submit it once:
 
 ```sh
 jq -Rs '{JobHCL: ., Canonicalize: true}' sandbox/registry.nomad.hcl \

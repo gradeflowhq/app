@@ -25,11 +25,18 @@ from gradeflow_app.live.topics import notify_change
 UNAVAILABLE_REASON = "The marking service is unavailable."
 UNREADABLE_REASON = "The marking service sent results that can't be read."
 ENDING_REASONS = {
+    Ending.NOT_STARTED: "The marking service couldn't start.",
     Ending.TIMED_OUT: "Ran past its time limit.",
     Ending.OUT_OF_MEMORY: "Ran out of memory.",
+    Ending.LOST: "The marking service stopped responding.",
     Ending.FAILED: "The marking service stopped before finishing.",
 }
 """Why a run that ended without calling back failed, by how it ended."""
+WAITING_TEXTS = {
+    State.NO_MACHINE: "Waiting until the marking service can run it.",
+    State.NO_ROOM: "Waiting for the marking service to free up.",
+}
+"""What a run waits for, by its state."""
 ENDED_LIFETIME = 24 * 60 * 60
 """Seconds an ended run's late callbacks are ignored for."""
 _LOG = logging.getLogger(__name__)
@@ -75,7 +82,7 @@ def start(run: Run, model_endpoint: ModelEndpoint | None = None) -> None:
 
     def submit() -> None:
         try:
-            runner().stop(run.kind, run.owner)
+            _stop(run.kind, run.owner)
             runner().start(run, _launch(run, model_endpoint))
         except RunnerUnavailable:
             _LOG.warning("Couldn't start %s", run.id, exc_info=True)
@@ -89,7 +96,7 @@ def stop(kind: str, owner: object) -> None:
 
     def stop_runs() -> None:
         with suppress(RunnerUnavailable):
-            runner().stop(kind, owner)
+            _stop(kind, owner)
 
     transaction.on_commit(stop_runs)
 
@@ -160,16 +167,21 @@ class _Listener:
         if is_registered(run):
             notify(run)
 
-    def ended(self, run: Run, ending: Ending) -> None:
+    def ended(self, run: Run, ending: Ending, details: str) -> None:
         if not is_registered(run):
             return
         if ending is Ending.EXITED:
             _forget(run)
         else:
-            end(run, error=ENDING_REASONS[ending])
+            end(run, error=f"{ENDING_REASONS[ending]}\n{details} Reference {run.nonce}.")
 
 
 listener = _Listener()
+
+
+def _stop(kind: str, owner: object) -> None:
+    for run, _ in runner().active(kind, owner):
+        runner().forget(run)
 
 
 def _forget(run: Run) -> None:
@@ -198,7 +210,9 @@ def _launch(run: Run, model_endpoint: ModelEndpoint | None) -> Launch:
 
 
 def _running_state(run: Run, state: State) -> RunState:
-    progress: Progress = django_cache.get(_progress_key(run), {})
+    progress: Progress = (
+        {"progress_text": WAITING_TEXTS[state]} if state in WAITING_TEXTS else django_cache.get(_progress_key(run), {})
+    )
     return RunState("running" if state is State.RUNNING else "queued", **progress)
 
 

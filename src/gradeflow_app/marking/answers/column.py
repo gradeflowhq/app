@@ -263,7 +263,7 @@ def out_of_date_notices(accepted: Mapping[Marking, Step], question_keys: Iterabl
         text = (
             "Not marked again: the change came from someone without an AI service."
             if marking.failure == NO_MODEL_SERVICE
-            else f"Marking failed: {marking.failure}"
+            else f"Marking failed: {marking.failure.splitlines()[0]}"
         )
         notices.append(OutOfDateNotice(f"{text} The marks shown are from before.", marking))
     return notices

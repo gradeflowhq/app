@@ -3,7 +3,7 @@
 <div class="flex flex-wrap items-center justify-between gap-x-8 gap-y-3 py-4">
   <div class="min-w-0">
     <p class="font-medium">{{ label }}</p>
-    {% if detail %}<p class="text-sm text-muted">{{ detail }}</p>{% endif %}
+    {% if detail %}<div class="text-sm text-muted">{{ detail }}</div>{% endif %}
   </div>
   <div class="flex flex-wrap items-center gap-2">{{ slot }}</div>
 </div>

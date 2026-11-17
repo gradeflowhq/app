@@ -4,7 +4,6 @@ a time, by runs of `try_model`. Each test is kept as it starts and ends."""
 from typing import Any
 
 from django.db import transaction
-from django.db.models import QuerySet
 from gradeflow_core import ModelEndpoint, ModelTrial
 
 from gradeflow_app.jobs import runs
@@ -48,10 +47,16 @@ def running_choice(service: ModelService) -> tuple[Run, RunState] | None:
     return next(iter(runs.active(MODEL_CHOICE, service.pk)), None)
 
 
-def being_tested(service: ModelService) -> QuerySet[ModelTest]:
-    """Tests under way, by runs that haven't ended."""
-    active = [run.id for run, _ in [*runs.active(MODEL_CHOICE, service.pk), *runs.active(MODEL_TRIAL)]]
-    return service.tests.filter(testing=True, run_id__in=active)
+def being_tested(service: ModelService) -> dict[tuple[str, str], RunState]:
+    """Each model and role under test by a run that hasn't ended, with how the run is going."""
+    tests = list(service.tests.filter(testing=True))
+    trial_tests = [test.pk for test in tests if (run := Run.parse(test.run_id)) is not None and run.kind == MODEL_TRIAL]
+    active = [
+        *runs.active(MODEL_CHOICE, service.pk),
+        *(pair for pk in trial_tests for pair in runs.active(MODEL_TRIAL, pk)),
+    ]
+    states = {run.id: state for run, state in active}
+    return {(test.model, test.role): states[test.run_id] for test in tests if test.run_id in states}
 
 
 def _start_test(model_test: ModelTest, run: Run) -> None:

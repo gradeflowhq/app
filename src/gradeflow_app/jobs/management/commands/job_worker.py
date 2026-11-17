@@ -21,9 +21,9 @@ class _Listener:
         close_old_connections()
         runs.listener.changed(run)
 
-    def ended(self, run: Run, ending: Ending) -> None:
+    def ended(self, run: Run, ending: Ending, details: str) -> None:
         close_old_connections()
-        runs.listener.ended(run, ending)
+        runs.listener.ended(run, ending, details)
 
 
 class Command(BaseCommand):

@@ -9,6 +9,7 @@ import pytest
 from django.template.loader import render_to_string
 from django.test import Client
 from django.urls import reverse
+from django.utils.html import escape
 from gradeflow_core import AnswerComparison, Marked, ModelEndpoint, Submission, compare_answers
 from gradeflow_core.editing import dump_yaml
 from pydantic import SecretStr
@@ -30,6 +31,7 @@ from gradeflow_app.results.models import Adjustment, Result
 from tests.conftest import (
     HTMX_HEADERS,
     FakeRunner,
+    between,
     code_draft,
     marked_by_sandbox,
     post_callback,
@@ -238,6 +240,31 @@ def test_callbacks_are_signed_and_fit_their_run(
     )
 
 
+@pytest.mark.parametrize(
+    ("state", "text"),
+    [
+        (State.NO_MACHINE, "Waiting until the marking service can run it."),
+        (State.NO_ROOM, "Waiting for the marking service to free up."),
+    ],
+)
+def test_a_remark_the_runner_cant_place_says_what_it_waits_for(
+    client: Client,
+    assessment: Assessment,
+    fully_marked: Assessment,
+    user: User,
+    idle_runner: FakeRunner,
+    start: Start,
+    state: State,
+    text: str,
+) -> None:
+    run_id = start_remark(start, assessment, "Q1", user)
+    idle_runner.held[run_id] = state
+    [(marking, _)] = running_remarks(assessment)
+    answers_column = client.get(reverse("answers", args=[assessment.pk, marking.question_id])).text
+    assert "Waiting to start…" in answers_column
+    assert text in answers_column
+
+
 def test_a_remark_shows_its_progress_then_its_results(
     client: Client, assessment: Assessment, fully_marked: Assessment, user: User, idle_runner: FakeRunner, start: Start
 ) -> None:
@@ -325,13 +352,16 @@ def test_a_run_started_while_the_runner_is_down_fails_saying_so(
 @pytest.mark.parametrize(
     ("ending", "failure"),
     [
+        (Ending.NOT_STARTED, "The marking service couldn't start."),
         (Ending.TIMED_OUT, "Ran past its time limit."),
         (Ending.OUT_OF_MEMORY, "Ran out of memory."),
+        (Ending.LOST, "The marking service stopped responding."),
         (Ending.FAILED, "The marking service stopped before finishing."),
         (Ending.EXITED, ""),
     ],
 )
 def test_a_run_that_ended_without_calling_back_fails_with_the_runners_reason(
+    client: Client,
     assessment: Assessment,
     fully_marked: Assessment,
     user: User,
@@ -342,7 +372,12 @@ def test_a_run_that_ended_without_calling_back_fails_with_the_runners_reason(
 ) -> None:
     run_id = start_remark(start, assessment, "Q1", user)
     idle_runner.end(run_id, ending)
-    assert Marking.objects.get(question__key="Q1").failure == failure
+    details = f"The task stopped (exit code 1). Reference {run_id.rsplit('_', 1)[1]}."
+    assert Marking.objects.get(question__key="Q1").failure == (f"{failure}\n{details}" if failure else "")
+    column = client.get(reverse("answers", args=[assessment.pk, assessment.questions.get(key="Q1").pk])).text
+    if failure:
+        assert escape(f"Marking failed: {failure} The marks shown are from before.") in column
+        assert details in between(column, "</summary>", "</details>")
     assert run_id not in idle_runner.held
 
 
