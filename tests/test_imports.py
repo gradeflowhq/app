@@ -227,7 +227,7 @@ def test_a_replace_can_keep_the_students_the_new_file_lacks(client: Client, asse
     csv = f"StudentID,Q1,Q1 Pts,Q2,Q3\n{encrypted_id('S002')},changed,1,42.0,B\n"
     response = upload(client, assessment, csv, keep_missing="on")
     page = client.get(response.headers["HX-Redirect"], follow=True).text
-    assert "Submissions file replaced: 1 student; 1 with changed answers." in page
+    assert "Submissions file replaced: 1 student; kept 9 students not in the file; 1 with changed answers." in page
     assert assessment.students.count() == 10
     assert assessment.students.get(encrypted_id=encrypted_id("S001")).answers == s001.answers
     assert Adjustment.objects.get().student == s001

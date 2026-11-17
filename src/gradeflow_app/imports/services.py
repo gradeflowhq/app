@@ -28,6 +28,7 @@ class ImportSummary:
     removed_questions: list[str]
     new_students: int
     removed_students: int
+    kept_students: int
     changed_students: int
     first_import: bool
     changed_questions: set[str]
@@ -71,7 +72,8 @@ def import_submissions(
     assessment.lock()
     existing = {student.encrypted_id: student for student in assessment.students.all()}
     incoming = {submission.student_id: submission for submission in submissions}
-    removed_keys = set() if keep_missing else existing.keys() - incoming.keys()
+    missing_keys = existing.keys() - incoming.keys()
+    removed_keys = set() if keep_missing else missing_keys
     changed_by_student = {
         key: {
             question
@@ -132,6 +134,7 @@ def import_submissions(
         removed_questions=sorted(previous_keys - updated_questions.keys()),
         new_students=len(incoming.keys() - existing.keys()),
         removed_students=len(removed_keys),
+        kept_students=len(missing_keys - removed_keys),
         changed_students=changed_students,
         first_import=first_import,
         changed_questions=changed_questions,

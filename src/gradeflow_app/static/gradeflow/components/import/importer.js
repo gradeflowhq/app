@@ -114,8 +114,8 @@ export const importer = () => {
       const missing = this.studentIds.filter((id) => !incoming.has(id));
       if (!missing.length)
         return (await confirmAction("Replace the submissions file?", this.replaceDetail, "Replace")) ? false : null;
-      // An ID encrypted with a lost course key can't be read.
-      this.missingIds = await Promise.all(missing.map((id) => decryptId(id, keys).catch(() => "Unreadable ID")));
+      // An ID encrypted with a lost course key can't be read: null shows it encrypted.
+      this.missingIds = await Promise.all(missing.map((id) => decryptId(id, keys).catch(() => null)));
       const dialog = document.getElementById("missing-students");
       dialog.returnValue = "";
       openDialog(dialog);

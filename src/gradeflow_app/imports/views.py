@@ -117,6 +117,9 @@ def upload(request: Request, access: AssessmentAccess) -> HttpResponse:
             f"{summary.student_count} student{pluralize(summary.student_count)}"
             + (f" ({', '.join(student_changes)})" if student_changes else "")
         ]
+        if summary.kept_students:
+            kept = summary.kept_students
+            details.append(f"kept {kept} student{pluralize(kept)} not in the file")
         if summary.changed_students:
             details.append(f"{summary.changed_students} with changed answers")
         if summary.added_questions:

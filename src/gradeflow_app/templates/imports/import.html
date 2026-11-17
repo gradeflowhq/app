@@ -48,7 +48,7 @@
 
         <div class="flex flex-wrap items-center justify-end gap-3">
           <p class="mr-auto flex items-center gap-1.5 text-sm text-error" x-show="fileProblem" x-cloak>{% icon "exclamation-circle" "size-4" %}<span x-text="fileProblem"></span></p>
-          <template x-if="step === 'uploading'"><span class="flex items-center gap-3 text-sm text-muted" role="status">Encrypting student IDs…{% include "imports/progress_bar.html" with percent="progress" label="Encrypting student IDs" %}</span></template>
+          <template x-if="step === 'uploading'"><span class="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted" role="status">Encrypting student IDs…{% include "imports/progress_bar.html" with percent="progress" label="Encrypting student IDs" %}</span></template>
           <button class="btn btn-primary" x-on:click="submit" :disabled="step === 'uploading' || !!fileProblem">{% icon "arrow-up-tray" "size-4" %}{% if latest_file %}Replace submissions{% else %}Import submissions{% endif %}</button>
         </div>
       </div>
@@ -60,7 +60,7 @@
       <form method="dialog">
         <div class="grid gap-3 px-6 pb-2">
           <p x-text="missingStudentsNote"></p>
-          <ul class="grid max-h-40 grid-cols-[repeat(auto-fill,minmax(7rem,1fr))] gap-x-3 gap-y-1 overflow-y-auto font-mono text-sm text-muted"><template x-for="(id, index) in missingIds" :key="index"><li x-text="id"></li></template></ul>
+          <ul class="grid max-h-40 grid-cols-[repeat(auto-fill,minmax(min(14rem,100%),1fr))] gap-x-3 gap-y-1 overflow-y-auto font-mono text-sm text-muted"><template x-for="(id, index) in missingIds" :key="index"><li class="truncate" :title="id || 'Encrypted'"><template x-if="id"><span x-text="id"></span></template><template x-if="!id"><span data-student-id-state="encrypted"><span class="sr-only">Encrypted</span></span></template></li></template></ul>
           <p class="text-sm text-muted" x-text="replaceDetail"></p>
         </div>
         <c-dialog.footer><button class="btn mr-auto">Cancel</button><button class="btn" value="keep">Keep them</button><button class="btn" value="remove">Remove them</button></c-dialog.footer>
