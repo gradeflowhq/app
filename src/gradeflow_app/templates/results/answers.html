@@ -67,7 +67,7 @@
 {% partialdef question_description %}{% if description %}<details class="group/about -mt-2 px-4 pb-3 text-muted"><summary class="cursor-pointer list-none"><div class="prose-core preview-two-lines wrap-break-word text-sm group-open/about:max-h-[40vh] group-open/about:overflow-y-auto" x-data="math">{{ description|math_markdown }}</div></summary></details>{% endif %}{% endpartialdef %}
 
 {% partialdef column_notices %}
-{% if not draft %}{% for notice in out_of_date_notices %}<p role="status" class="alert alert-warning alert-soft text-sm">{{ notice }}</p>{% endfor %}{% endif %}
+{% if not draft %}{% for notice in out_of_date_notices %}<div role="status" class="alert alert-warning alert-soft text-sm"><span class="flex-1">{{ notice.text }}</span>{% if access.can_edit %}<button class="btn btn-sm whitespace-nowrap" hx-post="{% url 'marking_remark' notice.marking.assessment_id notice.marking.pk %}" hx-swap="none">Mark again</button>{% endif %}</div>{% endfor %}{% endif %}
 {% if asks_models %}<div x-data="modelServiceNotice"><p role="status" class="alert alert-info alert-soft text-sm" x-show="loaded && !connected" x-cloak>{% icon "information-circle" %}<span>This marking uses AI, and you aren't connected to an AI service. <a class="link" href="{% url 'integrations' %}">Connect one</a> to mark these answers.</span></p></div>{% endif %}
 {% endpartialdef %}
 

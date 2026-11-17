@@ -82,16 +82,26 @@ def test_a_failed_run_says_the_marks_are_from_before(
     run = schedule_marking(full_marks_marking(assessment, "Q1"), user)
     assert run is not None
     idle_runner.end(run.id, Ending.TIMED_OUT)
-    assert out_of_date_notices(assessment_checks(assessment), ["Q1"]) == [
+    assert [notice.text for notice in out_of_date_notices(assessment_checks(assessment), ["Q1"])] == [
         "Marking failed: Ran past its time limit. The marks shown are from before."
     ]
 
 
-def test_a_failed_marking_is_flagged_in_the_question_list(
+def test_a_failed_marking_is_flagged_in_the_question_list_until_marked_again(
     client: Client, assessment: Assessment, user: User, idle_runner: FakeRunner
 ) -> None:
-    run = schedule_marking(full_marks_marking(assessment, "Q1"), user)
+    marking = full_marks_marking(assessment, "Q1")
+    run = schedule_marking(marking, user)
     assert run is not None
     idle_runner.end(run.id, Ending.TIMED_OUT)
-    listed = client.get(reverse("question_list", args=[assessment.pk]), {"question": ""}).text
+    list_url = reverse("question_list", args=[assessment.pk])
+    listed = client.get(list_url, {"question": ""}).text
     assert listed.count('<span class="sr-only">Marking failed</span>') == 1
+    column = client.get(reverse("answers", args=[assessment.pk, marking.question_id])).text
+    remark_url = reverse("marking_remark", args=[assessment.pk, marking.pk])
+    assert f'hx-post="{remark_url}"' in column
+    assert client.post(remark_url).status_code == 204
+    marking.refresh_from_db()
+    assert marking.failure == ""
+    assert len(idle_runner.run_ids(REMARK)) == 2
+    assert "Marking failed" not in client.get(list_url, {"question": ""}).text

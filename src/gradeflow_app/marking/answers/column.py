@@ -3,7 +3,7 @@
 import math
 from collections import Counter
 from collections.abc import Callable, Iterable, Mapping
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from typing import Any
 
 from django.http import Http404
@@ -246,21 +246,27 @@ def combinations_context(
     }
 
 
-def out_of_date_notices(accepted: Mapping[Marking, Step], question_keys: Iterable[str]) -> list[str]:
+@dataclass(frozen=True)
+class OutOfDateNotice:
+    text: str
+    marking: Marking
+
+
+def out_of_date_notices(accepted: Mapping[Marking, Step], question_keys: Iterable[str]) -> list[OutOfDateNotice]:
     """Why the marks of these questions are from before: their marking, one of the `accepted` ones, failed or wasn't
     run. One that can't mark says why in its own column; one marking them now shows its progress."""
     keys = set(question_keys)
-    messages = []
+    notices = []
     for marking in accepted:
-        if not keys & marking.questions_given_marks:
+        if not keys & marking.questions_given_marks or not marking.failure:
             continue
-        if marking.failure == NO_MODEL_SERVICE:
-            messages.append(
-                "Not marked again: the change came from someone without an AI service. The marks shown are from before."
-            )
-        elif marking.failure:
-            messages.append(f"Marking failed: {marking.failure} The marks shown are from before.")
-    return messages
+        text = (
+            "Not marked again: the change came from someone without an AI service."
+            if marking.failure == NO_MODEL_SERVICE
+            else f"Marking failed: {marking.failure}"
+        )
+        notices.append(OutOfDateNotice(f"{text} The marks shown are from before.", marking))
+    return notices
 
 
 def _asks_models(accepted: Mapping[Marking, Step], keys: Iterable[str], workspace: MarkingWorkspace | None) -> bool:

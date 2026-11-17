@@ -52,6 +52,7 @@ assessment_urls = [
     path("drafts/<uuid:draft_id>/discard/", marking.discard, name="draft_discard"),
     path("drafts/<uuid:draft_id>/methods/", marking.draft_methods, name="draft_methods"),
     path("drafts/<uuid:draft_id>/yaml/", yaml.draft_yaml, name="draft_yaml"),
+    path("markings/<uuid:marking_id>/remark/", marking.remark, name="marking_remark"),
     path("question-groups/new/", marking.question_group_new, name="question_group_new"),
     path("question-groups/methods/", marking.question_group_methods, name="question_group_methods"),
     path("question-groups/drafts/<uuid:draft_id>/", marking.question_group_draft, name="question_group_draft"),

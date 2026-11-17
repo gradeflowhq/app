@@ -421,7 +421,7 @@ def test_marking_that_asks_no_model_leaves_the_token_out(
 def test_a_change_without_a_model_service_keeps_the_decisions(user: User, assessment: Assessment) -> None:
     marking = criteria_marking(assessment)
     assert schedule_marking(marking, user) is None
-    assert out_of_date_notices(assessment_checks(assessment), ["Q3"]) == [
+    assert [notice.text for notice in out_of_date_notices(assessment_checks(assessment), ["Q3"])] == [
         "Not marked again: the change came from someone without an AI service. The marks shown are from before."
     ]
 
