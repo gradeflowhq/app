@@ -30,7 +30,7 @@ from gradeflow_app.marking.answers.column import answers_column_html, draft_work
 from gradeflow_app.marking.checks import assessment_checks, check_for, check_of, methods_for, questions_marked
 from gradeflow_app.marking.models import Marking, MarkingDraftRecord, MarkingSubject
 from gradeflow_app.marking.presenters import drafted_method, saved_summary
-from gradeflow_app.marking.remarks import delete_marking, schedule_marking
+from gradeflow_app.marking.remarks import NO_MODEL_SERVICE, delete_marking, schedule_marking
 from gradeflow_app.marking.workspace import MarkingWorkspace, notify_drafts_changed, start_draft
 from gradeflow_app.model_service.endpoints import endpoint
 from gradeflow_app.questions.models import Question
@@ -262,7 +262,10 @@ def save(request: Request, access: AssessmentAccess, draft_id: UUID) -> HttpResp
         return render(request, "marking/editor.html", context)
     subject = workspace.subject
     marking = workspace.save_marking(endpoint(request))
-    messages.success(request, "Saved. Marking students…")
+    if marking.failure == NO_MODEL_SERVICE:
+        messages.warning(request, "Saved. Connect your AI service to mark students with it.")
+    else:
+        messages.success(request, "Saved. Marking students…")
     if subject.question is None:
         return HttpResponseLocation(reverse("question_group", args=[access.assessment.pk, marking.pk]))
     return _render_marking_column(request, access, subject.question, answers=True)
@@ -291,6 +294,8 @@ def remark(request: Request, access: AssessmentAccess, marking_id: UUID) -> Http
     """Mark every student again with a saved marking."""
     marking = get_object_or_404(Marking, pk=marking_id, assessment=access.assessment)
     schedule_marking(marking, request.user, endpoint(request))
+    if marking.failure == NO_MODEL_SERVICE:
+        messages.warning(request, "Connect your AI service to mark students with it.")
     # After the run starts on commit, so the refreshed page shows it.
     transaction.on_commit(partial(notify_change, topic("jobs", access.assessment.pk)))
     return HttpResponse(status=204)
