@@ -254,6 +254,7 @@ def hero() -> Hero:
                     progress=progress if is_shown else None,
                     has_draft=False,
                     is_shown=is_shown,
+                    failure="",
                 )
             )
         return listed

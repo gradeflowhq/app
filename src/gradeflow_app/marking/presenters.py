@@ -26,7 +26,7 @@ from gradeflow_app.marking.checks import (
     questions_marked,
 )
 from gradeflow_app.marking.models import Marking, MarkingDraftRecord
-from gradeflow_app.marking.remarks import running_remarks
+from gradeflow_app.marking.remarks import NO_MODEL_SERVICE, running_remarks
 from gradeflow_app.questions.models import Question
 from gradeflow_app.results.marks import average_proportions
 
@@ -131,6 +131,13 @@ def saved_markings(markings: Iterable[Marking], accepted: Mapping[Marking, Step]
     }
 
 
+def failure_label(marking: Marking) -> str:
+    """Why the marks of `marking` are from before, in a word or two; empty if they aren't."""
+    if not marking.failure:
+        return ""
+    return "Not marked again" if marking.failure == NO_MODEL_SERVICE else "Marking failed"
+
+
 @dataclass(frozen=True)
 class ListedQuestion:
     question: Question
@@ -142,6 +149,8 @@ class ListedQuestion:
     """How far a remark of it has got, while one runs."""
     has_draft: bool
     is_shown: bool
+    failure: str
+    """Why its marks are from before; empty if they aren't."""
 
 
 @dataclass(frozen=True)
@@ -218,6 +227,7 @@ def question_list(
                 progress=progress.get(question.key),
                 has_draft=has_draft,
                 is_shown=str(question.pk) == shown_id,
+                failure=failure_label(saved_marking.marking) if saved_marking else "",
             )
         )
     question_groups = [
