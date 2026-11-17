@@ -36,12 +36,12 @@ class Award:
 
     @property
     def marks(self) -> float | None:
-        """From 0 to the question's maximum, as in the core's result."""
+        """From 0 to the question's maximum, as in the core's result; 0 while the answer needs marking."""
         marks = self.imported_marks
         if self.adjustment is not None and self.adjustment.marks is not None:
             marks = self.adjustment.marks
         elif (marking_result := self.marking_result) is not None:
-            return marking_result.marks
+            return marking_result.marks if marking_result.is_marked else 0.0
         return None if marks is None else min(max(marks, 0.0), self.max_marks)
 
     @cached_property
@@ -109,8 +109,10 @@ class Award:
 
     @property
     def level(self) -> Level | None:
-        """Full, partial or no marks; None without marks."""
-        return None if (marks := self.marks) is None else level_of(marks, marks, self.max_marks)
+        """Full, partial or no marks; None without marks or while the answer needs marking."""
+        if (marks := self.marks) is None or not self.is_marked:
+            return None
+        return level_of(marks, marks, self.max_marks)
 
 
 @dataclass(frozen=True)

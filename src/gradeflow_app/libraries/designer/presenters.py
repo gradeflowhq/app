@@ -152,7 +152,9 @@ def _asks_models(workspace: MethodWorkspace) -> bool:
 def _preview_summary(rows: list[method_tests.TestAnswerView], max_marks: float) -> PreviewSummary:
     """What the last run gave these test answers."""
     problems = [row.result.feedback for row in rows if row.result is not None and not row.result.is_marked]
-    levels = Counter(level_of(row.marks, row.marks, max_marks) for row in rows if row.marks is not None)
+    levels = Counter(
+        level_of(row.marks, row.marks, max_marks) for row in rows if row.marks is not None and not row.unmarked
+    )
     return PreviewSummary(
         changed_count=0,
         unmarked_count=len(problems),

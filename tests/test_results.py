@@ -145,6 +145,21 @@ def test_answers_that_need_marking_are_counted_until_someone_marks_them(client: 
     assert "Download anyway" not in export
 
 
+def test_an_answer_that_needs_marking_counts_as_0_whatever_part_was_marked(assessment: Assessment) -> None:
+    question = assessment.questions.get(key="Q1")
+    student = assessment.students.earliest("pk")
+
+    def levels_counted() -> int:
+        summary = assessment_results(assessment).summaries()[0]
+        return summary.full_marks_count + summary.no_marks_count
+
+    before = levels_counted()
+    Result.objects.create(student=student, question=question, proportion=0.5, is_marked=False, revision=0)
+    award = next(row for row in assessment_results(assessment).rows if row.student == student).awards["Q1"]
+    assert (award.marks, award.level) == (0.0, None)
+    assert levels_counted() < before
+
+
 def test_a_download_needs_a_student_id_column(client: Client, assessment: Assessment) -> None:
     response = client.post(reverse("download", args=[assessment.pk]), {"student_id_column": ""})
     assert response.status_code == 422
