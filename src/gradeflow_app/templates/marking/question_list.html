@@ -17,7 +17,7 @@
   <div class="flex max-h-1/2 flex-col border-t border-base-300 p-2">
   <details class="group/groups flex min-h-0 flex-col open:details-content:contents" open>
     <summary class="flex cursor-pointer list-none items-center gap-2 rounded-field px-3 py-2 text-sm font-medium text-muted hover:bg-base-200 questions-collapsed:justify-center questions-collapsed:px-1">
-      {% icon "chevron-up" "size-4 transition-transform group-open/groups:rotate-180" %}<span class="questions-collapsed:sr-only">Question groups</span>{% if question_list.question_groups %}<span class="badge badge-sm badge-soft tabular-nums ml-auto questions-collapsed:hidden">{{ question_list.question_groups|length }}</span>{% endif %}
+      {% icon "chevron-up" "size-4 transition-transform group-open/groups:rotate-180" %}<span class="whitespace-nowrap questions-collapsed:sr-only">Question groups</span>{% if question_list.question_groups %}<span class="badge badge-sm badge-soft tabular-nums questions-collapsed:hidden">{{ question_list.question_groups|length }}</span>{% endif %}<button type="button" class="ml-auto text-muted hover:text-base-content questions-collapsed:hidden" data-dialog="question-group-guide" aria-label="How question groups work">{% icon "question-mark-circle" "size-4" %}</button>
     </summary>
     <ul class="grid gap-0.5 overflow-y-auto pt-1">
       {% for question_group in question_list.question_groups %}

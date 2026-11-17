@@ -1,0 +1,10 @@
+<c-guide.dialog id="roles-guide" title="Roles" intro="What each member of a course can do.">
+  <dl class="grid gap-2">
+    <div><dt class="inline font-medium">Viewer</dt> <dd class="inline text-muted">sees the assessments, answers and marks, and downloads them.</dd></div>
+    <div><dt class="inline font-medium">Editor</dt> <dd class="inline text-muted">also creates assessments, imports submissions, marks them and sends the marks to Canvas.</dd></div>
+    <div><dt class="inline font-medium">Owner</dt> <dd class="inline text-muted">also invites and removes members, changes their roles, and changes or deletes the course and its assessments.</dd></div>
+  </dl>
+  <c-slot name="notes">
+    <c-guide.note icon="key">A new member sees student IDs once a member who can see them opens GradeFlow.</c-guide.note>
+  </c-slot>
+</c-guide.dialog>

@@ -20,6 +20,7 @@
       <input type="hidden" name="canvas_assignment_group" value="{{ form.instance.canvas_assignment_group }}" :value="group.id">
       <input type="hidden" name="canvas_assignment_group_name" value="{{ form.instance.canvas_assignment_group_name }}" :value="group.card.name">
       <c-more-options label="How marks are sent" :open="form.errors">
+        <p class="text-sm text-muted">Each assessment can change these on its Export page.</p>
         {{ form.marks_mode.as_field_group }}
         {{ form.rounding.as_field_group }}
         {{ form.include_feedback.as_field_group }}
