@@ -691,7 +691,7 @@ def test_an_answer_of_several_values_is_written_value_by_value(client: Client, m
     assert answer_rows(method) == [(answer, False) for answer in written]
     page = client.get(designer_url(method, "method_page"), headers=HTMX_HEADERS).text
     for name, value in question.answer_values(written[0]).items():
-        assert f'title="{titles[name]}">{escape(value)}</li>' in page
+        assert f'title="{titles[name]}"><span>{escape(value)}</span></li>' in page
         assert f'name="value-{name}" value="{escape(value)}"' in page
 
 
@@ -721,7 +721,7 @@ def test_an_answer_of_several_options_shows_each_option(client: Client, method: 
     set_question_in_tests(method, {"type": "choice", "options": ["a", "b", "c"], "allow_multiple": True})
     post_to_designer(client, method, "method_answers", None, **{"operation": "add", "value-options": ["c", "a"]})
     page = client.get(designer_url(method, "method_page"), headers=HTMX_HEADERS).text
-    shown = re.findall(r'<li class="badge[^"]*" title="[^"]+">([^<]*)</li>', page)
+    shown = re.findall(r'<li class="badge[^"]*" title="[^"]+"><span>([^<]*)</span></li>', page)
     assert shown == ["a", "c"]
 
 

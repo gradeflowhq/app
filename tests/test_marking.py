@@ -474,7 +474,8 @@ def test_a_question_groups_answers_show_each_option(client: Client, assessment: 
     }
     marking = Marking.objects.create(assessment=assessment, definition=dump_yaml(conditional))
     page = htmx_page(client, reverse("question_group_answers", args=[assessment.pk, marking.pk]))
-    assert set(re.findall(r'<li class="badge[^"]*" title="Options">([^<]*)</li>', page)) == {"a", "b", "c", "d"}
+    chips = r'<li class="badge[^"]*" title="Options"><span>([^<]*)</span></li>'
+    assert set(re.findall(chips, page)) == {"a", "b", "c", "d"}
 
 
 def test_a_question_groups_answers_show_by_combination(client: Client, assessment: Assessment) -> None:
