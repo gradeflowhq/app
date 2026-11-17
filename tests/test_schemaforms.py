@@ -232,7 +232,7 @@ def test_numbers_offer_quick_picks_as_people_write_them() -> None:
     form = ObjectForm(schema, {"tolerance": 0.05})
     assert form["tolerance"].presets == [("0.01", "0.01", False), ("0.05", "0.05", True), ("0.1", "0.1", False)]
     weight = form["weight"]
-    assert [label for _, label, _ in weight.presets] == ["2", "1", "½", "¼", "−½", "−1"]  # noqa: RUF001
+    assert [label for _, label, _ in weight.presets] == ["2", "1", "0.5", "0.25", "−0.5", "−1"]  # noqa: RUF001
     assert [chosen for *_, chosen in weight.presets] == [False, True, False, False, False, False], "1 by default"
     assert 'data-preset="0.5"' in str(weight.as_field_group())
 

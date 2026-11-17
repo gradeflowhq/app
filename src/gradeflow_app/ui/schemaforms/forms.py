@@ -16,15 +16,14 @@ from gradeflow_app.ui.schemaforms.layout import NESTED_SEPARATOR, FieldHints, La
 from gradeflow_app.ui.schemaforms.schema import Schema
 from gradeflow_app.ui.schemaforms.widgets import NumberTextInput, Segmented
 
-FRACTIONS = {0.5: "½", 0.25: "¼", 0.75: "¾"}
 MINUS = "−"  # noqa: RUF001 - a minus sign, as people write it
 
 
 def preset_label(value: float) -> str:
-    """A preset as people write it: ½ for 0.5, with a minus sign when negative."""
+    """A preset as people write it, with a minus sign when negative."""
     if value < 0:
         return MINUS + preset_label(-value)
-    return FRACTIONS.get(value) or NumberTextInput().format_value(value) or str(value)
+    return NumberTextInput().format_value(value) or str(value)
 
 
 class HintedField(BoundField):
