@@ -33,7 +33,7 @@
           <c-guide.step number="1"><p>Open the quiz, then <c-guide.path :steps="['Quiz Statistics', 'Student Analysis']" /></p></c-guide.step>
           <c-guide.step number="2"><p>Download the CSV and drop it here</p></c-guide.step>
         </ol>
-        <p class="text-muted">The file has a row per attempt. If students could retake the quiz, keep one row each.</p>
+        <p class="text-muted">The file has a row per attempt. If students could retake the quiz, delete all but the attempt to mark before importing.</p>
       </c-guide.section>
       <c-guide.section title="File uploads">
         <ol class="grid gap-4">
@@ -86,11 +86,11 @@
         <p>A row per student, with a column for their ID and a column per question. A column named like <b>Q1 Pts</b> holds marks already given for Q1.</p>
       </c-guide.section>
       <c-guide.section title="A zip">
-        <p>A folder or file name per student, such as <code>u1001/q1.py</code> or <code>u1001_q1.py</code>. Each file or folder most students have becomes a question. When several files answer a question, <code>main.py</code> or the file named after the question runs, and can import the others.</p>
+        <p>A folder or file name per student, such as <code>u1001/q1.py</code> or <code>u1001_q1.py</code>. Each file or folder most students have becomes a question. When several files answer a question, <code>main.py</code> or the file named after the question runs first, and can import the others.</p>
       </c-guide.section>
     </div>
   </div>
   <c-slot name="notes">
-    <c-guide.note icon="arrow-path">A new submissions file replaces answers and marks. Question settings stay.</c-guide.note>
+    <c-guide.note icon="arrow-path">A new submissions file replaces answers and imported marks. Markings, question settings and marks you adjusted stay. Students missing from the new file are removed, with their marks.</c-guide.note>
   </c-slot>
 </c-guide.dialog>

@@ -22,7 +22,7 @@
           {% for key, answer in row.answers.items %}{% if forloop.length > 1 %}<span class="text-muted">{{ key }}</span> {% endif %}{% if answer %}{% with code=example.questions|code_language:key %}{% if code %}<pre class="code-block">{{ answer|highlight:code }}</pre>{% else %}<span class="whitespace-pre-wrap">{{ answer }}</span>{% endif %}{% endwith %}{% else %}<span class="italic text-muted">Blank</span>{% endif %}{% if not forloop.last %}<span class="text-subtle"> · </span>{% endif %}{% endfor %}
           {% for key, feedback in row.feedback %}<span class="block whitespace-pre-line text-sm text-muted">{% if key %}<span class="text-subtle">{{ key }}</span> {% endif %}{{ feedback }}</span>{% endfor %}
         </span>
-        <div class="shrink-0"><c-marks :low="row.marks" :high="row.marks" :max_marks="row.max_marks" /></div>
+        {% if gives_marks %}<div class="shrink-0"><c-marks :low="row.marks" :high="row.marks" :max_marks="row.max_marks" /></div>{% endif %}
       </li>
       {% endfor %}
     </ul>

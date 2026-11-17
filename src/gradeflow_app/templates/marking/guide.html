@@ -1,4 +1,4 @@
-<c-guide.dialog id="marking-guide" title="Marking" intro="A marking gives every student's answer to a question its marks.">
+<c-guide.dialog id="marking-guide" title="Marking" intro="Choose how a question is marked, check the marks it gives, then save them for every student.">
   <c-guide.section title="Mark a question">
     <ol class="grid gap-4">
       <c-guide.step number="1"><p>Choose a method, such as <b>Accepted Answers</b></p></c-guide.step>
@@ -8,11 +8,11 @@
     </ol>
   </c-guide.section>
   <c-guide.section title="Mark particular answers">
-    <p>While editing, click an answer and choose <b>Full marks</b>, <b>Partial marks</b> or <b>Not allowed</b>. The marking changes to give it those marks.</p>
-    <p>Partial marks gives half. The marking gets an <b>Accepted Answers</b> step with that answer, showing “50% of the marks”. To give another share, open that step and change its <b>Weight</b>, such as to 1/3.</p>
+    <p>On a text, number or code question, click an answer while editing a marking and choose <b>Full marks</b>, <b>Partial marks</b> or <b>Not allowed</b>. It works with any method, and applies to every student who gave that answer.</p>
+    <p>The marking keeps its checks and becomes a <b>Workflow</b>, with a check for that answer. Partial marks gives half. To give another share, change that check’s <b>Weight</b>, such as to 1/3.</p>
   </c-guide.section>
   <c-guide.section title="Set marks by hand">
-    <p>Click an answer, then <b>Adjust marks</b>. Marks you set stay when the marking changes.</p>
+    <p>Click an answer, then <b>Adjust marks</b>. Marks you set stay when the marking changes or a new submissions file is imported.</p>
   </c-guide.section>
   <c-slot name="notes">
     <c-guide.note icon="arrow-down-tray">Students keep their imported marks until their question has a marking.</c-guide.note>

@@ -152,6 +152,7 @@ def guide_context(
     is_saved_method = method.name not in BUILTIN_NAMES
     return {
         "method": method,
+        "gives_marks": method.gives_marks({}),
         "examples": examples,
         "used_for": used_for(method),
         "is_saved_method": is_saved_method,

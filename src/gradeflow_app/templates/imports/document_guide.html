@@ -1,4 +1,4 @@
-<c-guide.dialog id="document-guide" title="Question document" intro="Sets each question’s type, options, marks and text as they are in ExamSoft.">
+<c-guide.dialog id="document-guide" title="Question document" intro="Sets each question’s type, options, marks and text as they are in ExamSoft. Import the submissions file first.">
   <c-guide.section title="From ExamSoft">
     <ol class="grid gap-4">
       <c-guide.step number="1"><p>Open the assessment, then <c-guide.path :steps="['Contents', 'Print/Export']" /></p></c-guide.step>
@@ -16,6 +16,6 @@
     </ol>
   </c-guide.section>
   <c-slot name="notes">
-    <c-guide.note icon="arrow-path">Importing again replaces changes made to those questions.</c-guide.note>
+    <c-guide.note icon="arrow-path">Importing again resets those questions’ settings to the document’s. Their markings stay.</c-guide.note>
   </c-slot>
 </c-guide.dialog>

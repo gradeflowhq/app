@@ -2415,6 +2415,7 @@
      "strictness": {
       "$ref": "#/$defs/Strictness",
       "default": "normal",
+      "description": "Lenient accepts answers further from yours, and Strict only closer ones.",
       "title": "How strict",
       "x-gradeflow": {
        "applies_when": {

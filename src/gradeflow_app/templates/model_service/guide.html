@@ -9,11 +9,11 @@
   <c-guide.section title="Models">
     <dl class="grid gap-2">
       <div><dt class="inline font-medium">Fast</dt> <dd class="inline text-muted">decides in seconds.</dd></div>
-      <div><dt class="inline font-medium">Careful</dt> <dd class="inline text-muted">thinks first, takes minutes, and leaves what it’s unsure of to you. Optional: only markings set to decide carefully use it.</dd></div>
+      <div><dt class="inline font-medium">Careful</dt> <dd class="inline text-muted">takes minutes, and leaves answers it isn’t sure of for you to mark. Only markings set to decide carefully use it, so you can leave it unset.</dd></div>
     </dl>
   </c-guide.section>
   <c-slot name="notes">
-    <c-guide.note icon="lock-closed">The token is stored encrypted, so only you can read it. Marking that uses AI sends it to GradeFlow while it runs.</c-guide.note>
-    <c-guide.note icon="adjustments-horizontal">If the service turns requests away as too long, lower Answers per request.</c-guide.note>
+    <c-guide.note icon="lock-closed">The token is stored encrypted, so only you can read it. While marking with AI runs, GradeFlow holds the token to send answers to the service, then deletes it.</c-guide.note>
+    <c-guide.note icon="adjustments-horizontal">If the service turns requests away as too long, lower <b>Answers per request</b> under this card’s <b>Advanced</b>.</c-guide.note>
   </c-slot>
 </c-guide.dialog>
