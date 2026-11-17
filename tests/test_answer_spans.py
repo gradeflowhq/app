@@ -8,6 +8,7 @@ from gradeflow_core.editing import dump_yaml
 from gradeflow_app.accounts.models import User
 from gradeflow_app.assessments.models import Assessment
 from gradeflow_app.marking.answers.answer_groups import AnswerGroup, StudentAnswer
+from gradeflow_app.marking.answers.column import preview_marks
 from gradeflow_app.marking.models import Marking
 from gradeflow_app.marking.remarks import schedule_marking
 from gradeflow_app.ui.templatetags.ui import highlight_spans
@@ -67,6 +68,12 @@ def test_a_group_has_spans_only_when_its_students_answers_and_spans_are_the_same
     assert AnswerGroup([light, light]).spans == (Span(5, 10),)
     assert AnswerGroup([light, student_answer("uses light", ())]).spans == ()
     assert AnswerGroup([light, student_answer("use light", (Span(5, 10),))]).spans == ()
+
+
+def test_a_previewed_group_has_the_drafts_spans() -> None:
+    group = AnswerGroup([student_answer("uses light", (Span(5, 10),))])
+    group.preview = preview_marks(group, {"": QuestionResult(proportion=1, max_marks=1, spans=(Span(0, 4),))})
+    assert group.spans == (Span(0, 4),)
 
 
 def test_highlighted_text_is_escaped_inside_and_outside_its_marks() -> None:

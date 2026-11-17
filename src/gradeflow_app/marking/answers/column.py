@@ -358,6 +358,7 @@ def preview_marks(group: AnswerGroup, preview_by_student: dict[str, QuestionResu
         highest_marks=marks[-1],
         feedback=preview_awards[0][1].feedback,
         breakdown=answer_groups.commonest_breakdown(award for _, award in preview_awards),
+        spans=answer_groups.shared_spans(award for _, award in preview_awards),
         full_marks_count=levels["full"],
         partial_marks_count=levels["partial"],
         no_marks_count=levels["no_marks"],

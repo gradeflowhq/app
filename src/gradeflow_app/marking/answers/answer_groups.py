@@ -52,6 +52,8 @@ class Preview:
     problem: str
     """Why the draft couldn't mark the first of them."""
     breakdown: GroupBreakdown | None = None
+    spans: tuple[Span, ...] = ()
+    """The parts of the group's answer the draft's transforms extracted."""
     full_marks_count: int = 0
     partial_marks_count: int = 0
     no_marks_count: int = 0
@@ -85,6 +87,12 @@ class GroupBreakdown:
         if self.student_count < self.group_size:
             return f"For {self.student_count} of {self.group_size} students"
         return ""
+
+
+def shared_spans(entries: Iterable[StudentAnswer]) -> tuple[Span, ...]:
+    """The spans of `entries`, if all have the same answer and spans; none otherwise."""
+    answers_and_spans = {(entry.normalized, entry.spans) for entry in entries}
+    return answers_and_spans.pop()[1] if len(answers_and_spans) == 1 else ()
 
 
 def commonest_breakdown(awards: Iterable[Award]) -> GroupBreakdown | None:
@@ -132,10 +140,10 @@ class AnswerGroup:
 
     @property
     def spans(self) -> tuple[Span, ...]:
-        """The parts of its answer the marking's transforms extracted, if every student in the group has the same
-        answer and spans; none otherwise."""
-        answers_and_spans = {(entry.normalized, entry.spans) for entry in self.student_answers}
-        return answers_and_spans.pop()[1] if len(answers_and_spans) == 1 else ()
+        """The parts of its answer the marking's transforms extracted: the draft's while previewing."""
+        if self.preview is not None:
+            return self.preview.spans
+        return shared_spans(self.student_answers)
 
     @property
     def student_count(self) -> int:
