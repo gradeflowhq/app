@@ -115,7 +115,7 @@ def _field_for(schema: Schema, label: str, help_text: str, defs: Mapping[str, Sc
 def _choices(property_schema: Schema, options: Iterable[Any]) -> list[tuple[Any, str]]:
     """Each of `options` with its label, or else itself."""
     labels = labels_of(property_schema)
-    return [(value, labels.get(value) or str(value)) for value in options]
+    return [(value, labels.get(str(value)) or str(value)) for value in options]
 
 
 def _boxes(schema: Schema, defs: Mapping[str, Schema]) -> list[tuple[str, str]]:

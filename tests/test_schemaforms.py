@@ -218,10 +218,11 @@ def test_a_code_editor_outlives_redraws_of_its_own_field_only() -> None:
 
 
 def test_a_choice_of_numbers_is_posted_back_as_a_number() -> None:
-    schema = {"type": "object", "properties": {"value": {"type": "integer", "enum": [1, 2], "title": "Value"}}}
-    form = ObjectForm(schema, {}, data={"value": "2"})
+    value = {"type": "integer", "enum": [1, 0], "title": "Value", HINT_KEY: {"labels": {"1": "Yes", "0": "No"}}}
+    form = ObjectForm({"type": "object", "properties": {"value": value}}, {}, data={"value": "0"})
     assert form.is_valid()
-    assert form.values() == {"value": 2}
+    assert form.values() == {"value": 0}
+    assert list(form["value"].field.choices)[-2:] == [(1, "Yes"), (0, "No")], "labelled by the value as a JSON key"
 
 
 def test_numbers_offer_quick_picks_as_people_write_them() -> None:

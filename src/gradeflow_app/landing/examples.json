@@ -762,7 +762,7 @@
           }
         },
         {
-          "change": "How tests count: All must be correct",
+          "change": "How marks are given: All must be correct",
           "marking": {
             "question": "Q7",
             "uses": "gradeflow/code-tests@1",
