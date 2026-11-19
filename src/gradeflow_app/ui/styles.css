@@ -518,9 +518,9 @@
 @utility segment {
   @apply flex h-7 cursor-pointer items-center gap-1.5 px-2.5 text-sm font-medium whitespace-nowrap text-muted outline-offset-[-2px] transition-colors hover:text-base-content focus-visible:outline-2 focus-visible:outline-primary has-checked:bg-secondary has-checked:text-secondary-content has-focus-visible:outline-2 has-focus-visible:outline-primary has-disabled:cursor-not-allowed has-disabled:opacity-40 aria-pressed:bg-secondary aria-pressed:text-secondary-content aria-selected:bg-secondary aria-selected:text-secondary-content;
 }
-/* A list row a change affects. */
+/* A row or card a change affects: a bar down its left edge, curving with its corners. */
 @utility changed {
-  @apply relative before:pointer-events-none before:absolute before:inset-y-0 before:left-0 before:w-0.75 before:bg-primary;
+  @apply relative before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:border-l-3 before:border-primary;
 }
 @utility preview-bar {
   @apply relative flex min-h-12 items-center gap-2 border-t border-line bg-secondary/60 px-4 py-2;

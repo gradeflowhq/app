@@ -48,7 +48,7 @@
 {% endpartialdef %}
 {% with low=answer_group.marks_range.0 high=answer_group.marks_range.1 max_marks=question.core_question.max_marks core_question=question.core_question feedback=answer_group.preview.feedback|default:answer_group.feedback code=question.core_question|code_language %}
 <li>
-<details class="group/answer{% if answer_group.preview.changed %} changed{% endif %}"{% if open %} open{% endif %}>
+<details class="group/answer rounded-[inherit]{% if answer_group.preview.changed %} changed{% endif %}"{% if open %} open{% endif %}>
   <summary class="flex cursor-pointer list-none flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3.5 transition-colors hover:bg-base-200/40">
     <div class="min-w-0 flex-1 basis-56">
       {% include "results/answer_text.html" with answer=answer_group.answer blank=answer_group.is_blank spans=answer_group.spans %}
@@ -62,7 +62,7 @@
         {% else %}
           <c-marks :low="low" :high="high" :max_marks="max_marks" :unmarked="answer_group.all_unmarked" />
         {% endif %}
-        <span class="tabular-nums flex w-24 items-center justify-end gap-1.5 text-xs text-muted">{% icon "users" "size-3.5 text-subtle" %}{{ answer_group.student_count }} student{{ answer_group.student_count|pluralize }}</span>
+        <span class="tabular-nums flex min-w-24 items-center justify-end gap-1.5 whitespace-nowrap text-xs text-muted">{% icon "users" "size-3.5 text-subtle" %}{{ answer_group.student_count }} student{{ answer_group.student_count|pluralize }}</span>
       </div>
       {% if answer_group.adjusted_count or draft and answer_group.decisions %}
       <div class="flex flex-wrap justify-end gap-1.5">

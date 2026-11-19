@@ -42,10 +42,10 @@
 {% endpartialdef %}
 
 {% partialdef list_head %}
-<div class="flex flex-wrap items-center gap-x-2 px-1 pt-2.5">
+<div class="@container flex flex-wrap items-center gap-x-2 px-1 pt-2.5">
   <h3 class="text-sm font-semibold">Answers</h3><c-chip class="tabular-nums">{{ answer_groups|length|add:hidden_count }}</c-chip>
   <form class="ml-auto flex flex-wrap items-center gap-x-3" hx-get="{% url 'answers' question.assessment_id question.pk %}" hx-target="#answers" hx-swap="outerMorph" hx-trigger="change delay:150ms" hx-sync="this:replace" hx-indicator="#answers .workspace-cards">
-    <label class="flex items-center text-sm text-muted">Group<select name="group" class="select select-ghost select-sm w-auto font-medium text-base-content">{% for value, label in groupings.items %}<option value="{{ value }}"{% if grouping == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+    <label class="flex items-center text-sm text-muted"><span class="@max-lg:sr-only">Group</span><select name="group" class="select select-ghost select-sm w-auto font-medium text-base-content">{% for value, label in groupings.items %}<option value="{{ value }}"{% if grouping == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
     {% if grouping_options.similarity != 'exact' %}
     <c-popover id="answers-similarity" label="How similar" button_class="btn btn-ghost btn-square btn-sm -ml-3 text-muted" panel_class="w-64 p-4">
       <c-slot name="trigger">{% icon "adjustments-vertical" %}</c-slot>
@@ -56,7 +56,7 @@
       </div>
     </c-popover>
     {% endif %}
-    <label class="flex items-center text-sm text-muted">Show<select name="filter" class="select select-ghost select-sm w-auto font-medium text-base-content">{% for value, label in filters.items %}<option value="{{ value }}"{% if filter == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+    <label class="flex items-center text-sm text-muted"><span class="@max-lg:sr-only">Show</span><select name="filter" class="select select-ghost select-sm w-auto font-medium text-base-content">{% for value, label in filters.items %}<option value="{{ value }}"{% if filter == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
   </form>
 </div>
 {% endpartialdef %}
