@@ -3,9 +3,11 @@
 import { matches } from "../lib/words.js";
 
 // Shows the `[data-search]` items that have every word typed, the sections that still have one, and `[data-empty]`
-// when nothing typed matches. With nothing typed, it shows the items `isListed`: all of them.
+// when nothing typed matches. With nothing typed, it shows the items `isListed`: all of them. `nothingShown` is true
+// while it shows none.
 export const searchList = () => ({
   query: "",
+  nothingShown: false,
 
   search(event) {
     this.query = event.target.value;
@@ -24,8 +26,8 @@ export const searchList = () => ({
     for (const section of this.$root.querySelectorAll("[data-section]")) {
       section.hidden = !section.querySelector("[data-search]:not([hidden])");
     }
-    this.$root.querySelector("[data-empty]").hidden =
-      !typed || Boolean(this.$root.querySelector("[data-search]:not([hidden])"));
+    this.nothingShown = !this.$root.querySelector("[data-search]:not([hidden])");
+    this.$root.querySelector("[data-empty]").hidden = !typed || !this.nothingShown;
   },
 });
 

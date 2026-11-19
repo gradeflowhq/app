@@ -1,13 +1,13 @@
-{% extends "layouts/sidebar.html" %}
+{% extends "base.html" %}
 {# The account's settings pages. #}
-{% block nav_label %}Account{% endblock %}
-{% block nav_header %}<c-sidebar-header back_url="{% url 'courses' %}" back_label="All courses" title="{{ user.name|default:user.email }}" subtitle="{% if user.name %}{{ user.email }}{% endif %}" shows_avatar />{% endblock %}
-{% block nav %}
-  <c-sidebar-link href="{% url 'settings' %}" icon="user-circle" label="Profile" sections="settings" />
-  <c-sidebar-link href="{% url 'integrations' %}" icon="link" label="Integrations" sections="integrations" />
-  <c-sidebar-group title="Security" />
-  <c-sidebar-link href="{% url 'account_email' %}" icon="envelope" label="Email" sections="account_email" />
-  <c-sidebar-link href="{% url 'account_change_password' %}" icon="key" label="Password" sections="account_change_password" />
-  <c-sidebar-link href="{% url 'mfa_index' %}" icon="finger-print" label="Passkeys and 2FA" sections="mfa_index mfa_activate_totp mfa_deactivate_totp mfa_list_webauthn mfa_add_webauthn mfa_edit_webauthn mfa_remove_webauthn mfa_view_recovery_codes mfa_generate_recovery_codes" />
-  <c-sidebar-link href="{% url 'usersessions_list' %}" icon="computer-desktop" label="Signed-in devices" sections="usersessions_list" />
+{% block topbar %}
+  <c-topbar tabs_label="Account">
+    <c-slot name="nav"><ol class="flex min-w-0 items-center" aria-label="Breadcrumb"><c-breadcrumb href="{% url 'settings' %}" name="Account" icon="user-circle" current="true" /></ol></c-slot>
+    <c-slot name="tabs">
+      <c-tab href="{% url 'settings' %}" label="Profile" icon="user" sections="settings" />
+      <c-tab href="{% url 'integrations' %}" label="Integrations" icon="link" sections="integrations" />
+      <c-tab href="{% url 'mfa_index' %}" label="Security" icon="shield-check" sections="mfa_index account_change_password mfa_activate_totp mfa_deactivate_totp mfa_list_webauthn mfa_add_webauthn mfa_edit_webauthn mfa_remove_webauthn mfa_view_recovery_codes mfa_generate_recovery_codes" />
+      <c-tab href="{% url 'usersessions_list' %}" label="Devices" icon="computer-desktop" sections="usersessions_list" />
+    </c-slot>
+  </c-topbar>
 {% endblock %}

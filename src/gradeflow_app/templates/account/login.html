@@ -2,11 +2,22 @@
 {% load allauth courses %}
 {% block head_title %}Sign in{% endblock %}
 {% block content %}
-  <c-entrance-heading title="Sign in to GradeFlow">{% with course=redirect_field_value|invited_to %}{% if course %}You're invited to <strong>{{ course.name }}</strong>. {% endif %}{% endwith %}New here? <a class="text-link" href="{{ signup_url }}">Create an account</a></c-entrance-heading>
+  <c-entrance-heading title="Sign in">{% with course=redirect_field_value|invited_to %}{% if course %}You're invited to <strong>{{ course.name }}</strong>.{% endif %}{% endwith %}</c-entrance-heading>
   {% url 'account_login' as login_url %}
   {% element form form=form method="post" action=login_url tags="entrance,login" %}
-    {% slot body %}{% csrf_token %}{% element fields form=form unlabeled=True %}{% endelement %}{{ redirect_field }}{% endslot %}
+    {% slot body %}{% csrf_token %}
+      <c-form-errors :errors="form.non_field_errors" />
+      {{ form.login.as_field_group }}
+      {% with field=form.password %}
+      <div class="grid gap-1.5">
+        <div class="flex items-center gap-2"><label class="font-medium" for="{{ field.id_for_label }}">{{ field.label }}</label><a class="muted-link ml-auto text-xs" href="{% url 'account_reset_password' %}">Forgot your password?</a></div>
+        {{ field }}
+        <c-field-errors :errors="field.errors" id="{{ field.auto_id }}_error" />
+      </div>
+      {% endwith %}
+      {{ redirect_field }}
+    {% endslot %}
     {% slot actions %}{% element button type="submit" tags="prominent,login" disabled_until_script=True %}Sign in{% endelement %}{% endslot %}
   {% endelement %}
 {% endblock %}
-{% block links %}<a class="secondary-link" href="{% url 'account_reset_password' %}">Forgot your password?</a>{% endblock %}
+{% block links %}<span>New to GradeFlow? <a class="text-link" href="{{ signup_url }}">Create an account</a></span>{% endblock %}

@@ -19,7 +19,6 @@
       "katex",
       "monaco",
       "TomSelect",
-      "simpleDatatables",
       "require",
       "define"
     ]

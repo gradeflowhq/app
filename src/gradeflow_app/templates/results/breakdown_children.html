@@ -1,7 +1,7 @@
 {% load results %}
 {% partialdef effect %}
-{% if check.effect == "met" or check.effect == "not_met" %}<span class="badge badge-ghost badge-sm font-medium">{% if check.effect == "met" %}Yes{% else %}No{% endif %}</span>
-{% else %}{% with effect_display=check.effect|effect_icon %}<span class="{{ effect_display.color_class }}" title="{{ effect_display.label }}">{% icon effect_display.icon "size-4" %}<span class="sr-only">{{ effect_display.label }}</span></span>{% endwith %}{% endif %}
+{% if check.effect == "met" or check.effect == "not_met" %}<c-chip>{% if check.effect == "met" %}Yes{% else %}No{% endif %}</c-chip>
+{% else %}{% with effect_display=check.effect|effect_icon %}<span class="check-effect"{% if effect_display.tone %} data-tone="{{ effect_display.tone }}"{% endif %} title="{{ effect_display.label }}">{% icon effect_display.icon mini=True %}<span class="sr-only">{{ effect_display.label }}</span></span>{% endwith %}{% endif %}
 {% endpartialdef %}
 {% partialdef value %}
 {% if detail.kind == "code" %}<code class="whitespace-pre-wrap wrap-break-word font-mono text-[0.9em]">{{ detail.value|highlight:language }}</code>
@@ -13,18 +13,19 @@
 {% else %}<span class="ml-2 inline-flex gap-1"><span class="text-muted">{{ detail.title }}</span> {% partial value %}</span>{% endif %}{% endfor %}
 {% endpartialdef %}
 {% partialdef check_row %}
-<span class="mt-0.5 flex w-8 shrink-0 justify-center">{% partial effect %}</span>
+<span class="flex min-w-5 shrink-0 justify-center">{% partial effect %}</span>
 <span class="min-w-0 flex-1">
-  <span class="prose-core text-sm{% if check.effect == "uncounted" %} text-muted{% endif %}">{{ check.title|inline_markdown }}</span>{% if check.children %}{% icon "chevron-right" "ml-1 inline size-4 align-text-bottom text-muted transition-transform [details[open]>summary_&]:rotate-90" %}{% endif %}
+  <span class="prose-core text-sm{% if check.effect == "uncounted" %} text-muted{% endif %}">{{ check.title|inline_markdown }}</span>{% if check.children %}{% icon "chevron-right" "ml-1 inline align-text-bottom text-muted transition-transform [details[open]>summary_&]:rotate-90" %}{% endif %}
   {% partial details %}
 </span>
-{% if check.marks is not None %}<span class="tabular-nums shrink-0 text-muted">{{ check.marks|signed_marks }}</span>{% endif %}
+{% if check.marks is not None %}<span class="tabular-nums shrink-0 text-xs/5 font-semibold text-muted">{{ check.marks|signed_marks }}</span>{% endif %}
 {% endpartialdef %}
-<ul class="grid gap-1.5">
+{# The checks, as the rows of a bordered list; `nested` lists the checks inside a check under it. #}
+<ul{% if nested %} class="mt-1.5 ml-7.5 grid gap-1.5"{% endif %}>
   {% for kind, block in children|breakdown_blocks %}
   {% if kind == "table" %}
-  <li class="overflow-x-auto">
-    <table class="table table-sm text-sm">
+  <li>
+    <div class="min-w-0 flex-1 overflow-x-auto"><table class="table table-sm text-sm">
       <thead><tr><th class="w-8 px-0"><span class="sr-only">Result</span></th>{% for column in block.columns %}<th>{{ column }}</th>{% endfor %}{% if block.has_marks %}<th class="text-right">Marks</th>{% endif %}</tr></thead>
       <tbody>
         {% for check, cells in block.rows %}
@@ -35,18 +36,18 @@
         </tr>
         {% endfor %}
       </tbody>
-    </table>
+    </table></div>
   </li>
   {% else %}
   {% with check=block %}
   <li>
     {% if check.children %}
-    <details{% if check.effect != "uncounted" %} open{% endif %}>
-      <summary class="flex cursor-pointer list-none items-start gap-2">{% partial check_row %}</summary>
-      <div class="mt-1.5 ml-10">{% include "results/breakdown_children.html" with children=check.children %}</div>
+    <details class="min-w-0 flex-1"{% if check.effect != "uncounted" %} open{% endif %}>
+      <summary class="flex cursor-pointer list-none items-start gap-2.5">{% partial check_row %}</summary>
+      {% include "results/breakdown_children.html" with children=check.children nested=True %}
     </details>
     {% else %}
-    <div class="flex items-start gap-2">{% partial check_row %}</div>
+    <div class="flex min-w-0 flex-1 items-start gap-2.5">{% partial check_row %}</div>
     {% endif %}
   </li>
   {% endwith %}

@@ -10,6 +10,6 @@
   <form id="resend" method="post" action="{{ action_url }}" hidden><input type="hidden" name="action" value="resend">{{ redirect_field }}{% csrf_token %}</form>
 {% endblock %}
 {% block links %}
-  {% if can_resend %}<button class="secondary-link cursor-pointer" form="resend">Send a new code</button>{% endif %}
+  {% if can_resend %}<button class="muted-link cursor-pointer" form="resend">Send a new code</button>{% endif %}
   {% include "account/snippets/cancel.html" %}
 {% endblock %}

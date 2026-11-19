@@ -1,4 +1,5 @@
 from django.urls import URLPattern, URLResolver, include, path
+from django.views.generic import RedirectView
 
 from gradeflow_app.accounts import views as accounts
 from gradeflow_app.assessments import views as assessments
@@ -130,8 +131,9 @@ method_urls: list[URLPattern | URLResolver] = [
 urlpatterns = [
     path("", landing.landing, name="landing"),
     path("accounts/kdf-salt/", accounts.kdf_salt, name="kdf_salt"),
+    path("accounts/email/", RedirectView.as_view(pattern_name="settings")),
     path("accounts/", include("allauth.urls")),
-    path("settings/", accounts.account_settings, name="settings"),
+    path("settings/", accounts.ProfileView.as_view(), name="settings"),
     path("settings/devices/<int:session_id>/sign-out/", accounts.sign_out_device, name="sign_out_device"),
     path("settings/integrations/", accounts.integrations, name="integrations"),
     path("settings/secrets/<str:name>/", accounts.secret, name="secret"),

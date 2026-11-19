@@ -1,11 +1,11 @@
-// The Password page's recovery key card. Closing the dialog without saving keeps the previous key.
+// The Security page's recovery key row. Closing the dialog without saving keeps the previous key.
 
 import { generateRecoveryKey, importRecoveryKey, rewrapPrivateKey } from "../lib/account-crypto.js";
 import { loadWrappingKey, signedInAccount } from "../services/account.js";
 import { send } from "../services/requests.js";
 import { showToast } from "../services/toasts.js";
 
-export const recoveryKeyCard = () => ({
+export const recoveryKey = () => ({
   hasRecoveryKey: false,
   recoveryKey: "",
   copied: false,

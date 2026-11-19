@@ -63,6 +63,9 @@ def question(request: Request, access: AssessmentAccess, question_id: UUID) -> H
 def _question(
     request: Request, access: AssessmentAccess, question: Question, accepted: Mapping[Marking, Step]
 ) -> HttpResponse:
+    key = _shown_question_key(access)
+    if request.session.get(key) != str(question.pk):
+        request.session[key] = str(question.pk)
     subject = MarkingSubject.of(access.assessment, question)
     workspace = draft_workspace(request, access, subject)
     context = _marking_column_context(request, access, question, subject, workspace, accepted) | {
@@ -71,6 +74,20 @@ def _question(
         "answers": answers_column_html(request, access, subject, workspace, accepted=accepted),
     }
     return render(request, "marking/workspace.html", context)
+
+
+def _shown_question_key(access: AssessmentAccess) -> str:
+    return f"shown_question:{access.assessment.pk}"
+
+
+def _shown_question_url(request: Request, access: AssessmentAccess) -> str:
+    """The question the user last opened in the assessment, else its first."""
+    assessment = access.assessment
+    question_id = request.session.get(_shown_question_key(access))
+    question = assessment.questions.filter(pk=question_id).first() if question_id else None
+    if question is None:
+        return reverse("questions", args=[assessment.pk])
+    return reverse("question", args=[assessment.pk, question.pk])
 
 
 @assessment_member()
@@ -284,7 +301,7 @@ def discard(request: Request, access: AssessmentAccess, draft_id: UUID) -> HttpR
     assessment = access.assessment
     if subject.marking is not None:
         return HttpResponseLocation(reverse("question_group", args=[assessment.pk, subject.marking.pk]))
-    return HttpResponseLocation(reverse("question_group_new", args=[assessment.pk]))
+    return HttpResponseLocation(_shown_question_url(request, access))
 
 
 @require_POST
@@ -311,7 +328,7 @@ def remove(request: Request, access: AssessmentAccess, question_id: UUID) -> Htt
         delete_marking(marking)
     notify_change(topic("questions", access.assessment.pk))
     messages.success(request, "Marking removed.")
-    return _render_marking_column(request, access, question)
+    return _render_marking_column(request, access, question, answers=True)
 
 
 @assessment_member()
@@ -393,6 +410,7 @@ def question_group_new(request: Request, access: AssessmentAccess) -> HttpRespon
         "access": access,
         "question_list": presenters.question_list(access, "new"),
         "methods": [*offered.everyday, *offered.saved, *offered.advanced],
+        "cancel_url": _shown_question_url(request, access),
     }
     return render(request, "marking/question_group_new.html", context)
 

@@ -1,22 +1,42 @@
 {% extends "mfa/base_manage.html" %}
-{% block head_title %}Passkeys and 2FA{% endblock %}
+{% block head_title %}Security{% endblock %}
 {% block content %}
-<h1>Passkeys and 2FA</h1>
-<c-card body_class="setting-rows">
+<h1 class="sr-only">Security</h1>
+<c-panel body_class="setting-rows">
+  <c-setting-row icon="lock-closed" label="Password" detail="Signs you in and unlocks your student IDs and connections."><a class="btn btn-sm" href="{% url 'account_change_password' %}">Change</a></c-setting-row>
+  <div x-data="recoveryKey" data-has-recovery-key="{{ user.recovery_wrapped_private_key|yesno:'true,false' }}">
+    <c-setting-row icon="key" label="Recovery key" detail="Keeps your student IDs and connections if you reset a forgotten password.">
+      <button type="button" class="btn btn-sm" x-on:click="create" x-text="hasRecoveryKey ? 'Replace' : 'Create'">{% if user.recovery_wrapped_private_key %}Replace{% else %}Create{% endif %}</button>
+    </c-setting-row>
+    <c-dialog id="recovery-key" title="Your recovery key" box_class="max-w-md" x-ref="dialog" x-on:close="discard">
+      <div class="grid gap-4 px-6 pt-2">
+        <p class="text-sm text-muted">Keep it somewhere safe, such as a password manager. It can't be shown again.<span x-show="hasRecoveryKey" x-cloak> Your previous recovery key stops working once you save this one.</span></p>
+        <div class="grid gap-3 rounded-box bg-base-200 p-4">
+          <div class="grid grid-cols-4 gap-x-3 gap-y-1 text-center font-mono text-lg" aria-label="Recovery key">
+            <template x-for="group in recoveryKeyGroups"><span x-text="group"></span></template>
+          </div>
+          <div class="flex justify-center">
+            <button type="button" class="btn btn-sm" x-on:click="copy">{% icon "clipboard" %}<span x-text="copied ? 'Copied' : 'Copy'">Copy</span></button>
+          </div>
+        </div>
+      </div>
+      <c-dialog.footer><button type="button" class="btn" data-close>Cancel</button><button type="button" class="btn btn-primary" x-on:click="save" :disabled="saving">I've saved it</button></c-dialog.footer>
+    </c-dialog>
+  </div>
   {% with passkeys=authenticators.webauthn|length %}
-  <c-setting-row label="Passkeys" detail="{% if passkeys %}{{ passkeys }} added{% else %}None added{% endif %}">
-      {% if passkeys %}<a class="btn" href="{% url 'mfa_list_webauthn' %}">Manage</a>{% else %}<a class="btn" href="{% url 'mfa_add_webauthn' %}">Add passkey</a>{% endif %}
+  <c-setting-row icon="finger-print" label="Passkeys" detail="{% if passkeys %}{{ passkeys }} added{% else %}None yet{% endif %}">
+      {% if passkeys %}<a class="btn btn-sm" href="{% url 'mfa_list_webauthn' %}">Manage</a>{% else %}<a class="btn btn-sm" href="{% url 'mfa_add_webauthn' %}">Add passkey</a>{% endif %}
   </c-setting-row>
   {% endwith %}
-  <c-setting-row label="Authenticator app" detail="{% if authenticators.totp %}On{% else %}Off{% endif %}">
-      {% if authenticators.totp %}<a class="btn" href="{% url 'mfa_deactivate_totp' %}">Turn off</a>{% else %}<a class="btn" href="{% url 'mfa_activate_totp' %}">Turn on</a>{% endif %}
+  <c-setting-row icon="device-phone-mobile" label="Authenticator app" detail="{% if authenticators.totp %}On{% else %}Off{% endif %}">
+      {% if authenticators.totp %}<a class="btn btn-sm" href="{% url 'mfa_deactivate_totp' %}">Turn off</a>{% else %}<a class="btn btn-sm" href="{% url 'mfa_activate_totp' %}">Turn on</a>{% endif %}
   </c-setting-row>
   {% if is_mfa_enabled %}
   {% with unused=authenticators.recovery_codes.get_unused_codes|length %}
-  <c-setting-row label="Recovery codes" detail="{% if authenticators.recovery_codes %}{{ unused }} unused{% else %}None yet{% endif %}">
-      {% if unused %}<a class="btn" href="{% url 'mfa_view_recovery_codes' %}">View</a>{% else %}<a class="btn" href="{% url 'mfa_generate_recovery_codes' %}">New codes</a>{% endif %}
+  <c-setting-row icon="queue-list" label="Recovery codes" detail="{% if authenticators.recovery_codes %}{{ unused }} unused{% else %}None yet{% endif %}">
+      {% if unused %}<a class="btn btn-sm" href="{% url 'mfa_view_recovery_codes' %}">View</a>{% else %}<a class="btn btn-sm" href="{% url 'mfa_generate_recovery_codes' %}">New codes</a>{% endif %}
   </c-setting-row>
   {% endwith %}
   {% endif %}
-</c-card>
+</c-panel>
 {% endblock %}

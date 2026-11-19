@@ -1,31 +1,50 @@
-<c-vars course=None assessment=None />
-{# A page can add links after the logo (`nav`) and, for people signed out, buttons at the end (`actions`). #}
-<header class="sticky top-0 z-30 h-14 border-b border-base-300 bg-base-100/90 backdrop-blur">
-  <nav class="flex h-full items-center gap-2 px-4 sm:px-6" aria-label="Main">
-    <a href="{% if user.is_authenticated %}{% url 'courses' %}{% else %}/{% endif %}" class="flex shrink-0 items-center gap-2 rounded-field py-1 pr-2 font-semibold tracking-tight">
+<c-vars course=None assessment=None tabs_label="" />
+{# The course and assessment, each with a menu to switch to another, then the page's `tabs`. A page can add links after the logo (`nav`) and, for people signed out, buttons at the end (`actions`). #}
+{% load courses %}
+<header class="app-header">
+  <nav class="flex h-13 items-center gap-1 px-4 sm:px-6" aria-label="Main">
+    <a href="{% if user.is_authenticated %}{% url 'courses' %}{% else %}/{% endif %}" class="mr-1.5 flex shrink-0 items-center gap-2 rounded-field py-1 pr-1 text-[15px] font-semibold tracking-tight">
       <c-logo />
-      <span{% if course %} class="max-sm:sr-only"{% endif %}>GradeFlow</span>
+      <span{% if course or nav %} class="max-md:sr-only"{% endif %}>GradeFlow</span>
     </a>
     {% if course %}
-    <ol class="flex min-w-0 items-center gap-2 text-sm xl:hidden" aria-label="Breadcrumb">
-      <li class="breadcrumb min-w-0{% if assessment %} max-sm:hidden{% endif %}"><a href="{% url 'course' course.pk %}"{% if not assessment %} aria-current="page"{% endif %}>{{ course.name }}</a></li>
-      {% if assessment %}<li class="breadcrumb min-w-0"><a href="{% url 'overview' assessment.pk %}" aria-current="page">{{ assessment.name }}</a></li>{% endif %}
+    <ol class="flex min-w-0 items-center" aria-label="Breadcrumb">
+      {% url 'course' course.pk as course_url %}
+      <c-breadcrumb href="{{ course_url }}" name="{{ course.name }}" icon="academic-cap" id="course-switcher" menu_label="Switch course" current="{{ assessment|yesno:',true' }}" class="{% if assessment %}max-sm:hidden{% endif %}">
+        {% courses_of user as courses %}
+        {% for other in courses %}
+        <li><a href="{% url 'course' other.pk %}"{% if other.pk == course.pk %} class="font-medium"{% endif %}><span class="truncate">{{ other.name }}</span>{% if other.pk == course.pk %}{% icon "check" "ml-auto" %}{% endif %}</a></li>
+        {% endfor %}
+        <li role="separator"></li>
+        <li><a href="{% url 'courses' %}">All courses</a></li>
+      </c-breadcrumb>
+      {% if assessment %}
+      <c-breadcrumb href="{% url 'overview' assessment.pk %}" name="{{ assessment.name }}" icon="document-text" id="assessment-switcher" menu_label="Switch assessment" current="true">
+        {% for other in course.assessments.all %}
+        <li><a href="{% url 'overview' other.pk %}"{% if other.pk == assessment.pk %} class="font-medium"{% endif %}><span class="truncate">{{ other.name }}</span>{% if other.pk == assessment.pk %}{% icon "check" "ml-auto" %}{% endif %}</a></li>
+        {% endfor %}
+        <li role="separator"></li>
+        <li><a href="{{ course_url }}">All assessments</a></li>
+      </c-breadcrumb>
+      {% endif %}
     </ol>
     {% endif %}
     {{ nav }}
     <div class="ml-auto flex shrink-0 items-center gap-1">
       {% if user.is_authenticated %}
         <c-menu id="account-menu" label="Account" button_class="btn btn-ghost btn-circle btn-sm" panel_class="w-64">
-          <c-slot name="trigger"><c-avatar :user="user" /></c-slot>
+          <c-slot name="trigger"><c-avatar :user="user" size="size-7.5" /></c-slot>
           <c-slot name="header">
             <div class="px-4 pb-1 pt-2.5">
               <p class="truncate font-medium">{{ user.name|default:user.email }}</p>
               {% if user.name %}<p class="truncate text-sm text-muted">{{ user.email }}</p>{% endif %}
             </div>
           </c-slot>
-          <li><a href="{% url 'settings' %}">{% icon "user-circle" "size-4" %}Account</a></li>
-          <li><a href="{% url 'your_methods' %}">{% icon "puzzle-piece" "size-4" %}Your methods</a></li>
-          <li><button form="sign-out">{% icon "arrow-right-start-on-rectangle" "size-4" %}Sign out</button></li>
+          <li role="separator"></li>
+          <li><a href="{% url 'courses' %}">{% icon "academic-cap" %}Courses</a></li>
+          <li><a href="{% url 'settings' %}">{% icon "user-circle" %}Account</a></li>
+          <li role="separator"></li>
+          <li><button form="sign-out">{% icon "arrow-right-start-on-rectangle" %}Sign out</button></li>
         </c-menu>
         <form id="sign-out" method="post" action="{% url 'account_logout' %}" hidden hx-boost="false">{% csrf_token %}</form>
       {% else %}
@@ -33,4 +52,5 @@
       {% endif %}
     </div>
   </nav>
+  {% if tabs %}<nav id="tabs" class="tab-row" aria-label="{{ tabs_label }}">{{ tabs }}</nav>{% endif %}
 </header>

@@ -46,8 +46,8 @@ class MethodAccess:
 
     @property
     def layout(self) -> str:
-        """A course's method shows in the course; any other on its own."""
-        return "layouts/course.html" if self.member else "layouts/methods.html"
+        """A course's method shows in the course; any other under Home."""
+        return "layouts/course.html" if self.member else "layouts/home.html"
 
 
 def _method_access_of(request: Request, method_id: UUID, *, edit: bool = False) -> MethodAccess:

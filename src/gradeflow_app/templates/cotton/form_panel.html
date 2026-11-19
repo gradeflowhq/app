@@ -1,0 +1,6 @@
+<c-vars id icon="" title="" action="" submit="Save" footer="" cancel_url="" disabled_until_script=False />
+{# A panel that is one form, submitted from its footer, after anything in `footer` and a Cancel to `cancel_url`. Other attributes go on the panel. #}
+<c-panel icon="{{ icon }}" title="{{ title }}" :attrs="attrs">
+  <form id="{{ id }}" method="post"{% if action %} action="{{ action }}"{% endif %} class="grid gap-5">{% csrf_token %}{{ slot }}</form>
+  <c-slot name="footer">{{ footer }}{% if cancel_url %}<a class="btn ml-auto" href="{{ cancel_url }}">Cancel</a>{% endif %}<button form="{{ id }}" class="btn btn-primary{% if not cancel_url %} ml-auto{% endif %}"{% if disabled_until_script %} disabled data-disabled-until-script{% endif %}>{{ submit }}</button></c-slot>
+</c-panel>

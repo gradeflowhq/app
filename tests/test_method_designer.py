@@ -134,7 +134,7 @@ def test_test_answers_are_added_changed_and_removed_whole(client: Client, method
 def test_test_answers_show_as_read_and_edit_as_written(client: Client, method: Method) -> None:
     post_to_designer(client, method, "method_answers", operation="add", answer="  Sun Light ")
     page = client.get(designer_url(method, "method_page")).text
-    assert re.search(r'font-medium">sun light</p>', page), "as the questions page shows it"
+    assert '">sun light</p>' in page, "as the questions page shows it"
     assert re.search(r'aria-label="Answer of submission 1"[^>]*>  Sun Light </textarea>', page)
 
 

@@ -47,12 +47,16 @@ def viewer(canvas_assessment: Assessment) -> Client:
 def test_sending_to_canvas_needs_a_proxy_and_a_canvas_course(client: Client, settings: Settings) -> None:
     assessment = create_assessment(client)
     export = reverse("export", args=[assessment.pk])
-    assert b"Nothing to export yet" in client.get(export).content
+    assert b"Import the submissions file to export its marks." in client.get(export).content
     upload(client, assessment)
     settings.GRADEFLOW_CORS_PROXY_URL = ""
     assert b"set up on this server" in client.get(export).content
     settings.GRADEFLOW_CORS_PROXY_URL = PROXY_URL
-    assert b"canvasExport" not in client.get(export).content
+    unlinked = client.get(export).text
+    assert "canvasExport" not in unlinked
+    assert "Not linked to Canvas" in unlinked
+    assert reverse("canvas_settings", args=[assessment.course_id]) in unlinked
+    assert 'data-dialog="download"' in unlinked, "marks download without Canvas"
     response = client.post(
         reverse("canvas_settings", args=[assessment.course_id]),
         {"canvas_course": "101", "canvas_course_name": "BIO1010 (2026 S2)", "marks_mode": "percent", "rounding": "0.5"},
@@ -60,7 +64,9 @@ def test_sending_to_canvas_needs_a_proxy_and_a_canvas_course(client: Client, set
     assert response.status_code == 302
     page = client.get(export).content
     assert b"canvasExport" in page
-    assert b'<span class="truncate font-medium">BIO1010 (2026 S2)</span>' in page, "the Canvas course it sends to"
+    assert b':href="courseUrl" target="_blank" rel="noopener">BIO1010 (2026 S2)</a>' in page, (
+        "the Canvas course it sends to, linked to its page"
+    )
 
 
 def test_this_device_connects_to_canvas_among_its_integrations(
@@ -85,9 +91,7 @@ def test_editors_get_the_rows_to_send_and_the_sending_form(client: Client, canva
     assert 'hx-post="{}"'.format(reverse("export_sending", args=[canvas_assessment.pk])) in page
     assert 'name="marks_mode"' in page
     assert "As the course (percentage)" in page
-    assert (
-        'id="send-settings" class="min-w-0 flex-1" data-mode="percent" data-rounding="0.5" data-feedback="true"' in page
-    )
+    assert 'data-mode="percent" data-rounding="0.5" data-feedback="true"' in page
     assert "Percentages, rounded to 0.5, with feedback" in page
     assert "Preview comment" in page
     assert 'id="send-review"' in page
@@ -234,5 +238,4 @@ def test_a_course_refuses_a_negative_rounding_step(client: Client, canvas_assess
     )
     assert page.status_code == 200
     assert "Round to 0 or more." in page.text
-    assert '<details class="group/more" open' in page.text
     assert CourseCanvas.objects.get(course=canvas_assessment.course).rounding == 0.5

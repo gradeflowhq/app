@@ -256,6 +256,10 @@ export const importer = () => {
       this.idMapping.remove();
       Object.assign(this, { step: "choose", error: "", fileName: "", source: null });
     },
+    cancel() {
+      this.restart();
+      this.replacing = false;
+    },
     async chooseIdMapping(event) {
       const [file] = event.target.files;
       event.target.value = "";

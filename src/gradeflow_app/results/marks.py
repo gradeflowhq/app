@@ -6,7 +6,7 @@ import statistics
 from collections import Counter
 from collections.abc import Sequence
 from dataclasses import dataclass
-from functools import cached_property
+from functools import cached_property, lru_cache
 from typing import Literal, NamedTuple
 from uuid import UUID
 
@@ -66,9 +66,11 @@ class Award:
         )
 
     @property
-    def marking_marks(self) -> float | None:
-        """What the marking gives, beside an adjustment."""
-        return self.result.question_result(self.max_marks).marks if self.result else None
+    def unadjusted_marks(self) -> float | None:
+        """What the marking gives, else the submissions file's marks, beside an adjustment."""
+        if self.result:
+            return self.result.question_result(self.max_marks).marks
+        return None if self.imported_marks is None else min(max(self.imported_marks, 0.0), self.max_marks)
 
     @property
     def feedback(self) -> str:
@@ -128,12 +130,17 @@ class PreviewSummary:
     no_marks_count: int = 0
 
 
+@lru_cache(maxsize=4096)
 def level_of(lowest_marks: float, highest_marks: float, max_marks: float) -> Level:
     """Full, partial or no marks, for marks from `lowest_marks` to `highest_marks`. Full marks are the core's, which
     allow for rounding."""
     if QuestionResult(proportion=_proportion(lowest_marks, max_marks), max_marks=max_marks).correct:
         return "full"
     return "no_marks" if highest_marks == 0 else "partial"
+
+
+def is_blank(question: Question, answer: str) -> bool:
+    return not question.core_question.normalize(answer)
 
 
 def _proportion(marks: float, max_marks: float) -> float:
@@ -191,6 +198,8 @@ class QuestionSummary:
     no_marks_count: int
     blank_count: int
     adjusted_count: int
+    unmarked_count: int
+    """How many answers the marking couldn't mark and no one has set marks for."""
 
     @property
     def average_proportion(self) -> float | None:
@@ -257,13 +266,14 @@ class Results:
         }
         return Marked(sheet=row.student.submission, results=results, max_marks=self.max_marks)
 
-    @property
+    @cached_property
     def has_marks(self) -> bool:
         return any(award.marks is not None for row in self.rows for award in row.awards.values())
 
     @cached_property
-    def has_adjustments(self) -> bool:
-        return any(row.adjusted_keys for row in self.rows)
+    def adjusted_count(self) -> int:
+        """How many students have adjusted marks."""
+        return sum(bool(row.adjusted_keys) for row in self.rows)
 
     @cached_property
     def unmarked_count(self) -> int:
@@ -283,10 +293,9 @@ class Results:
                     average=statistics.fmean(marks) if marks else None,
                     full_marks_count=levels["full"],
                     no_marks_count=levels["no_marks"],
-                    blank_count=sum(
-                        count for answer, count in answers.items() if not question.core_question.normalize(answer)
-                    ),
+                    blank_count=sum(count for answer, count in answers.items() if is_blank(question, answer)),
                     adjusted_count=sum(award.adjustment is not None for award in awards),
+                    unmarked_count=sum(not award.is_marked for award in awards),
                 )
             )
         return summaries

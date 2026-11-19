@@ -2,25 +2,28 @@
 {% if editor %}
   {% include "marking/editor.html" %}
 {% else %}
-<div id="marking-panel" class="flex min-h-0 flex-col" hx-get="{% url 'marking' question.assessment_id question.pk %}" hx-trigger="{% listen 'questions' question.assessment_id %}" hx-target="this" hx-swap="outerMorph">
-  <div class="column-head">
-    <h2>Marking</h2>
-    <button type="button" class="btn btn-ghost btn-square btn-sm ml-auto text-muted" data-dialog="marking-guide" aria-label="How marking works">{% icon "question-mark-circle" %}</button>
-    {% if panel.mode == "summary" and access.can_edit %}
+<c-panel id="marking-panel" class="workspace-panel" title="Marking" body_class="grid content-start gap-4 p-4" hx-get="{% url 'marking' question.assessment_id question.pk %}" hx-trigger="{% listen 'questions' question.assessment_id %}" hx-target="this" hx-swap="outerMorph">
+  <c-slot name="actions">
+    <button type="button" class="btn btn-ghost btn-square btn-sm text-muted" data-dialog="marking-guide" aria-label="How marking works" title="How marking works">{% icon "question-mark-circle" %}</button>
+    {% if access.can_edit %}
+    {% if panel.mode == "summary" or panel.has_history %}
     <c-menu id="marking-menu" button_class="btn btn-ghost btn-square btn-sm">
-      <li><button hx-get="{% url 'marking_history' question.assessment_id question.pk %}" hx-target="#drawer-body" data-dialog="drawer">{% icon "clock" "size-4" %}History</button></li>
-      {% if not panel.summary.problems %}<li><button hx-get="{% url 'method_save' question.assessment_id question.pk %}" hx-target="#drawer-body" data-dialog="drawer">{% icon "puzzle-piece" "size-4" %}Save as a method</button></li>{% endif %}
-      <li><button class="text-error" hx-post="{% url 'marking_remove' question.assessment_id question.pk %}" hx-target="#marking-panel" hx-swap="outerHTML" data-confirm="Remove the marking for {{ question.key }}?" data-confirm-detail="Students keep their imported marks. You can restore the marking from its history." data-confirm-button="Remove">{% icon "trash" "size-4" %}Remove marking</button></li>
+      <li><button hx-get="{% url 'marking_history' question.assessment_id question.pk %}" hx-target="#drawer-body" data-dialog="drawer">{% icon "clock" %}History</button></li>
+      {% if panel.mode == "summary" %}
+      {% if not panel.summary.problems %}<li><button hx-get="{% url 'method_save' question.assessment_id question.pk %}" hx-target="#drawer-body" data-dialog="drawer">{% icon "puzzle-piece" %}Save as a method</button></li>{% endif %}
+      <li role="separator"></li>
+      <li><button class="text-error" hx-post="{% url 'marking_remove' question.assessment_id question.pk %}" hx-target="#marking-panel" hx-swap="outerHTML" data-confirm="Remove the marking for {{ question.key }}?" data-confirm-detail="Students keep their imported marks. You can restore the marking from its history." data-confirm-button="Remove">{% icon "trash" %}Remove marking</button></li>
+      {% endif %}
     </c-menu>
     {% endif %}
-  </div>
-  <div class="grid gap-5 p-5 md:overflow-y-auto">
+    {% if panel.mode == "summary" %}<button class="btn btn-primary btn-sm" hx-post="{% url 'marking_start' question.assessment_id question.pk %}" hx-target="#marking-panel" hx-swap="outerHTML">{% icon "pencil-square" %}Edit marking</button>{% endif %}
+    {% endif %}
+    {% if panel.mode == "question_group" %}<a class="btn btn-sm" href="{% url 'question_group' question.assessment_id panel.question_group.marking.pk %}">Open question group</a>{% endif %}
+  </c-slot>
   {% if panel.mode == "summary" %}
     <c-marking-summary :summary="panel.summary" :archived="panel.archived" />
-    {% if access.can_edit %}<div><button class="btn btn-primary" hx-post="{% url 'marking_start' question.assessment_id question.pk %}" hx-target="#marking-panel" hx-swap="outerHTML">{% icon "pencil-square" "size-4" %}Edit marking</button></div>{% endif %}
   {% elif panel.mode == "question_group" %}
     <c-marking-summary :summary="panel.summary" question_group="{{ panel.question_group.involved_keys|join:', ' }}" />
-    <div><a class="btn" href="{% url 'question_group' question.assessment_id panel.question_group.marking.pk %}">Open question group</a></div>
   {% elif access.can_edit %}
     <div class="flex items-start gap-3">
       <div class="min-w-0 flex-1">
@@ -28,28 +31,24 @@
         {% if panel.has_imported_marks %}<p class="mt-0.5 text-sm text-muted">Until then, students keep their imported marks.</p>{% endif %}
       </div>
       {% url 'question_methods' question.assessment_id question.pk as guide_url %}
-      <div class="-my-1 flex shrink-0 gap-1">
-        <button type="button" class="btn btn-ghost btn-sm" hx-get="{{ guide_url }}" hx-target="#picker-body" data-dialog="picker">{% icon "magnifying-glass" "size-4" %}Browse</button>
-        {% if panel.has_history %}<button class="btn btn-ghost btn-sm" hx-get="{% url 'marking_history' question.assessment_id question.pk %}" hx-target="#drawer-body" data-dialog="drawer">{% icon "clock" "size-4" %}History</button>{% endif %}
-      </div>
+      <button type="button" class="btn btn-ghost btn-sm -my-1 -mr-2 shrink-0" hx-get="{{ guide_url }}" hx-target="#picker-body" data-dialog="picker">{% icon "magnifying-glass" %}Browse</button>
     </div>
-    <form class="grid gap-4" hx-post="{% url 'marking_start' question.assessment_id question.pk %}" hx-target="#marking-panel" hx-swap="outerHTML">
+    <form class="grid gap-5" hx-post="{% url 'marking_start' question.assessment_id question.pk %}" hx-target="#marking-panel" hx-swap="outerHTML">
       {% csrf_token %}
-      <ul class="grid gap-2">{% for method in panel.choices.everyday %}<c-method-choice :method="method" guide_url="{{ guide_url }}" />{% endfor %}</ul>
+      <ul class="method-choices">{% for method in panel.choices.everyday %}<c-method-choice :method="method" guide_url="{{ guide_url }}" />{% endfor %}</ul>
       {% if panel.choices.saved %}
       <section class="grid gap-2" aria-labelledby="saved-methods">
         <h4 id="saved-methods" class="text-sm font-medium text-muted">Saved methods</h4>
-        <ul class="grid gap-2">{% for method in panel.choices.saved %}<c-method-choice :method="method" guide_url="{{ guide_url }}" />{% endfor %}</ul>
+        <ul class="method-choices">{% for method in panel.choices.saved %}<c-method-choice :method="method" guide_url="{{ guide_url }}" />{% endfor %}</ul>
       </section>
       {% endif %}
-      {% if panel.choices.advanced %}<c-more-options label="Advanced"><ul class="-mx-3 -mt-2 grid">{% for method in panel.choices.advanced %}<c-method-choice :method="method" guide_url="{{ guide_url }}" compact />{% endfor %}</ul></c-more-options>{% endif %}
+      {% if panel.choices.advanced %}<c-more-options label="Advanced"><ul class="method-choices">{% for method in panel.choices.advanced %}<c-method-choice :method="method" guide_url="{{ guide_url }}" />{% endfor %}</ul></c-more-options>{% endif %}
     </form>
   {% else %}
-    <div>
-      <h3 class="font-semibold">Not marked</h3>
-      {% if panel.has_imported_marks %}<p class="mt-0.5 text-sm text-muted">Students have their imported marks.</p>{% endif %}
-    </div>
+    <c-empty-state icon="clipboard-document-list" title="Not marked">{% if panel.has_imported_marks %}Students have their imported marks.{% endif %}</c-empty-state>
   {% endif %}
-  </div>
-</div>
+  {% if panel.last_save %}<c-slot name="footer">{% with last_save=panel.last_save %}{% partial last_save %}{% endwith %}</c-slot>{% endif %}
+</c-panel>
 {% endif %}
+
+{% partialdef last_save %}<c-avatar :user="last_save.user" size="size-6" /><p class="min-w-0 truncate text-xs text-muted">Saved by <span class="font-medium text-base-content">{{ last_save.user|default:"A former member" }}</span> · <time datetime="{{ last_save.saved_at|date:'c' }}">{{ last_save.saved_at|ago }}</time></p>{% endpartialdef %}

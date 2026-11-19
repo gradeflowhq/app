@@ -146,6 +146,10 @@ class Editor:
     settings_holding_steps: list[StepsSettingView] = field(default_factory=list)
     description: str = ""
     breadcrumbs: list[tuple[str, str]] = field(default_factory=list)
+    parent_path: str | None = None
+    """The path of the step holding this one; None for the marking itself."""
+    siblings: list[tuple[str, list[StepCard]]] = field(default_factory=list)
+    """The cards of the parent's steps, this one's among them, under the title of the setting holding them."""
     problems_elsewhere: list[tuple[str, str]] = field(default_factory=list)
     """Problems in other steps, shown when saving: each one's step path and text."""
     can_change_method: bool = False
@@ -204,6 +208,8 @@ def _editor(workspace: StepWorkspace, path: str, *, saving: bool, more_open: boo
     )
     unfilled = [problem for problem in draft.step_problems if problem.step_path == path and problem.is_incomplete]
     method = draft.method(path)
+    ancestors = _ancestor_paths(draft, path) if path else []
+    parent_path = ancestors[-2] if len(ancestors) > 1 else None
     return Editor(
         actions=workspace.actions,
         path=path,
@@ -220,7 +226,14 @@ def _editor(workspace: StepWorkspace, path: str, *, saving: bool, more_open: boo
         ],
         label=draft.label(path),
         description=draft.describe(path),
-        breadcrumbs=[(ancestor, draft.label(ancestor)) for ancestor in _ancestor_paths(draft, path)] if path else [],
+        breadcrumbs=[(ancestor, draft.label(ancestor)) for ancestor in ancestors],
+        parent_path=parent_path,
+        siblings=[
+            (setting.title, [_card(workspace, step_path) for step_path in setting.step_paths])
+            for setting in draft.settings_holding_steps(parent_path)
+        ]
+        if parent_path is not None
+        else [],
         problems_elsewhere=[
             (problem.step_path, _problem_elsewhere_text(workspace, problem, path))
             for problem in draft.step_problems

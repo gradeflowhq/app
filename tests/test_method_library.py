@@ -579,7 +579,7 @@ def test_changing_an_email_address_makes_the_namespace_again_while_its_methods_a
         EmailAddress.objects.create(user=user, email=address, verified=True)
 
     def namespace_after_making_primary(address: str) -> str:
-        client.post(reverse("account_email"), {"action_primary": "", "email": address})
+        client.post(reverse("settings"), {"action_primary": "", "email": address})
         user.library.refresh_from_db()
         return user.library.namespace
 

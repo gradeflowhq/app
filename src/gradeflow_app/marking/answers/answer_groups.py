@@ -111,7 +111,7 @@ class AnswerGroup:
     preview: Preview | None = None
     """The draft marking's marks for the answer group, while previewing."""
     decisions: list[tuple[str, str]] = field(default_factory=list)
-    """The decisions marking by example gave its answers, each as its label and badge style."""
+    """The decisions marking by example gave its answers, each as its label and chip tone."""
     has_mixed_decisions: bool = False
     joined_by_similarity: bool = False
     """Different answers joined by similarity; review them separately before changing marks."""

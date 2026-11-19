@@ -1,5 +1,6 @@
 {% extends "layouts/assessment.html" %}
 {% block content %}
+<h1 class="sr-only">Questions</h1>
 <div class="workspace workspace-columns group/workspace">
   {% include "marking/question_list.html" %}
   <div id="question-work" class="contents" hx-sync:inherited="#question-work:queue all">

@@ -2,6 +2,7 @@ import base64
 import json
 import re
 from html import unescape
+from typing import TYPE_CHECKING
 
 import pytest
 from django.core.mail import EmailMessage
@@ -14,6 +15,9 @@ from gradeflow_app.courses.keys import KEY_LOST, KEY_NOT_SHARED_YET
 from gradeflow_app.courses.models import Course, CourseKey, Member, Role
 from gradeflow_app.imports.models import Student
 from tests.conftest import auth_key, new_account_fields, signed_in_client
+
+if TYPE_CHECKING:
+    from django.test.client import _MonkeyPatchedWSGIResponse as Response
 
 ENCRYPTED_KEY = base64.b64encode(bytes(80)).decode()
 
@@ -62,16 +66,25 @@ def test_signing_in_takes_the_sign_in_key(db: None) -> None:
     assert response.status_code == 302
 
 
-def test_changing_the_password_keeps_the_key_pair_under_the_new_one(user: User) -> None:
+def change_password(user: User, fields: dict[str, str]) -> Response:
+    """Changes `user`'s password from "old-password" to the one in `fields`, sending all but the public key."""
     user.set_password(auth_key("old-password"))
-    user.public_key = "public"
     user.save()
-    fields = new_account_fields("new-password")
-    signed_in_client(user).post(
+    return signed_in_client(user).post(
         reverse("account_change_password"),
         {"oldpassword": auth_key("old-password")}
         | {key: value for key, value in fields.items() if key != "public_key"},
     )
+
+
+def test_changing_the_password_returns_to_the_security_page(user: User) -> None:
+    assert change_password(user, new_account_fields("new-password"))["Location"] == reverse("mfa_index")
+
+
+def test_changing_the_password_keeps_the_key_pair_under_the_new_one(user: User) -> None:
+    user.public_key = "public"
+    fields = new_account_fields("new-password")
+    change_password(user, fields)
     user.refresh_from_db()
     assert user.check_password(fields["password1"])
     assert (user.kdf_salt, user.wrapped_private_key, user.public_key) == (

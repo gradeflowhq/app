@@ -12,6 +12,7 @@ from pytest_django import DjangoAssertNumQueries
 
 from gradeflow_app.accounts.models import User
 from gradeflow_app.assessments.models import Assessment
+from gradeflow_app.imports.models import Student
 from gradeflow_app.libraries.models import Library
 from gradeflow_app.marking.models import Marking
 from tests.conftest import (
@@ -124,3 +125,19 @@ def test_a_page_of_one_student_reads_only_their_results(client: Client, assessme
     results_read = [query["sql"] for query in captured if 'FROM "results_result"' in query["sql"]]
     assert results_read
     assert all('"results_result"."student_id" IN' in sql for sql in results_read)
+
+
+def test_students_grid_query_count_does_not_grow(client: Client) -> None:
+    course = create_assessment(client).course
+    one_question, three_questions = (
+        assessment_with_full_marks(client, course, "One", ["Q1"]),
+        assessment_with_full_marks(client, course, "Three", ["Q1", "Q2", "Q3"]),
+    )
+    url = reverse("students", args=[one_question.pk])
+    assert query_count(client, url) == query_count(client, reverse("students", args=[three_questions.pk]))
+
+    def add_two_more() -> None:
+        for number in [1, 2]:
+            Student.objects.create(assessment=one_question, encrypted_id=f"new-{number}", answers={"Q1": "light"})
+
+    assert_query_count_stays(client, url, add_two_more)

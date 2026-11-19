@@ -1,8 +1,8 @@
-// The settings page's AI service card, and the notice that marking needs one.
+// The Integrations page's AI service panel, and the notice that marking needs one.
 
 import { forgetModelService, readModelService, saveModelService } from "../services/model-service.js";
 
-export const modelServiceCard = () => ({
+export const modelServicePanel = () => ({
   provider: "",
   token: "",
   connected: false,

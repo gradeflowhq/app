@@ -175,7 +175,7 @@ def your_methods(request: Request) -> HttpResponse:
         request.user.library,
         title="Your methods",
         can_edit=True,
-        layout="layouts/methods.html",
+        layout="layouts/home.html",
         action=reverse("method_new"),
     )
     return render(request, "methods/library.html", context)

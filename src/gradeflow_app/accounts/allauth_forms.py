@@ -4,6 +4,7 @@
 from typing import Any, ClassVar
 
 from allauth.account import forms as allauth
+from allauth.account.fields import EmailField
 from django import forms
 from django.http import HttpRequest
 
@@ -77,8 +78,8 @@ class SignupForm(PlainLabelsMixin, NewKeyPairForm, allauth.SignupForm):
         user.save(update_fields=["name", "kdf_salt", "public_key", "wrapped_private_key"])
 
 
-class AddEmailForm(PlainLabelsMixin, allauth.AddEmailForm):
-    pass
+class AddEmailForm(allauth.AddEmailForm):
+    email = EmailField(label="Email address", widget=forms.EmailInput(attrs={"placeholder": "name@example.edu"}))
 
 
 class ChangePasswordForm(PlainLabelsMixin, RewrappedPrivateKeyForm, allauth.ChangePasswordForm):

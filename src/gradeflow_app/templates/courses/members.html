@@ -5,55 +5,67 @@
 {% partialdef role %}
 <form hx-post="{{ url }}" hx-trigger="change">
   {% csrf_token %}
-  <select name="role" class="select select-sm w-28" aria-label="Role of {{ member_label }}">{% for value, label in roles %}<option value="{{ value }}"{% if value == current_role %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+  <select id="{{ kind }}-role-{{ pk }}" name="role" class="select select-sm w-full" aria-label="Role of {{ member_label }}">{% for value, label in roles %}<option value="{{ value }}"{% if value == current_role %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>
 </form>
 {% endpartialdef %}
 <c-page title="Members">
-  <c-slot name="actions"><button type="button" class="btn btn-ghost btn-square btn-sm text-muted" data-dialog="roles-guide" aria-label="What each role can do">{% icon "question-mark-circle" %}</button>{% if member.is_owner %}<button class="btn btn-primary" data-dialog="invite">{% icon "user-plus" %}Invite</button>{% endif %}</c-slot>
-  {% partialdef members inline %}
-  <ul id="members" class="card-box divide-y divide-base-300" aria-label="Members"{% if out_of_band %} hx-swap-oob="true"{% endif %} hx-target:inherited="#members" hx-swap:inherited="outerHTML" hx-get="{% url 'members' member.course_id %}" hx-trigger="{% listen 'members' member.course_id %}">
-    {% for course_member in members %}
-    <li class="grid grid-cols-[1fr_7rem_2rem] items-center gap-3 px-5 py-3 sm:grid-cols-[auto_1fr_7rem_2rem]">
-      <c-avatar :user="course_member.user" size="size-9 max-sm:hidden" />
-      <div class="min-w-0"><p class="truncate font-medium">{{ course_member.user.name|default:course_member.user.email }}{% if course_member.user == request.user %} <span class="font-normal text-muted">(you)</span>{% endif %}</p>{% if course_member.user.name %}<p class="truncate text-sm text-muted">{{ course_member.user.email }}</p>{% endif %}</div>
-      {% if member.is_owner and not course_member.is_owner or member.is_owner and not has_one_owner %}
-      {% url 'member_role' member.course_id course_member.user.pk as url %}{% with member_label=course_member.user current_role=course_member.role %}{% partial role %}{% endwith %}
-      {% else %}
-      <span class="pl-3 text-sm text-muted">{{ course_member.get_role_display }}</span>
-      {% endif %}
-      {% if course_member.user == request.user %}
-        {% if not course_member.is_owner or not has_one_owner %}
-        <c-menu id="member-menu-{{ course_member.pk }}" label="Actions for {{ course_member.user }}">
-          <li><button class="text-error" hx-post="{% url 'leave_course' member.course_id %}" data-confirm="Leave “{{ member.course.name }}”?" data-confirm-detail="You lose access to its assessments." data-confirm-button="Leave">Leave course</button></li>
-        </c-menu>
-        {% endif %}
-      {% elif member.is_owner %}
-        <c-menu id="member-menu-{{ course_member.pk }}" label="Actions for {{ course_member.user }}">
-          <li><button class="text-error" hx-post="{% url 'member_remove' member.course_id course_member.user.pk %}" data-confirm="Remove {{ course_member.user }}?" data-confirm-detail="They lose access to the course's assessments." data-confirm-button="Remove">Remove</button></li>
-        </c-menu>
-      {% endif %}
-    </li>
-    {% endfor %}
-    {% for invitation in invitations %}
-    <li class="grid grid-cols-[1fr_7rem_2rem] items-center gap-3 px-5 py-3 sm:grid-cols-[auto_1fr_7rem_2rem]">
-      <span class="grid size-9 shrink-0 place-items-center rounded-full border border-dashed border-base-300 text-muted max-sm:hidden">{% icon "envelope" "size-4" %}</span>
-      <div class="min-w-0">
-        <p class="flex items-center gap-2 font-medium"><span class="min-w-0 truncate">{{ invitation.email }}</span>{% if invitation.is_expired %}<span class="badge badge-warning badge-soft badge-sm">Expired</span>{% else %}<span class="badge badge-ghost badge-sm">Invited</span>{% endif %}</p>
-        <p class="text-sm text-muted">Sent {{ invitation.sent_at|ago }}</p>
-      </div>
-      {% if member.is_owner %}
-      {% url 'invitation_role' member.course_id invitation.pk as url %}{% with member_label=invitation.email current_role=invitation.role %}{% partial role %}{% endwith %}
-      <c-menu id="invitation-menu-{{ invitation.pk }}" label="Actions for {{ invitation.email }}">
-        <li><button hx-post="{% url 'invitation_resend' member.course_id invitation.pk %}">Resend invitation</button></li>
-        <li><button class="text-error" hx-post="{% url 'invitation_revoke' member.course_id invitation.pk %}" data-confirm="Revoke the invitation to {{ invitation.email }}?" data-confirm-detail="Its link stops working. You can invite them again later." data-confirm-button="Revoke">Revoke invitation</button></li>
-      </c-menu>
-      {% else %}
-      <span class="pl-3 text-sm text-muted">{{ invitation.get_role_display }}</span>
-      {% endif %}
-    </li>
-    {% endfor %}
-  </ul>
-  {% endpartialdef %}
+  <c-panel icon="user-group" title="Members" body_class="">
+    <c-slot name="actions"><button type="button" class="muted-link flex items-center gap-1.5 text-sm" data-dialog="roles-guide">{% icon "information-circle" %}What each role can do</button>{% if member.is_owner %}<button class="btn btn-primary btn-sm" data-dialog="invite">{% icon "user-plus" %}Invite</button>{% endif %}</c-slot>
+    {% partialdef members inline %}
+    <div id="members" class="overflow-x-auto"{% if out_of_band %} hx-swap-oob="true"{% endif %} hx-target:inherited="#members" hx-swap:inherited="outerHTML" hx-get="{% url 'members' member.course_id %}" hx-trigger="{% listen 'members' member.course_id %}">
+      <table class="table table-fixed">
+        <thead><tr><th>Member</th><th class="w-32 sm:w-40">Role</th><th class="w-16"><span class="sr-only">Actions</span></th></tr></thead>
+        <tbody>
+          {% for course_member in members %}
+          <tr>
+            <td><span class="flex items-center gap-3"><span class="max-sm:hidden"><c-avatar :user="course_member.user" size="size-7.5" /></span><span class="min-w-0"><span class="flex items-center gap-2"><span class="truncate font-medium">{{ course_member.user.name|default:course_member.user.email }}</span>{% if course_member.user == request.user %}<span class="text-muted">(you)</span>{% endif %}</span>{% if course_member.user.name %}<span class="block truncate text-xs text-muted">{{ course_member.user.email }}</span>{% endif %}</span></span></td>
+            <td>
+              {% if member.is_owner and not course_member.is_owner or member.is_owner and not has_one_owner %}
+              {% url 'member_role' member.course_id course_member.user.pk as url %}{% with member_label=course_member.user current_role=course_member.role kind="member" pk=course_member.pk %}{% partial role %}{% endwith %}
+              {% else %}
+              <span class="text-muted">{{ course_member.get_role_display }}</span>
+              {% endif %}
+            </td>
+            <td class="text-right">
+              {% if course_member.user == request.user %}
+                {% if not course_member.is_owner or not has_one_owner %}
+                <c-menu id="member-menu-{{ course_member.pk }}" label="Actions for {{ course_member.user }}">
+                  <li><button class="text-error" hx-post="{% url 'leave_course' member.course_id %}" data-confirm="Leave “{{ member.course.name }}”?" data-confirm-detail="You lose access to its assessments." data-confirm-button="Leave">Leave course</button></li>
+                </c-menu>
+                {% endif %}
+              {% elif member.is_owner %}
+                <c-menu id="member-menu-{{ course_member.pk }}" label="Actions for {{ course_member.user }}">
+                  <li><button class="text-error" hx-post="{% url 'member_remove' member.course_id course_member.user.pk %}" data-confirm="Remove {{ course_member.user }}?" data-confirm-detail="They lose access to the course's assessments." data-confirm-button="Remove">Remove</button></li>
+                </c-menu>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+          {% for invitation in invitations %}
+          <tr>
+            <td><span class="flex items-center gap-3"><span class="grid size-7.5 shrink-0 place-items-center rounded-full border border-dashed max-sm:hidden border-base-300 text-muted" aria-hidden="true">{% icon "envelope" %}</span><span class="min-w-0"><span class="flex items-center gap-2"><span class="truncate font-medium">{{ invitation.email }}</span>{% if invitation.is_expired %}<c-chip icon="clock" tone="warning">Expired</c-chip>{% else %}<c-chip icon="envelope">Invited</c-chip>{% endif %}</span><span class="block text-xs text-muted">Sent {{ invitation.sent_at|ago }}</span></span></span></td>
+            <td>
+              {% if member.is_owner %}
+              {% url 'invitation_role' member.course_id invitation.pk as url %}{% with member_label=invitation.email current_role=invitation.role kind="invitation" pk=invitation.pk %}{% partial role %}{% endwith %}
+              {% else %}
+              <span class="text-muted">{{ invitation.get_role_display }}</span>
+              {% endif %}
+            </td>
+            <td class="text-right">
+              {% if member.is_owner %}
+              <c-menu id="invitation-menu-{{ invitation.pk }}" label="Actions for {{ invitation.email }}">
+                <li><button hx-post="{% url 'invitation_resend' member.course_id invitation.pk %}">Resend invitation</button></li>
+                <li><button class="text-error" hx-post="{% url 'invitation_revoke' member.course_id invitation.pk %}" data-confirm="Revoke the invitation to {{ invitation.email }}?" data-confirm-detail="Its link stops working. You can invite them again later." data-confirm-button="Revoke">Revoke invitation</button></li>
+              </c-menu>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endpartialdef %}
+  </c-panel>
 </c-page>
 {% include "courses/roles_guide.html" %}
 {% if member.is_owner %}

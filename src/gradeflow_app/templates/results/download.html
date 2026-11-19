@@ -4,10 +4,10 @@
     {% csrf_token %}
     <div class="grid gap-4 px-6 pt-2">
       <c-more-options :open="download_form.is_bound">{{ download_form }}</c-more-options>
-      {% if unmarked_count %}<p class="flex gap-2 text-sm">{% icon "exclamation-triangle" "size-4 mt-0.5 shrink-0 text-warning" %}<span><span class="tabular-nums font-semibold">{{ unmarked_count }}</span> answer{{ unmarked_count|pluralize:" still needs,s still need" }} marking. {{ unmarked_count|pluralize:"It counts,They count" }} as 0.</span></p>{% endif %}
-      <p class="flex gap-2 text-sm text-muted">{% icon "lock-closed" "size-4 mt-0.5" %}Student IDs are decrypted on this computer as the file downloads.</p>
+      {% if unmarked_count %}<p class="flex gap-2 text-sm">{% icon "exclamation-triangle" "mt-0.5 text-warning" %}<span><span class="tabular-nums font-semibold">{{ unmarked_count }}</span> answer{{ unmarked_count|pluralize:" still needs,s still need" }} marking. {{ unmarked_count|pluralize:"It counts,They count" }} as 0.</span></p>{% endif %}
+      {% if not access.course_key.unavailable_reason %}<p class="flex gap-2 text-sm text-muted">{% icon "lock-closed" "mt-0.5" %}Student IDs are decrypted on this computer as the file downloads.</p>{% endif %}
     </div>
-    <c-dialog.footer><button type="button" class="btn" data-close>Cancel</button><button class="btn btn-primary">{% icon "arrow-down-tray" "size-4" %}{% if unmarked_count %}Download anyway{% else %}Download{% endif %}</button></c-dialog.footer>
+    <c-dialog.footer><button type="button" class="btn" data-close>Cancel</button><button class="btn btn-primary">{% icon "arrow-down-tray" %}{% if unmarked_count %}Download anyway{% else %}Download{% endif %}</button></c-dialog.footer>
   </form>
   {% endpartialdef %}
 </c-dialog>

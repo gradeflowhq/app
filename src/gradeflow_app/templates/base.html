@@ -28,8 +28,8 @@
 <body class="min-h-screen" x-data hx-boost:inherited="true">
   <a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-3 focus:z-50 btn btn-sm">Skip to content</a>
   {% block body %}
-    <c-topbar />
-    <main id="main">{% block content %}{% endblock %}</main>
+    {% block topbar %}<c-topbar />{% endblock %}
+    <main id="main">{% block page %}{% block content %}{% endblock %}{% endblock %}</main>
   {% endblock %}
   {% page_messages %}
   <div class="toast toast-center toast-bottom z-50" aria-live="polite">
@@ -46,7 +46,7 @@
     <div class="mx-6 mt-3 h-[calc(100dvh-16rem)] min-h-64 overflow-hidden rounded-field border border-base-300" data-editor></div>
     <form method="dialog"><c-dialog.footer><button class="btn btn-primary">Done</button></c-dialog.footer></form>
   </c-dialog>
-  <template id="code-expand"><button type="button" class="btn btn-ghost btn-square btn-sm absolute right-4 top-1.5 z-10 bg-base-100/80" aria-label="Expand" title="Expand">{% icon "arrows-pointing-out" "size-4" %}</button></template>
+  <template id="code-expand"><button type="button" class="btn btn-ghost btn-square btn-sm absolute right-4 top-1.5 z-10 bg-base-100/80" aria-label="Expand" title="Expand">{% icon "arrows-pointing-out" %}</button></template>
   {% if user.is_authenticated %}{% account_keys %}{% pending_course_key_shares %}{% endif %}
   {% live_stream %}
   {% block extra_body %}{% endblock %}

@@ -41,6 +41,10 @@ export const canvasExport = () => {
     get courseId() {
       return this.config.course;
     },
+    /** The course's page in Canvas, once connected. */
+    get courseUrl() {
+      return this.canvasConnection ? `${this.canvasConnection.baseUrl}/courses/${this.courseId}` : null;
+    },
     get creating() {
       return this.assignment.id === "new";
     },
@@ -58,8 +62,11 @@ export const canvasExport = () => {
     get chosenAssignment() {
       return this.assignment.items.find((assignment) => assignment.id === this.assignment.id);
     },
+    get isLoadingAssignments() {
+      return this.isBusy && !this.assignment.items.length;
+    },
     get canReview() {
-      return Boolean(this.assignment.id && !this.isBusy && (!this.creating || this.newName.trim()));
+      return Boolean(this.connected && this.assignment.id && !this.isBusy && (!this.creating || this.newName.trim()));
     },
     get canSend() {
       return this.isMatched && this.matched.length > 0 && !this.isBusy;

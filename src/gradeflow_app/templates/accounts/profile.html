@@ -1,0 +1,36 @@
+{% extends "allauth/layouts/manage.html" %}
+{% block head_title %}Profile{% endblock %}
+{% block content %}
+<h1 class="sr-only">Profile</h1>
+<c-form-panel id="profile" icon="user" title="Details">{{ profile_form }}</c-form-panel>
+<c-panel icon="envelope" title="Email addresses" body_class="setting-rows">
+  {% if can_add_email %}<c-slot name="actions"><button type="button" class="btn btn-sm" data-dialog="add-email">{% icon "plus" %}Add email</button></c-slot>{% endif %}
+  {% for radio in emailaddress_radios|dictsortreversed:"emailaddress.primary" %}{% with address=radio.emailaddress %}
+  <c-setting-row icon="envelope">
+    <c-slot name="label"><span class="min-w-0 truncate">{{ address.email }}</span></c-slot>
+    <c-slot name="status">{% if address.primary %}<c-chip icon="check" tone="success">Primary</c-chip>{% endif %}{% if not address.verified %}<c-chip icon="exclamation-triangle" tone="warning">Not confirmed</c-chip>{% endif %}</c-slot>
+    {% if not address.primary %}
+    <form id="email-{{ forloop.counter }}" method="post" action="{% url 'settings' %}" hidden>{% csrf_token %}<input type="hidden" name="email" value="{{ address.email }}"></form>
+    <c-menu id="email-menu-{{ forloop.counter }}" label="Actions for {{ address.email }}">
+      {% if address.verified %}<li><button form="email-{{ forloop.counter }}" name="action_primary">Make primary</button></li>{% else %}<li><button form="email-{{ forloop.counter }}" name="action_send">Send confirmation again</button></li>{% endif %}
+      <li><button form="email-{{ forloop.counter }}" name="action_remove" class="text-error" data-confirm="Remove {{ address.email }}?" data-confirm-detail="You can't sign in with it after this." data-confirm-button="Remove">Remove</button></li>
+    </c-menu>
+    {% elif not address.verified %}
+    <form method="post" action="{% url 'settings' %}">{% csrf_token %}<input type="hidden" name="email" value="{{ address.email }}"><button class="btn btn-sm" name="action_send">Send confirmation again</button></form>
+    {% endif %}
+  </c-setting-row>
+  {% endwith %}{% endfor %}
+</c-panel>
+<c-panel body_class="setting-rows">
+  <c-setting-row icon="paint-brush" label="Theme" detail="On this device">
+    <div class="segmented" role="radiogroup" aria-label="Theme" x-data="themeChoice">
+      {% for value, label, icon_name in themes %}
+      <label class="segment"><input type="radio" name="theme" class="sr-only" value="{{ value }}" x-on:change="choose" :checked="theme === '{{ value }}'">{% icon icon_name %}{{ label }}</label>
+      {% endfor %}
+    </div>
+  </c-setting-row>
+</c-panel>
+{% if can_add_email %}
+<c-form-dialog id="add-email" title="Add email" action="{% url 'settings' %}" submit="Add email" :form="form" name="action_add" />
+{% endif %}
+{% endblock %}

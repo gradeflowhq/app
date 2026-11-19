@@ -1,0 +1,3 @@
+<c-vars icon="" tone="" class="" />
+{# A status, grey unless `tone` is primary, success, warning or error. Other attributes go on the chip. #}
+<span class="chip {{ class }}"{% if tone %} data-tone="{{ tone }}"{% endif %} {{ attrs }}>{% if icon %}{% icon icon %}{% endif %}{{ slot }}</span>

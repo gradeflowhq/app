@@ -5,15 +5,14 @@
 @plugin "daisyui" {
   themes: false;
 }
-
 @plugin "daisyui/theme" {
   name: "light";
   default: true;
   color-scheme: light;
   --color-base-100: oklch(100% 0 0);
-  --color-base-200: oklch(98.2% 0.002 247);
-  --color-base-300: oklch(91.5% 0.005 255);
-  --color-base-content: oklch(23% 0.012 260);
+  --color-base-200: oklch(97% 0.003 265);
+  --color-base-300: oklch(92.4% 0.006 255);
+  --color-base-content: oklch(23% 0.012 264);
   --color-primary: oklch(50% 0.17 258);
   --color-primary-content: oklch(100% 0 0);
   --color-logo-muted: oklch(78% 0.09 256);
@@ -22,6 +21,12 @@
   --color-code-name: oklch(47% 0.15 262);
   --color-code-literal: oklch(47% 0.1 218);
   --backdrop: oklch(20% 0.01 260 / 0.35);
+  --success-soft: oklch(95.9% 0.017 163);
+  --success-soft-content: oklch(46% 0.098 158);
+  --warning-soft: oklch(96.7% 0.026 82);
+  --warning-soft-content: oklch(49% 0.104 71);
+  --error-soft: oklch(95.4% 0.019 17);
+  --error-soft-content: oklch(48% 0.158 25);
   --color-secondary: oklch(94.5% 0.025 258);
   --color-secondary-content: oklch(38% 0.13 258);
   --color-accent: oklch(50% 0.17 258);
@@ -40,18 +45,17 @@
   --radius-field: 0.5rem;
   --radius-box: 0.75rem;
   --size-selector: 0.25rem;
-  --size-field: 0.25rem;
+  --size-field: 0.2125rem;
   --border: 1px;
   --depth: 0;
   --noise: 0;
 }
-
 @plugin "daisyui/theme" {
   name: "dark";
   prefersdark: true;
   color-scheme: dark;
-  --color-base-100: oklch(21.5% 0.01 260);
-  --color-base-200: oklch(18% 0.009 260);
+  --color-base-100: oklch(22% 0.01 262);
+  --color-base-200: oklch(17.5% 0.009 262);
   --color-base-300: oklch(31% 0.012 260);
   --color-base-content: oklch(94% 0.006 260);
   --color-primary: oklch(70% 0.14 255);
@@ -62,6 +66,12 @@
   --color-code-name: oklch(78% 0.11 258);
   --color-code-literal: oklch(80% 0.09 205);
   --backdrop: oklch(5% 0 0 / 0.65);
+  --success-soft: oklch(30% 0.045 160);
+  --success-soft-content: oklch(82% 0.12 158);
+  --warning-soft: oklch(31% 0.045 80);
+  --warning-soft-content: oklch(85% 0.11 82);
+  --error-soft: oklch(30% 0.055 22);
+  --error-soft-content: oklch(82% 0.1 22);
   --color-secondary: oklch(30% 0.05 258);
   --color-secondary-content: oklch(88% 0.06 258);
   --color-accent: oklch(70% 0.14 255);
@@ -80,12 +90,11 @@
   --radius-field: 0.5rem;
   --radius-box: 0.75rem;
   --size-selector: 0.25rem;
-  --size-field: 0.25rem;
+  --size-field: 0.2125rem;
   --border: 1px;
   --depth: 0;
   --noise: 0;
 }
-
 @font-face {
   font-family: "Inter";
   font-style: normal;
@@ -100,17 +109,29 @@
   font-display: swap;
   src: url("../vendor/inter-4.1/InterVariable-Italic.woff2") format("woff2");
 }
-
+/* Body text is 14 px on 20 px lines, secondary text 13 px (`text-sm`) or 12 px (`text-xs`). Boxes inside a panel are
+   10 px round (`rounded-inner`). */
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+  --text-base: 0.875rem;
+  --text-base--line-height: 1.25rem;
+  --text-sm: 0.8125rem;
+  --text-sm--line-height: 1.25rem;
+  --radius-inner: 0.625rem;
 }
-
+/* `line`: lines inside a panel, fainter than its border. Soft colours: tints, with text that reads on them. */
 @theme inline {
   --color-muted: color-mix(in oklab, var(--color-base-content) 64%, transparent);
   --color-subtle: color-mix(in oklab, var(--color-base-content) 42%, transparent);
+  --color-line: color-mix(in oklab, var(--color-base-300) 60%, var(--color-base-100));
+  --color-success-soft: var(--success-soft);
+  --color-success-soft-content: var(--success-soft-content);
+  --color-warning-soft: var(--warning-soft);
+  --color-warning-soft-content: var(--warning-soft-content);
+  --color-error-soft: var(--error-soft);
+  --color-error-soft-content: var(--error-soft-content);
 }
-
 /* Inside the marking workspace's question list while it is collapsed to its keys: from lg up, where it is a column. */
 @custom-variant questions-collapsed {
   @media (width >= 64rem) {
@@ -119,11 +140,18 @@
     }
   }
 }
-
 @layer base {
   html {
     font-feature-settings: "ss01";
     -webkit-font-smoothing: antialiased;
+  }
+  /* The sticky header's height, which the workspace and anything fixed under it leave room for: the top bar (`h-13`),
+     the tabs (`h-10.5`) when there are any, and its border. */
+  :root {
+    --header-height: calc(var(--spacing) * 13 + 1px);
+    &:has(#tabs) {
+      --header-height: calc(var(--spacing) * 23.5 + 1px);
+    }
   }
   body {
     @apply bg-base-200 text-base text-base-content;
@@ -140,6 +168,15 @@
   [x-cloak] {
     display: none !important;
   }
+  /* Marks are typed, not stepped: number boxes have no spin buttons. */
+  input[type="number"] {
+    appearance: textfield;
+    &::-webkit-inner-spin-button,
+    &::-webkit-outer-spin-button {
+      appearance: none;
+      margin: 0;
+    }
+  }
   /* The parts of an answer the marking's transforms extracted. */
   mark {
     @apply rounded-xs bg-primary/15 text-inherit;
@@ -150,111 +187,244 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
-
-/* Every page's content: the full width beside the sidebar, inside the same gutters. */
+/* Every page's content: the full width, inside the same gutters, level with the logo and the tabs. */
 @utility page {
-  @apply grid w-full grid-cols-1 content-start gap-6 px-4 py-6 sm:px-8;
+  @apply grid w-full grid-cols-1 content-start gap-5 px-4 py-6 sm:px-6;
 }
-
-/* A settings page's cards: narrower than lists, so a form's fields fill its card at a readable width. */
+/* A settings page's panels: narrower than lists, so a form's fields fill its panel at a readable width. */
 @utility settings {
-  @apply grid max-w-3xl gap-6;
+  @apply grid max-w-3xl grid-cols-1 gap-5;
 }
-
-/* One-action settings in a card, divided; a dialog among them is no row. */
-@utility setting-rows {
-  @apply px-5;
-  & > :not(dialog) ~ :not(dialog) {
-    @apply border-t border-base-300;
+/* A wide column and a 420 px one on its right; a lone child spans both. */
+@utility main-with-aside {
+  @apply grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_26.25rem];
+  & > :only-child {
+    @apply lg:col-span-2;
   }
 }
-
-@utility card-box {
-  @apply rounded-box border border-base-300 bg-base-100;
+/* One-action settings in a panel, divided; a dialog among them is no row. */
+@utility setting-rows {
+  @apply px-4;
+  & > :not(dialog) ~ :not(dialog) {
+    @apply border-t border-line;
+  }
 }
-
-/* The question workspace, as marking and a method's page show it: from md, columns that each scroll, under the top
-   bar; below md, the page scrolls. Each column is `relative`, so absolutely positioned content, screen-reader text
-   included, scrolls inside it instead of lengthening the page. */
+/* A white box on the grey page. */
+@utility surface {
+  @apply rounded-box border border-base-300 bg-base-100 shadow-xs;
+}
+/* A panel's title row. */
+@utility panel-head {
+  @apply flex min-h-12 shrink-0 flex-wrap items-center gap-x-2 gap-y-1 border-b border-line px-4 py-1.5;
+  & > svg {
+    @apply text-subtle;
+  }
+  & > h2 {
+    @apply truncate text-sm font-semibold;
+  }
+}
+/* The grey strip at a panel's foot. */
+@utility panel-foot {
+  @apply flex flex-wrap items-center gap-2 rounded-b-box border-t border-line bg-base-200/50 px-4 py-3;
+}
+/* Figures side by side, divided by each one's right and bottom shadows, clipped at the edges. */
+@utility figures {
+  @apply grid grid-cols-2 overflow-hidden sm:grid-cols-3 lg:auto-cols-fr lg:grid-flow-col lg:grid-cols-none;
+  & > * {
+    @apply flex min-w-0 items-center gap-3 px-5 py-4 shadow-[1px_0_var(--color-line),0_1px_var(--color-line)];
+  }
+  & > a {
+    @apply transition-colors hover:bg-base-200/60;
+  }
+  & p {
+    @apply grid min-w-0;
+  }
+  & p > span {
+    @apply truncate text-xs text-muted;
+  }
+  & strong {
+    @apply truncate text-lg/6 font-semibold tabular-nums;
+  }
+  & small {
+    @apply text-sm font-normal text-subtle;
+  }
+}
+/* A tinted square with an icon, grey unless given a tone. */
+@utility icon-tile {
+  @apply grid size-8 shrink-0 place-items-center rounded-field bg-base-content/6 text-muted;
+}
+/* A round status with an icon, grey unless given a tone. */
+@utility chip {
+  @apply inline-flex h-5.5 w-fit shrink-0 items-center gap-1 rounded-full bg-base-content/6 px-2 text-xs font-medium whitespace-nowrap text-base-content/80;
+  & > svg {
+    @apply size-3.5;
+  }
+}
+/* The tones of chips, icon tiles and check effects (`data-tone`): the primary tint, green, amber or red. */
+@layer utilities {
+  :is(.chip, .icon-tile, .check-effect) {
+    &[data-tone="primary"] {
+      @apply bg-secondary text-secondary-content;
+    }
+    &[data-tone="success"] {
+      @apply bg-success-soft text-success-soft-content;
+    }
+    &[data-tone="warning"] {
+      @apply bg-warning-soft text-warning-soft-content;
+    }
+    &[data-tone="error"] {
+      @apply bg-error-soft text-error-soft-content;
+    }
+  }
+}
+/* Marks as a round pill, coloured by their level (`data-level`, as `marks_level` gives it). */
+@utility mark-pill {
+  @apply inline-flex h-6 min-w-14 shrink-0 items-center justify-center gap-1 rounded-full bg-base-content/6 px-2.5 text-xs font-semibold whitespace-nowrap tabular-nums;
+  &[data-level="full"] {
+    @apply bg-success-soft text-success-soft-content;
+  }
+  &[data-level="partial"] {
+    @apply bg-warning-soft text-warning-soft-content;
+  }
+  &[data-level="no_marks"] {
+    @apply bg-error-soft text-error-soft-content;
+  }
+}
+/* A bordered list inside a panel: a grey title row, then rows divided by lines. */
+@utility bordered-list {
+  @apply overflow-hidden rounded-inner border border-line;
+  & > header {
+    @apply flex min-h-9 items-center justify-between gap-3 border-b border-line bg-base-200/50 px-3 py-2;
+    & > h3 {
+      @apply text-sm font-semibold;
+    }
+  }
+  & > ul > li {
+    @apply flex min-h-9.5 items-center gap-2.5 px-3 py-1.5 text-sm;
+  }
+  & > ul > li + li {
+    @apply border-t border-line;
+  }
+}
+/* The question workspace, as marking and a method's page show it: three panels on the grey page. From md,
+   columns that each scroll, under the top bar; below md, the page scrolls. Each column is `relative`, so absolutely
+   positioned content, screen-reader text included, scrolls inside it instead of lengthening the page. */
 @utility workspace {
-  @apply md:h-[calc(100dvh-3.5rem)];
+  @apply md:h-[calc(100dvh-var(--header-height))];
 }
 /* The marking column takes the width its resizer saved, between 20rem and half the workspace; a collapsible question
    list narrows to its keys while collapsed. */
 @utility workspace-columns {
-  @apply relative grid [--marking-default:20rem] md:grid-cols-[minmax(0,1fr)_var(--marking)] lg:grid-cols-[var(--questions)_minmax(0,1fr)_var(--marking)] lg:[--questions:14rem] lg:[--marking-default:22rem] xl:[--questions:15rem] xl:[--marking-default:24rem] 2xl:[--questions:16rem] 2xl:[--marking-default:27rem];
+  @apply relative grid gap-5 px-4 py-6 [--marking-default:20rem] sm:px-6 md:grid-cols-[minmax(0,1fr)_var(--marking)] lg:grid-cols-[var(--questions)_minmax(0,1fr)_var(--marking)] lg:[--marking-default:22rem] lg:[--questions:15rem] xl:[--marking-default:30rem] 2xl:[--marking-default:34rem];
   --marking: clamp(20rem, var(--marking-width, var(--marking-default)), 50%);
   [data-questions-collapsed] &:has(> [data-collapsible]) {
     --questions: 4.5rem;
   }
 }
-/* The handle on the marking column's left edge. */
+/* The handle in the gap before the marking column; focused, its line shows as on hover. */
 @utility marking-resizer {
-  @apply absolute inset-y-0 left-[calc(100%-var(--marking))] z-20 w-2 -translate-x-1/2 cursor-col-resize after:absolute after:inset-y-0 after:left-1/2 after:w-0.5 after:-translate-x-1/2 after:transition-colors hover:after:bg-primary hover:after:delay-150 active:after:bg-primary max-md:hidden;
+  @apply absolute inset-y-6 z-20 w-5 -translate-x-1/2 cursor-col-resize after:absolute after:inset-y-0 after:left-1/2 after:w-0.5 after:-translate-x-1/2 after:rounded-full after:transition-colors outline-none hover:after:bg-primary hover:after:delay-150 focus-visible:after:bg-primary active:after:bg-primary max-md:hidden;
+  left: calc(100% - var(--marking) - var(--spacing) * 8.5);
 }
-/* The questions column, over the page below lg while the questions toggle is on, beside the narrowed sidebar if
-   there is one. Its lists scroll, not the column. */
+/* The question list's panel, over the page below lg while the questions toggle is on. Its lists scroll, not the
+   panel. */
 @utility workspace-questions {
-  @apply relative flex min-h-0 flex-col overflow-hidden border-r border-base-300 bg-base-100 max-lg:fixed max-lg:bottom-0 max-lg:left-(--sidebar,0px) max-lg:top-14 max-lg:z-30 max-lg:w-72 max-lg:shadow-xl max-lg:not-group-has-[#questions-shown:checked]/workspace:hidden;
+  @apply relative flex min-h-0 flex-col overflow-hidden border-base-300 bg-base-100 max-lg:fixed max-lg:top-(--header-height) max-lg:bottom-0 max-lg:left-0 max-lg:z-30 max-lg:w-72 max-lg:border-r max-lg:shadow-xl max-lg:not-group-has-[#questions-shown:checked]/workspace:hidden lg:rounded-box lg:border lg:shadow-xs;
 }
-/* The answers and marking columns: from md, the part below a column's head scrolls, not the column. Below md the
+/* The answers and marking columns: from md, the part below a panel's head scrolls, not the column. Below md the
    workspace shows one of them, as its switch sets; with the marking, the answers keep only their head row, which names
    the question and opens the question list. */
 @utility workspace-answers {
-  @apply relative flex min-w-0 flex-col bg-base-200 md:overflow-hidden;
+  @apply relative flex min-w-0 flex-col md:min-h-0;
   [data-marking-shown] .group\/workspace & > :not(header, #answers),
   [data-marking-shown] .group\/workspace & #answers > :not(header),
-  [data-marking-shown] .group\/workspace & header > :not(.column-head) {
+  [data-marking-shown] .group\/workspace & header > :not(.panel-head) {
     @apply max-md:hidden;
   }
 }
 @utility workspace-marking {
-  @apply relative flex flex-col border-base-300 bg-base-100 md:overflow-hidden md:border-l;
+  @apply relative flex min-w-0 flex-col md:min-h-0;
   :root:not([data-marking-shown]) .group\/workspace & {
     @apply max-md:hidden;
   }
+}
+/* A panel filling its workspace column: its body scrolls between its head and foot. */
+@utility workspace-panel {
+  @apply flex min-h-0 flex-1 flex-col surface;
+  & > :not(header, footer) {
+    @apply min-h-0 flex-1 overflow-y-auto;
+  }
+}
+/* What scrolls under the answers panel: answer groups and test answers, on the grey page. It reaches into the gaps
+   beside it, so an open card's glow isn't cut off. */
+@utility workspace-cards {
+  @apply -mx-1.5 grid min-h-0 flex-1 content-start gap-2 px-1.5 pt-2 pb-3 md:overflow-y-auto;
 }
 /* The switch's bar is fixed to the bottom of the screen, under the preview bar if there is one; this keeps room for
    them at the workspace's end. */
 @utility workspace-switch {
   @apply order-last h-14 group-has-[.preview-bar]/workspace:h-26 md:hidden;
 }
-
-/* The header row every workspace column starts with, so their borders line up. */
-@utility column-head {
-  @apply relative flex h-14 shrink-0 items-center gap-3 border-b border-base-300 px-4;
-}
-
-/* A column's head with rows below it. */
-@utility column-header {
-  @apply border-b border-base-300 bg-base-100;
-  /* A head inside one leaves its bottom line to it, so the line sits where the neighbouring columns' lines do. */
-  & > .column-head {
-    height: calc(var(--spacing) * 14 - 1px);
-    border-bottom-width: 0;
+/* Toasts sit above them. */
+@layer utilities {
+  :root:has(.workspace-switch) .toast {
+    @apply max-md:bottom-18;
+  }
+  :root:has(.group\/workspace .preview-bar) .toast {
+    @apply max-md:bottom-30;
   }
 }
-
+/* The open or edited item. */
+@utility active-ring {
+  @apply ring-3 ring-secondary outline-1 -outline-offset-1 outline-primary/40;
+}
+/* A row of the question list. */
 @utility question-link {
-  @apply relative flex items-center gap-3 rounded-field px-3 py-2 hover:bg-base-200;
+  @apply relative flex h-9 items-center gap-2 px-4 text-sm text-muted transition-colors hover:bg-base-200/60 hover:text-base-content;
   &[aria-current="page"] {
-    @apply bg-base-300/60;
+    @apply bg-secondary/60 text-base-content;
   }
 }
-
-/* A row of an account list, such as an email address, passkey or device, with its actions at the end. */
-@utility account-list-row {
-  @apply flex min-h-16 items-center gap-3 px-5 py-3;
+@utility question-key {
+  @apply max-w-1/2 min-w-6.5 shrink-0 truncate font-semibold questions-collapsed:max-w-full;
 }
-
+@utility shaded-box {
+  @apply rounded-inner border border-line bg-base-200/50 px-3.5 py-3;
+}
+/* A notice across a panel: amber (`data-tone="warning"`), red (`error`), the primary tint (`primary`) or
+   grey. */
+@utility notice-row {
+  @apply flex items-center gap-2 border-t border-line px-4 py-2.5 text-sm;
+  &[data-tone="warning"] {
+    @apply bg-warning-soft/60;
+    & > svg {
+      @apply text-warning;
+    }
+  }
+  &[data-tone="error"] {
+    @apply bg-error-soft/60 text-error-soft-content;
+  }
+  &[data-tone="primary"] {
+    @apply bg-secondary/60;
+    & > svg {
+      @apply text-primary;
+    }
+  }
+}
+/* Methods to start marking with, as one list of rows. */
+@utility method-choices {
+  @apply divide-y divide-line overflow-hidden surface;
+}
 /* A labelled row of a settings summary: the label, then what's set, then an action. */
 @utility setting-summary-row {
   @apply flex flex-wrap items-center gap-x-4 gap-y-2 py-3.5;
 }
 @utility setting-summary-label {
-  @apply w-full text-sm text-muted sm:w-28 sm:shrink-0;
+  @apply flex w-full items-center gap-2 text-sm text-muted sm:w-40 sm:shrink-0;
+  & > svg {
+    @apply text-subtle;
+  }
 }
-
 /* Text edited where it stands: the text and the field that replaces it share one box, outset so the words line up
    with their neighbours, and the field shows focus as a soft ring rather than an outline over those neighbours. */
 @utility edit-in-place {
@@ -263,7 +433,6 @@
     @apply border-base-300 bg-base-100 shadow-none focus:border-primary focus:outline-hidden focus:ring-3 focus:ring-primary/15;
   }
 }
-
 /* Code as written, such as a Code question's answer, or a field that edits it in place. */
 @utility code-block {
   @apply block w-full overflow-x-auto whitespace-pre rounded-box border border-base-300 bg-base-200/50 px-3 py-2 font-mono text-[13px]/relaxed;
@@ -271,34 +440,26 @@
     @apply resize-none focus:border-primary focus:outline-hidden focus:ring-3 focus:ring-primary/15;
   }
 }
-
-/* A segmented control: a `segment` label around each radio input, or a `segment` tab or pressed button. */
+/* A segmented control, as tall as a small button: a `segment` label around each radio input, or a `segment` tab or
+   pressed button. */
 @utility segmented {
-  @apply relative inline-flex w-fit gap-0.5 rounded-field border border-base-300 bg-base-200 p-0.5;
+  @apply relative inline-flex w-fit overflow-hidden rounded-field border border-base-300 bg-base-100;
 }
 @utility segment {
-  @apply flex cursor-pointer items-center rounded-[calc(var(--radius-field)-0.125rem)] px-3 py-1.5 text-sm font-medium text-muted transition-colors hover:text-base-content has-checked:bg-base-100 has-checked:text-base-content has-checked:shadow-xs aria-selected:bg-base-100 aria-selected:text-base-content aria-selected:shadow-xs aria-pressed:bg-base-100 aria-pressed:text-base-content aria-pressed:shadow-xs has-focus-visible:outline-2 has-focus-visible:outline-primary focus-visible:outline-2 focus-visible:outline-primary has-disabled:cursor-not-allowed has-disabled:opacity-40;
+  @apply flex h-7 cursor-pointer items-center gap-1.5 px-2.5 text-sm font-medium whitespace-nowrap text-muted outline-offset-[-2px] transition-colors hover:text-base-content focus-visible:outline-2 focus-visible:outline-primary has-checked:bg-secondary has-checked:text-secondary-content has-focus-visible:outline-2 has-focus-visible:outline-primary has-disabled:cursor-not-allowed has-disabled:opacity-40 aria-pressed:bg-secondary aria-pressed:text-secondary-content aria-selected:bg-secondary aria-selected:text-secondary-content;
 }
-
-/* A notice across a method's page, under its header: a warning unless given other colours. */
-@utility banner {
-  @apply flex items-center gap-3 border-b border-warning/30 bg-warning/10 px-5 py-2.5 text-sm;
-}
-
 /* A list row a change affects. */
 @utility changed {
   @apply relative before:pointer-events-none before:absolute before:inset-y-0 before:left-0 before:w-0.75 before:bg-primary;
 }
-
 @utility preview-bar {
-  @apply relative flex min-h-12 items-center gap-2 border-t border-base-300 bg-secondary/60 px-4 py-2;
+  @apply relative flex min-h-12 items-center gap-2 border-t border-line bg-secondary/60 px-4 py-2;
   /* Below md, in the workspace, it sits above the workspace switch, so it stays in reach as the answers scroll; its
      colour is made opaque there. */
   .group\/workspace & {
-    @apply max-md:fixed max-md:right-0 max-md:bottom-14 max-md:left-(--sidebar,0px) max-md:z-20 max-md:bg-[color-mix(in_oklab,var(--color-secondary)_60%,var(--color-base-100))];
+    @apply max-md:fixed max-md:inset-x-0 max-md:bottom-14 max-md:z-20 max-md:bg-[color-mix(in_oklab,var(--color-secondary)_60%,var(--color-base-100))];
   }
 }
-
 /* Long content shortened to about ten lines and faded at the end, until shown in full (components/collapsible.js). */
 @utility collapsible {
   @apply max-h-64 overflow-hidden;
@@ -310,39 +471,69 @@
     mask-image: none;
   }
 }
-
-/* Links: `text-link` in a sentence, `secondary-link` for a secondary one beside other content. */
+/* Links: `text-link` in a sentence, `muted-link` for a secondary one beside other content. */
 @utility text-link {
   @apply font-medium text-primary underline-offset-2 hover:underline;
 }
-@utility secondary-link {
+@utility muted-link {
   @apply text-muted underline-offset-2 hover:text-base-content hover:underline;
 }
-
-/* A breadcrumb after the logo: a separator, then a link that truncates. */
+/* A breadcrumb after the logo: a separator, then its icon and a name that truncates. */
 @utility breadcrumb {
-  @apply flex items-center gap-2 before:text-subtle before:content-['/'];
+  @apply flex min-w-0 items-center before:mx-0.5 before:text-base-300 before:content-['/'];
   & > a {
-    @apply truncate text-muted hover:text-base-content;
+    @apply flex h-8 min-w-0 items-center gap-1.5 rounded-field px-2 font-medium text-muted transition-colors hover:bg-base-200 hover:text-base-content;
+    & > svg {
+      @apply text-subtle;
+    }
   }
   & > a[aria-current="page"] {
-    @apply font-medium text-base-content;
+    @apply text-base-content;
   }
 }
-
-/* A sidebar link, a step darker than muted text; ARIA marks the current one. */
-@utility sidebar-link {
-  @apply flex items-center gap-2.5 whitespace-nowrap rounded-md px-2.5 py-1.5 text-[15px] font-medium text-base-content/80 transition-colors hover:bg-base-300/40 hover:text-base-content;
+/* The top bar and, under it, the page's tabs. */
+@utility app-header {
+  @apply sticky top-0 z-30 border-b border-base-300 bg-base-100;
+}
+/* Tabs that don't fit scroll, and their end fades until scrolled to (behaviours/current-tab.js keeps the current
+   one in view). */
+@utility tab-row {
+  @apply flex h-10.5 [scrollbar-width:none] items-stretch gap-1 overflow-x-auto px-1 sm:px-3;
+  mask-image: linear-gradient(to left, transparent, black var(--tab-row-fade));
+  animation: tab-row-fade linear;
+  animation-timeline: scroll(self inline);
+}
+@property --tab-row-fade {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+@keyframes tab-row-fade {
+  from,
+  90% {
+    --tab-row-fade: 2rem;
+  }
+  to {
+    --tab-row-fade: 0px;
+  }
+}
+/* A tab; the current one is underlined. */
+@utility tab-link {
+  @apply relative flex shrink-0 items-center gap-2 px-3 font-medium whitespace-nowrap text-muted outline-offset-[-2px] transition-colors hover:text-base-content;
+  &::after {
+    @apply absolute inset-x-0 -bottom-px h-0.5 content-[''];
+  }
   &[aria-current="page"] {
-    @apply bg-base-300/70 text-base-content;
+    @apply text-primary after:bg-primary;
+    & > .chip {
+      @apply bg-secondary text-secondary-content;
+    }
   }
 }
-
 /* An initial on a tinted square, sized where it's used. */
 @utility initial-badge {
   @apply grid shrink-0 place-items-center rounded-md bg-primary/10 font-semibold uppercase text-primary;
 }
-
 /* Plain buttons are white with a border, so they read as buttons on the grey page and on cards alike. In the
    utilities layer, as daisyUI's own button rules are. */
 @layer utilities {
@@ -368,14 +559,30 @@
       color: var(--color-error-content);
     }
   }
-  /* Small controls stay at the 14 px text minimum; only their height shrinks. */
+  /* Buttons are 34 px with 13 px labels; small ones, and small fields, 30 px. Fields keep 14 px text. A button
+     without a colour of its own shows focus in the primary colour. */
+  .btn {
+    --btn-p: 0.75rem;
+    --fontsize: 0.8125rem;
+    font-weight: 500;
+    outline-color: var(--btn-color, var(--color-primary));
+  }
   :is(.btn-sm, .select-sm, .input-sm) {
+    --size: 1.875rem;
+  }
+  .btn-sm {
+    --btn-p: 0.625rem;
+  }
+  :is(.select-sm, .input-sm) {
     --fontsize: 0.875rem;
     font-size: 0.875rem;
   }
-  /* Table headings label the data rather than compete with it. */
+  /* Tables: a grey 12 px heading row that labels the data rather than competing with it, then 42 px rows. */
   .table :where(thead th) {
-    @apply text-sm font-medium text-muted;
+    @apply bg-base-200/50 py-2 text-xs font-medium text-muted;
+  }
+  .table :where(tbody td) {
+    @apply py-2.5;
   }
   /* A row that opens a page or a drawer shows it can be clicked. */
   .table tr:is([data-href], [data-dialog]) {
@@ -388,20 +595,12 @@
   .modal:is([open], .modal-open, :target) {
     background-color: var(--backdrop);
   }
-  /* Safari and Firefox drop a closing menu out of the top layer before it fades, so the top bar's blur moves it up.
-     They close it at once. */
-  @supports not (overlay: auto) {
-    .dropdown[popover] {
-      transition: none;
-    }
-  }
   /* daisyUI pulls a select back over the field's padding, which covers an icon in front of it. */
   .select > :not(select) ~ select {
     margin-inline-start: 0;
     padding-inline-start: 0;
   }
 }
-
 @layer components {
   /* Pygments' token classes from the highlight filter. Not red, green or amber, which mean marks. */
   .code-k, .code-kc, .code-kd, .code-kn, .code-kp, .code-kr, .code-kt, .code-ow {
@@ -434,6 +633,12 @@
     & ol {
       @apply ml-5 list-decimal;
     }
+    & li + li {
+      @apply mt-1;
+    }
+    & li::marker {
+      @apply text-subtle;
+    }
     & a {
       @apply text-link underline;
     }
@@ -460,7 +665,6 @@
     }
   }
 }
-
 /* A student ID this browser can't open, as a lock and masked digits (behaviours/student-ids.js).
    Its text, "Encrypted", is for assistive technology only. */
 [data-student-id-state="encrypted"] {
@@ -474,36 +678,63 @@
     content: "••••••••" / "";
   }
 }
-
 /* Marks the draft no longer gives, while it waits to be previewed, or the saved marking's, while it marks again. */
 .workspace-answers:has(#preview-bar[data-outdated]) [data-marks] {
   @apply opacity-40;
 }
-
-/* Answer groups in one list, split around each open group so it stands apart as its own card. */
+/* Answer groups as cards on the grey page. */
 @utility answer-groups {
+  @apply grid gap-2;
   /* The browser skips styling and laying out groups out of view until they near it, which a hundred code answers
      need. A group's size is a guess until it is first shown. */
   & > li {
-    @apply overflow-hidden border-x border-base-300 bg-base-100;
+    @apply overflow-hidden surface;
     content-visibility: auto;
-    contain-intrinsic-size: auto 9rem;
-  }
-  & > li:first-child,
-  & > li:has(> details[open]),
-  & > li:has(> details[open]) + li {
-    @apply rounded-t-box border-t;
-  }
-  & > li:last-child,
-  & > li:has(> details[open]),
-  & > li:has(+ li > details[open]) {
-    @apply rounded-b-box border-b;
+    contain-intrinsic-size: auto 5rem;
   }
   & > li:has(> details[open]) {
-    @apply my-3 first:mt-0 last:mb-0;
+    @apply active-ring;
   }
 }
-
+/* A button that shows or hides a part: tinted while its checkbox is checked or it is pressed. */
+@utility toggle-button {
+  @apply has-focus-visible:outline-2 has-focus-visible:outline-primary;
+  & > svg {
+    @apply text-muted;
+  }
+  &.btn:is(:has(> input:checked), [aria-pressed="true"]) {
+    --btn-bg: var(--color-secondary);
+    --btn-border: color-mix(in oklab, var(--color-primary) 30%, var(--color-base-300));
+    --btn-fg: var(--color-secondary-content);
+    & > svg {
+      @apply text-secondary-content;
+    }
+    & > .chip {
+      @apply bg-base-100 text-secondary-content;
+    }
+  }
+}
+/* An answer group's students, as equal buttons of their IDs; an adjusted one (`data-adjusted`) is outlined, with a
+   pencil. */
+@utility student-id-grid {
+  @apply grid grid-cols-[repeat(auto-fill,minmax(6.5rem,1fr))] gap-1.5;
+  & button {
+    @apply flex h-7 w-full cursor-pointer items-center justify-center gap-1 rounded-field border border-base-300 bg-base-100 px-2 font-mono text-xs transition-colors hover:bg-base-200;
+  }
+  & button[data-adjusted] {
+    @apply border-primary/40 bg-secondary/40;
+    & > svg {
+      @apply size-3 text-primary;
+    }
+  }
+}
+/* How a check of a breakdown marked an answer: a round icon, green, amber or red by `data-tone`, else grey. */
+@utility check-effect {
+  @apply grid size-5 shrink-0 place-items-center rounded-full bg-base-content/6 text-muted;
+  & > svg {
+    @apply size-3;
+  }
+}
 /* The loading bar behaviours/page-loading.js shows while a page opens: a quarter of the way in a moment, then slowing towards 90%, and
    on arrival the rest of the way before it fades. Transitions, unlike animations, carry on from where they stop.
    Tailwind's scale-x-* set `scale`, which would multiply with this `transform`. */
@@ -539,7 +770,6 @@
     background-color: var(--btn-fg);
   }
 }
-
 /* Tom Select, in the theme's look. */
 .ts-wrapper.input {
   @apply h-auto min-h-(--size) flex-wrap gap-1 py-1.5 whitespace-normal;
@@ -576,75 +806,97 @@
     @apply text-muted;
   }
 }
-
-/* simple-datatables, in the theme's look: search in a bar above the table, a chevron on the sorted column only, and
-   pages only when there's more than one. */
-.datatable-top {
-  @apply border-b border-base-300 px-4 py-3;
-  &:not(:has(input)) {
-    @apply hidden;
+/* The Students grid: a page no taller than the window, whose table scrolls both ways inside its panel under a sticky
+   header, with the student ID and, from sm, the total kept in view on the left. */
+@utility students-grid-page {
+  @apply h-[calc(100dvh-var(--header-height))] grid-rows-[minmax(0,1fr)];
+}
+@utility students-grid {
+  @apply flex max-h-full min-h-0 flex-col self-start overflow-hidden [--id-width:8rem] sm:[--id-width:10rem];
+  & .students-grid-scroll {
+    @apply min-h-0 overflow-auto overscroll-contain;
+  }
+  & :is(th, td) {
+    @apply px-3 py-2 text-right whitespace-nowrap tabular-nums;
+  }
+  & thead th {
+    @apply sticky top-0 z-2 bg-base-100 p-0 align-bottom shadow-[inset_0_-1px_var(--color-line)];
+  }
+  /* A heading sorts its column: a chevron beside it on hover, and on the sorted one. */
+  & thead button {
+    @apply inline-flex w-full cursor-pointer flex-row-reverse items-center justify-start gap-1 px-3 py-2 text-right font-medium outline-offset-[-2px];
+    & small {
+      @apply block text-xs font-normal text-subtle;
+    }
+    &::after {
+      @apply size-4 shrink-0 bg-current opacity-0 transition-opacity;
+      content: "";
+      mask: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10.53 3.47a.75.75 0 0 0-1.06 0L6.22 6.72a.75.75 0 0 0 1.06 1.06L10 5.06l2.72 2.72a.75.75 0 1 0 1.06-1.06l-3.25-3.25Zm-4.31 9.81 3.25 3.25a.75.75 0 0 0 1.06 0l3.25-3.25a.75.75 0 1 0-1.06-1.06L10 14.94l-2.72-2.72a.75.75 0 0 0-1.06 1.06Z"/></svg>') center / contain no-repeat;
+    }
+    &:is(:hover, :focus-visible)::after {
+      @apply opacity-50;
+    }
+  }
+  & thead th:first-child button {
+    @apply flex-row text-left;
+  }
+  & th[aria-sort] button {
+    @apply text-base-content;
+    &::after {
+      @apply opacity-100;
+    }
+  }
+  & th[aria-sort="ascending"] button::after {
+    mask-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M9.47 6.47a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 1 1-1.06 1.06L10 8.06l-3.72 3.72a.75.75 0 0 1-1.06-1.06l4.25-4.25Z"/></svg>');
+  }
+  & th[aria-sort="descending"] button::after {
+    mask-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z"/></svg>');
+  }
+  & tbody tr {
+    @apply cursor-pointer border-0;
+  }
+  & tbody td {
+    @apply shadow-[inset_0_-1px_var(--color-line)];
+  }
+  /* A fixed width: the sticky Total column sits at this offset. */
+  & :is(th, td):first-child {
+    @apply sticky left-0 z-1 w-(--id-width) min-w-(--id-width) bg-base-100 text-left;
+  }
+  /* The columns keep their own widths, the last, empty one taking what's left. */
+  & :is(th, td):last-child {
+    @apply w-full p-0;
+  }
+  & :is(th, td):nth-child(2) {
+    @apply w-28 min-w-28 bg-base-100 shadow-[inset_-1px_0_var(--color-line),inset_0_-1px_var(--color-line)] sm:sticky sm:left-(--id-width) sm:z-1;
+  }
+  & thead :is(th:first-child, th:nth-child(2)) {
+    @apply z-3;
+  }
+  & td:first-child button {
+    @apply block w-[calc(var(--id-width)-1.5rem)] cursor-pointer truncate rounded-selector text-left font-mono outline-offset-2;
+  }
+  & td:nth-child(2) {
+    @apply font-semibold;
+    & small {
+      @apply ml-2 inline-block w-10 text-xs font-normal text-subtle;
+    }
+  }
+  & tbody tr:hover > td {
+    @apply bg-base-200;
+  }
+  & .mark-pill {
+    @apply h-5.5 min-w-8.5 px-2;
+  }
+  & td:is([data-state="blank"], [data-state="not_marked"]) {
+    @apply text-subtle;
+  }
+  & td[data-state="blank"] {
+    @apply text-xs italic;
+  }
+  & td[data-adjusted] .mark-pill {
+    @apply ring-[1.5px] ring-primary ring-inset;
   }
 }
-.datatable-search-label {
-  @apply input w-72 max-w-full;
-  /* Without the input class, the primary focus colour of every other field passes it by. */
-  &:focus-within {
-    --input-color: var(--color-primary);
-  }
-  &::before {
-    @apply size-4 shrink-0 bg-current text-muted;
-    content: "";
-    mask: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M9 3.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11ZM2 9a7 7 0 1 1 12.452 4.391l3.328 3.329a.75.75 0 1 1-1.06 1.06l-3.329-3.328A7 7 0 0 1 2 9Z"/></svg>') center / contain no-repeat;
-  }
-}
-.datatable-container {
-  @apply overflow-x-auto;
-}
-.datatable-bottom {
-  @apply flex flex-wrap items-center justify-between gap-3 border-t border-base-300 px-4 py-3 text-sm text-muted;
-  &:not(:has(.datatable-pagination-list)) {
-    @apply hidden;
-  }
-}
-.datatable-sorter {
-  @apply inline-flex items-center gap-1 font-medium;
-  .text-right > & {
-    @apply flex-row-reverse;
-  }
-  &::after {
-    @apply size-4 shrink-0 bg-current opacity-0 transition-opacity;
-    content: "";
-    mask: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10.53 3.47a.75.75 0 0 0-1.06 0L6.22 6.72a.75.75 0 0 0 1.06 1.06L10 5.06l2.72 2.72a.75.75 0 1 0 1.06-1.06l-3.25-3.25Zm-4.31 9.81 3.25 3.25a.75.75 0 0 0 1.06 0l3.25-3.25a.75.75 0 1 0-1.06-1.06L10 14.94l-2.72-2.72a.75.75 0 0 0-1.06 1.06Z"/></svg>') center / contain no-repeat;
-  }
-  &:is(:hover, :focus-visible)::after {
-    @apply opacity-50;
-  }
-}
-:is(.datatable-ascending, .datatable-descending) .datatable-sorter {
-  @apply text-base-content;
-  &::after {
-    @apply opacity-100;
-  }
-}
-.datatable-ascending .datatable-sorter::after {
-  mask-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M9.47 6.47a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 1 1-1.06 1.06L10 8.06l-3.72 3.72a.75.75 0 0 1-1.06-1.06l4.25-4.25Z"/></svg>');
-}
-.datatable-descending .datatable-sorter::after {
-  mask-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z"/></svg>');
-}
-.datatable-pagination-list {
-  @apply join;
-}
-.datatable-pagination-list-item-link {
-  @apply join-item btn btn-sm;
-}
-.datatable-active .datatable-pagination-list-item-link {
-  @apply btn-active;
-}
-.datatable-hidden {
-  @apply hidden;
-}
-
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -653,7 +905,6 @@
     transition-duration: 0.01ms !important;
   }
 }
-
 /* The landing page's closing call to action has a glow behind it, and its demos sit in windows of the app. */
 @utility landing-glow {
   background: radial-gradient(56% 64% at 50% 0%, color-mix(in oklab, var(--color-primary) 16%, transparent), transparent 72%);
@@ -911,7 +1162,7 @@
   }
   & > .changed {
     @variant motion-safe {
-      animation: landing-flash 1.2s ease-out 0.3s both;
+      animation: flash 1.2s ease-out 0.3s both;
     }
   }
 }
@@ -919,11 +1170,6 @@
   from {
     opacity: 0;
     transform: translateY(0.25rem);
-  }
-}
-@keyframes landing-flash {
-  from {
-    background-color: color-mix(in oklab, var(--color-primary) 12%, transparent);
   }
 }
 /* A dot for each variant of a method example, wide for the variant shown, filling while the slideshow plays. */
@@ -941,7 +1187,6 @@
     transform: scaleX(0);
   }
 }
-
 /* The method examples' tabs scroll sideways on a phone. */
 @utility landing-method-tabs {
   @apply max-w-full overflow-x-auto;
@@ -949,7 +1194,17 @@
     @apply whitespace-nowrap;
   }
 }
-
+/* The question a student's drawer opens at, from a cell of the grid: tinted for a moment. */
+#student-detail > [autofocus] {
+  @variant motion-safe {
+    animation: flash 1.2s ease-out 0.2s both;
+  }
+}
+@keyframes flash {
+  from {
+    background-color: color-mix(in oklab, var(--color-primary) 12%, transparent);
+  }
+}
 /* Read-only views of a form, like a published method's settings: disabled fields show their values as plain text
    rather than greyed-out controls, and stay disabled for assistive technology. */
 @utility read-only-fields {
@@ -987,6 +1242,10 @@
   }
   & label:has(> :is(.checkbox, .radio):disabled),
   & .segment:has(:disabled) {
-    @apply p-0 text-sm font-normal text-base-content shadow-none has-checked:bg-transparent;
+    @apply p-0 text-base font-normal text-base-content shadow-none has-checked:bg-transparent;
   }
+}
+/* A dashed tile after a list of cards, making a new one. */
+@utility new-tile {
+  @apply flex h-24 w-full cursor-pointer items-center justify-center gap-2 rounded-box border-[1.5px] border-dashed border-base-300 font-medium text-muted transition-colors hover:border-primary hover:text-base-content;
 }

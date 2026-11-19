@@ -47,8 +47,8 @@ FILTERS: dict[str, tuple[str, Callable[[AnswerGroup], bool]]] = {
     "changed": ("Changed", lambda group: bool(group.preview and group.preview.changed)),
 }
 """Each filter of answer groups: its label, and which groups it shows. "Changed" is offered only with a preview."""
-DECISION_BADGES = {"full_marks": "badge-success", "partial_marks": "badge-warning", "not_allowed": "badge-error"}
-"""How a decision marking by example gives answers is badged; one not here is plain."""
+DECISION_TONES = {"full_marks": "success", "partial_marks": "warning", "not_allowed": "error"}
+"""The chip tone of each decision marking by example gives answers; one not here is grey."""
 _VIEW_PARAMS = ("group", "threshold", "filter", "shown_count")
 ANSWER_GROUPS_PER_PAGE = 100
 """How many answer groups the column shows at first, and how many more each "Show more" adds."""
@@ -250,6 +250,8 @@ def combinations_context(
 class OutOfDateNotice:
     text: str
     marking: Marking
+    failed: bool
+    """Its marking failed, rather than wasn't run."""
 
 
 def out_of_date_notices(accepted: Mapping[Marking, Step], question_keys: Iterable[str]) -> list[OutOfDateNotice]:
@@ -260,12 +262,13 @@ def out_of_date_notices(accepted: Mapping[Marking, Step], question_keys: Iterabl
     for marking in accepted:
         if not keys & marking.questions_given_marks or not marking.failure:
             continue
+        failed = marking.failure != NO_MODEL_SERVICE
         text = (
-            "Not marked again: the change came from someone without an AI service."
-            if marking.failure == NO_MODEL_SERVICE
-            else f"Marking failed: {marking.failure.splitlines()[0]}"
+            f"Marking failed: {marking.failure.splitlines()[0]}"
+            if failed
+            else "Not marked again: the change came from someone without an AI service."
         )
-        notices.append(OutOfDateNotice(f"{text} The marks shown are from before.", marking))
+        notices.append(OutOfDateNotice(f"{text} The marks shown are from before.", marking, failed))
     return notices
 
 
@@ -339,7 +342,7 @@ def set_decisions(groups: list[AnswerGroup], decisions: Mapping[str, Decision]) 
     for group in groups:
         group_decisions = {decisions.get(entry.normalized) for entry in group.student_answers}
         group.decisions = [
-            (label, DECISION_BADGES.get(decision, "badge-ghost"))
+            (label, DECISION_TONES.get(decision, ""))
             for decision, label in DECISIONS.items()
             if decision in group_decisions
         ]

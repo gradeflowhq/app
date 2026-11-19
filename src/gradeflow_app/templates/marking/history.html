@@ -5,8 +5,8 @@
     <li class="rounded-box border border-base-300 p-4">
       <div class="flex items-start justify-between gap-3">
         <div class="min-w-0">
-          <p class="flex flex-wrap items-center gap-2 font-medium">{{ entry.summary.method_label|default:"Marking" }}{% if entry.current %}<span class="badge badge-primary badge-soft badge-sm font-normal">Current</span>{% endif %}</p>
-          <p class="text-sm text-muted">{{ entry.version.history_user|default:"Someone" }} · {{ entry.version.history_date|ago }}</p>
+          <p class="flex flex-wrap items-center gap-2 font-medium">{{ entry.summary.method_label|default:"Marking" }}{% if entry.current %}<c-chip tone="primary" icon="check">Current</c-chip>{% endif %}</p>
+          <p class="text-sm text-muted">{{ entry.version.history_user|default:"A former member" }} · {{ entry.version.history_date|ago }}</p>
         </div>
         {% if access.can_edit and not entry.current %}<button class="btn btn-sm -my-1 shrink-0" hx-post="{% url 'marking_restore' access.assessment.pk question.pk entry.version.history_id %}">Restore</button>{% endif %}
       </div>

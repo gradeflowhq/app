@@ -234,7 +234,7 @@ def create_assessment(client: Client, name: str = "Midterm") -> Assessment:
     course = Course.objects.get(pk=response.headers["Location"].split("/")[-2])
     response = client.post(reverse("course", args=[course.pk]), {"name": name, "description": ""})
     assessment = course.assessments.get(name=name)
-    assert response.headers["Location"] == reverse("import", args=[assessment.pk])
+    assert response.headers["Location"] == reverse("overview", args=[assessment.pk])
     return assessment
 
 

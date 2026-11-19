@@ -4,6 +4,7 @@ import Alpine from "../vendor/alpinejs-csp-3.17.4/module.esm.min.js";
 import * as allauth from "./behaviours/allauth.js";
 import * as busyButtons from "./behaviours/busy-buttons.js";
 import * as courseKeySharing from "./behaviours/course-key-sharing.js";
+import * as currentTab from "./behaviours/current-tab.js";
 import * as dialogButtons from "./behaviours/dialog-buttons.js";
 import * as downloads from "./behaviours/downloads.js";
 import * as forms from "./behaviours/forms.js";
@@ -29,13 +30,14 @@ import { methodSlideshow, openAnswerGroup, scene } from "./components/landing-de
 import { markdownEditor } from "./components/markdown-editor.js";
 import { markingResizer } from "./components/marking-resizer.js";
 import { math } from "./components/math.js";
-import { modelServiceCard, modelServiceNotice } from "./components/model-service-card.js";
+import { modelServiceNotice, modelServicePanel } from "./components/model-service-panel.js";
 import { openOnLoad } from "./components/open-on-load.js";
 import { orderedChoices } from "./components/ordered-choices.js";
 import { questionsCollapse } from "./components/questions-collapse.js";
-import { recoveryKeyCard } from "./components/recovery-key-card.js";
+import { questionsToggle } from "./components/questions-toggle.js";
+import { recoveryKey } from "./components/recovery-key.js";
 import { choiceList, methodPicker, searchList } from "./components/search-list.js";
-import { studentTable } from "./components/student-table.js";
+import { studentsGrid } from "./components/students-grid.js";
 import { tagInput } from "./components/tag-input.js";
 import { testAnswer } from "./components/test-answer.js";
 import { themeChoice } from "./components/theme-choice.js";
@@ -60,6 +62,7 @@ for (const behaviour of [
   busyButtons,
   forms,
   rowLinks,
+  currentTab,
   allauth,
 ]) {
   behaviour.start();
@@ -81,16 +84,17 @@ const components = {
   math,
   methodPicker,
   methodSlideshow,
-  modelServiceCard,
   modelServiceNotice,
+  modelServicePanel,
   openAnswerGroup,
   openOnLoad,
   orderedChoices,
   questionsCollapse,
-  recoveryKeyCard,
+  questionsToggle,
+  recoveryKey,
   scene,
   searchList,
-  studentTable,
+  studentsGrid,
   tagInput,
   testAnswer,
   themeChoice,

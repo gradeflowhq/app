@@ -9,10 +9,13 @@ from django.test import Client
 from django.urls import reverse
 from gradeflow_core import Question
 
+from gradeflow_app.accounts.models import User
 from gradeflow_app.assessments.models import Assessment
+from gradeflow_app.courses.models import CourseKey
 from gradeflow_app.live.topics import topic
-from gradeflow_app.results.marks import Award, TotalStatistics, assessment_results, awards, histogram
+from gradeflow_app.results.marks import Award, StudentMarks, TotalStatistics, assessment_results, awards, histogram
 from gradeflow_app.results.models import Adjustment, Result
+from gradeflow_app.results.views import Cell
 from gradeflow_app.ui.templatetags.ui import percent
 from tests.conftest import HTMX_HEADERS, create_assessment, encrypted_id, start_marking
 
@@ -117,6 +120,15 @@ def test_marks_set_by_hand_show_for_answers_the_marking_could_not_mark(client: C
     assert "Needs marking</span>" not in client.get(url).text
 
 
+def test_feedback_alone_leaves_an_answer_needing_marking(client: Client, assessment: Assessment) -> None:
+    question = assessment.questions.get(key="Q1")
+    student = assessment.students.get(encrypted_id=encrypted_id("S001"))
+    Result.objects.create(student=student, question=question, proportion=0, is_marked=False, revision=0)
+    Adjustment.objects.create(student=student, question=question, feedback="See me.")
+    page = client.get(reverse("student", args=[assessment.pk, student.pk]), headers=HTMX_HEADERS).text
+    assert "Needs marking</span>" in page
+
+
 def test_answers_that_need_marking_are_counted_until_someone_marks_them(client: Client, assessment: Assessment) -> None:
     question = assessment.questions.get(key="Q1")
     students = list(assessment.students.all())
@@ -133,14 +145,14 @@ def test_answers_that_need_marking_are_counted_until_someone_marks_them(client: 
 
     question_page, overview, export = pages()
     assert f" · {count} need marking" in question_page
-    assert f"{count} answers need marking" in overview
+    assert f"{count} answers in Q1 need marking." in overview
     assert f"{count}</span> answers still need marking. They count as 0." in export
     assert "Download anyway" in export
     for student in students:
         Adjustment.objects.create(student=student, question=question, marks=0)
     question_page, overview, export = pages()
     assert f"{count} need marking" not in question_page
-    assert "answers need marking" not in overview
+    assert "need marking" not in overview
     assert "still need marking" not in export
     assert "Download anyway" not in export
 
@@ -252,6 +264,26 @@ def test_a_students_page_shows_their_adjustments(client: Client, adjusted_assess
     assert "· </span>" not in page, "Q3 has no marking to name"
 
 
+def test_an_adjustment_to_imported_marks_shows_the_marks_it_replaced(client: Client, assessment: Assessment) -> None:
+    student = assessment.students.get(encrypted_id=encrypted_id("S001"))
+    Adjustment.objects.create(student=student, question=assessment.questions.get(key="Q1"), marks=0.5)
+    page = client.get(reverse("student", args=[assessment.pk, student.pk]), headers=HTMX_HEADERS).text
+    assert 'line-through decoration-1">1</span>' in page
+    assert "The submissions file gives 1." in page
+    assert "The student gets the submissions file's marks for Q1 again." in page
+
+
+def test_saving_or_clearing_an_adjustment_in_the_drawer_focuses_its_adjust_button(
+    client: Client, assessment: Assessment
+) -> None:
+    student = assessment.students.earliest("pk")
+    url = reverse("adjust", args=[assessment.pk, assessment.questions.get(key="Q2").pk])
+    for action in ("apply", "clear"):
+        fields = {"student": str(student.pk), "marks": "1", "action": action, "return_to": "student"}
+        page = client.post(url, fields, headers=HTMX_HEADERS).text
+        assert re.findall(r'aria-label="Adjust (\w+)" autofocus', page) == ["Q2"]
+
+
 def test_answers_of_several_options_show_each_option(client: Client, assessment: Assessment) -> None:
     question = assessment.questions.get(key="Q3")
     question.core_question = Question.load({**question.definition, "allow_multiple": True})
@@ -273,22 +305,23 @@ def test_a_students_page_shows_their_answers_as_written(client: Client, assessme
 
 def test_the_students_list_refreshes_as_marks_change(client: Client, assessment: Assessment) -> None:
     url = reverse("students", args=[assessment.pk])
-    page = client.get(url).text
-    assert f'hx-get="{url}" hx-trigger="{topic("marks", assessment.pk)} from:body' in page
-    assert "average 0.4 / 3" in page
+    response = client.get(url)
+    assert f'hx-get="{url}" hx-trigger="{topic("marks", assessment.pk)} from:body' in response.text
     student = assessment.students.get(encrypted_id=encrypted_id("S001"))
+    assert not grid_cells(response.context["grid"])[student.encrypted_id, "Q2"].adjusted
     question = assessment.questions.get(key="Q2")
     Adjustment.objects.create(student=student, question=question, marks=1)
-    refreshed = client.get(url, headers=HTMX_HEADERS).text
-    assert "<html" not in refreshed
-    assert "average 0.5 / 3" in refreshed
+    refreshed = client.get(url, headers=HTMX_HEADERS)
+    assert "<html" not in refreshed.text
+    cell = grid_cells(refreshed.context["grid"])[student.encrypted_id, "Q2"]
+    assert (cell.state, cell.marks, cell.adjusted) == ("full", "1", True)
 
 
 def test_the_questions_list_averages_the_marks_the_overview_does(
     client: Client, adjusted_assessment: Assessment
 ) -> None:
     page = client.get(reverse("question_list", args=[adjusted_assessment.pk]), headers=HTMX_HEADERS).text
-    averages = re.findall(r'title="Average mark">([^<]+)<', page)
+    averages = re.findall(r'<span class="sr-only">Average </span>([^<]+)<', page)
     overview_averages = [
         percent(summary.average_proportion)
         for summary in assessment_results(adjusted_assessment).summaries()
@@ -377,7 +410,6 @@ def test_marks_that_round_to_the_maximum_are_full(client: Client, assessment: As
 
 def test_the_overview_says_how_each_question_is_marked(client: Client, assessment: Assessment) -> None:
     page = client.get(reverse("overview", args=[assessment.pk])).text
-    assert "From the submissions file" in page, "nothing is marked yet"
     assert page.count("Imported marks") == 1
     assert page.count("Not marked") == 2
     assert "Adjusted</th>" not in page, "no column while no one is adjusted"
@@ -391,8 +423,73 @@ def test_a_draft_doesnt_mark_a_question_on_the_overview(client: Client, assessme
 
 
 def test_the_adjusted_column_shows_once_someone_is_adjusted(client: Client, adjusted_assessment: Assessment) -> None:
-    for name in ("overview", "students"):
-        assert "Adjusted</th>" in client.get(reverse(name, args=[adjusted_assessment.pk])).text, name
+    assert "Adjusted</th>" in client.get(reverse("overview", args=[adjusted_assessment.pk])).text
+
+
+def grid_cells(grid: list[tuple[StudentMarks, list[Cell]]]) -> dict[tuple[str, str], Cell]:
+    """The Students grid's cells by student ID and question key."""
+    return {
+        (row.student.encrypted_id, key): cell
+        for row, cells in grid
+        for key, cell in zip(row.awards, cells, strict=True)
+    }
+
+
+def test_the_students_grid_shows_each_answers_marks_by_level(client: Client, adjusted_assessment: Assessment) -> None:
+    question = adjusted_assessment.questions.get(key="Q1")
+    Result.objects.filter(question=question, student__encrypted_id=encrypted_id("S007")).update(is_marked=False)
+    response = client.get(reverse("students", args=[adjusted_assessment.pk]))
+    cells = grid_cells(response.context["grid"])
+    expected = {
+        ("S001", "Q1"): ("partial", "0.5", True),
+        ("S002", "Q1"): ("full", "1", False),
+        ("S002", "Q2"): ("full", "1", True),
+        ("S003", "Q1"): ("no_marks", "0", True),
+        ("S004", "Q3"): ("not_marked", "—", True),
+        ("S005", "Q1"): ("blank", "0", False),
+        ("S005", "Q2"): ("blank", "—", False),
+        ("S006", "Q2"): ("not_marked", "—", False),
+        ("S007", "Q1"): ("needs_marking", "0", False),
+    }
+    shown = {(student, key): cells[encrypted_id(student), key] for student, key in expected}
+    assert {key: (cell.state, cell.marks, cell.adjusted) for key, cell in shown.items()} == expected
+    assert 'data-state="needs_marking"><span class="sr-only">Needs marking</span>' in response.text
+
+
+def test_the_students_grids_totals_show_no_marks_until_there_are_some(client: Client, assessment: Assessment) -> None:
+    url = reverse("students", args=[assessment.pk])
+    total = r'</button></td><td data-order="[^"]*">(.*?)</td>'
+    assert all("<small>" in cell for cell in re.findall(total, client.get(url).text))
+    assessment.students.update(imported_marks={})
+    assert set(re.findall(total, client.get(url).text)) == {'<span class="font-normal text-subtle">—</span>'}
+
+
+def test_the_students_grid_shows_its_first_page_until_the_browser_pages_it(
+    client: Client, assessment: Assessment, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("gradeflow_app.results.views.GRID_PAGE_SIZE", 3)
+    page = client.get(reverse("students", args=[assessment.pk])).text
+    rows = page.split("<tr hx-get=")[1:]
+    assert [" hidden>" in row.split("<td>", 1)[0] for row in rows] == [False] * 3 + [True] * 7
+    assert 'data-page-size="3"' in page
+
+
+def test_a_questions_cell_opens_the_student_at_that_question(client: Client, assessment: Assessment) -> None:
+    student = assessment.students.earliest("pk")
+    question = assessment.questions.get(key="Q2")
+    url = reverse("student", args=[assessment.pk, student.pk])
+    page = client.get(url, {"question": str(question.pk)}, headers=HTMX_HEADERS).text
+    focused = re.findall(r'<li [^>]*autofocus[^>]*>\s*<div[^>]*>\s*<h3[^>]*><span class="font-semibold">(\w+)<', page)
+    assert focused == ["Q2"]
+    assert "autofocus" not in client.get(url, headers=HTMX_HEADERS).text
+
+
+def test_the_drawers_feedback_choice_is_not_sent_as_feedback(client: Client, assessment: Assessment) -> None:
+    """Alpine names a radio after its x-model unless it has a name of its own, and the choice "marking" would then be
+    sent as the feedback."""
+    student = assessment.students.earliest("pk")
+    page = client.get(reverse("student", args=[assessment.pk, student.pk]), headers=HTMX_HEADERS).text
+    assert page.count('name="feedback"') == page.count("<textarea") == 3
 
 
 def test_a_run_of_changes_to_a_questions_adjustments_shows_once(client: Client, assessment: Assessment) -> None:
@@ -405,6 +502,21 @@ def test_a_run_of_changes_to_a_questions_adjustments_shows_once(client: Client, 
     assert page.count("adjusted marks for Q1") == 1
     assert "cleared adjustments" not in page
     assert f'href="{reverse("question", args=[assessment.pk, question.pk])}"' in page
+
+
+def test_the_download_dialogs_switches_go_without_help(client: Client, assessment: Assessment) -> None:
+    page = client.get(reverse("students", args=[assessment.pk])).text
+    assert "Include answers" in page
+    assert "Add each student's answers." not in page
+
+
+def test_the_download_dialog_mentions_decrypting_ids_only_with_the_course_key(
+    client: Client, user: User, assessment: Assessment
+) -> None:
+    url = reverse("students", args=[assessment.pk])
+    assert "decrypted on this computer" not in client.get(url).text
+    CourseKey.objects.create(member=assessment.course.members.get(user=user), encrypted_key="key")
+    assert "decrypted on this computer" in client.get(url).text
 
 
 def test_downloads_are_only_posted_from_the_dialog(client: Client, assessment: Assessment) -> None:

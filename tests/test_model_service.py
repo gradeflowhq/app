@@ -120,7 +120,7 @@ def mark_with_criteria(assessment: Assessment, user: User) -> str:
 
 def test_the_ai_service_is_among_the_accounts_integrations(client: Client) -> None:
     page = client.get(reverse("integrations")).text
-    assert "<h1>Integrations</h1>" in page
+    assert ">Integrations</h1>" in page
     assert f"<option>{PROVIDER}</option>" in page
     assert 'id="ai-service-guide"' in page
     assert 'id="model-service"' not in client.get(reverse("settings")).text

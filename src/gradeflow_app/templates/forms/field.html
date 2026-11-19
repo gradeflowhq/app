@@ -3,7 +3,7 @@
     <div class="flex items-center gap-2"><span class="font-medium">{{ field.label }}</span>{{ field.label_controls }}</div>
     {{ field.replaced_control }}
   {% elif field.widget_type == "checkbox" %}
-    <div class="flex items-start gap-3">
+    <div class="flex {% if field.help_text %}items-start{% else %}items-center{% endif %} gap-3">
       {{ field }}
       <div class="grid min-w-0 gap-0.5">
         <div class="flex items-center gap-2"><label class="cursor-pointer font-medium" for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field.label_controls }}</div>

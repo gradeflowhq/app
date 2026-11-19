@@ -185,8 +185,11 @@ export function spreadsheetSource({ sheets, rows }, savedSettings = null) {
     },
     sampleValuesOf(index) {
       return this.rowsInRange
-        .slice(0, 3)
+        .values()
         .map((row) => cellText(row[index]))
+        .filter(Boolean)
+        .take(3)
+        .toArray()
         .join(", ");
     },
 

@@ -1,9 +1,12 @@
-<c-vars label detail="" />
-{# A setting that is one action, such as Delete, Forget or Theme: its name and a short line on the left, its control on the right. #}
+<c-vars icon label detail="" status="" />
+{# A row of a settings panel: its name, a short line under it, and its controls on the right. #}
 <div class="flex flex-wrap items-center justify-between gap-x-8 gap-y-3 py-4">
-  <div class="min-w-0">
-    <p class="font-medium">{{ label }}</p>
-    {% if detail %}<div class="text-sm text-muted">{{ detail }}</div>{% endif %}
+  <div class="flex min-w-0 flex-1 basis-60 items-center gap-3">
+    <span class="icon-tile">{% icon icon %}</span>
+    <div class="min-w-0">
+      <p class="flex flex-wrap items-center gap-x-2 gap-y-1 font-medium"><span class="wrap-anywhere">{{ label }}</span>{{ status }}</p>
+      {% if detail %}<div class="text-sm text-muted">{{ detail }}</div>{% endif %}
+    </div>
   </div>
   <div class="flex flex-wrap items-center gap-2">{{ slot }}</div>
 </div>

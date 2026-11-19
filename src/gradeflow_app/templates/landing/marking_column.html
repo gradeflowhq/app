@@ -3,7 +3,7 @@
   {% if panel.editor %}
   {% include "marking/editor.html" with editor=panel.editor %}
   {% else %}
-  <div class="column-head"><h2>Marking</h2><span class="btn btn-ghost btn-square btn-sm ml-auto text-muted">{% icon "question-mark-circle" %}</span><span class="btn btn-ghost btn-square btn-sm">{% icon "ellipsis-horizontal" "size-5" %}</span></div>
+  <div class="panel-head"><h2>Marking</h2><span class="btn btn-ghost btn-square btn-sm ml-auto text-muted">{% icon "question-mark-circle" %}</span><span class="btn btn-ghost btn-square btn-sm">{% icon "ellipsis-horizontal" "size-5" %}</span></div>
   <div class="grid gap-5 p-5">
     <c-marking-summary :summary="panel.summary" />
     <div><span class="btn btn-primary" data-edit-marking>{% icon "pencil-square" "size-4" %}Edit marking</span></div>

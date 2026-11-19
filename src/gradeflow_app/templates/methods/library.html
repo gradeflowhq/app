@@ -2,60 +2,61 @@
 {% block page_title %}{{ title }} · {% endblock %}
 {% block page %}
 <c-page :title="title">
-  {% if can_edit %}<c-slot name="actions"><button class="btn btn-primary" data-dialog="new-method">{% icon "plus" %}New method</button></c-slot>{% endif %}
-  {% if archived_count %}
-  <div class="segmented" role="tablist" aria-label="Methods shown">
-    <a class="segment" role="tab" href="?" aria-selected="{{ archived|yesno:'false,true' }}">Active</a>
-    <a class="segment gap-1.5" role="tab" href="?archived=1" aria-selected="{{ archived|yesno:'true,false' }}">Archived<span class="badge badge-sm badge-soft tabular-nums">{{ archived_count }}</span></a>
-  </div>
-  {% endif %}
-  {% if methods or drafts %}
-  <div class="card-box overflow-x-auto">
+  <c-panel icon="book-open" :title="title" body_class="overflow-x-auto">
+    <c-slot name="actions">
+      {% if archived_count or archived %}
+      <div class="segmented" role="tablist" aria-label="Methods shown">
+        <a class="segment" role="tab" href="?" aria-selected="{{ archived|yesno:'false,true' }}">Active</a>
+        <a class="segment" role="tab" href="?archived=1" aria-selected="{{ archived|yesno:'true,false' }}">{% icon "archive-box" %}Archived{% if archived_count %}<span class="tabular-nums text-subtle">{{ archived_count }}</span>{% endif %}</a>
+      </div>
+      {% endif %}
+      {% if can_edit %}{% if methods or drafts or archived %}<button class="btn btn-primary btn-sm" data-dialog="new-method">{% icon "plus" %}New method</button>{% endif %}{% endif %}
+    </c-slot>
+    {% if methods or drafts %}
     <table class="table">
       <thead><tr><th>Method</th><th class="max-sm:hidden">Question type</th><th class="max-sm:hidden">Used in</th><th class="max-md:hidden">Who can use it</th><th class="text-right">Version</th></tr></thead>
       <tbody>
         {% for row in drafts %}
         <tr data-href>
-          <td><span class="flex items-center gap-2"><a class="font-medium hover:underline" href="{% url 'method_page' row.draft.method_id %}">{{ row.label }}</a><span class="badge badge-primary badge-soft badge-sm">Draft</span></span>{% if row.summary %}<p class="max-w-48 truncate text-sm text-muted sm:max-w-md">{{ row.summary }}</p>{% endif %}</td>
+          <td><span class="flex items-center gap-2"><a class="font-medium" href="{% url 'method_page' row.draft.method_id %}">{{ row.label }}</a><c-chip icon="pencil" tone="primary">Draft</c-chip></span>{% if row.summary %}<p class="max-w-48 truncate text-sm text-muted sm:max-w-md">{{ row.summary }}</p>{% endif %}</td>
           <td class="text-muted max-sm:hidden">{{ row.type_labels|join:", "|default:"—" }}</td>
           <td class="text-muted max-sm:hidden">Not used</td>
-          <td class="text-muted max-md:hidden">Only you</td>
+          <td class="max-md:hidden"><c-chip icon="lock-closed">Only you</c-chip></td>
           <td class="text-right text-muted">—</td>
         </tr>
         {% endfor %}
         {% for row in methods %}
         <tr data-href>
-          <td><span class="flex items-center gap-2"><a class="font-medium hover:underline" href="{% url 'method_page' row.method.pk row.number %}">{{ row.label }}</a>{% if row.needs_model_endpoint %}<c-ai-service />{% endif %}{% include "methods/not_compatible.html" %}</span><p class="max-w-48 truncate text-sm text-muted sm:max-w-md">{{ row.summary }}</p></td>
+          <td><span class="flex items-center gap-2"><a class="font-medium" href="{% url 'method_page' row.method.pk row.number %}">{{ row.label }}</a>{% if row.needs_model_endpoint %}<c-ai-service />{% endif %}{% include "methods/not_compatible.html" %}</span><p class="max-w-48 truncate text-sm text-muted sm:max-w-md">{{ row.summary }}</p></td>
           <td class="text-muted max-sm:hidden">{{ row.type_labels|join:", " }}</td>
           <td class="text-muted max-sm:hidden">{% if row.marking_count %}{{ row.marking_count }} marking{{ row.marking_count|pluralize }}{% else %}Not used{% endif %}</td>
-          <td class="text-muted max-md:hidden">{% if row.method.public %}Anyone{% elif member %}Members{% else %}Only you{% endif %}</td>
+          <td class="max-md:hidden">{% if row.method.public %}<c-chip icon="globe-alt">Anyone</c-chip>{% elif member %}<c-chip icon="user-group">Members</c-chip>{% else %}<c-chip icon="lock-closed">Only you</c-chip>{% endif %}</td>
           <td class="tabular-nums text-right">{{ row.number }}</td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
-  </div>
-  {% elif not other_library_methods %}
-  {% if archived %}<c-empty-state class="card-box" icon="archive-box" title="Nothing archived" />{% else %}<c-empty-state class="card-box" icon="puzzle-piece" title="No methods yet">Save a marking as a method, or make a new one.{% if can_edit %}<c-slot name="action"><button class="btn btn-primary" data-dialog="new-method">{% icon "plus" %}New method</button></c-slot>{% endif %}</c-empty-state>{% endif %}
-  {% endif %}
+    {% elif archived %}
+    <c-empty-state icon="archive-box" title="Nothing archived" />
+    {% else %}
+    <c-empty-state icon="puzzle-piece" title="No methods yet">Save a marking as a method, or make a new one.{% if can_edit %}<c-slot name="action"><button class="btn btn-primary" data-dialog="new-method">{% icon "plus" %}New method</button></c-slot>{% endif %}</c-empty-state>
+    {% endif %}
+  </c-panel>
   {% if other_library_methods %}
-  <section class="grid gap-3" aria-labelledby="used-here">
-    <h2 id="used-here">From other libraries</h2>
-    <div class="card-box overflow-x-auto">
-      <table class="table">
-        <thead><tr><th>Method</th><th class="max-sm:hidden">Used in</th><th class="text-right">Version</th></tr></thead>
-        <tbody>
-          {% for row in other_library_methods %}
-          <tr data-href>
-            <td><span class="flex items-center gap-2"><a class="font-medium hover:underline" href="{% url 'method_page' row.method.pk row.number %}">{{ row.label }}</a>{% if row.needs_model_endpoint %}<c-ai-service />{% endif %}{% include "methods/not_compatible.html" %}</span><p class="text-sm text-muted">by {{ row.method.library.owner_name }}</p></td>
-            <td class="text-muted max-sm:hidden">{{ row.marking_count }} marking{{ row.marking_count|pluralize }}</td>
-            <td class="whitespace-nowrap text-right">{% if row.method.archived %}<span class="badge badge-ghost badge-sm">Archived</span> {% elif row.newer_version_number %}<span class="badge badge-info badge-soft badge-sm">{{ row.newer_version_number }} available</span> {% endif %}<span class="tabular-nums">{{ row.number }}</span></td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </section>
+  <c-panel icon="building-library" title="From other libraries" body_class="overflow-x-auto">
+    <table class="table">
+      <thead><tr><th>Method</th><th class="max-sm:hidden">Used in</th><th class="text-right">Version</th></tr></thead>
+      <tbody>
+        {% for row in other_library_methods %}
+        <tr data-href>
+          <td><span class="flex items-center gap-2"><a class="font-medium" href="{% url 'method_page' row.method.pk row.number %}">{{ row.label }}</a>{% if row.needs_model_endpoint %}<c-ai-service />{% endif %}{% include "methods/not_compatible.html" %}</span><p class="text-sm text-muted">by {{ row.method.library.owner_name }}</p></td>
+          <td class="text-muted max-sm:hidden">{{ row.marking_count }} marking{{ row.marking_count|pluralize }}</td>
+          <td class="whitespace-nowrap text-right"><span class="inline-flex items-center gap-2">{% if row.method.archived %}<c-chip icon="archive-box">Archived</c-chip>{% elif row.newer_version_number %}<c-chip icon="arrow-up-circle" tone="primary">{{ row.newer_version_number }} available</c-chip>{% endif %}<span class="tabular-nums">{{ row.number }}</span></span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </c-panel>
   {% endif %}
 </c-page>
 {% if can_edit %}<c-dialog id="new-method" title="New method">{% include "methods/new.html" %}</c-dialog>{% endif %}

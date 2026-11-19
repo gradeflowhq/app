@@ -1,7 +1,7 @@
 {# The settings a method declares: a card for each, or one of them. #}
 <div class="grid gap-5 p-5">
 {% if declared_setting_view %}
-  <button type="button" class="btn btn-ghost btn-sm -ml-2 justify-self-start" hx-get="{{ urls.settings }}" hx-vals='{"setting": ""}'>{% icon "arrow-left" "size-4" %}Settings</button>
+  <button type="button" class="btn btn-ghost btn-sm -ml-2 justify-self-start" hx-get="{{ urls.settings }}" hx-vals='{"setting": ""}'>{% icon "arrow-left" %}Settings</button>
   <form class="grid gap-4{% if not workspace.editable %} read-only-fields{% endif %}" hx-post="{{ urls.settings }}">
     {% csrf_token %}
     <input type="hidden" name="setting" value="{{ declared_setting_view.name }}">
@@ -24,23 +24,23 @@
   {% if declared_setting_view.fields_filled %}
   <div class="grid gap-1 border-t border-base-300 pt-4">
     <p class="text-sm font-medium">Fills these fields</p>
-    {% for path, label in declared_setting_view.fields_filled %}<button type="button" class="secondary-link justify-self-start text-sm" hx-get="{{ urls.page }}" hx-vals="{% hx_vals tab="steps" path=path %}">{{ label }}</button>{% endfor %}
+    {% for path, label in declared_setting_view.fields_filled %}<button type="button" class="muted-link justify-self-start text-sm" hx-get="{{ urls.page }}" hx-vals="{% hx_vals tab="steps" path=path %}">{{ label }}</button>{% endfor %}
   </div>
   {% endif %}
 {% elif declared_settings %}
   <ul class="grid gap-2" aria-label="Settings">
     {% for name, declaration, default in declared_settings %}
-    <li><button type="button" class="card-box flex w-full items-start gap-3 p-4 text-left hover:border-primary/50" hx-get="{{ urls.settings }}" hx-vals="{% hx_vals setting=name %}">
+    <li><button type="button" class="surface flex w-full items-start gap-3 p-4 text-left hover:border-primary/50" hx-get="{{ urls.settings }}" hx-vals="{% hx_vals setting=name %}">
       <span class="grid min-w-0 flex-1 gap-0.5">
         <span class="font-medium">{{ declaration.title|default:name }}</span>
         {% if declaration.description %}<span class="line-clamp-2 text-sm text-muted">{{ declaration.description|inline_markdown|striptags }}</span>{% endif %}
         <span class="truncate text-sm text-muted">{% if "default" in declaration %}Default: {{ default|short_value }}{% else %}No default{% endif %}</span>
       </span>
-      {% icon "chevron-right" "mt-1 size-4 shrink-0 text-muted" %}
+      {% icon "chevron-right" "mt-1 text-muted" %}
     </button></li>
     {% endfor %}
   </ul>
 {% else %}
-  <c-empty-state icon="variable" title="No settings" />
+  <c-empty-state icon="adjustments-horizontal" title="No settings" />
 {% endif %}
 </div>

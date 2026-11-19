@@ -1,11 +1,18 @@
 <c-drawer.head title="Activity" />
-<div class="grid gap-6 p-6">
+<div class="grid gap-2 py-4">
   {% regroup events by occurred_at|date:"Y-m-d" as days %}
   {% for day in days %}
-  <section class="grid gap-1" aria-labelledby="day-{{ forloop.counter }}">
-    <h3 id="day-{{ forloop.counter }}" class="px-3 text-sm font-medium text-muted">{{ day.list.0.occurred_at|history_day }}</h3>
-    <ol class="-mx-3 grid">
-      {% for event in day.list %}<li>{% include "assessments/event.html" with when=event.occurred_at|time:"H:i" %}</li>{% endfor %}
+  <section aria-labelledby="day-{{ forloop.counter }}">
+    <h3 id="day-{{ forloop.counter }}" class="px-4 py-2 text-xs font-medium text-muted">{{ day.list.0.occurred_at|history_day }}</h3>
+    <ol class="divide-y divide-line border-y border-line">
+      {% for event in day.list %}
+      <li>
+        <{% if event.url %}a href="{{ event.url }}"{% else %}div{% endif %} class="flex items-center gap-3 px-4 py-3{% if event.url %} transition-colors hover:bg-base-200{% endif %}">
+          <c-avatar :user="event.user" size="size-6" />
+          <p class="min-w-0 flex-1"><span class="font-medium">{{ event.user|default:"A former member" }}</span> {{ event.description }}<br><time class="text-xs text-muted" datetime="{{ event.occurred_at|date:'c' }}">{{ event.occurred_at|time:"H:i" }}</time></p>
+        </{% if event.url %}a{% else %}div{% endif %}>
+      </li>
+      {% endfor %}
     </ol>
   </section>
   {% empty %}

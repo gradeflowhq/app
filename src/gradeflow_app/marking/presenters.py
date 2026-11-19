@@ -1,7 +1,8 @@
 """What the marking pages show, for their templates: the question list and the marking column."""
 
 from collections.abc import Iterable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
+from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
@@ -9,6 +10,7 @@ from django.urls import reverse
 from gradeflow_core import GradeFlowError, QuestionSet, Step
 from gradeflow_core.editing import EditingError, LoadedFiles, MarkingDraft, methods_used
 
+from gradeflow_app.accounts.models import User
 from gradeflow_app.assessments.models import Assessment, AssessmentAccess
 from gradeflow_app.editor.editing import problem_text
 from gradeflow_app.editor.guide import Choices, choices
@@ -214,16 +216,23 @@ def question_list(
         has_problems = saved_marking is not None and saved_marking.has_problems
         own_marking = saved_marking.marking if saved_marking and not in_question_group else None
         has_draft = question.pk in drafted_ids or (own_marking is not None and own_marking.pk in drafted_ids)
-        method_label = draft_methods.get(question.pk) or (saved_marking.method_label if saved_marking else None)
+        badge = (
+            MarkingBadge("Question group", "warning" if has_problems else "method")
+            if in_question_group and not has_draft
+            else marking_badge(
+                saved_marking.method_label if saved_marking else None,
+                has_problems=has_problems,
+                has_imported_marks=question.key in imported_keys,
+            )
+        )
+        # The list names a draft's method, styled as the saved marking until the draft is saved.
+        if draft_method := draft_methods.get(question.pk):
+            badge = replace(badge, label=draft_method)
         listed.append(
             ListedQuestion(
                 question=question,
                 is_marked=saved_marking is not None and not has_problems,
-                badge=MarkingBadge("Question group", "warning" if has_problems else "method")
-                if in_question_group and not has_draft
-                else marking_badge(
-                    method_label, has_problems=has_problems, has_imported_marks=question.key in imported_keys
-                ),
+                badge=badge,
                 proportion=marks_by_question[question.pk].average_proportion,
                 unmarked_count=marks_by_question[question.pk].unmarked_count,
                 progress=progress.get(question.key),
@@ -274,6 +283,21 @@ def drafted_method(marking_draft: MarkingDraft) -> str:
 
 
 @dataclass(frozen=True)
+class Save:
+    """Who saved a marking, and when."""
+
+    user: User | None
+    """None once their account is deleted."""
+    saved_at: datetime
+
+
+def last_save(marking: Marking) -> Save | None:
+    """None for a marking saved before its history was kept."""
+    version = marking.history.select_related("history_user").first()
+    return Save(version.history_user, version.history_date) if version else None
+
+
+@dataclass(frozen=True)
 class SavedGroup:
     """A saved question group, as its page and those of its questions show it."""
 
@@ -283,6 +307,7 @@ class SavedGroup:
     involved_keys: list[str]
     """The questions it marks or reads, in question order."""
     summary: MarkingSummary
+    last_save: Save | None
 
 
 def saved_group(assessment: Assessment, marking: Marking, check: Step | None) -> SavedGroup:
@@ -292,6 +317,7 @@ def saved_group(assessment: Assessment, marking: Marking, check: Step | None) ->
         sorted(questions_marked(marking, check)),
         list(assessment.questions.filter(key__in=questions_involved(marking, check)).values_list("key", flat=True)),
         _summary(marking, check, assessment),
+        last_save(marking),
     )
 
 
@@ -308,6 +334,7 @@ class Panel:
     has_history: bool
     archived: bool
     """Whether the marking's method is archived."""
+    last_save: Save | None
 
     @property
     def mode(self) -> Literal["summary", "question_group", "choose"]:
@@ -340,6 +367,7 @@ def panel(
         has_imported_marks=has_imported_marks(assessment, question.key),
         has_history=choosing and Marking.history.filter(question_id=question.pk).exists(),
         archived=check is not None and check.uses in _archived_refs(marking or group_marking),
+        last_save=last_save(marking) if marking else group.last_save if group else None,
     )
 
 

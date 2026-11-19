@@ -9,7 +9,7 @@
   {% if workspace.editable %}
   <c-drawer.footer submit="{% if key %}Save{% else %}Add question{% endif %}" name="save" value="1">
     {% if key %}
-    <button name="operation" value="duplicate" class="btn btn-ghost">{% icon "document-duplicate" "size-4" %}Duplicate</button>
+    <button name="operation" value="duplicate" class="btn btn-ghost">{% icon "document-duplicate" %}Duplicate</button>
     <button name="operation" value="remove" class="btn btn-ghost text-error" data-confirm="Remove {{ key }}?" data-confirm-detail="Its test answers go too." data-confirm-button="Remove">Remove</button>
     {% endif %}
   </c-drawer.footer>

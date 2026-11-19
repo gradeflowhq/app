@@ -2,26 +2,27 @@
 {% block page %}
 {% with course=member.course %}
 <c-page title="Assessments">
-  {% if member.can_edit %}<c-slot name="actions"><button class="btn btn-primary" data-dialog="new-assessment">{% icon "plus" %}New assessment</button></c-slot>{% endif %}
-  {% if assessment_progress %}
-  <div class="card-box overflow-x-auto">
+  <c-panel icon="document-text" title="Assessments" body_class="overflow-x-auto">
+    {% if assessment_progress %}
+    <c-slot name="note">{% if to_mark_count %}{{ to_mark_count }} to mark{% endif %}{% if to_mark_count and to_send_count %} · {% endif %}{% if to_send_count %}{{ to_send_count }} ready to send{% endif %}</c-slot>
+    {% if member.can_edit %}<c-slot name="actions"><button class="btn btn-primary btn-sm" data-dialog="new-assessment">{% icon "plus" %}New assessment</button></c-slot>{% endif %}
     <table class="table">
-      <thead><tr><th>Assessment</th><th class="text-right max-sm:hidden">Students</th><th>Progress</th><th class="max-sm:hidden">Last change</th></tr></thead>
+      <thead><tr><th>Assessment</th><th class="text-right max-sm:hidden">Students</th><th class="max-sm:hidden">Progress</th><th class="max-sm:hidden">Last change</th></tr></thead>
       <tbody>
         {% for assessment, progress in assessment_progress %}
         <tr data-href>
-          <td><a class="font-medium hover:underline" href="{% url 'overview' assessment.pk %}">{{ assessment.name }}</a>{% if assessment.description %}<p class="max-w-md truncate text-sm text-muted">{{ assessment.description }}</p>{% endif %}</td>
+          <td><span class="flex items-center gap-2.5">{% icon "document-text" "text-subtle" %}<span class="min-w-0"><a class="font-medium" href="{% url 'overview' assessment.pk %}">{{ assessment.name }}</a>{% if assessment.description %}<span class="block max-w-48 truncate text-sm text-muted sm:max-w-md">{{ assessment.description }}</span>{% endif %}<span class="mt-1 block sm:hidden">{% include "courses/progress.html" %}</span></span></span></td>
           <td class="tabular-nums text-right max-sm:hidden">{{ assessment.student_count|default:"—" }}</td>
-          <td>{% if progress.stage == "import" %}<span class="text-muted">Not imported</span>{% elif progress.stage == "mark" %}<span class="tabular-nums">{{ progress.marked_count }} of {{ progress.question_count }}</span> <span class="text-muted">marked</span>{% elif progress.stage == "send" %}<span class="font-medium text-primary">Ready to send</span>{% else %}<span class="text-muted">Sent {{ progress.latest_sent_marks.sent_at|ago }}</span>{% endif %}</td>
-          <td class="text-muted max-sm:hidden">{{ assessment.updated_at|ago }}</td>
+          <td class="max-sm:hidden">{% include "courses/progress.html" %}</td>
+          <td class="text-muted max-sm:hidden">{{ assessment.updated_at|ago|capfirst }}</td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
-  </div>
-  {% else %}
-  <c-empty-state class="card-box" icon="document-plus" title="No assessments yet">{% if member.can_edit %}<c-slot name="action"><button class="btn btn-primary" data-dialog="new-assessment">{% icon "plus" %}New assessment</button></c-slot>{% endif %}</c-empty-state>
-  {% endif %}
+    {% else %}
+    <c-empty-state icon="document-plus" title="No assessments yet">{% if member.can_edit %}<c-slot name="action"><button class="btn btn-primary" data-dialog="new-assessment">{% icon "plus" %}New assessment</button></c-slot>{% endif %}</c-empty-state>
+    {% endif %}
+  </c-panel>
 </c-page>
 {% if member.can_edit %}
 <c-form-dialog id="new-assessment" title="New assessment" action="{% url 'course' course.pk %}" submit="Create" :form="form" />

@@ -77,7 +77,9 @@ class MarkingWorkspace(StepWorkspace):
         subject = self.subject
         if subject.marking is not None:
             return "The saved marking stays as it was."
-        if subject.key and has_imported_marks(subject.assessment, subject.key):
+        if subject.key is None:
+            return "The question group hasn't been saved, so it goes too."
+        if has_imported_marks(subject.assessment, subject.key):
             return "Students keep their imported marks."
         return ""
 

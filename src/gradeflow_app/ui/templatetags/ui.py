@@ -54,10 +54,12 @@ _CODE_FORMATTER = HtmlFormatter(nowrap=True, classprefix="code-")
 
 
 @register.simple_tag
-def icon(name: str, classes: str = "size-5", *, mini: bool = False) -> SafeString:
-    """A Heroicon, hidden from assistive technology: the element holding it carries the label."""
+def icon(name: str, classes: str = "", *, mini: bool = False) -> SafeString:
+    """A Heroicon, hidden from assistive technology: the element holding it carries the label. 16 px unless
+    `classes` gives a size."""
     render_icon = heroicon_mini if mini else heroicon_outline
-    return mark_safe(render_icon(name, size=None, **{"class": f"shrink-0 {classes}"}))
+    size = "" if "size-" in classes else "size-4 "
+    return mark_safe(render_icon(name, size=None, **{"class": f"shrink-0 {size}{classes}"}))
 
 
 @register.simple_tag
@@ -207,6 +209,15 @@ def highlight(text: str, language: str | None) -> SafeString:
     if not lexer:
         return conditional_escape(text)
     return mark_safe(pygments_highlight(text, lexer, _CODE_FORMATTER))
+
+
+_QUOTED = re.compile("“[^”]*”")
+
+
+@register.filter
+def quotes_kept_together(text: str) -> SafeString:
+    """``text`` with each “quoted” value kept on one line while it fits."""
+    return mark_safe(_QUOTED.sub(r'<span class="inline-block">\g<0></span>', conditional_escape(text)))
 
 
 @register.filter

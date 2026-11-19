@@ -1,115 +1,117 @@
 {% extends "layouts/assessment.html" %}
 {% block content %}
 {% with assessment=access.assessment %}
-<c-page title="Overview">
+<c-page title="{{ assessment.name }}">
   {% if not progress.latest_import %}
-    <c-empty-state class="card-box" icon="arrow-up-tray" title="Import submissions to start">A CSV or Excel file, such as ExamSoft’s “Exam Taker Results”.
-      {% if access.can_edit %}<c-slot name="action"><a class="btn btn-primary" href="{% url 'import' assessment.pk %}">{% icon "arrow-up-tray" %}Import submissions</a></c-slot>{% endif %}
-    </c-empty-state>
+    {% if access.can_edit %}
+    <c-panel icon="arrow-up-tray" title="Submissions file" body_class="px-4">
+      <c-slot name="actions"><button type="button" class="btn btn-ghost btn-square btn-sm -mr-2 text-muted" data-dialog="submissions-file-guide" aria-label="How to import a submissions file">{% icon "question-mark-circle" %}</button></c-slot>
+      {% include "imports/importer.html" %}
+    </c-panel>
+    {% include "imports/submissions_file_guide.html" %}
+    {% else %}<c-panel><c-empty-state icon="arrow-up-tray" title="Nothing imported yet" /></c-panel>{% endif %}
   {% else %}
-    <section class="card-box flex flex-wrap items-center gap-x-8 gap-y-4 px-5 py-4" aria-label="Progress">
-      <ol class="grid flex-1 basis-full gap-4 sm:flex sm:basis-auto sm:flex-wrap sm:gap-x-10">
-        <li class="flex items-center gap-3">
-          {% include "assessments/step.html" with is_done=True %}
-          <div><p class="font-medium">Submissions file</p><p class="text-sm text-muted">Imported {{ progress.latest_import.uploaded_at|ago }}</p></div>
+    <div class="surface figures">
+      <c-figure icon="users" label="Students" value="{{ student_count }}" />
+      {% if results %}<c-figure icon="chart-bar" label="Average" value="{{ results.statistics.mean|marks }}" detail="/ {{ results.max_marks|marks }}" />
+      {% else %}<c-figure icon="chart-bar" label="Average" value="—" />{% endif %}
+      <c-figure icon="list-bullet" label="Questions marked" value="{{ progress.marked_count }}" detail="of {{ progress.question_count }}" />
+      {% if results.unmarked_count %}<c-figure icon="exclamation-triangle" label="Need marking" value="{{ results.unmarked_count }}" detail="answer{{ results.unmarked_count|pluralize }}" warning />{% endif %}
+      {% if results.adjusted_count %}<c-figure icon="pencil" label="Adjusted" value="{{ results.adjusted_count }}" detail="student{{ results.adjusted_count|pluralize }}" href="{% url 'students' assessment.pk %}?show=adjusted" />{% endif %}
+      <c-figure icon="paper-airplane" label="Canvas" value="{% if progress.latest_sent_marks %}Sent {{ progress.latest_sent_marks.sent_at|ago }}{% else %}Not sent{% endif %}" />
+    </div>
+
+    {% if next_step %}
+    <c-alert warning role="">
+      <c-slot name="action"><a class="btn btn-sm" href="{{ next_step.url }}">{{ next_step.action }}{% icon "chevron-right" %}</a></c-slot>
+      {{ next_step.message }}
+    </c-alert>
+    {% endif %}
+
+    {% partialdef activity_panel %}
+    <c-panel icon="clock" title="Activity" body_class="">
+      {% if has_more_activity %}<c-slot name="actions"><button type="button" class="btn btn-ghost btn-sm -mr-2" hx-get="{% url 'activity' assessment.pk %}" hx-target="#drawer-body" data-dialog="drawer">All activity</button></c-slot>{% endif %}
+      {% if activity %}
+      <ol class="divide-y divide-line overflow-hidden rounded-b-box">
+        {% for event in activity %}
+        <li>
+          <{% if event.url %}a href="{{ event.url }}"{% else %}div{% endif %} class="flex items-center gap-3 px-4 py-3{% if event.url %} transition-colors hover:bg-base-200{% endif %}">
+            <c-avatar :user="event.user" size="size-6" />
+            <p class="min-w-0 flex-1 text-sm"><span class="font-medium">{{ event.user|default:"A former member" }}</span> {{ event.description }}<br><time class="text-xs text-muted" datetime="{{ event.occurred_at|date:'c' }}">{{ event.occurred_at|ago }}</time></p>
+          </{% if event.url %}a{% else %}div{% endif %}>
         </li>
-        <li class="flex items-center gap-3">
-          {% include "assessments/step.html" with is_done=progress.all_marked number=2 is_next=True %}
-          <div><p class="font-medium">Marking</p><p class="tabular-nums text-sm text-muted">{{ progress.marked_count }} of {{ progress.question_count }} question{{ progress.question_count|pluralize }}</p>{% if results.unmarked_count %}<p class="tabular-nums text-sm text-warning">{{ results.unmarked_count }} answer{{ results.unmarked_count|pluralize:" needs,s need" }} marking</p>{% endif %}</div>
-        </li>
-        <li class="flex items-center gap-3">
-          {% include "assessments/step.html" with is_done=progress.latest_sent_marks number=3 is_next=progress.all_marked %}
-          <div><p class="font-medium">Canvas</p><p class="text-sm text-muted">{% if progress.latest_sent_marks %}Sent {{ progress.latest_sent_marks.sent_at|ago }}{% else %}Not sent{% endif %}</p></div>
-        </li>
+        {% endfor %}
       </ol>
-      {% if access.can_edit %}
-        {% if not progress.all_marked %}<a href="{% url 'questions' assessment.pk %}" class="btn btn-primary max-sm:w-full">Continue marking</a>
-        {% elif not progress.latest_sent_marks %}<a href="{% url 'export' assessment.pk %}" class="btn btn-primary max-sm:w-full">{% icon "paper-airplane" "size-4" %}Send to Canvas</a>{% endif %}
+      {% else %}
+      <p class="px-4 py-3 text-sm text-muted">Nothing yet.</p>
       {% endif %}
-    </section>
+    </c-panel>
+    {% endpartialdef %}
 
     {% if results %}
-    {% with max_marks=results.max_marks %}
-    <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
-      <c-card title="Distribution" class="lg:col-span-2" x-data="histogram">
-        <c-slot name="actions">
-          <div class="segmented" role="radiogroup" aria-label="Bar width">
-            {% for value, label, is_redundant in distribution.widths %}<label class="segment"><input type="radio" name="bar_width" class="sr-only" value="{{ value }}" x-model="barWidth"{% if is_redundant %} disabled{% endif %}>{{ label }}</label>{% endfor %}
-          </div>
-        </c-slot>
-        <div class="h-60">
-          {{ distribution.chart|json_script }}
-          <canvas aria-label="Students by total marks" role="img"></canvas>
-        </div>
-      </c-card>
-      <c-card title="Statistics" class="flex flex-col" body_class="flex flex-1 flex-col justify-between gap-6 p-5">
-        {% if not progress.marked_count %}<c-slot name="actions"><span class="text-sm text-muted">From the submissions file</span></c-slot>{% endif %}
-        {% with statistics=box_plot.statistics positions=box_plot.positions %}
-          <div class="flex items-end justify-between gap-4">
-            <div><p class="text-sm text-muted">Mean</p><p class="tabular-nums text-3xl font-semibold tracking-tight">{{ statistics.mean|marks:2 }}<span class="ml-1.5 text-base font-normal text-muted" title="Standard deviation">± {{ statistics.standard_deviation|marks:2 }} SD</span></p></div>
-            <div class="text-right"><p class="text-sm text-muted">Students</p><p class="tabular-nums text-3xl font-semibold tracking-tight">{{ statistics.student_count }}</p></div>
-          </div>
-          <div>
-            <div class="relative h-10" role="img" aria-label="Total marks from {{ statistics.minimum|marks }} to {{ statistics.maximum|marks }}, half between {{ statistics.lower_quartile|marks }} and {{ statistics.upper_quartile|marks }}, median {{ statistics.median|marks }}, maximum marks {{ max_marks|marks }}">
-              <span class="absolute inset-x-0 top-1/2 h-px bg-base-300"></span>
-              <span class="absolute top-1/2 h-0.5 -translate-y-1/2 bg-base-content/40" style="left: {{ positions.minimum }}%; width: {{ box_plot.whisker_width }}%"></span>
-              <span class="absolute top-1/2 h-4 w-0.5 -translate-y-1/2 bg-base-content/40" style="left: {{ positions.minimum }}%"></span>
-              <span class="absolute top-1/2 h-4 w-0.5 -translate-x-full -translate-y-1/2 bg-base-content/40" style="left: {{ positions.maximum }}%"></span>
-              <span class="absolute top-1/2 h-7 -translate-y-1/2 rounded-md border border-(--color-chart) bg-(--color-chart)/25" style="left: {{ positions.lower_quartile }}%; width: {{ box_plot.box_width }}%"></span>
-              <span class="absolute top-1/2 h-7 w-0.5 -translate-x-1/2 -translate-y-1/2 bg-base-content/70" style="left: {{ positions.median }}%"></span>
-            </div>
-            <div class="tabular-nums mt-1 flex justify-between text-sm text-muted"><span>0</span><span>{{ max_marks|marks }}</span></div>
-          </div>
-          <dl class="flex justify-between gap-2 border-t border-base-300 pt-4 text-sm">
-            {% for label, value in box_plot.five_numbers %}
-            <div><dt class="text-muted">{{ label }}</dt><dd class="tabular-nums font-semibold">{{ value }}</dd></div>
-            {% endfor %}
-          </dl>
-        {% endwith %}
-      </c-card>
-    </div>
-    {% endwith %}
-
-    <div class="grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
-      <c-card title="Questions" class="overflow-x-auto lg:col-span-2" body_class="">
+    {% with max_marks=results.max_marks statistics=box_plot.statistics positions=box_plot.positions %}
+    <div class="main-with-aside items-start">
+      <c-panel icon="list-bullet" title="Questions" note="{{ max_marks|marks }} mark{{ max_marks|pluralize }}" body_class="overflow-x-auto rounded-b-box">
         <table class="table">
-          <thead><tr><th>Question</th><th>Average</th><th class="text-right max-sm:hidden">Full marks</th><th class="text-right max-sm:hidden">No marks</th><th class="text-right max-sm:hidden">Blank</th>{% if has_adjustments %}<th class="text-right max-sm:hidden">Adjusted</th>{% endif %}</tr></thead>
+          <thead><tr><th>Q</th><th>Marking</th><th>Average</th><th class="text-right max-sm:hidden">Full</th><th class="text-right max-sm:hidden">None</th><th class="text-right max-sm:hidden">Blank</th>{% if results.adjusted_count %}<th class="text-right max-sm:hidden">Adjusted</th>{% endif %}</tr></thead>
           <tbody>
             {% for summary, badge in questions %}
             <tr data-href>
+              <td><a class="font-semibold text-primary" href="{% url 'question' assessment.pk summary.question.pk %}">{{ summary.question.key }}</a></td>
               <td>
-                <a class="font-medium" href="{% url 'question' assessment.pk summary.question.pk %}">{{ summary.question.key }}</a>
-                <c-question-status :badge="badge" />
+                <div class="flex flex-wrap items-center gap-1.5">
+                  {% if badge.style == "warning" %}<c-chip icon="exclamation-triangle" tone="warning">{{ badge.label }}</c-chip>{% else %}<c-chip>{{ badge.label }}</c-chip>{% endif %}
+                  {% if summary.unmarked_count %}<c-chip icon="exclamation-triangle" tone="warning">{{ summary.unmarked_count }} need{{ summary.unmarked_count|pluralize:"s," }} marking</c-chip>{% endif %}
+                </div>
               </td>
               <td>
                 {% if summary.average is None %}<span class="text-subtle">—</span>
                 {% else %}<div class="flex items-center gap-3">
-                  <progress class="progress h-1.5 w-16 text-(--color-chart) max-xl:hidden" value="{{ summary.average_proportion|floatformat:2 }}" max="1"></progress>
-                  <span class="tabular-nums whitespace-nowrap">{{ summary.average|marks }} <span class="text-muted">/ {{ summary.question.core_question.max_marks|marks }}</span></span>
+                  <progress class="progress h-1.5 w-14 text-(--color-chart) max-xl:hidden" value="{{ summary.average_proportion|floatformat:2 }}" max="1"></progress>
+                  <span class="tabular-nums whitespace-nowrap">{{ summary.average|marks }} <span class="text-subtle">/ {{ summary.question.core_question.max_marks|marks }}</span></span>
                 </div>{% endif %}
               </td>
               <td class="tabular-nums text-right max-sm:hidden">{% if summary.average is None %}<span class="text-subtle">—</span>{% else %}{{ summary.full_marks_count }}{% endif %}</td>
               <td class="tabular-nums text-right max-sm:hidden">{% if summary.average is None %}<span class="text-subtle">—</span>{% else %}{{ summary.no_marks_count }}{% endif %}</td>
-              <td class="tabular-nums text-right max-sm:hidden">{{ summary.blank_count }}</td>
-              {% if has_adjustments %}<td class="tabular-nums text-right max-sm:hidden">{% if summary.adjusted_count %}{{ summary.adjusted_count }}{% else %}<span class="text-subtle">—</span>{% endif %}</td>{% endif %}
+              <td class="tabular-nums text-right text-subtle max-sm:hidden">{{ summary.blank_count }}</td>
+              {% if results.adjusted_count %}<td class="tabular-nums text-right max-sm:hidden">{% if summary.adjusted_count %}{{ summary.adjusted_count }}{% else %}<span class="text-subtle">—</span>{% endif %}</td>{% endif %}
             </tr>
             {% endfor %}
           </tbody>
         </table>
-      </c-card>
-      <c-card title="Activity" class="lg:sticky lg:top-20" body_class="p-2">
-        {% if has_more_activity %}<c-slot name="actions"><button type="button" class="btn btn-ghost btn-sm -mr-2" hx-get="{% url 'activity' assessment.pk %}" hx-target="#drawer-body" data-dialog="drawer">All activity</button></c-slot>{% endif %}
-        {% if activity %}
-        <ol class="grid">
-          {% for event in activity %}
-          <li>{% include "assessments/event.html" with when=event.occurred_at|ago %}</li>
-          {% endfor %}
-        </ol>
-        {% else %}
-        <p class="p-3 text-sm text-muted">Nothing yet.</p>
-        {% endif %}
-      </c-card>
+      </c-panel>
+      <div class="grid gap-5">
+        <c-panel icon="chart-bar" title="Distribution" note="± {{ statistics.standard_deviation|marks }} SD" body_class="" x-data="histogram">
+          <c-slot name="actions">
+            <div class="segmented" role="radiogroup" aria-label="Bar width">
+              {% for value, label, is_redundant in distribution.widths %}<label class="segment"><input type="radio" name="bar_width" class="sr-only" value="{{ value }}" x-model="barWidth"{% if is_redundant %} disabled{% endif %}>{{ label }}</label>{% endfor %}
+            </div>
+          </c-slot>
+          <div class="h-48 px-4 pt-4">
+            {{ distribution.chart|json_script }}
+            <canvas aria-label="Students by total marks" role="img"></canvas>
+          </div>
+          <div class="px-4 pt-3 pb-4">
+            <div class="relative h-8" role="img" aria-label="Total marks from {{ statistics.minimum|marks }} to {{ statistics.maximum|marks }}, half between {{ statistics.lower_quartile|marks }} and {{ statistics.upper_quartile|marks }}, median {{ statistics.median|marks }}, maximum marks {{ max_marks|marks }}">
+              <span class="absolute inset-x-0 top-1/2 h-px bg-base-300"></span>
+              <span class="absolute top-1/2 h-0.5 -translate-y-1/2 bg-base-content/40" style="left: {{ positions.minimum }}%; width: {{ box_plot.whisker_width }}%"></span>
+              <span class="absolute top-1/2 h-4 w-0.5 -translate-y-1/2 bg-base-content/40" style="left: {{ positions.minimum }}%"></span>
+              <span class="absolute top-1/2 h-4 w-0.5 -translate-x-full -translate-y-1/2 bg-base-content/40" style="left: {{ positions.maximum }}%"></span>
+              <span class="absolute top-1/2 h-6 -translate-y-1/2 rounded-md border border-(--color-chart) bg-(--color-chart)/25" style="left: {{ positions.lower_quartile }}%; width: {{ box_plot.box_width }}%"></span>
+              <span class="absolute top-1/2 h-6 w-0.5 -translate-x-1/2 -translate-y-1/2 bg-base-content/70" style="left: {{ positions.median }}%"></span>
+            </div>
+            <div class="tabular-nums mt-1 flex justify-between text-xs text-subtle"><span>0</span><span>{{ max_marks|marks }}</span></div>
+          </div>
+          <dl class="grid grid-cols-5 divide-x divide-line border-t border-line">
+            {% for label, value in box_plot.five_numbers %}<div class="min-w-0 px-3 py-2.5"><dt class="text-xs text-subtle">{{ label }}</dt><dd class="tabular-nums truncate font-semibold">{{ value }}</dd></div>{% endfor %}
+          </dl>
+        </c-panel>
+        {% partial activity_panel %}
+      </div>
     </div>
+    {% endwith %}
+    {% else %}
+    {% partial activity_panel %}
     {% endif %}
   {% endif %}
 </c-page>

@@ -1,19 +1,15 @@
-{% extends "layouts/sidebar.html" %}
+{% extends "base.html" %}
 {% block title %}{% block page_title %}{% endblock %}{{ member.course.name }} · GradeFlow{% endblock %}
-{% block topbar %}<c-topbar :course="member.course" />{% endblock %}
-{% block nav_label %}Course{% endblock %}
-{% block nav_header %}
-  <c-sidebar-header back_url="{% url 'courses' %}" back_label="All courses" title="{{ member.course.name }}" subtitle="{{ member.course.description }}" />
-{% endblock %}
-{% block nav %}
+{% block topbar %}
   {% with course=member.course %}
-  <c-sidebar-link href="{% url 'course' course.pk %}" icon="document-text" label="Assessments" sections="course" />
-  <c-sidebar-link href="{% url 'members' course.pk %}" icon="users" label="Members" sections="members" />
-  <c-sidebar-link href="{% url 'course_methods' course.pk %}" icon="puzzle-piece" label="Methods" sections="course_methods method_page method_latest" />
-  {% if member.can_edit %}
-  <c-sidebar-group title="Setup" />
-  <c-sidebar-link href="{% url 'canvas_settings' course.pk %}" icon="link" label="Canvas" sections="canvas_settings" />
-  {% if member.is_owner %}<c-sidebar-link href="{% url 'course_settings' course.pk %}" icon="cog-6-tooth" label="Settings" sections="course_settings" />{% endif %}
-  {% endif %}
+  <c-topbar :course="course" tabs_label="Course">
+    <c-slot name="tabs">
+      <c-tab href="{% url 'course' course.pk %}" label="Assessments" icon="document-text" sections="course" :count="course.assessments.count" />
+      <c-tab href="{% url 'members' course.pk %}" label="Members" icon="user-group" sections="members" :count="course.members.count" />
+      <c-tab href="{% url 'course_methods' course.pk %}" label="Methods" icon="book-open" sections="course_methods method_page method_latest" />
+      {% if member.can_edit %}<c-tab href="{% url 'canvas_settings' course.pk %}" label="Canvas" icon="link" sections="canvas_settings" />{% endif %}
+      {% if member.is_owner %}<c-tab href="{% url 'course_settings' course.pk %}" label="Settings" icon="cog-6-tooth" sections="course_settings" />{% endif %}
+    </c-slot>
+  </c-topbar>
   {% endwith %}
 {% endblock %}

@@ -3,14 +3,25 @@
 {% block content %}
 {% with assessment=access.assessment %}
 <c-page title="Settings">
-  <div class="settings">
-    <c-form-card id="assessment-details" title="Details">{{ form }}</c-form-card>
-    <c-card body_class="setting-rows">
-      <c-setting-row label="Delete assessment">
-        <form method="post" action="{% url 'delete_assessment' assessment.pk %}">{% csrf_token %}<button class="btn btn-error btn-outline" data-confirm="Delete “{{ assessment.name }}”?" data-confirm-detail="Its answers, marking and marks are deleted for everyone. This can't be undone." data-confirm-button="Delete">Delete assessment</button></form>
-      </c-setting-row>
-    </c-card>
+  <div class="main-with-aside items-start">
+    <c-panel icon="document-text" title="Files" body_class="setting-rows">
+      <c-slot name="actions"><button type="button" class="btn btn-ghost btn-square btn-sm -mr-2 text-muted" data-dialog="submissions-file-guide" aria-label="How to import a submissions file">{% icon "question-mark-circle" %}</button></c-slot>
+      {% include "imports/importer.html" %}
+      {% if latest_file and not latest_file.file_pattern %}{% include "imports/question_document.html" %}{% endif %}
+    </c-panel>
+    {% if access.is_owner %}
+    <div class="grid gap-5">
+      <c-form-panel id="assessment-details" icon="information-circle" title="Details">{{ form }}</c-form-panel>
+      <c-panel body_class="setting-rows">
+        <c-setting-row icon="trash" label="Delete assessment" detail="Its answers, marking and marks are deleted for everyone.">
+          <form method="post" action="{% url 'delete_assessment' assessment.pk %}">{% csrf_token %}<button class="btn btn-error btn-outline btn-sm" data-confirm="Delete “{{ assessment.name }}”?" data-confirm-detail="Its answers, marking and marks are deleted for everyone." data-confirm-button="Delete">{% icon "trash" %}Delete</button></form>
+        </c-setting-row>
+      </c-panel>
+    </div>
+    {% endif %}
   </div>
 </c-page>
+{% include "imports/submissions_file_guide.html" %}
+{% if latest_file and not latest_file.file_pattern %}{% include "imports/document_guide.html" %}{% endif %}
 {% endwith %}
 {% endblock %}

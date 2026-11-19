@@ -319,6 +319,7 @@ def test_a_failed_remark_says_why_until_marked_again(
     question = assessment.questions.get(key="Q1")
     column = client.get(reverse("answers", args=[assessment.pk, question.pk])).text
     assert "Marking failed: Out of time. The marks shown are from before." in column
+    assert '<div role="status" class="notice-row wrap-break-word" data-tone="error">' in column, "as a failed preview"
     assert run_id not in idle_runner.held
     start_remark(start, assessment, "Q1", user)
     assert Marking.objects.get(question=question).failure == ""

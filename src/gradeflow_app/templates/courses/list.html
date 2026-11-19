@@ -1,8 +1,7 @@
-{% extends "base.html" %}
+{% extends "layouts/home.html" %}
 {% block title %}Courses · GradeFlow{% endblock %}
-{% block content %}
+{% block page %}
 <c-page title="Courses">
-  <c-slot name="actions"><button class="btn btn-primary" data-dialog="new-course">{% icon "plus" %}New course</button></c-slot>
   {% if cards or query %}
   {% if offers_search %}
   <form role="search" hx-get="{% url 'courses' %}" hx-trigger="input changed delay:250ms from:input, search" hx-select="#course-cards" hx-target="#course-cards" hx-swap="outerHTML" hx-push-url="true">
@@ -11,32 +10,45 @@
   {% endif %}
   <div id="course-cards">
     {% if cards %}
-    <ul class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4" aria-label="Courses">
+    <ul class="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4" aria-label="Courses">
       {% for card in cards %}{% with member=card.member course=card.member.course %}
-      <li>
-        <a href="{% url 'course' course.pk %}" class="card-box flex h-full flex-col gap-1 p-5 transition-colors hover:bg-base-200/60">
-          <p class="flex items-center gap-2"><span class="truncate font-semibold">{{ course.name }}</span>{% if has_mixed_roles %}<span class="badge badge-ghost badge-sm shrink-0">{{ member.get_role_display }}</span>{% endif %}</p>
-          {% if course.description %}<p class="truncate text-sm text-muted">{{ course.description }}</p>{% endif %}
-          <p class="mt-auto flex flex-wrap gap-x-4 gap-y-1 pt-3 text-sm text-muted [&_b]:font-medium [&_b]:tabular-nums [&>span]:flex [&>span]:items-center [&>span]:gap-1.5">
-            {% if card.assessment_count %}
-            <span>{% icon "document-text" "size-4" mini=True %}<b class="text-base-content">{{ card.assessment_count }}</b> assessment{{ card.assessment_count|pluralize }}</span>
-            {% if card.to_mark_count %}<span>{% icon "pencil-square" "size-4" mini=True %}<b class="text-base-content">{{ card.to_mark_count }}</b> to mark</span>{% endif %}
-            {% if card.to_send_count %}<span class="font-medium text-primary">{% icon "paper-airplane" "size-4" mini=True %}<b>{{ card.to_send_count }}</b> ready to send</span>{% endif %}
-            {% if card.sent_count %}<span>{% icon "check-circle" "size-4" mini=True %}<b class="text-base-content">{{ card.sent_count }}</b> sent</span>{% endif %}
-            {% else %}
-            <span>No assessments yet</span>
-            {% endif %}
-          </p>
+      <li class="surface flex flex-col">
+        <a href="{% url 'course' course.pk %}" class="flex items-center gap-3 rounded-t-box p-4 transition-colors hover:bg-base-200/50">
+          <span class="initial-badge size-9 text-sm" aria-hidden="true">{{ course.name|initials }}</span>
+          <span class="min-w-0 flex-1">
+            <span class="block truncate font-semibold">{{ course.name }}</span>
+            {% if course.description %}<span class="block truncate text-xs text-muted">{{ course.description }}</span>{% endif %}
+          </span>
+          {% if has_mixed_roles %}<c-chip>{{ member.get_role_display }}</c-chip>{% endif %}
         </a>
+        <ul class="flex-1 divide-y divide-line border-t border-line" aria-label="Latest assessments in {{ course.name }}">
+          {% for assessment, progress in card.latest_assessments %}
+          <li><a href="{% url 'overview' assessment.pk %}" class="flex items-center gap-2.5 px-4 py-2.5 transition-colors hover:bg-base-200/50">{% icon "document-text" "text-subtle" %}<span class="min-w-0 flex-1 truncate font-medium">{{ assessment.name }}</span>{% include "courses/progress.html" %}</a></li>
+          {% empty %}
+          <li class="px-4 py-2.5 text-muted">No assessments yet</li>
+          {% endfor %}
+          {% if member.assessment_count > card.latest_assessments|length %}<li><a href="{% url 'course' course.pk %}" class="muted-link block px-4 py-2.5">All {{ member.assessment_count }} assessments</a></li>{% endif %}
+        </ul>
+        <footer class="panel-foot text-xs text-muted">
+          {% with course_members=course.members.all %}
+          <span class="flex gap-1" aria-hidden="true">
+            {% for course_member in course_members|slice:":4" %}<span title="{{ course_member.user }}"><c-avatar :user="course_member.user" size="size-6" /></span>{% endfor %}
+            {% if course_members|length > 4 %}<span class="grid size-6 place-items-center rounded-full bg-base-content/6 font-medium">+{{ course_members|length|add:"-4" }}</span>{% endif %}
+          </span>
+          <span>{{ course_members|length }} member{{ course_members|length|pluralize }}</span>
+          {% endwith %}
+          <span class="ml-auto flex items-center gap-1.5">{% icon "clock" %}{{ member.changed_at|ago|capfirst }}</span>
+        </footer>
       </li>
       {% endwith %}{% endfor %}
+      <li><button type="button" class="new-tile" data-dialog="new-course">{% icon "plus" %}New course</button></li>
     </ul>
     {% else %}
-    <c-empty-state class="card-box" icon="magnifying-glass" title="No courses match “{{ query }}”"><c-slot name="action"><a class="btn" href="{% url 'courses' %}">Clear search</a></c-slot></c-empty-state>
+    <c-empty-state class="surface" icon="magnifying-glass" title="No courses match “{{ query }}”"><c-slot name="action"><a class="btn" href="{% url 'courses' %}">Clear search</a></c-slot></c-empty-state>
     {% endif %}
   </div>
   {% else %}
-  <c-empty-state class="card-box" icon="academic-cap" title="No courses yet">A course holds its assessments and the people who mark them.<c-slot name="action"><button class="btn btn-primary" data-dialog="new-course">{% icon "plus" %}New course</button></c-slot></c-empty-state>
+  <c-empty-state class="surface" icon="academic-cap" title="No courses yet"><c-slot name="action"><button class="btn btn-primary" data-dialog="new-course">{% icon "plus" %}New course</button></c-slot></c-empty-state>
   {% endif %}
 </c-page>
 <c-form-dialog id="new-course" title="New course" action="{% url 'courses' %}" submit="Create" :form="form" />

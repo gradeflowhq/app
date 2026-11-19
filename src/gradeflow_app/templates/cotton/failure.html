@@ -1,6 +1,6 @@
 <c-vars text="" />
 {# A failure's sentence, the slot, with a chevron that shows the details on the lines of `text` after its first. #}
 {% with lines=text.splitlines %}{% if lines|length > 1 %}<details class="group/failure">
-  <summary class="flex cursor-pointer list-none items-start gap-2"><span class="min-w-0 flex-1">{{ slot }}</span>{% icon "chevron-down" "mt-0.5 size-4 opacity-70 transition-transform group-open/failure:rotate-180" %}<span class="sr-only">Details</span></summary>
+  <summary class="flex cursor-pointer list-none items-start gap-2"><span class="min-w-0 flex-1">{{ slot }}</span>{% icon "chevron-down" "mt-0.5 opacity-70 transition-transform group-open/failure:rotate-180" %}<span class="sr-only">Details</span></summary>
   <p class="wrap-break-word mt-1 font-mono text-xs opacity-80">{% for line in lines|slice:"1:" %}{{ line }}{% if not forloop.last %}<br>{% endif %}{% endfor %}</p>
 </details>{% else %}{{ slot }}{% endif %}{% endwith %}

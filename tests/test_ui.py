@@ -32,7 +32,7 @@ from gradeflow_app.ui.templatetags.ui import (
     percent,
     short_value,
 )
-from tests.conftest import HTMX_HEADERS, create_assessment
+from tests.conftest import EXAM_ROWS, HTMX_HEADERS, create_assessment
 
 CHROME_ON_LINUX = (
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36"
@@ -97,7 +97,17 @@ def test_pages_take_their_width_and_button_sizes_from_the_design_system() -> Non
         assert "naturaltime" not in text, template
 
 
-def test_a_settings_card_posts_its_form_from_its_footer(client: Client) -> None:
+def test_tabs_count_what_they_open(client: Client, assessment: Assessment) -> None:
+    def counts(url: str) -> dict[str, str]:
+        return dict(re.findall(r'</svg>([^<]+?)\s*<span class="chip[^>]*>(\d+)</span>\s*</a>', client.get(url).text))
+
+    students = str(len(EXAM_ROWS))
+    assert counts(reverse("overview", args=[assessment.pk])) == {"Questions": "3", "Students": students}
+    assert counts(reverse("course", args=[assessment.course.pk])) == {"Assessments": "1", "Members": "1"}
+    assert counts(reverse("overview", args=[create_assessment(client, "Quiz").pk])) == {}
+
+
+def test_a_form_panel_posts_its_form_from_its_footer(client: Client) -> None:
     page = client.get(reverse("settings")).text
     form = re.search(r'<form id="profile" method="post" class="grid gap-5">(.*?)</form>', page, re.DOTALL)
     assert form is not None
@@ -108,8 +118,8 @@ def test_a_settings_card_posts_its_form_from_its_footer(client: Client) -> None:
 
 
 def test_an_alert_shown_by_alpine_is_hidden_until_shown(client: Client) -> None:
-    page = client.get(reverse("import", args=[create_assessment(client).pk])).text
-    assert re.search(r'<div role="alert" class="alert alert-error alert-soft *" x-show="error" x-cloak>', page)
+    page = client.get(reverse("overview", args=[create_assessment(client).pk])).text
+    assert re.search(r'<div role="alert" class="alert alert-error alert-soft[^"]*" x-show="error" x-cloak>', page)
 
 
 def test_a_list_of_settings_shows_each_by_its_first_text() -> None:

@@ -1,8 +1,10 @@
 from allauth.account.adapter import DefaultAccountAdapter
+from django.http import HttpRequest
+from django.urls import reverse
 
 
 class AccountAdapter(DefaultAccountAdapter):  # type: ignore[misc]
-    """allauth's form errors in plain words."""
+    """allauth's form errors in plain words, and the Security page after a password change."""
 
     error_messages = DefaultAccountAdapter.error_messages | {
         "duplicate_email": "You've already added this address.",
@@ -13,3 +15,6 @@ class AccountAdapter(DefaultAccountAdapter):  # type: ignore[misc]
         "incorrect_password": "Wrong password.",
         "rate_limited": "Too many tries. Wait a minute and try again.",
     }
+
+    def get_password_change_redirect_url(self, request: HttpRequest) -> str:
+        return reverse("mfa_index")

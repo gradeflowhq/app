@@ -1,0 +1,3 @@
+<c-vars href label icon sections count=None />
+{# A tab: current when the page's URL name is one of its `sections`, with a `count` when it isn't zero. #}
+<a href="{{ href }}" class="tab-link"{% if request.resolver_match.url_name in sections.split %} aria-current="page"{% endif %}>{% icon icon %}{{ label }}{% if count %}<c-chip class="tabular-nums">{{ count }}</c-chip>{% endif %}</a>

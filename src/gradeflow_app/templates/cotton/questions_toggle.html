@@ -1,2 +1,3 @@
-{# Below 1,024 px the question list is hidden; this shows it over the work. Opening a question replaces it, closing the list. #}
-<label class="btn btn-ghost btn-square btn-sm -ml-2 has-focus-visible:outline-2 lg:hidden">{% icon "queue-list" "size-5" %}<input type="checkbox" id="questions-shown" class="sr-only" aria-controls="question-list" aria-label="Show questions"></label>
+{# Below 1,024 px the question list is hidden; this shows it over the work, on a backdrop that closes it as Esc does. Opening a question replaces it, closing the list. #}
+<label class="btn btn-ghost btn-square btn-sm -ml-2 has-focus-visible:outline-2 lg:hidden">{% icon "list-bullet" "size-5" %}<input type="checkbox" id="questions-shown" class="sr-only" aria-controls="question-list" aria-label="Show questions" x-data="questionsToggle" x-on:keydown.escape.window="close"></label>
+<label for="questions-shown" class="fixed inset-x-0 top-(--header-height) bottom-0 z-25 hidden bg-(--backdrop) max-lg:group-has-[#questions-shown:checked]/workspace:block" aria-hidden="true"></label>

@@ -1,6 +1,6 @@
 <article class="grid gap-6">
   <header>
-    <div class="flex items-start justify-between gap-4"><div class="flex items-center gap-1.5"><h2 id="method-heading" class="text-xl">{{ method.label }}</h2>{% if method.needs_model_endpoint %}<c-ai-service id="ai-service-method" />{% endif %}</div>{% if is_saved_method %}<span class="badge badge-ghost badge-sm tabular-nums mt-1 shrink-0">Version {{ method.version }}</span>{% endif %}</div>
+    <div class="flex items-start justify-between gap-4"><div class="flex items-center gap-1.5"><h2 id="method-heading" class="text-xl">{{ method.label }}</h2>{% if method.needs_model_endpoint %}<c-ai-service id="ai-service-method" />{% endif %}</div>{% if is_saved_method %}<c-chip class="mt-1 tabular-nums">Version {{ method.version }}</c-chip>{% endif %}</div>
     <p class="mt-1 text-muted">{{ method.summary }}</p>
     {% if owner %}<p class="mt-1 text-sm text-muted">by {{ owner }}</p>{% endif %}
     {% if used_for %}<p class="mt-3 text-sm text-muted">{{ used_for }}</p>{% endif %}

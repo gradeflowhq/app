@@ -1,12 +1,13 @@
-<div id="question-document-card"><c-card title="Question document">
-  <c-slot name="actions"><span class="text-sm text-muted">Optional</span><button type="button" class="btn btn-ghost btn-square btn-sm -mr-2 text-muted" data-dialog="document-guide" aria-label="How to import a question document">{% icon "question-mark-circle" %}</button></c-slot>
-  <form x-data="fileDrop" class="grid gap-4" hx-post="{% url 'question_document' assessment.pk %}" hx-encoding="multipart/form-data" hx-target="#question-document-card" hx-swap="outerHTML" hx-status:422="swap:outerHTML">
+<div id="question-document">
+  <form x-data="fileDrop" class="-mx-4 px-4 transition-colors" :class="dragging && 'bg-secondary/50'" x-bind="dropTarget" hx-post="{% url 'question_document' assessment.pk %}" hx-encoding="multipart/form-data" hx-target="#question-document" hx-swap="outerHTML" hx-status:422="swap:outerHTML">
     {% csrf_token %}
-    {% include "imports/drop.html" with title="Drop the question document here" file_types="DOC from ExamSoft" accept=".doc,.rtf" %}
-    <div class="flex flex-wrap items-center justify-end gap-3" x-show="fileName" x-cloak>
-      <span class="mr-auto truncate text-sm text-muted" x-text="fileName"></span>
-      <button x-ref="submit" class="btn btn-primary" data-confirm="Replace question settings?" data-confirm-detail="Each question in the document gets its type, options, marks and text from it. Changes you made to those questions are lost." data-confirm-button="Replace">Import question document</button>
-    </div>
+    <c-setting-row icon="document-text" label="Question document">
+      <c-slot name="status"><c-chip>Optional</c-chip></c-slot>
+      <c-slot name="detail"><span x-show="!fileName">Sets question types, options, marks and text from ExamSoft's DOC. Drop it here or upload it.</span><span x-show="fileName" x-text="fileName" x-cloak></span></c-slot>
+      <button type="button" class="btn btn-ghost btn-square btn-sm text-muted" data-dialog="document-guide" aria-label="How to import a question document">{% icon "question-mark-circle" %}</button>
+      <label class="btn btn-sm">{% icon "arrow-up-tray" %}Upload<input x-ref="file" type="file" name="file" class="sr-only" accept=".doc,.rtf" x-on:change="fileChosen"></label>
+      <button x-ref="submit" class="btn btn-primary btn-sm" x-show="fileName" x-cloak data-confirm="Replace question settings?" data-confirm-detail="Each question in the document gets its type, options, marks and text from it. Changes you made to those questions are lost." data-confirm-button="Replace">Import</button>
+    </c-setting-row>
   </form>
-  {% if error %}<c-alert class="mt-4">{{ error }}</c-alert>{% endif %}
-</c-card></div>
+  {% if error %}<c-alert class="mb-4">{{ error }}</c-alert>{% endif %}
+</div>

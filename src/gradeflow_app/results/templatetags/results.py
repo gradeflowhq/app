@@ -16,19 +16,19 @@ register.simple_tag(level_of, name="marks_level")
 
 class EffectIcon(NamedTuple):
     icon: str
-    color_class: str
+    tone: Literal["success", "warning", "error", ""]
     label: str
 
 
 EFFECT_ICONS: dict[str, EffectIcon] = {
-    "earned": EffectIcon("check", "text-success", "Earned marks"),
-    "partial": EffectIcon("check", "text-warning", "Earned part of the marks"),
-    "no_marks": EffectIcon("x-mark", "text-error", "No marks"),
-    "penalty": EffectIcon("minus-circle", "text-error", "Penalty"),
-    "uncounted": EffectIcon("minus", "text-subtle", "Didn't count"),
-    "unmarked": EffectIcon("exclamation-triangle", "text-warning", "Needs marking"),
+    "earned": EffectIcon("check", "success", "Earned marks"),
+    "partial": EffectIcon("check", "warning", "Earned part of the marks"),
+    "no_marks": EffectIcon("x-mark", "error", "No marks"),
+    "penalty": EffectIcon("minus", "error", "Penalty"),
+    "uncounted": EffectIcon("minus", "", "Didn't count"),
+    "unmarked": EffectIcon("exclamation-triangle", "warning", "Needs marking"),
 }
-"""The icon, color class and label of each effect but met and not met, which show as words."""
+"""The icon, tone (grey if none) and label of each effect but met and not met, which show as words."""
 
 
 @register.filter

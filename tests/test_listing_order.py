@@ -17,6 +17,16 @@ def test_the_course_page_lists_its_most_recently_changed_assessment_first(client
     assert page.index("Quiz 2") < page.index("Quiz 1")
 
 
+def test_the_course_with_the_latest_changed_assessment_comes_first(client: Client) -> None:
+    biology = create_assessment(client, "Quiz 1").course
+    client.post(reverse("courses"), {"name": "Chemistry"})
+    page = client.get(reverse("courses")).text
+    assert page.index("Chemistry") < page.index("BIO1010")
+    client.post(reverse("course", args=[biology.pk]), {"name": "Quiz 2", "description": ""})
+    page = client.get(reverse("courses")).text
+    assert page.index("BIO1010") < page.index("Chemistry")
+
+
 def test_a_library_lists_its_methods_by_name(client: Client, user: User) -> None:
     publish_light_method(user.library, user, "b-light", "B light")
     publish_light_method(user.library, user, "a-light", "A light")

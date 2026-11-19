@@ -1,3 +1,4 @@
+import html
 import json
 import re
 import time
@@ -62,6 +63,12 @@ def test_importing_results_infers_questions_and_keeps_imported_marks(client: Cli
     assert sorted(imported_marks) == [0] * 6 + [1] * 4
 
 
+def test_imported_marks_count_as_marked(client: Client, assessment: Assessment) -> None:
+    text = html.unescape(strip_tags(client.get(reverse("overview", args=[assessment.pk])).content.decode()))
+    assert "Q2 and Q3 aren't marked." in text, "Q1's marks came with the submissions file"
+    assert "Go to Q2" in text
+
+
 def test_marking_a_question_with_key_points(client: Client, assessment: Assessment) -> None:
     url, draft = start_marking(client, assessment, "Q1", "gradeflow/key-points@1")
     response = client.post(url, {"path": "", "fields_posted": "1", "points": ["light"], "marks_by": "proportional"})
@@ -116,6 +123,18 @@ def test_adjusting_several_students(client: Client, assessment: Assessment) -> N
     assert response.status_code == 422
 
 
+def test_answer_groups_joined_by_similarity_can_be_adjusted(client: Client, assessment: Assessment) -> None:
+    question = assessment.questions.get(key="Q1")
+    student = assessment.students.get(answers__Q1="light and chlorophyll")
+    student.answers = student.answers | {"Q1": "Photosynthesis uses ligth"}
+    student.save(update_fields=["answers"])
+    page = client.get(
+        reverse("answers", args=[assessment.pk, question.pk]), {"group": "spelling"}, headers=HTMX_HEADERS
+    ).text
+    assert "other spellings" in page
+    assert page.count('value="apply"') == page.count("<details")
+
+
 def test_adjustments_keep_who_made_each_change(client: Client, user: User, assessment: Assessment) -> None:
     question = assessment.questions.get(key="Q2")
     first, second = (str(pk) for pk in assessment.students.values_list("pk", flat=True)[:2])
@@ -139,7 +158,6 @@ def test_pages_render(client: Client, assessment: Assessment) -> None:
         ("members", [assessment.course_id]),
         ("canvas_settings", [assessment.course_id]),
         ("assessment_settings", [assessment.pk]),
-        ("import", [assessment.pk]),
         ("question", [assessment.pk, question.pk]),
         ("answers", [assessment.pk, question.pk]),
         ("question_settings", [assessment.pk, question.pk]),
@@ -220,16 +238,13 @@ def test_a_methods_guide_shows_what_its_examples_get(client: Client, assessment:
     assert results
     for result, question in results:
         assert escape(result.feedback) in page
-        assert (
-            f'{marks(result.marks)}</span><span class="font-normal text-muted">/ {marks(question.max_marks)}</span>'
-            in page
-        )
+        assert f"{marks(result.marks)} / {marks(question.max_marks)}" in page
 
 
 def test_a_methods_guide_shows_each_questions_feedback_and_the_total(client: Client, assessment: Assessment) -> None:
     page = client.get(reverse("method_guide", args=["gradeflow/answer-sets@1"]), headers=HTMX_HEADERS).text
     assert '<span class="text-subtle">Q2</span> Expected 25.' in page
-    assert f'{marks(1)}</span><span class="font-normal text-muted">/ {marks(2)}</span>' in page
+    assert f"{marks(1)} / {marks(2)}" in page
 
 
 def test_a_methods_guide_leaves_out_examples_without_a_result() -> None:
@@ -328,6 +343,13 @@ def test_account_pages_speak_plainly(client: Client) -> None:
     password = client.get(reverse("account_change_password")).content
     assert b"Current password" in password
     assert b'placeholder="Current Password"' not in password
+    assert f'href="{reverse("mfa_index")}">Cancel</a>'.encode() in password
+    security = " ".join(strip_tags(client.get(reverse("mfa_index")).text).split())
+    assert "Passkeys None yet" in security
+    assert "Authenticator app Off" in security
+    add_email = client.get(reverse("settings")).text
+    assert "Email address" in add_email
+    assert 'placeholder="name@example.edu"' in add_email
     devices = client.get(reverse("usersessions_list")).content
     assert b"This device" in devices
 
@@ -348,15 +370,22 @@ def emailed_code(mailoutbox: list[EmailMessage]) -> str:
 
 
 def test_verifying_an_added_address_returns_to_the_addresses(client: Client, mailoutbox: list[EmailMessage]) -> None:
-    client.post(reverse("account_email"), {"action_add": "", "email": "second@example.edu"})
+    client.post(reverse("settings"), {"action_add": "", "email": "second@example.edu"})
     code = emailed_code(mailoutbox)
     response = client.post(reverse("account_email_verification_sent"), {"code": code})
-    assert response["Location"] == reverse("account_email")
+    assert response["Location"] == reverse("settings")
+
+
+def test_the_profile_page_holds_the_email_addresses(client: Client, user: User) -> None:
+    assert client.get(reverse("account_email"))["Location"] == reverse("settings")
+    response = client.post(reverse("settings"), {"action_add": "", "email": "not-an-address"})
+    assert "Enter a valid email address." in response.text
+    assert "Your name" in response.text
 
 
 def test_the_primary_address_and_this_device_come_first(client: Client, user: User) -> None:
-    client.post(reverse("account_email"), {"action_add": "", "email": "aaa@example.edu"})
-    page = client.get(reverse("account_email")).text
+    client.post(reverse("settings"), {"action_add": "", "email": "aaa@example.edu"})
+    page = client.get(reverse("settings")).text
     assert page.index(user.email) < page.index("aaa@example.edu")
     signed_in_client(user).get(reverse("courses"))
     UserSession.objects.filter(session_key=client.session.session_key).update(created_at=timezone.now())
@@ -392,15 +421,44 @@ def test_the_courses_list_names_roles_only_when_they_differ(client: Client, user
     assert "Viewer" in page
 
 
-def test_a_course_card_counts_its_assessments_by_what_each_needs(client: Client, user: User) -> None:
+@pytest.fixture
+def course_at_each_stage(client: Client, user: User) -> Course:
+    """A course with Quiz 1 and Final not imported, Quiz 2 ready to send and Quiz 3 sent, Final changed last."""
     course = create_assessment(client, "Quiz 1").course
     assessment_with_full_marks(client, course, "Quiz 2", ["Q1"])
     sent_assessment = assessment_with_full_marks(client, course, "Quiz 3", ["Q1"])
     SentMarks.objects.create(assessment=sent_assessment, sent_by=user, assignment_name="Quiz 3", student_count=3)
+    client.post(reverse("course", args=[course.pk]), {"name": "Final", "description": "Weeks 1 to 12"})
+    return course
+
+
+def test_a_course_card_says_where_its_latest_assessments_are(client: Client, course_at_each_stage: Course) -> None:
     client.post(reverse("courses"), {"name": "Chemistry"})
     text = " ".join(strip_tags(client.get(reverse("courses")).text).split())
-    assert "BIO1010 3 assessments 1 to mark 1 ready to send 1 sent" in text
+    assert "Final Not imported Quiz 3 Sent just now Quiz 2 Ready to send All 4 assessments" in text
     assert "Chemistry No assessments yet" in text
+
+
+def test_the_course_page_describes_its_assessments_and_counts_what_is_left(
+    client: Client, course_at_each_stage: Course
+) -> None:
+    upload(client, course_at_each_stage.assessments.get(name="Quiz 1"))
+    page = client.get(reverse("course", args=[course_at_each_stage.pk])).text
+    assert "1 to mark · 1 ready to send" in " ".join(strip_tags(page).split()), "Final, not imported, isn't to mark"
+    assert ">Weeks 1 to 12</span>" in page
+
+
+def test_deleting_a_course_asks_naming_what_goes(client: Client) -> None:
+    course = create_assessment(client).course
+    page = client.get(reverse("course_settings", args=[course.pk])).text
+    detail = "Its assessments and their marks are deleted for everyone."
+    assert f'data-confirm="Delete “{course.name}”?" data-confirm-detail="{detail}"' in page
+
+
+def test_deleting_an_assessment_asks_naming_what_goes(client: Client, assessment: Assessment) -> None:
+    page = client.get(reverse("assessment_settings", args=[assessment.pk])).text
+    detail = "Its answers, marking and marks are deleted for everyone."
+    assert f'data-confirm="Delete “{assessment.name}”?" data-confirm-detail="{detail}"' in page
 
 
 def test_the_courses_list_offers_a_search_once_there_are_many_courses(client: Client) -> None:
@@ -479,10 +537,11 @@ def test_marking_is_chosen_by_how_to_mark(client: Client, assessment: Assessment
 
 def test_more_options_stay_open_while_their_rows_change(client: Client, assessment: Assessment) -> None:
     url, fields = code_draft(client, assessment)
+    more_open = re.compile(rb'class="group/more[^"]*" open')
     response = client.post(url, fields | {"operation": "add_row", "target": "parameters", "more_open": "1"})
-    assert b'class="group/more" open' in response.content
+    assert more_open.search(response.content)
     response = client.post(url, fields | {"operation": "add_row", "target": "parameters"})
-    assert b'class="group/more" open' not in response.content, "closed unless the change came from inside"
+    assert not more_open.search(response.content), "closed unless the change came from inside"
 
 
 def test_complete_answer_sets_say_what_they_check(client: Client, assessment: Assessment) -> None:
@@ -510,6 +569,9 @@ def test_an_empty_workflow_inside_another_needs_setting_up(client: Client, asses
 def test_passkey_pages_speak_plainly(client: Client, user: User) -> None:
     confirm = client.get(reverse("account_reauthenticate")).text
     assert "Confirm it's you" in confirm
+    assert f'href="{reverse("mfa_index")}">Cancel</a>' in confirm, (
+        "back to Security, where every reauthentication starts"
+    )
     assert "Confirm Access" not in confirm
     Authenticator.objects.create(
         user=user, type=Authenticator.Type.WEBAUTHN, data={"name": "Work laptop", "credential": {}}
@@ -545,9 +607,10 @@ def test_the_question_list_shows_unsaved_drafts(client: Client, assessment: Asse
     assert reverse("question_group_draft", args=[assessment.pk, group_draft.pk]) in page, (
         "an unsaved question group stays reachable"
     )
-    assert page.count(">Draft</span>") == 2
+    assert between(page, 'id="question-list"', "</nav>").count(">Draft</span>") == 2
     assert f">{BUILTINS.find('gradeflow/accepted-answers@1').label}</span>" in page, "the method being drafted"
-    assert "0 of" in page, "a draft marks nothing yet"
+    assert '<span class="question-key text-warning">Q2</span>' in page, "not marked until the draft is saved"
+    assert "0 / " in page, "a draft marks nothing yet"
 
 
 def test_multiple_values_are_listed_in_order_and_may_repeat(client: Client, assessment: Assessment) -> None:

@@ -37,6 +37,13 @@ export function start() {
   document.addEventListener("htmx:finally:request", ({ detail: { ctx } }) => {
     if (ctx.response?.status < 400 && ctx.request.submitter?.hasAttribute("data-resets")) ctx.request.form?.reset();
   });
+  // A form shown by a toggle closes when reset: the toggle that `aria-controls` it is unchecked, and takes focus.
+  document.addEventListener("reset", ({ target }) => {
+    const toggle = document.querySelector(`[aria-controls="${target.id}"]:checked`);
+    if (!toggle) return;
+    toggle.checked = false;
+    toggle.focus();
+  });
   // A `data-visible-when` field shows while each field it names has one of the values listed for it
   // (schemaforms.HintedField).
   document.addEventListener("change", ({ target: { form } }) => {

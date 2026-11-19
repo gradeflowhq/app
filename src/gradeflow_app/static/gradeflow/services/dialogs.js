@@ -1,12 +1,20 @@
 // Opening dialogs, and the confirm dialog (base.html).
 
-/** Opens `dialog` with focus on its first field, or else the dialog itself, never its close button. */
+/** Opens `dialog` with focus on its first field, or else the dialog itself, never its close button. Closing it
+ * resets its forms. */
 export function openDialog(dialog) {
   dialog.showModal();
   (
     dialog.querySelector("[autofocus], input:not([type=hidden]), select, textarea") ??
     dialog.querySelector(".modal-box")
   )?.focus();
+  dialog.addEventListener(
+    "close",
+    () => {
+      for (const form of dialog.querySelectorAll("form")) form.reset();
+    },
+    { once: true },
+  );
 }
 
 /** Asks `question`, with `detail` under it and `buttonLabel` on its button; resolves whether it was confirmed. */

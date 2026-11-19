@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{# Outside any course: the courses, and the person's methods, with a method's page under Your methods when it's theirs. #}
+{% block topbar %}
+  <c-topbar tabs_label="Home">
+    <c-slot name="tabs">
+      <c-tab href="{% url 'courses' %}" label="Courses" icon="academic-cap" sections="courses" />
+      <c-tab href="{% url 'your_methods' %}" label="Your methods" icon="book-open" sections="your_methods{% if method.library.user_id == user.pk %} method_page method_latest{% endif %}" />
+    </c-slot>
+  </c-topbar>
+{% endblock %}

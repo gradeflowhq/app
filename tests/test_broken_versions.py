@@ -146,8 +146,8 @@ def test_versions_an_earlier_core_saved_say_so_and_the_rest_load(
     client: Client, course: Course, light: Method, wrapper: Method
 ) -> None:
     library = client.get(reverse("course_methods", args=[course.pk])).text
-    badge = 'title="“Light” version 2 isn\'t compatible with the current GradeFlow">Not compatible'
-    assert unescape(library).count(badge) == 2
+    reason = 'title="“Light” version 2 isn\'t compatible with the current GradeFlow"'
+    assert unescape(library).count(reason) == 2
     for method, number in [(light, 2), (wrapper, 1)]:
         page = client.get(reverse("method_page", args=[method.pk, number])).text
         assert "This version isn't compatible with the current GradeFlow" in unescape(page)

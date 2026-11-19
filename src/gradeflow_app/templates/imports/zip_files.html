@@ -13,8 +13,8 @@
                   <button type="button" class="cursor-pointer break-all rounded-selector decoration-dotted underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-primary" x-show="!token.isSeparator" x-text="token.text" :popovertarget="'token-menu-' + token.key" :style="'anchor-name: --token-' + token.key"></button>
                   <div popover class="dropdown mt-1 w-60 rounded-box border border-base-300 bg-base-100 font-sans text-base-content shadow-lg" :id="'token-menu-' + token.key" :style="'position-anchor: --token-' + token.key">
                     <ul class="menu w-full p-1">
-                      <li><button type="button" class="justify-between" x-on:click="source.setStudentToken(token.exampleIndex, token.index)">The student<span class="text-primary" x-show="token.role === 'student'">{% icon "check" "size-4" %}</span></button></li>
-                      <li :class="token.canStartFile || token.isFileStart ? '' : 'menu-disabled'"><button type="button" class="justify-between" x-on:click="source.setFileStart(token.exampleIndex, token.index)" :disabled="!token.canStartFile && !token.isFileStart">Where the file starts<span class="text-primary" x-show="token.isFileStart">{% icon "check" "size-4" %}</span></button></li>
+                      <li><button type="button" class="justify-between" x-on:click="source.setStudentToken(token.exampleIndex, token.index)">The student<span class="text-primary" x-show="token.role === 'student'">{% icon "check" %}</span></button></li>
+                      <li :class="token.canStartFile || token.isFileStart ? '' : 'menu-disabled'"><button type="button" class="justify-between" x-on:click="source.setFileStart(token.exampleIndex, token.index)" :disabled="!token.canStartFile && !token.isFileStart">Where the file starts<span class="text-primary" x-show="token.isFileStart">{% icon "check" %}</span></button></li>
                     </ul>
                   </div>
                 </span>
@@ -32,8 +32,8 @@
     <div class="flex flex-wrap items-center gap-x-3 gap-y-2" x-show="!source.isEditingPattern">
       <span class="text-sm text-muted">Pattern</span>
       <code class="min-w-0 break-all font-mono text-sm" x-text="source.pattern"></code>
-      <button type="button" class="btn btn-ghost btn-square btn-sm" x-on:click="source.editPattern()" aria-label="Edit pattern" title="Edit pattern">{% icon "pencil-square" "size-4" %}</button>
-      <button type="button" class="ml-auto flex items-center gap-1.5 text-sm text-warning hover:underline" x-show="source.unmatchedNote" x-on:click="source.isShowingUnmatched = !source.isShowingUnmatched" :aria-expanded="source.isShowingUnmatched">{% icon "exclamation-triangle" "size-4" %}<span x-text="source.unmatchedNote"></span></button>
+      <button type="button" class="btn btn-ghost btn-square btn-sm" x-on:click="source.editPattern()" aria-label="Edit pattern" title="Edit pattern">{% icon "pencil-square" %}</button>
+      <button type="button" class="ml-auto flex items-center gap-1.5 text-sm text-warning hover:underline" x-show="source.unmatchedNote" x-on:click="source.isShowingUnmatched = !source.isShowingUnmatched" :aria-expanded="source.isShowingUnmatched">{% icon "exclamation-triangle" %}<span x-text="source.unmatchedNote"></span></button>
     </div>
     <form class="grid gap-2" x-show="source.isEditingPattern" x-on:submit.prevent="source.savePattern()" x-cloak>
       <div class="flex flex-wrap items-center gap-2">
@@ -64,7 +64,7 @@
           <template x-for="row in source.noQuestionRows" :key="row.name">{% include "imports/file_row.html" %}</template>
         </tbody>
         <tbody x-show="source.otherFileRows.length > 0">
-          <tr><th colspan="3" class="bg-base-200"><button type="button" class="flex items-center gap-1.5 font-medium text-muted hover:text-base-content" x-on:click="source.isShowingOtherFiles = !source.isShowingOtherFiles" :aria-expanded="source.isShowingOtherFiles"><span class="transition-transform" :class="source.isShowingOtherFiles ? 'rotate-90' : ''">{% icon "chevron-right" "size-4" %}</span><span x-text="source.otherFilesLabel"></span></button></th></tr>
+          <tr><th colspan="3" class="bg-base-200"><button type="button" class="flex items-center gap-1.5 font-medium text-muted hover:text-base-content" x-on:click="source.isShowingOtherFiles = !source.isShowingOtherFiles" :aria-expanded="source.isShowingOtherFiles"><span class="transition-transform" :class="source.isShowingOtherFiles ? 'rotate-90' : ''">{% icon "chevron-right" %}</span><span x-text="source.otherFilesLabel"></span></button></th></tr>
         </tbody>
         <tbody x-show="source.isShowingOtherFiles">
           <template x-for="row in source.otherFileRows" :key="row.name">{% include "imports/file_row.html" %}</template>

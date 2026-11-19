@@ -59,10 +59,28 @@ def test_assessment_pages_offer_only_what_the_role_may_do(client: Client, assess
     editor_page = member_client(assessment, Role.EDITOR, "cy@example.edu").get(overview).text
     owner_page = client.get(overview).text
     assert settings_url not in viewer_page
-    assert settings_url not in editor_page
+    assert settings_url in editor_page
     assert settings_url in owner_page
-    assert "Continue marking" not in viewer_page
-    assert "Continue marking" in editor_page
+    assert "Go to Q2" not in viewer_page
+    assert "Go to Q2" in editor_page
+
+
+def test_editors_manage_the_files_and_only_owners_the_assessment(client: Client, assessment: Assessment) -> None:
+    settings_url = reverse("assessment_settings", args=[assessment.pk])
+    editor = member_client(assessment, Role.EDITOR, "cy@example.edu")
+    editor_page = editor.get(settings_url).text
+    owner_page = client.get(settings_url).text
+    for page in (editor_page, owner_page):
+        assert "Submissions file" in page
+        assert "Question document" in page
+    assert 'name="name"' not in editor_page
+    assert "Delete assessment" not in editor_page
+    assert 'name="name"' in owner_page
+    assert "Delete assessment" in owner_page
+    assert editor.post(settings_url, {"name": "Renamed", "description": ""}).status_code == 403
+    assert member_client(assessment, Role.VIEWER).get(settings_url).status_code == 403
+    assessment.refresh_from_db()
+    assert assessment.name == "Midterm"
 
 
 def test_only_owners_manage_members(client: Client) -> None:
@@ -171,6 +189,20 @@ def test_member_changes_say_what_changed(client: Client) -> None:
         "bo@example.edu is already a member."
     ]
     assert Member.objects.get(pk=bo_member.pk).role == Role.OWNER
+
+
+def test_a_role_change_keeps_its_select_id_for_focus(client: Client) -> None:
+    assessment = create_assessment(client)
+    course_id = assessment.course_id
+    member_client(assessment, Role.VIEWER)
+    bo_member = Member.objects.get(user__email="bo@example.edu")
+    invitation = invite(client, assessment, "cy@example.edu")
+    changes = {
+        f"member-role-{bo_member.pk}": reverse("member_role", args=[course_id, bo_member.user_id]),
+        f"invitation-role-{invitation.pk}": reverse("invitation_role", args=[course_id, invitation.pk]),
+    }
+    for select_id, url in changes.items():
+        assert f'id="{select_id}"' in client.post(url, {"role": Role.EDITOR}, headers=HTMX_HEADERS).text
 
 
 def test_invitations_say_when_they_expire(client: Client, mailoutbox: list[EmailMessage]) -> None:

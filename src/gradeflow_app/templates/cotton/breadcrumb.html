@@ -1,0 +1,11 @@
+<c-vars href name icon id="" menu_label="" current="" class="" />
+{# A breadcrumb; with a slot, a menu of its siblings to switch to. #}
+<li class="breadcrumb {{ class }}">
+  <a href="{{ href }}" title="{{ name }}"{% if current %} aria-current="page"{% endif %}>{% icon icon %}<span class="truncate">{{ name }}</span></a>
+  {% if slot %}
+  <c-menu id="{{ id }}" label="{{ menu_label }}" button_class="btn btn-ghost btn-square btn-sm -ml-1 text-subtle" panel_class="w-72 max-h-[min(28rem,70dvh)] overflow-y-auto">
+    <c-slot name="trigger">{% icon "chevron-up-down" %}</c-slot>
+    {{ slot }}
+  </c-menu>
+  {% endif %}
+</li>

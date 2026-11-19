@@ -14,5 +14,13 @@ export const adjustForm = () => ({
     this.isFormOpen = false;
     this.$root.querySelector("form").reset();
     this.init();
+    this.$refs.adjustButton.focus();
+  },
+  toggle() {
+    if (this.isFormOpen) this.cancel();
+    else this.show();
+  },
+  writeOwn() {
+    this.$nextTick(() => this.$root.querySelector("textarea").focus());
   },
 });

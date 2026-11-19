@@ -4,7 +4,7 @@
     <div class="max-lg:hidden">
       {% for question_list in hero.question_lists %}
       <nav class="workspace-questions h-full" aria-label="Questions" data-frames="{{ question_list.frames_attribute }}"{% if not forloop.first %} hidden{% endif %}>
-        <div class="column-head"><h2 class="text-base font-semibold">Questions</h2><span class="tabular-nums ml-auto whitespace-nowrap text-sm text-muted">{{ hero.marked_count }} of {{ question_list.content|length }} marked</span></div>
+        <div class="panel-head"><h2 class="text-base font-semibold">Questions</h2><span class="tabular-nums ml-auto whitespace-nowrap text-sm text-muted">{{ hero.marked_count }} of {{ question_list.content|length }} marked</span></div>
         <ul class="grid flex-1 content-start gap-0.5 overflow-y-auto p-2">{% for item in question_list.content %}{% with question=item.question %}{% include "marking/question_list.html#question_item" %}{% endwith %}{% endfor %}</ul>
         <div class="border-t border-base-300 p-2">
           <p class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-muted">{% icon "chevron-down" "size-4" %}Question groups<span class="badge badge-sm badge-soft tabular-nums ml-auto">{{ hero.question_groups|length }}</span></p>

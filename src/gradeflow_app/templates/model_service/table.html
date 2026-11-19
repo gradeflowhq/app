@@ -1,5 +1,5 @@
 {# The Models dialog's table. It posts the models the dialog listed, so a refresh doesn't ask the service again. #}
-{{ card_html|default:"" }}
+{{ models_html|default:"" }}
 <form id="model-table" class="grid gap-4" hx-post="{% url 'model_service_table' %}" hx-trigger="{% listen 'models' request.user.pk %}" hx-target:inherited="#model-table" hx-swap:inherited="outerMorph">
   {% for row in rows %}<input type="hidden" name="listed" value="{{ row.model }}">{% endfor %}
   <div class="flex flex-wrap items-center gap-x-4 gap-y-3 rounded-box border border-base-300 p-4">
@@ -11,7 +11,7 @@
       <span class="flex items-center gap-2 text-sm text-muted"><span class="loading loading-spinner loading-xs"></span>{% if choosing_job.progress_text %}{{ choosing_job.progress_text }}{% else %}{{ tests_done }} done{% endif %}</span>
       <button type="button" class="btn btn-sm" hx-post="{% url 'model_service_stop' %}">Stop</button>
     {% else %}
-      <button type="button" class="btn btn-sm" hx-post="{% url 'model_service_choose' %}">{% icon "beaker" "size-4" %}Test models</button>
+      <button type="button" class="btn btn-sm" hx-post="{% url 'model_service_choose' %}">{% icon "beaker" %}Test models</button>
     {% endif %}
   </div>
   {% if test_failure %}<c-alert class="grid-cols-[auto_1fr] justify-items-stretch"><c-failure :text="test_failure">Couldn't test: {{ test_failure.splitlines.0 }}</c-failure></c-alert>{% endif %}

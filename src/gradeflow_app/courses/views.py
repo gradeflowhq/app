@@ -5,7 +5,8 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_not_required
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
-from django.db.models import Count
+from django.db.models import Count, Max
+from django.db.models.functions import Greatest
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -15,11 +16,12 @@ from django_htmx.http import HttpResponseClientRedirect, HttpResponseClientRefre
 
 from gradeflow_app.accounts.models import User
 from gradeflow_app.assessments.forms import AssessmentForm
+from gradeflow_app.assessments.models import Assessment
 from gradeflow_app.courses.access import course_member
 from gradeflow_app.courses.forms import CourseForm, InviteForm, RoleForm
 from gradeflow_app.courses.invitations import accept_invitations, invitation_from_token, invitation_token, send_email
 from gradeflow_app.courses.models import INVITATION_LIFETIME, Course, Invitation, Member, Role
-from gradeflow_app.dashboard.progress import Stage, progress_of
+from gradeflow_app.dashboard.progress import Progress, Stage, progress_of
 from gradeflow_app.libraries.services import close_library, rename_namespace
 from gradeflow_app.live.topics import notify_change, topic
 from gradeflow_app.requests import Request
@@ -27,28 +29,14 @@ from gradeflow_app.ui.fragments import is_fragment
 
 MIN_COURSES_FOR_SEARCH = 9
 """How many courses someone has before their list offers a search."""
+ASSESSMENTS_PER_CARD = 3
+"""How many of a course's assessments its card lists, the latest changed first."""
 
 
 @dataclass(frozen=True)
 class CourseCard:
-    """A course in someone's list, with how many of its assessments need what."""
-
     member: Member
-    assessment_count: int
-    to_mark_count: int
-    to_send_count: int
-    sent_count: int
-
-
-def _course_card(member: Member) -> CourseCard:
-    stage_counts = Counter(progress.stage for _, progress in progress_of(member.course.assessments.all()))
-    return CourseCard(
-        member,
-        assessment_count=stage_counts.total(),
-        to_mark_count=stage_counts[Stage.IMPORT] + stage_counts[Stage.MARK],
-        to_send_count=stage_counts[Stage.SEND],
-        sent_count=stage_counts[Stage.SENT],
-    )
+    latest_assessments: list[tuple[Assessment, Progress]]
 
 
 def courses(request: Request) -> HttpResponse:
@@ -58,13 +46,25 @@ def courses(request: Request) -> HttpResponse:
             course = form.save()
             Member.objects.create(course=course, user=request.user, role=Role.OWNER)
         return redirect("course", course.pk)
-    members = Member.objects.filter(user=request.user).select_related("course").order_by("-course__updated_at")
+    members = (
+        Member.objects.filter(user=request.user)
+        .select_related("course")
+        .prefetch_related("course__members__user")
+        .annotate(
+            assessment_count=Count("course__assessments"),
+            changed_at=Greatest("course__updated_at", Max("course__assessments__updated_at")),
+        )
+        .order_by("-changed_at")
+    )
     offers_search = members.count() >= MIN_COURSES_FOR_SEARCH
     query = request.GET.get("q", "").strip()
     if query:
         members = members.filter(course__name__icontains=query)
     context = {
-        "cards": [_course_card(member) for member in members],
+        "cards": [
+            CourseCard(member, progress_of(member.course.assessments.all()[:ASSESSMENTS_PER_CARD]))
+            for member in members
+        ],
         "has_mixed_roles": len({member.role for member in members}) > 1,
         "offers_search": offers_search or query,
         "form": form,
@@ -82,11 +82,18 @@ def course(request: Request, member: Member) -> HttpResponse:
         assessment = form.save(commit=False)
         assessment.course = member.course
         assessment.save()
-        return redirect("import", assessment.pk)
+        return redirect("overview", assessment.pk)
     assessment_progress = progress_of(
         member.course.assessments.annotate(student_count=Count("students", distinct=True)).order_by("-updated_at")
     )
-    context = {"member": member, "assessment_progress": assessment_progress, "form": form}
+    stage_counts = Counter(progress.stage for _, progress in assessment_progress)
+    context = {
+        "member": member,
+        "assessment_progress": assessment_progress,
+        "to_mark_count": stage_counts[Stage.MARK],
+        "to_send_count": stage_counts[Stage.SEND],
+        "form": form,
+    }
     return render(request, "courses/course.html", context)
 
 

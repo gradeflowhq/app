@@ -1,9 +1,11 @@
+from typing import Any
+
 from django.contrib import messages
 from django.db import transaction
 from django.db.models import Q
 from django.forms.models import model_to_dict
 from django.http import Http404, HttpResponse
-from django.shortcuts import render
+from django.shortcuts import redirect, render
 from django.template.defaultfilters import pluralize
 from django.urls import reverse
 from django.views.decorators.http import require_GET, require_POST
@@ -36,23 +38,26 @@ IMPORT_SETTINGS = (
 """What the importer needs to reopen a submissions file as it was imported."""
 
 
+def importer_context(access: AssessmentAccess) -> dict[str, Any]:
+    """What a page with the submissions file's importer (imports/importer.html) needs."""
+    latest_file = access.assessment.submissions_files.annotate(has_original=Q(original__isnull=False)).first()
+    return {
+        "latest_file": latest_file,
+        "import_settings": (
+            model_to_dict(latest_file, fields=IMPORT_SETTINGS) if latest_file and latest_file.has_original else None
+        ),
+        "questions": list(access.assessment.questions.values_list("key", flat=True)),
+        "student_ids": list(access.assessment.students.values_list("encrypted_id", flat=True)),
+        "max_file_bytes": MAX_FILE_BYTES,
+    }
+
+
+@require_GET
 @assessment_member(Role.EDITOR)
 def import_page(request: Request, access: AssessmentAccess) -> HttpResponse:
-    latest_file = access.assessment.submissions_files.annotate(has_original=Q(original__isnull=False)).first()
-    return render(
-        request,
-        "imports/import.html",
-        {
-            "access": access,
-            "latest_file": latest_file,
-            "import_settings": (
-                model_to_dict(latest_file, fields=IMPORT_SETTINGS) if latest_file and latest_file.has_original else None
-            ),
-            "questions": list(access.assessment.questions.values_list("key", flat=True)),
-            "student_ids": list(access.assessment.students.values_list("encrypted_id", flat=True)),
-            "max_file_bytes": MAX_FILE_BYTES,
-        },
-    )
+    """Where the submissions file is imported: the overview until there is one, then settings."""
+    page = "assessment_settings" if access.assessment.submissions_files.exists() else "overview"
+    return redirect(page, access.assessment.pk)
 
 
 @require_GET
@@ -129,7 +134,8 @@ def upload(request: Request, access: AssessmentAccess) -> HttpResponse:
                 f"removed question{pluralize(summary.removed_questions)} {', '.join(summary.removed_questions)}"
             )
         messages.success(request, "Submissions file replaced: " + "; ".join(details) + ".")
-    return HttpResponseClientRedirect(reverse("import", args=[assessment.pk]))
+    page = "overview" if summary.first_import else "assessment_settings"
+    return HttpResponseClientRedirect(reverse(page, args=[assessment.pk]))
 
 
 def _import_error(reason: str) -> HttpResponse:

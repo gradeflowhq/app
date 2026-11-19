@@ -1,10 +1,12 @@
 from urllib.parse import urlsplit
 
 from django import template
+from django.db.models import QuerySet
 from django.urls import Resolver404, resolve
 from django.utils.html import json_script
 from django.utils.safestring import SafeString, mark_safe
 
+from gradeflow_app.accounts.models import User
 from gradeflow_app.courses import keys
 from gradeflow_app.courses.invitations import invitation_from_token
 from gradeflow_app.courses.models import Course
@@ -28,3 +30,9 @@ def pending_course_key_shares(context: template.Context, out_of_band: bool = Fal
     """With `out_of_band`, for a response that adds a member, so their key is shared at once."""
     script = json_script(keys.pending_course_key_shares(context["request"].user), "pending-course-key-shares")
     return mark_safe(script.replace("<script ", '<script hx-swap-oob="true" ', 1)) if out_of_band else script
+
+
+@register.simple_tag
+def courses_of(user: User) -> QuerySet[Course]:
+    """The courses `user` is a member of, latest changed first."""
+    return Course.objects.filter(members__user=user)

@@ -7,9 +7,9 @@
         {% if not row_value %}<option value="" disabled selected>Choose {{ widget.item|lower }}</option>{% endif %}
         {% for value, label in widget.options %}<option value="{{ value }}"{% if value == row_value %} selected{% endif %}>{{ label }}</option>{% endfor %}
       </select>
-      {% if not widget.attrs.disabled %}<button type="button" class="btn btn-ghost btn-square btn-sm text-error" x-on:click="remove" aria-label="Remove">{% icon "trash" "size-4" %}</button>{% endif %}
+      {% if not widget.attrs.disabled %}<button type="button" class="btn btn-ghost btn-square btn-sm text-error" x-on:click="remove" aria-label="Remove">{% icon "trash" %}</button>{% endif %}
     </li>
     {% endfor %}
   </ol>
-  {% if not widget.attrs.disabled %}<div><button type="button" class="btn" x-on:click="add">{% icon "plus" "size-4" %}Add</button></div>{% endif %}
+  {% if not widget.attrs.disabled %}<div><button type="button" class="btn" x-on:click="add">{% icon "plus" %}Add</button></div>{% endif %}
 </div>

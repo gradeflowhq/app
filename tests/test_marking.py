@@ -179,10 +179,58 @@ def test_a_removed_marking_can_be_restored_from_its_history(
     assert history in client.get(reverse("question", args=[assessment.pk, question.pk])).text
 
 
+def test_removing_a_failed_marking_clears_its_notice_from_the_answers(client: Client, assessment: Assessment) -> None:
+    url, draft = start_marking(client, assessment, "Q1", "gradeflow/key-points@1")
+    client.post(url, {"path": "", "fields_posted": "1", "points": ["light"], "marks_by": "all_correct"})
+    save_draft(client, draft)
+    Marking.objects.update(failure="Out of time.")
+    question = assessment.questions.get(key="Q1")
+    assert "Marking failed" in client.get(reverse("answers", args=[assessment.pk, question.pk])).text
+    removed = client.post(reverse("marking_remove", args=[assessment.pk, question.pk]), headers=HTMX_HEADERS).text
+    assert '<div id="answers" class="flex min-h-0 flex-1 flex-col" hx-swap-oob="outerMorph"' in removed
+    assert "Marking failed" not in removed
+
+
+def test_closing_a_step_gives_focus_to_its_card(client: Client, assessment: Assessment) -> None:
+    url, _ = start_marking(client, assessment, "Q1", "gradeflow/workflow@1")
+    client.post(url, {"path": "", "operation": "add", "target": "/with/steps/0", "method": "gradeflow/key-points@1"})
+    card = re.compile(r'hx-vals="[^"]*/with/steps/0[^"]*" autofocus>')
+    assert card.search(client.post(url, {"path": "/with/steps/0", "operation": "open", "target": ""}).text)
+    assert not card.search(client.post(url, {"path": "", "operation": "open", "target": ""}).text)
+
+
+def test_the_marking_guide_names_the_save_button(client: Client, assessment: Assessment) -> None:
+    page = client.get(reverse("questions", args=[assessment.pk]), follow=True).text
+    assert "Click <b>Save marking</b> to mark every student" in page
+
+
+def test_the_marking_says_who_saved_it_and_when(client: Client, assessment: Assessment) -> None:
+    url, draft = start_marking(client, assessment, "Q1", "gradeflow/key-points@1")
+    client.post(url, {"path": "", "fields_posted": "1", "points": ["light"], "marks_by": "all_correct"})
+    save_draft(client, draft)
+    question = assessment.questions.get(key="Q1")
+    page = reverse("question", args=[assessment.pk, question.pk])
+    history = reverse("marking_history", args=[assessment.pk, question.pk])
+    assert 'Saved by <span class="font-medium text-base-content">Ana Tan</span> · <time' in client.get(page).text
+    assert "Ana Tan · just now" in client.get(history).text
+
+    Marking.history.update(history_user=None)
+    assert 'Saved by <span class="font-medium text-base-content">A former member</span>' in client.get(page).text
+    assert "A former member · just now" in client.get(history).text
+
+
 def test_typing_in_a_check_says_the_draft_is_saved(client: Client, assessment: Assessment) -> None:
     url, _ = start_marking(client, assessment, "Q2", "gradeflow/accepted-answers@1")
     response = client.post(url, {"path": "", "fields_posted": "1", "answers": ["42"]})
-    assert '<span id="editor-status" hx-swap-oob="true" class="text-sm text-muted">Draft saved</span>' in response.text
+    assert "Draft saved" in between(response.text, '<span id="editor-status" hx-swap-oob="true"', "</span>")
+
+
+def test_the_editor_says_why_it_has_no_summary_yet(client: Client, assessment: Assessment) -> None:
+    url, _ = start_marking(client, assessment, "Q2", "gradeflow/accepted-answers@1")
+    assert "Finish the settings to see the summary." in client.get(url).text, "no answers accepted yet"
+    response = client.post(url, {"path": "", "fields_posted": "1", "answers": ["42"]})
+    assert "Finish the settings to see the summary." not in response.text
+    assert "42" in between(response.text, ">Summary<", "</button>")
 
 
 def test_restoring_a_version_drops_the_preview_of_the_draft_it_replaces(client: Client, assessment: Assessment) -> None:
@@ -217,6 +265,21 @@ def test_while_previewing_the_marks_filters_follow_the_previewed_marks(client: C
     assert "5 students" not in full, "42, full marks only in the saved marking"
     no_marks = client.get(answers_url, {"filter": "no_marks", "group": "answer"}, headers=HTMX_HEADERS).text
     assert "5 students" in no_marks
+
+
+def test_a_filter_matching_no_answers_offers_them_all(client: Client, assessment: Assessment) -> None:
+    question = assessment.questions.get(key="Q1")
+    answers_url = reverse("answers", args=[assessment.pk, question.pk])
+    page = client.get(answers_url, {"filter": "adjusted"}, headers=HTMX_HEADERS).text
+    assert "No answers match" in page
+    assert f'hx-get="{answers_url}?filter=all" hx-target="#answers" hx-swap="outerHTML">Show all answers' in page
+
+
+def test_original_answers_dont_repeat_the_answers_listed(client: Client, assessment: Assessment) -> None:
+    question = assessment.questions.get(key="Q2")
+    page = client.get(reverse("answers", args=[assessment.pk, question.pk]), {"group": "answers"}).text
+    assert "data-answers" in page, "42 and 42.0, listed as written"
+    assert "data-original" not in page
 
 
 def test_questions_cache_validation_and_markings_use_the_supplied_collection(
@@ -365,6 +428,23 @@ def test_breadcrumbs_name_each_check_as_its_card_does(assessment: Assessment) ->
         assert breadcrumbs == [
             (breadcrumb_path, workspace.draft.label(breadcrumb_path)) for breadcrumb_path in ("", path)
         ]
+
+
+def test_a_step_opens_in_place_among_the_steps_beside_it(client: Client, assessment: Assessment) -> None:
+    points = {"uses": "gradeflow/key-points@1", "with": {"points": ["light"]}}
+    workflow = {"question": "Q1", "uses": "gradeflow/workflow@1", "with": {"steps": [points, points]}}
+    workspace = workspace_of(assessment, workflow)
+    assert editor(workspace, "").siblings == []
+    ((_, cards),) = editor(workspace, "/with/steps/1").siblings
+    assert [card.path for card in cards] == ["/with/steps/0", "/with/steps/1"]
+
+    url, _ = start_marking(client, assessment, "Q1", "gradeflow/workflow@1")
+    for index in range(2):
+        client.post(url, {"path": "", "operation": "add", "target": f"/with/steps/{index}", "method": points["uses"]})
+    page = client.post(url, {"path": "", "operation": "open", "target": "/with/steps/1"}).text
+    assert 'name="path" value="/with/steps/1"' in page
+    assert 'aria-label="Close Key Points"' in page
+    assert "Move up" not in page, "the steps beside it are moved from the step holding them"
 
 
 def test_a_check_inside_a_groups_check_marks_that_checks_question(client: Client, assessment: Assessment) -> None:
@@ -773,7 +853,7 @@ def test_a_draft_is_edited_as_yaml_with_problems_on_their_lines(client: Client, 
     shows_what_the_core_says(wrong, typed)
     assert definition_tree(draft)["with"] == {"points": []}, "kept as typed, to fix in either editor"
     assert "Saved to your draft" in wrong.text
-    assert 'id="marking-panel" class="flex min-h-0 flex-1 flex-col" hx-swap-oob' in wrong.text
+    assert re.search(r'id="marking-panel"[^>]* hx-swap-oob', wrong.text)
     unparsable = client.post(yaml_url, {"definition": "uses: [\n"}, headers=HTMX_HEADERS)
     shows_what_the_core_says(unparsable, "uses: [\n")
     assert "Not saved" in unparsable.text
@@ -893,12 +973,20 @@ def test_discarding_says_what_stays(client: Client, assessment: Assessment) -> N
         assert f'data-confirm-detail="{said}"' in client.get(drafts[key]).text
 
 
-def test_discarding_a_new_question_group_returns_to_starting_one(client: Client, assessment: Assessment) -> None:
-    client.post(reverse("question_group_new", args=[assessment.pk]), {"method": "gradeflow/conditional@1"})
-    discarded = client.post(
-        reverse("draft_discard", args=[assessment.pk, MarkingDraftRecord.objects.get().pk]), headers=HTMX_HEADERS
-    )
-    assert json.loads(discarded.headers["HX-Location"])["path"] == reverse("question_group_new", args=[assessment.pk])
+def test_leaving_a_new_question_group_returns_to_the_question_last_opened(
+    client: Client, assessment: Assessment
+) -> None:
+    new_url = reverse("question_group_new", args=[assessment.pk])
+    assert f'href="{reverse("questions", args=[assessment.pk])}">Cancel</a>' in client.get(new_url).text
+    question_url = reverse("question", args=[assessment.pk, assessment.questions.get(key="Q2").pk])
+    client.get(question_url)
+    assert f'href="{question_url}">Cancel</a>' in client.get(new_url).text
+    client.post(new_url, {"method": "gradeflow/conditional@1"})
+    draft = MarkingDraftRecord.objects.get()
+    page = client.get(reverse("question_group_draft", args=[assessment.pk, draft.pk])).text
+    assert f'data-confirm-detail="{escape("The question group hasn't been saved, so it goes too.")}"' in page
+    discarded = client.post(reverse("draft_discard", args=[assessment.pk, draft.pk]), headers=HTMX_HEADERS)
+    assert json.loads(discarded.headers["HX-Location"])["path"] == question_url
 
 
 def test_a_removed_question_groups_answers_go_to_the_questions(client: Client, assessment: Assessment) -> None:
@@ -958,7 +1046,7 @@ def test_text_answers_in_an_answer_group_are_listed_under_answers(client: Client
     first.save()
     second.save()
     page = client.get(reverse("answers", args=[assessment.pk, assessment.questions.get(key="Q1").pk])).text
-    assert '>Answers<span class="badge badge-sm badge-soft tabular-nums">2</span>' in page
+    assert re.search(r'>Answers\s*<span class="chip[^>]*>2</span>', page)
     listed = between(page, 'aria-label="Answers">', "</ul>")
     assert ">Paris</p>" in listed
     assert ">paris </p>" in listed

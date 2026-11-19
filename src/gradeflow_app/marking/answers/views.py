@@ -72,5 +72,5 @@ def adjust(request: Request, access: AssessmentAccess, question_id: UUID) -> Htt
         messages.success(request, f"Adjusted {len(students)} student{pluralize(len(students))}.")
     notify_change(topic("marks", access.assessment.pk))
     if request.POST.get("return_to") == "student" and students:
-        return student_page(request, access, students[0])
+        return student_page(request, access, students[0], question)
     return _answers(request, access, question)

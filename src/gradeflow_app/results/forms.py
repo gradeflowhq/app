@@ -27,6 +27,10 @@ class AdjustmentForm(forms.Form):
 
 
 def download_form(data: QueryDict | None = None) -> ObjectForm:
-    """The download dialog's options, which pages with a Download button render."""
-    schema = ResultsCsv.model_json_schema()
-    return ObjectForm(schema, {}, data=data)
+    """The download dialog's options, which pages with a Download button render. Its switches go without the core's
+    help, which restates their labels."""
+    form = ObjectForm(ResultsCsv.model_json_schema(), {}, data=data)
+    for field in form.fields.values():
+        if isinstance(field, forms.BooleanField):
+            field.help_text = ""
+    return form

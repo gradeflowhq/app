@@ -7,7 +7,7 @@ from django import forms
 
 from gradeflow_app.questions.models import QUESTION_TYPE_LABELS
 
-label_field = partial(forms.CharField, label="Label", max_length=100)
+label_field = partial(forms.CharField, label="Name", max_length=100)
 summary_field = partial(forms.CharField, label="What it does", max_length=300)
 
 

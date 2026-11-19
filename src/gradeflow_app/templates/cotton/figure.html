@@ -1,0 +1,6 @@
+<c-vars icon label value detail="" warning=False href="" />
+{# A figure in a `figures` panel. #}
+<{% if href %}a href="{{ href }}"{% else %}div{% endif %}>
+  <span class="icon-tile"{% if warning %} data-tone="warning"{% endif %}>{% icon icon %}</span>
+  <p><span>{{ label }}</span><strong>{{ value }}{% if detail %} <small>{{ detail }}</small>{% endif %}</strong></p>
+</{% if href %}a{% else %}div{% endif %}>

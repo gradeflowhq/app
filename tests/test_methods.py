@@ -180,7 +180,7 @@ def test_the_methods_page_says_what_each_method_marks(client: Client, assessment
     text = QUESTION_TYPE_LABELS["text"]
     assert f"{text}</td>" in methods_page
     assert "Not used" in methods_page
-    assert "Members</td>" in methods_page
+    assert "Members</span>" in methods_page
     assert 'tabular-nums text-right">1</td>' in methods_page
 
 
@@ -206,8 +206,8 @@ def test_the_picker_has_built_in_yours_and_public_tabs(client: Client, assessmen
     picker = client.get(url).text
     assert 'data-tab="builtin" aria-selected="true"' in picker
     assert 'data-tab="yours" aria-selected="false"' in picker
-    assert re.search(r"Yours<span[^>]*>1</span>", picker)
-    assert re.search(r"Public<span[^>]*>1</span>", picker)
+    assert re.search(r"Yours\s*<span[^>]*>1</span>", picker)
+    assert re.search(r"Public\s*<span[^>]*>1</span>", picker)
     assert '<div data-section data-tab="yours" hidden>' in picker
     assert '<div data-section data-tab="public" hidden>' in picker
     assert "by Bo Lim" in picker
@@ -285,8 +285,13 @@ def test_the_methods_pages_list_a_librarys_methods_and_what_a_course_uses_from_e
     publish_light_method(user.library, user, label="Mine")
     yours = client.get(reverse("your_methods")).text
     assert "Mine" in yours
-    assert "Only you</td>" in yours
+    assert "Only you</span>" in yours
     assert "Bright" not in yours
+
+
+def test_the_archived_view_offers_the_way_back_even_when_empty(client: Client) -> None:
+    assert 'aria-label="Methods shown"' not in client.get(reverse("your_methods")).text
+    assert 'aria-label="Methods shown"' in client.get(reverse("your_methods"), {"archived": "1"}).text
 
 
 def test_a_method_that_uses_the_ai_service_is_marked_in_the_library(client: Client, user: User) -> None:
@@ -304,9 +309,9 @@ def test_your_methods_are_a_page_of_their_own_not_the_accounts(client: Client, u
     Method.objects.filter(pk=theirs.method_id).update(public=True)
     methods_page = client.get(reverse("your_methods")).text
     assert "Signed-in devices" not in methods_page
-    breadcrumb = f'<a href="{reverse("your_methods")}">Your methods</a>'
-    assert breadcrumb in client.get(reverse("method_page", args=[mine.method_id, mine.number])).text
-    assert breadcrumb not in client.get(reverse("method_page", args=[theirs.method_id, theirs.number])).text
+    current_tab = f'<a href="{reverse("your_methods")}" class="tab-link" aria-current="page">'
+    assert current_tab in client.get(reverse("method_page", args=[mine.method_id, mine.number])).text
+    assert current_tab not in client.get(reverse("method_page", args=[theirs.method_id, theirs.number])).text
 
 
 def test_a_method_counts_the_markings_that_use_any_of_its_versions(

@@ -1,5 +1,5 @@
 // The Canvas connection, with the address and token kept in a secret (secrets.js), and the Integrations page's
-// Canvas card.
+// Canvas panel.
 
 import { canvasClient } from "../../lib/canvas-client.js";
 import { deleteSecret, readSecret, saveSecret } from "../../services/secrets.js";

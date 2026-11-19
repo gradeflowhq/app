@@ -1,6 +1,8 @@
 import base64
 import json
+from typing import cast
 
+from allauth.account.views import EmailView
 from allauth.usersessions.adapter import get_adapter
 from allauth.usersessions.models import UserSession
 from django.conf import settings
@@ -8,6 +10,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_not_required
 from django.http import Http404, HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse_lazy
 from django.utils.crypto import salted_hmac
 from django.views.decorators.http import require_http_methods, require_POST
 
@@ -16,15 +19,29 @@ from gradeflow_app.accounts.models import Secret, User
 from gradeflow_app.requests import Request
 from gradeflow_app.ui.templatetags.ui import browser
 
+THEMES = (("system", "System", "computer-desktop"), ("light", "Light", "sun"), ("dark", "Dark", "moon"))
+"""Each theme's value, label and icon."""
 
-def account_settings(request: Request) -> HttpResponse:
-    form = ProfileForm(request.POST or None, instance=request.user)
-    if request.method == "POST" and form.is_valid():
-        form.save()
+
+class ProfileView(EmailView):  # type: ignore[misc]
+    """The Profile page: the person's name, email addresses and theme."""
+
+    template_name = "accounts/profile.html"
+    success_url = reverse_lazy("settings")
+
+    def post(self, request: Request, *args: object, **kwargs: object) -> HttpResponse:
+        if "name" not in request.POST:
+            return cast(HttpResponse, super().post(request, *args, **kwargs))
+        profile_form = ProfileForm(request.POST, instance=request.user)
+        if not profile_form.is_valid():
+            return cast(HttpResponse, self.render_to_response(self.get_context_data(profile_form=profile_form)))
+        profile_form.save()
         messages.success(request, "Saved.")
         return redirect("settings")
-    themes = [("system", "System"), ("light", "Light"), ("dark", "Dark")]
-    return render(request, "accounts/settings.html", {"form": form, "themes": themes})
+
+    def get_context_data(self, **kwargs: object) -> dict[str, object]:
+        kwargs.setdefault("profile_form", ProfileForm(instance=self.request.user))
+        return cast(dict[str, object], super().get_context_data(**kwargs)) | {"themes": THEMES}
 
 
 def integrations(request: Request) -> HttpResponse:

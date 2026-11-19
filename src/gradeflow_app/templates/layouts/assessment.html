@@ -1,23 +1,16 @@
-{% extends "layouts/sidebar.html" %}
+{% extends "base.html" %}
 {% block title %}{% block page_title %}{% endblock %}{{ access.assessment.name }} · GradeFlow{% endblock %}
 {% block topbar %}
-  <c-topbar :course="access.course" :assessment="access.assessment" />
-{% endblock %}
-{% block nav_label %}Assessment{% endblock %}
-{% block nav_header %}
-  <c-sidebar-header back_url="{% url 'course' access.course.pk %}" back_label="{{ access.course.name }}" title="{{ access.assessment.name }}" subtitle="{{ access.assessment.description }}" />
-{% endblock %}
-{% block nav %}
   {% with assessment=access.assessment %}
-  <c-sidebar-link href="{% url 'overview' assessment.pk %}" icon="home" label="Overview" sections="overview" />
-  <c-sidebar-link href="{% url 'questions' assessment.pk %}" icon="queue-list" label="Questions" sections="question questions question_group question_group_new question_group_draft" />
-  <c-sidebar-link href="{% url 'students' assessment.pk %}" icon="users" label="Students" sections="students" />
-  <c-sidebar-link href="{% url 'export' assessment.pk %}" icon="paper-airplane" label="Export" sections="export" />
-  {% if access.can_edit %}
-  <c-sidebar-group title="Setup" />
-  <c-sidebar-link href="{% url 'import' assessment.pk %}" icon="arrow-up-tray" label="Import" sections="import" />
-  {% if access.is_owner %}<c-sidebar-link href="{% url 'assessment_settings' assessment.pk %}" icon="cog-6-tooth" label="Settings" sections="assessment_settings" />{% endif %}
-  {% endif %}
+  <c-topbar :course="access.course" :assessment="assessment" tabs_label="Assessment">
+    <c-slot name="tabs">
+      <c-tab href="{% url 'overview' assessment.pk %}" label="Overview" icon="squares-2x2" sections="overview" />
+      <c-tab href="{% url 'questions' assessment.pk %}" label="Questions" icon="list-bullet" sections="question questions question_group question_group_new question_group_draft" :count="assessment.questions.count" />
+      <c-tab href="{% url 'students' assessment.pk %}" label="Students" icon="users" sections="students" :count="assessment.students.count" />
+      <c-tab href="{% url 'export' assessment.pk %}" label="Export" icon="paper-airplane" sections="export" />
+      {% if access.can_edit %}<c-tab href="{% url 'assessment_settings' assessment.pk %}" label="Settings" icon="cog-6-tooth" sections="assessment_settings" />{% endif %}
+    </c-slot>
+  </c-topbar>
   {% endwith %}
 {% endblock %}
 {% block page %}

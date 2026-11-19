@@ -9,13 +9,16 @@ const confirmed = new WeakSet();
 
 export function start() {
   // A `data-dialog` button opens the dialog it names. One that also loads the dialog's content shows a skeleton until
-  // it arrives, never what was there before.
+  // it arrives, never what was there before. One in a popover gives focus to the popover's button first, so the dialog
+  // returns it there when it closes.
   document.addEventListener("click", (event) => {
     const button = event.target.closest("[data-dialog]");
     if (!button) return;
     const loaded =
       button.matches(":is([hx-get], [hx-post])[hx-target]") && document.querySelector(button.getAttribute("hx-target"));
     if (loaded) loaded.innerHTML = SKELETON;
+    const popover = button.closest("[popover]");
+    if (popover) document.querySelector(`[popovertarget="${popover.id}"]`).focus();
     openDialog(document.getElementById(button.dataset.dialog));
   });
   // A `data-close` button closes its dialog as Esc does, so a `cancel` listener can keep it open.

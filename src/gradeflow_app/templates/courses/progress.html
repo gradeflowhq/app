@@ -1,0 +1,2 @@
+{# An assessment's `progress`, as lists of assessments show it. #}
+{% if progress.stage == "import" %}<c-chip icon="arrow-up-tray" tone="warning">Not imported</c-chip>{% elif progress.stage == "mark" %}<c-chip icon="list-bullet" tone="primary">{{ progress.marked_count }} of {{ progress.question_count }} marked</c-chip>{% elif progress.stage == "send" %}<c-chip icon="check" tone="success">Ready to send</c-chip>{% else %}<c-chip icon="paper-airplane">Sent {{ progress.latest_sent_marks.sent_at|ago }}</c-chip>{% endif %}

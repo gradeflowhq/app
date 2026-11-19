@@ -2,7 +2,8 @@
 {% block head_title %}Authenticator app{% endblock %}
 {% block content %}
 <h1>Authenticator app</h1>
-<c-form-card id="totp" action="{% url 'mfa_activate_totp' %}" submit="Turn on">
+{% url 'mfa_index' as security_url %}
+<c-form-panel id="turn-on-totp" action="{% url 'mfa_activate_totp' %}" submit="Turn on" cancel_url="{{ security_url }}">
   <p class="text-sm text-muted">Scan the code with an app such as Google Authenticator, then enter the code it shows.</p>
   <div class="flex flex-wrap items-center gap-5">
     <img src="{{ totp_svg_data_uri }}" alt="QR code for your authenticator app" class="size-40 shrink-0 rounded-box border border-base-300 bg-white p-2">
@@ -11,6 +12,6 @@
       <input id="authenticator_secret" class="input w-full font-mono" value="{{ form.secret }}" readonly x-on:focus="$el.select()">
     </div>
   </div>
-  <div class="max-w-96">{% include "mfa/snippets/code_field.html" with field=form.code %}</div>
-</c-form-card>
+  {% include "mfa/snippets/code_field.html" with field=form.code %}
+</c-form-panel>
 {% endblock %}

@@ -1,6 +1,6 @@
 {# A method's workspace: its questions, the person's test answers to the one shown, and its marking. Every edit swaps it whole; `#method-state` goes with each request, so the page's revision guards against edits from an older tab. #}
 {% with draft=workspace.draft_record version=workspace.version %}
-<div id="method-work" class="workspace flex min-w-0 flex-col bg-base-100" hx-target:inherited="#method-work" hx-swap:inherited="outerMorph" hx-sync:inherited="#method-work:queue all" hx-include:inherited="#method-state" hx-status:409:inherited="swap:innerHTML target:#method-notice">
+<div id="method-work" class="workspace flex min-w-0 flex-col" hx-target:inherited="#method-work" hx-swap:inherited="outerMorph" hx-sync:inherited="#method-work:queue all" hx-include:inherited="#method-state" hx-status:409:inherited="swap:innerHTML target:#method-notice">
   <div id="method-state" hidden>
     <input type="hidden" name="revision" value="{{ workspace.tests_record.revision }}">
     <input type="hidden" name="shown_question" value="{{ state.question }}">
@@ -10,9 +10,9 @@
     <input type="hidden" name="finish" value="{% if finishing %}1{% endif %}">
   </div>
 
-  {# The workspace's header, on the columns' gutters: the name with a details button and the description, then the actions. #}
+  {# The workspace's header, on the panels' gutters: the name with a details button and the description, then the actions. #}
   {% firstof metadata.label "Untitled method" as name %}
-  <header class="flex min-h-16 shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b border-base-300 bg-base-100 px-4 py-3">
+  <header class="flex min-h-16 shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b border-base-300 bg-base-100 px-8 py-3 sm:px-10">
     <div class="flex min-w-0 flex-1 items-center gap-x-3 max-sm:basis-full">
       <div class="flex min-w-0 items-center gap-1">
         <h1 class="truncate">{{ name }}</h1>
@@ -22,27 +22,27 @@
     </div>
     <div class="ml-auto flex items-center gap-2">
       {% if not access.can_edit %}<span class="text-sm text-muted max-sm:hidden">by {{ method.library.owner_name }}</span>{% endif %}
-      {% if method.public %}<span class="badge badge-ghost">Public</span>{% endif %}
-      {% if method.archived %}<span class="badge badge-warning badge-soft">Archived</span>{% endif %}
+      {% if method.public %}<c-chip icon="globe-alt">Public</c-chip>{% endif %}
+      {% if method.archived %}<c-chip icon="archive-box">Archived</c-chip>{% endif %}
       {# The version shown, or the draft, and the others to switch to. Plain links: a boosted one would take the workspace's inherited target and nest the page inside it. #}
       <c-menu id="method-versions" label="Versions" button_class="btn btn-ghost" panel_class="w-72">
-        <c-slot name="trigger">{% if draft %}Draft{% else %}Version {{ version.number }}{% endif %}{% icon "chevron-down" "size-4 text-muted" %}</c-slot>
-        {% if has_own_draft %}<li><a href="{% url 'method_page' method.pk %}" hx-boost="false"{% if draft %} class="font-medium"{% endif %}>Draft{% if draft %}<span class="sr-only">, shown</span>{% icon "check" "ml-auto size-4" %}{% endif %}</a></li>{% endif %}
-        {% for item in versions %}<li><a href="{% url 'method_page' method.pk item.number %}" hx-boost="false" class="whitespace-nowrap{% if not draft and item == version %} font-medium{% endif %}">Version {{ item.number }}<span class="ml-auto text-sm text-muted">{% if forloop.first %}Latest · {% endif %}{{ item.created_at|ago }}</span>{% if not draft and item == version %}<span class="sr-only">, shown</span>{% icon "check" "size-4" %}{% else %}<span class="size-4"></span>{% endif %}</a></li>{% endfor %}
+        <c-slot name="trigger">{% if draft %}Draft{% else %}Version {{ version.number }}{% endif %}{% icon "chevron-down" "text-muted" %}</c-slot>
+        {% if has_own_draft %}<li><a href="{% url 'method_page' method.pk %}" hx-boost="false"{% if draft %} class="font-medium"{% endif %}>Draft{% if draft %}<span class="sr-only">, shown</span>{% icon "check" "ml-auto" %}{% endif %}</a></li>{% endif %}
+        {% for item in versions %}<li><a href="{% url 'method_page' method.pk item.number %}" hx-boost="false" class="whitespace-nowrap{% if not draft and item == version %} font-medium{% endif %}">Version {{ item.number }}<span class="ml-auto text-sm text-muted">{% if forloop.first %}Latest · {% endif %}{{ item.created_at|ago }}</span>{% if not draft and item == version %}<span class="sr-only">, shown</span>{% icon "check" %}{% else %}<span class="size-4"></span>{% endif %}</a></li>{% endfor %}
       </c-menu>
       <c-menu id="method-menu" label="More" button_class="btn btn-ghost btn-square">
-        <li><button type="button" hx-get="{{ urls.yaml }}" hx-target="#drawer-body" hx-swap="innerHTML" data-dialog="drawer">{% icon "code-bracket" "size-4" %}{% if draft %}Edit as YAML{% else %}View as YAML{% endif %}</button></li>
+        <li><button type="button" hx-get="{{ urls.yaml }}" hx-target="#drawer-body" hx-swap="innerHTML" data-dialog="drawer">{% icon "code-bracket" %}{% if draft %}Edit as YAML{% else %}View as YAML{% endif %}</button></li>
         {% if draft %}
-        <li><button type="button" class="text-error" hx-post="{{ urls.discard }}" data-confirm="Discard this draft?" data-confirm-detail="{% if versions %}The published versions stay as they are.{% else %}The method hasn't been published, so it goes too.{% endif %}" data-confirm-button="Discard">{% icon "trash" "size-4" %}Discard draft</button></li>
+        <li><button type="button" class="text-error" hx-post="{{ urls.discard }}" data-confirm="Discard this draft?" data-confirm-detail="{% if versions %}The published versions stay as they are.{% else %}The method hasn't been published, so it goes too.{% endif %}" data-confirm-button="Discard">{% icon "trash" %}Discard draft</button></li>
         {% else %}
-        {% if access.can_edit %}<li><button type="button" hx-post="{% url 'method_share' method.pk %}" hx-vals='{"public": "{% if method.public %}0{% else %}1{% endif %}"}'{% if not method.public %} data-confirm="Make {{ name }} public?" data-confirm-detail="Anyone signed in to GradeFlow can find, use and copy it. Where it's used, it keeps working if you make it private again." data-confirm-button="Make public"{% endif %}>{% icon "globe-alt" "size-4" %}{% if method.public %}Make private{% else %}Make public{% endif %}</button></li>{% endif %}
-        <li><button type="button" hx-get="{% url 'method_copy' method.pk %}?number={{ version.number }}" hx-target="#copy-body" hx-swap="innerHTML" data-dialog="copy">{% icon "document-duplicate" "size-4" %}Copy to…</button></li>
+        {% if access.can_edit %}<li><button type="button" hx-post="{% url 'method_share' method.pk %}" hx-vals='{"public": "{% if method.public %}0{% else %}1{% endif %}"}'{% if not method.public %} data-confirm="Make {{ name }} public?" data-confirm-detail="Anyone signed in to GradeFlow can find, use and copy it. Where it's used, it keeps working if you make it private again." data-confirm-button="Make public"{% endif %}>{% icon "globe-alt" %}{% if method.public %}Make private{% else %}Make public{% endif %}</button></li>{% endif %}
+        <li><button type="button" hx-get="{% url 'method_copy' method.pk %}?number={{ version.number }}" hx-target="#copy-body" hx-swap="innerHTML" data-dialog="copy">{% icon "document-duplicate" %}Copy to…</button></li>
         {% if access.can_edit %}
-        <li><button type="button" hx-post="{% url 'method_archive' method.pk %}" hx-vals='{% if method.archived %}{"unarchive": "1"}{% else %}{}{% endif %}'>{% icon "archive-box" "size-4" %}{% if method.archived %}Unarchive{% else %}Archive{% endif %}</button></li>
+        <li><button type="button" hx-post="{% url 'method_archive' method.pk %}" hx-vals='{% if method.archived %}{"unarchive": "1"}{% else %}{}{% endif %}'>{% icon "archive-box" %}{% if method.archived %}Unarchive{% else %}Archive{% endif %}</button></li>
         {% if used_by %}
-        <li class="menu-disabled" title="Used by {{ used_by|join:', ' }}, so archive it instead"><span>{% icon "trash" "size-4" %}Delete method</span></li>
+        <li class="menu-disabled" title="Used by {{ used_by|join:', ' }}, so archive it instead"><span>{% icon "trash" %}Delete method</span></li>
         {% else %}
-        <li><button type="button" class="text-error" hx-post="{% url 'method_delete' method.pk %}" data-confirm="Delete {{ name }}?" data-confirm-detail="Its versions go too. This can't be undone." data-confirm-button="Delete">{% icon "trash" "size-4" %}Delete method</button></li>
+        <li><button type="button" class="text-error" hx-post="{% url 'method_delete' method.pk %}" data-confirm="Delete {{ name }}?" data-confirm-detail="Its versions go too. This can't be undone." data-confirm-button="Delete">{% icon "trash" %}Delete method</button></li>
         {% endif %}
         {% endif %}
         {% endif %}
@@ -51,9 +51,9 @@
       {% if draft %}
         {% partialdef publish inline %}<div id="method-publish"{% if out_of_band %} hx-swap-oob="outerMorph"{% endif %} class="flex items-center gap-3">
           {% if workspace.changed and first_problem_step is not None %}
-            {% if yaml_only_reasons %}<button type="button" class="secondary-link text-sm max-sm:hidden" hx-get="{{ urls.yaml }}" hx-target="#drawer-body" hx-swap="innerHTML" data-dialog="drawer">Fix it in YAML to publish</button>
-            {% else %}<button type="button" class="secondary-link text-sm max-sm:hidden" hx-post="{{ urls.step }}" hx-vals="{% hx_vals operation="open" target=first_problem_step finish="1" tab="steps" %}">{% if first_problem_unfilled %}Finish{% else %}Fix{% endif %} “{{ first_problem_label }}” to publish</button>{% endif %}
-          {% elif workspace.changed and not problems and untested %}<button type="button" class="secondary-link text-sm max-sm:hidden" hx-post="{{ urls.run }}">Preview to publish</button>{% endif %}
+            {% if yaml_only_reasons %}<button type="button" class="muted-link text-sm max-sm:hidden" hx-get="{{ urls.yaml }}" hx-target="#drawer-body" hx-swap="innerHTML" data-dialog="drawer">Fix it in YAML to publish</button>
+            {% else %}<button type="button" class="muted-link text-sm max-sm:hidden" hx-post="{{ urls.step }}" hx-vals="{% hx_vals operation="open" target=first_problem_step finish="1" tab="steps" %}">{% if first_problem_unfilled %}Finish{% else %}Fix{% endif %} “{{ first_problem_label }}” to publish</button>{% endif %}
+          {% elif workspace.changed and not problems and untested %}<button type="button" class="muted-link text-sm max-sm:hidden" hx-post="{{ urls.run }}">Preview to publish</button>{% endif %}
           <span{% if not workspace.changed %} title="No changes to publish"{% elif problems %} title="Fix the problems below to publish"{% endif %}><button type="button" class="btn btn-primary" hx-post="{{ urls.publish }}"{% if not workspace.changed or problems or not workspace.valid or untested %} disabled{% elif not workspace.tests.rows %} data-confirm="Publish without test answers?" data-confirm-detail="It hasn't been tried on any answer yet." data-confirm-button="Publish"{% endif %}>Publish</button></span>
         </div>{% endpartialdef %}
       {% else %}
@@ -63,47 +63,47 @@
     </div>
   </header>
 
-  {% if method.archived %}<p class="banner">{% icon "archive-box" "size-4 shrink-0 text-warning" %}<span class="min-w-0 flex-1">Archived: it isn't offered for new marking, and what uses it keeps working.</span>{% if access.can_edit %}<button type="button" class="btn btn-sm" hx-post="{% url 'method_archive' method.pk %}" hx-vals='{"unarchive": "1"}'>Unarchive</button>{% endif %}</p>{% endif %}
-  {% with failed=workspace.failed %}{% if failed %}<div role="alert" class="banner items-start">{% icon "exclamation-triangle" "size-4 mt-0.5 shrink-0 text-warning" %}<div class="grid min-w-0 flex-1 gap-1"><p class="font-medium">This version isn't compatible with the current GradeFlow</p>{% if failed.ref != version.ref %}<p>It uses {{ workspace.failed_version_name }}, which has {{ failed.problems|length|pluralize:"this problem,these problems" }}:</p>{% endif %}<ul class="ml-5 list-disc">{% for problem in failed.problems %}<li>{{ problem }}</li>{% endfor %}</ul>{% if access.can_edit %}<p>Edit it to publish a fixed version.</p>{% endif %}</div></div>{% endif %}{% endwith %}
-  <div id="method-notice" class="empty:hidden">{% if notice %}<p role="alert" class="banner border-error/20 bg-error/10 text-error">{{ notice }}</p>{% endif %}</div>
+  {% if method.archived %}<c-alert warning icon="archive-box" role="" class="mx-4 mt-6 sm:mx-6">{% if access.can_edit %}<c-slot name="action"><button type="button" class="btn btn-sm" hx-post="{% url 'method_archive' method.pk %}" hx-vals='{"unarchive": "1"}'>Unarchive</button></c-slot>{% endif %}Archived: it isn't offered for new marking, and what uses it keeps working.</c-alert>{% endif %}
+  {% with failed=workspace.failed %}{% if failed %}<c-alert warning class="mx-4 mt-6 sm:mx-6 items-start"><div class="grid gap-1"><p class="font-medium">This version isn't compatible with the current GradeFlow</p>{% if failed.ref != version.ref %}<p>It uses {{ workspace.failed_version_name }}, which has {{ failed.problems|length|pluralize:"this problem,these problems" }}:</p>{% endif %}<ul class="ml-5 list-disc">{% for problem in failed.problems %}<li>{{ problem }}</li>{% endfor %}</ul>{% if access.can_edit %}<p>Edit it to publish a fixed version.</p>{% endif %}</div></c-alert>{% endif %}{% endwith %}
+  <div id="method-notice" class="mx-4 mt-6 sm:mx-6 empty:hidden">{% if notice %}<c-alert>{{ notice }}</c-alert>{% endif %}</div>
 
   <div class="workspace-columns min-h-0 flex-1">
     <nav id="question-list" class="workspace-questions" aria-label="Questions" data-collapsible>
-      <div class="column-head questions-collapsed:justify-center questions-collapsed:px-0">
+      <div class="panel-head flex-nowrap questions-collapsed:justify-center questions-collapsed:px-0">
         <h2 class="questions-collapsed:sr-only">Questions</h2>
         <c-questions-collapse class="ml-auto questions-collapsed:ml-0" />
       </div>
-      <ul class="grid flex-1 content-start gap-0.5 overflow-y-auto p-2">
+      <ul class="grid flex-1 content-start overflow-y-auto py-1.5">
         {% for key, question in workspace.questions.items %}
-        <li><button type="button" class="question-link w-full text-left questions-collapsed:justify-center questions-collapsed:px-1" hx-get="{{ urls.page }}" hx-vals="{% hx_vals shown_question=key %}" title="{{ key }} · {{ question.label }}"{% if key == state.question %} aria-current="page"{% endif %}>
-          <span class="min-w-0 flex-1 questions-collapsed:flex-initial"><span class="block truncate font-medium">{{ key }}</span><c-question-subtitle :question="question" read_only="{% if key in read_only %}1{% endif %}" class="block questions-collapsed:hidden" /></span>
+        <li><button type="button" class="question-link w-full text-left questions-collapsed:justify-center" hx-get="{{ urls.page }}" hx-vals="{% hx_vals shown_question=key %}" title="{{ key }} · {{ question.label }}"{% if key == state.question %} aria-current="page"{% endif %}>
+          <span class="question-key">{{ key }}</span><c-question-subtitle :question="question" read_only="{% if key in read_only %}1{% endif %}" class="min-w-0 flex-1 questions-collapsed:hidden" />
         </button></li>
         {% endfor %}
-        {% if draft %}<li><button type="button" class="question-link w-full text-sm text-primary questions-collapsed:justify-center questions-collapsed:px-1" hx-get="{{ urls.question }}" hx-target="#drawer-body" hx-swap="innerHTML" data-dialog="drawer" title="Add question">{% icon "plus" "size-4" %}<span class="questions-collapsed:sr-only">Add question</span></button></li>{% endif %}
+        {% if draft %}<li><button type="button" class="question-link w-full questions-collapsed:justify-center" hx-get="{{ urls.question }}" hx-target="#drawer-body" hx-swap="innerHTML" data-dialog="drawer" title="Add question">{% icon "plus" %}<span class="questions-collapsed:sr-only">Add question</span></button></li>{% endif %}
       </ul>
     </nav>
 
     {% partialdef answers inline %}{% with draft=workspace.draft_record code=selected_question|code_language %}
     <section id="method-answers" class="workspace-answers" aria-label="Test answers" hx-get="{{ urls.results }}" hx-trigger="{% listen topic workspace.tests_record.pk %}" hx-target="this" hx-swap="outerMorph" hx-sync="this:replace">
-      <header class="column-header">
-        <div class="column-head">
+      <header class="surface shrink-0 overflow-hidden">
+        <div class="panel-head">
           <c-questions-toggle />
           {% if selected_question %}
           <h2>{{ state.question }}</h2>
           <c-question-subtitle :question="selected_question" read_only="{% if state.question in read_only %}1{% endif %}" />
-          <button type="button" class="btn btn-ghost btn-sm ml-auto" hx-get="{{ urls.question }}" hx-vals="{% hx_vals key=state.question %}" hx-target="#drawer-body" hx-swap="innerHTML" data-dialog="drawer">{% icon "adjustments-horizontal" "size-4" %}Settings</button>
+          <button type="button" class="btn btn-sm ml-auto" hx-get="{{ urls.question }}" hx-vals="{% hx_vals key=state.question %}" hx-target="#drawer-body" hx-swap="innerHTML" data-dialog="drawer">{% icon "adjustments-horizontal" %}Settings</button>
           {% else %}
           <h2>Answers</h2>
           {% endif %}
         </div>
         {% include "results/answers.html#question_description" with description=selected_question.description %}
         {% include "results/answers.html#preview_bar" with draft=True out_of_band=False preview_url=urls.run preview_target="#method-work" %}
+        {% include "results/answers.html#column_notices" %}
       </header>
 
-      <div class="grid content-start gap-3 p-4 md:overflow-y-auto">
-        {% include "results/answers.html#column_notices" %}
+      <div class="workspace-cards">
         {% if values %}
-        <c-more-options label="Test values{% if workspace.draft.test_values %} · {{ workspace.draft.test_values|length }} changed{% endif %}" :open="values_expanded" class="card-box px-4 py-3">
+        <c-more-options label="Test values{% if workspace.draft.test_values %} · {{ workspace.draft.test_values|length }} changed{% endif %}" :open="values_expanded" class="surface px-4 py-3">
           <form class="grid gap-4{% if not draft %} read-only-fields{% endif %}" hx-post="{{ urls.values }}" hx-trigger="change">
             {% csrf_token %}
             <c-form-errors :errors="values.non_field_errors" />
@@ -118,9 +118,9 @@
         {# Test answers with a `testAnswer` each, and one around them all for adding a new one as the next row. Ids keep a morph from turning one row into another, with its Alpine state. #}
         {% if selected_question or rows %}
         <div class="grid gap-3"{% if selected_question and can_edit_tests %} x-data="testAnswer"{% endif %}>
-          <ul class="card-box" aria-label="Test answers">
+          <ul class="surface" aria-label="Test answers">
             {% for row in rows %}
-            <li id="test-answer-{{ row.index }}" class="flex items-start gap-3 border-base-300 px-4 py-3 not-first:border-t"{% if can_edit_tests %} x-data="testAnswer"{% endif %}>
+            <li id="test-answer-{{ row.index }}" class="flex items-start gap-3 border-line px-4 py-3 not-first:border-t"{% if can_edit_tests %} x-data="testAnswer"{% endif %}>
               <span class="tabular-nums w-5 shrink-0 pt-0.5 text-sm text-subtle" title="Submission {{ row.number }}">{{ row.number }}</span>
               <div class="min-w-0 flex-1">
                 {% if can_edit_tests %}
@@ -136,16 +136,16 @@
               </div>
               <div class="-my-1 flex shrink-0 items-center gap-1"{% if can_edit_tests %} x-show="!editing"{% endif %}>
                 {% if draft %}
-                <button type="button" class="btn btn-ghost btn-square btn-sm{% if row.is_example %} text-primary{% else %} text-subtle{% endif %}" hx-post="{{ urls.answers }}" hx-vals="{% hx_vals operation="example" row=row.index %}" aria-pressed="{{ row.is_example|yesno:'true,false' }}" aria-label="Example" title="{% if row.is_example %}Shown among the method's examples{% else %}Show among the method's examples{% endif %}">{% icon "bookmark" "size-4" mini=row.is_example %}</button>
+                <button type="button" class="btn btn-ghost btn-square btn-sm{% if row.is_example %} text-primary{% else %} text-subtle{% endif %}" hx-post="{{ urls.answers }}" hx-vals="{% hx_vals operation="example" row=row.index %}" aria-pressed="{{ row.is_example|yesno:'true,false' }}" aria-label="Example" title="{% if row.is_example %}Shown among the method's examples{% else %}Show among the method's examples{% endif %}">{% icon "bookmark" mini=row.is_example %}</button>
                 {% elif row.is_example %}
-                <span class="grid size-8 place-items-center text-primary" title="Shown among the method's examples">{% icon "bookmark" "size-4" mini=True %}<span class="sr-only">Example</span></span>
+                <span class="grid size-8 place-items-center text-primary" title="Shown among the method's examples">{% icon "bookmark" mini=True %}<span class="sr-only">Example</span></span>
                 {% endif %}
                 <div class="px-1">{% if state.question in read_only %}<c-marks read_only />{% else %}<c-marks :low="row.marks" :high="row.marks" :max_marks="selected_question.max_marks" :unmarked="row.unmarked" />{% endif %}</div>
                 {% if can_edit_tests %}
                 <c-menu id="answer-menu-{{ row.index }}" label="Submission {{ row.number }} actions" panel_class="w-52">
-                  <li><button type="button" x-on:click="edit">{% icon "pencil" "size-4" %}Edit answer</button></li>
-                  <li><button type="button" hx-post="{{ urls.answers }}" hx-vals="{% hx_vals operation="clear" row=row.index %}"{% if not row.answer %} disabled{% endif %}>{% icon "backspace" "size-4" %}Clear answer</button></li>
-                  <li><button type="button" class="text-error" hx-post="{{ urls.answers }}" hx-vals="{% hx_vals operation="delete" row=row.index %}" data-confirm="Delete submission {{ row.number }}?" data-confirm-detail="Its answers to every question go too." data-confirm-button="Delete">{% icon "trash" "size-4" %}Delete submission</button></li>
+                  <li><button type="button" x-on:click="edit">{% icon "pencil" %}Edit answer</button></li>
+                  <li><button type="button" hx-post="{{ urls.answers }}" hx-vals="{% hx_vals operation="clear" row=row.index %}"{% if not row.answer %} disabled{% endif %}>{% icon "backspace" %}Clear answer</button></li>
+                  <li><button type="button" class="text-error" hx-post="{{ urls.answers }}" hx-vals="{% hx_vals operation="delete" row=row.index %}" data-confirm="Delete submission {{ row.number }}?" data-confirm-detail="Its answers to every question go too." data-confirm-button="Delete">{% icon "trash" %}Delete submission</button></li>
                 </c-menu>
                 {% endif %}
               </div>
@@ -153,7 +153,7 @@
             </li>
             {% endfor %}
             {% if selected_question and can_edit_tests %}
-            <li id="test-answer-new" class="flex items-start gap-3 border-base-300 px-4 py-3 not-first:border-t" x-show="editing" x-cloak>
+            <li id="test-answer-new" class="flex items-start gap-3 border-line px-4 py-3 not-first:border-t" x-show="editing" x-cloak>
               <span class="tabular-nums w-5 shrink-0 pt-0.5 text-sm text-subtle">{{ rows|length|add:1 }}</span>
               <div class="min-w-0 flex-1">{% include "methods/work.html#answer_editor" with operation="add" answer="" form=new_answer %}</div>
               {% include "methods/work.html#answer_buttons" with operation="add" %}
@@ -163,7 +163,7 @@
           </ul>
           {% if selected_question and can_edit_tests %}
           <div class="flex gap-2" x-show="!editing">
-            <button type="button" class="btn" x-ref="focusReturn" x-on:click="edit">{% icon "plus" "size-4" %}Add answer</button>
+            <button type="button" class="btn" x-ref="focusReturn" x-on:click="edit">{% icon "plus" %}Add answer</button>
             {% if not draft %}<button type="button" class="btn btn-ghost" hx-post="{{ urls.answers }}" hx-vals='{"operation": "reset"}' data-confirm="Reset your test answers?" data-confirm-detail="You get the answers and test values this version was published with." data-confirm-button="Reset">Reset answers</button>{% endif %}
           </div>
           {% endif %}
@@ -176,31 +176,35 @@
 
     <c-marking-resizer />
     <aside class="workspace-marking" aria-label="Marking">
-      <div class="column-head">
-        <h2>Marking</h2>
-        {% if not yaml_only_reasons %}
-        <div class="segmented ml-auto" role="radiogroup" aria-label="Show">
-          <label class="segment"><input type="radio" class="sr-only" name="show" value="steps" hx-get="{{ urls.page }}" hx-vals='{"tab": "steps", "path": ""}' hx-trigger="change"{% if state.tab == "steps" %} checked{% endif %}>Steps</label>
-          <label class="segment"><input type="radio" class="sr-only" name="show" value="settings" hx-get="{{ urls.settings }}" hx-vals='{"tab": "settings", "setting": ""}' hx-trigger="change"{% if state.tab == "settings" %} checked{% endif %}>Settings</label>
+      <div class="workspace-panel">
+        <header class="panel-head">
+          <h2>Marking</h2>
+          {% if not yaml_only_reasons %}
+          <div class="segmented ml-auto" role="radiogroup" aria-label="Show">
+            <label class="segment"><input type="radio" class="sr-only" name="show" value="steps" hx-get="{{ urls.page }}" hx-vals='{"tab": "steps", "path": ""}' hx-trigger="change"{% if state.tab == "steps" %} checked{% endif %}>Steps</label>
+            <label class="segment"><input type="radio" class="sr-only" name="show" value="settings" hx-get="{{ urls.settings }}" hx-vals='{"tab": "settings", "setting": ""}' hx-trigger="change"{% if state.tab == "settings" %} checked{% endif %}>Settings</label>
+          </div>
+          {% endif %}
+        </header>
+        <div>
+        {% if yaml_only_reasons %}
+          {% if workspace.summary %}<div class="prose-core px-4 pt-4">{{ workspace.summary|markdown }}</div>{% endif %}
+          <c-empty-state icon="code-bracket" title="Written in YAML">{{ yaml_only_reasons|join:" " }}<c-slot name="action"><button type="button" class="btn" hx-get="{{ urls.yaml }}" hx-target="#drawer-body" hx-swap="innerHTML" data-dialog="drawer">{% icon "code-bracket" %}{% if draft %}Edit as YAML{% else %}View as YAML{% endif %}</button></c-slot></c-empty-state>
+        {% elif state.tab == "settings" %}
+          {% include "methods/settings.html" %}
+        {% elif editor %}
+          {% include "marking/step.html" %}
+        {% endif %}
         </div>
+        {% if draft and problems %}
+        <footer class="panel-foot">
+          <div>
+            <h3 class="text-sm font-medium">Before publishing</h3>
+            <ul class="mt-2 grid gap-1.5 text-sm text-muted">{% for problem in problems %}<li>{{ problem }}</li>{% endfor %}</ul>
+          </div>
+        </footer>
         {% endif %}
       </div>
-      <div class="flex-1 md:overflow-y-auto">
-      {% if yaml_only_reasons %}
-        {% if workspace.summary %}<div class="prose-core px-5 pt-5">{{ workspace.summary|markdown }}</div>{% endif %}
-        <c-empty-state icon="code-bracket" title="Written in YAML">{{ yaml_only_reasons|join:" " }}<c-slot name="action"><button type="button" class="btn" hx-get="{{ urls.yaml }}" hx-target="#drawer-body" hx-swap="innerHTML" data-dialog="drawer">{% icon "code-bracket" "size-4" %}{% if draft %}Edit as YAML{% else %}View as YAML{% endif %}</button></c-slot></c-empty-state>
-      {% elif state.tab == "settings" %}
-        {% include "methods/settings.html" %}
-      {% elif editor %}
-        {% include "marking/step.html" %}
-      {% endif %}
-      </div>
-      {% if draft and problems %}
-      <div class="border-t border-base-300 px-5 py-4">
-        <h3 class="text-sm font-medium">Before publishing</h3>
-        <ul class="mt-2 grid gap-1.5 text-sm text-muted">{% for problem in problems %}<li>{{ problem }}</li>{% endfor %}</ul>
-      </div>
-      {% endif %}
     </aside>
   </div>
 </div>
@@ -227,7 +231,7 @@
 
 {% partialdef answer_buttons %}
 <div class="-my-1 flex shrink-0 items-center gap-1"{% if operation == "save" %} x-show="editing" x-cloak{% endif %}>
-  <button type="button" class="btn btn-ghost btn-square btn-sm text-muted" x-on:click="cancel" aria-label="Cancel" title="Cancel">{% icon "x-mark" "size-4" %}</button>
-  <button form="test-answer-form-{% if operation == "save" %}{{ row.index }}{% else %}new{% endif %}" class="btn btn-primary btn-square btn-sm" aria-label="{% if operation == "save" %}Save{% else %}Add{% endif %}" title="{% if operation == "save" %}Save{% else %}Add{% endif %}">{% icon "check" "size-4" %}</button>
+  <button type="button" class="btn btn-ghost btn-square btn-sm text-muted" x-on:click="cancel" aria-label="Cancel" title="Cancel">{% icon "x-mark" %}</button>
+  <button form="test-answer-form-{% if operation == "save" %}{{ row.index }}{% else %}new{% endif %}" class="btn btn-primary btn-square btn-sm" aria-label="{% if operation == "save" %}Save{% else %}Add{% endif %}" title="{% if operation == "save" %}Save{% else %}Add{% endif %}">{% icon "check" %}</button>
 </div>
 {% endpartialdef %}

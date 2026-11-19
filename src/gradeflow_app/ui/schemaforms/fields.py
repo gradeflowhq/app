@@ -102,6 +102,8 @@ def _field_for(schema: Schema, label: str, help_text: str, defs: Mapping[str, Sc
         return forms.Field(widget=FeedbackWidget(_boxes(schema, defs), hints.get("template_parts") or {}), **kwargs)
     if kind == "string":
         made = _text_field(hints, kwargs)
+        if property_schema.get("format") == "regex":
+            made.widget.attrs["class"] = "font-mono text-sm"
         if nullable and isinstance(made, forms.CharField):
             made.empty_value = None  # left empty, it is unset
         return made

@@ -1,4 +1,4 @@
-"""The settings page's AI service: the models marking asks, and testing them. The service and token come in headers
+"""The Integrations page's AI service: the models marking asks, and testing them. The service and token come in headers
 (`endpoints`)."""
 
 from collections.abc import Sequence
@@ -67,16 +67,16 @@ def models(request: Request) -> HttpResponse:
 
 @require_POST
 def connect(request: Request) -> HttpResponse:
-    """The card for the AI service the person just connected, or why it couldn't. Listing the service's models
+    """The panel for the AI service the person just connected, or why it couldn't. Listing the service's models
     proves the token works."""
     service = connected_service(request)
     if service is None or (model_endpoint := endpoint(request, service)) is None:
-        return _card(request, None, connect_error="Choose an AI service and enter its token.")
+        return _panel(request, None, connect_error="Choose an AI service and enter its token.")
     try:
         model_names = list_models(model_endpoint)
     except GradeFlowError as error:
-        return _card(request, None, connect_error=str(error), provider=request.headers.get(SERVICE_HEADER, ""))
-    return _card(request, service, model_names=model_names)
+        return _panel(request, None, connect_error=str(error), provider=request.headers.get(SERVICE_HEADER, ""))
+    return _panel(request, service, model_names=model_names)
 
 
 @require_POST
@@ -181,14 +181,14 @@ def stop(request: Request) -> HttpResponse:
 
 
 def _updated(request: Request, service: ModelService | None) -> HttpResponse:
-    """The card's models after a change; from the Models dialog, its table too, which lists the models it was sent
+    """The panel's models after a change; from the Models dialog, its table too, which lists the models it was sent
     with."""
     if "listed" not in request.POST:
         return _models(request, service)
-    card_html = render_to_string(
-        "model_service/card.html#models", _models_context(request, service) | {"out_of_band": True}, request
+    models_html = render_to_string(
+        "model_service/panel.html#models", _models_context(request, service) | {"out_of_band": True}, request
     )
-    return render(request, "model_service/table.html", _table(request, service) | {"card_html": card_html})
+    return render(request, "model_service/table.html", _table(request, service) | {"models_html": models_html})
 
 
 def _table(request: Request, service: ModelService | None, model_names: Sequence[str] = ()) -> dict[str, Any]:
@@ -249,7 +249,7 @@ def _choice_progress(service: ModelService) -> dict[str, Any]:
 def _models_context(
     request: Request, service: ModelService | None, model_names: list[str] | None = None
 ) -> dict[str, Any]:
-    """What the card shows of the person's models: each role's, the choice running for them, or, before any are
+    """What the panel shows of the person's models: each role's, the choice running for them, or, before any are
     chosen, how many models choosing automatically tests."""
     context: dict[str, Any] = {
         "service": service,
@@ -278,7 +278,7 @@ def _model_count(request: Request, service: ModelService) -> int | None:
         return None
 
 
-def _card(
+def _panel(
     request: Request,
     service: ModelService | None,
     connect_error: str = "",
@@ -290,7 +290,7 @@ def _card(
         "provider": provider,
         "providers": settings.GRADEFLOW_MODEL_PROVIDERS,
     }
-    return render(request, "model_service/card.html#card", context)
+    return render(request, "model_service/panel.html#panel", context)
 
 
 def _models(
@@ -305,4 +305,4 @@ def _models(
         "answers_per_request_error": answers_per_request_error,
         "answers_per_request_value": answers_per_request_value,
     }
-    return render(request, "model_service/card.html#models", context)
+    return render(request, "model_service/panel.html#models", context)

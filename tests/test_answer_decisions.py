@@ -31,7 +31,7 @@ def test_decisions_lock_until_cancelled(client: Client, assessment: Assessment, 
     response = client.post(url, {"answer": ["42", "42.0"], "decision": decision}, headers=HTMX_HEADERS)
     assert response.status_code == 200
     card = answer_card(response.text, "42")
-    assert f"badge-{color}" in card
+    assert f'data-tone="{color}"' in card
     label = DECISIONS[decision]
     assert f">{label}</span>" in card
     assert "This answer group gets</span>" in card
@@ -71,16 +71,17 @@ def test_direct_form_edits_refresh_decisions(client: Client, assessment: Assessm
     assert 'value="full_marks"' in answer_card(removed.text, "42")
 
 
-def test_saved_decisions_are_shown_and_survive_reopening(client: Client, assessment: Assessment) -> None:
+def test_saved_decisions_show_again_once_the_marking_is_edited(client: Client, assessment: Assessment) -> None:
     _, draft = start_marking(client, assessment, "Q2", "gradeflow/accepted-answers@1")
     url = reverse("mark_example", args=[assessment.pk, draft.question_id])
     client.post(url, {"answer": ["41"], "decision": "not_allowed"})
     client.post(reverse("draft_save", args=[assessment.pk, draft.pk]), {})
     page = client.get(reverse("question", args=[assessment.pk, draft.question_id])).text
-    assert f">{DECISIONS['not_allowed']}</span>" in answer_card(page, "41")
+    assert f">{DECISIONS['not_allowed']}</span>" not in answer_card(page, "41"), "the marks say it once"
     assert 'value="cancel"' not in page
     client.post(reverse("marking_start", args=[assessment.pk, draft.question_id]), {})
     page = client.get(reverse("answers", args=[assessment.pk, draft.question_id])).text
+    assert f">{DECISIONS['not_allowed']}</span>" in answer_card(page, "41")
     assert 'value="cancel"' in answer_card(page, "41")
 
 

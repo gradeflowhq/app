@@ -13,6 +13,7 @@ from pytest_django import DjangoAssertNumQueries
 
 from gradeflow_app.accounts.models import User
 from gradeflow_app.assessments.models import Assessment
+from gradeflow_app.courses.models import Role
 from gradeflow_app.imports import forms
 from gradeflow_app.imports.models import SubmissionsFile, imported_mark_keys
 from gradeflow_app.imports.services import apply_question_document, import_submissions
@@ -26,6 +27,7 @@ from tests.conftest import (
     create_assessment,
     encrypted_id,
     full_marks_marking,
+    member_client,
     upload,
 )
 
@@ -66,7 +68,7 @@ def test_keeps_the_encrypted_original_and_the_import_settings(client: Client) ->
     assert (file.sheet, file.header_row, file.first_row, file.last_row) == ("Results", 2, 3, 5)
     assert file.original is not None
     assert bytes(file.original) == ENCRYPTED_FILE
-    page = client.get(reverse("import", args=[assessment.pk]))
+    page = client.get(reverse("assessment_settings", args=[assessment.pk]))
     assert b"Check columns" in page.content
     assert b'<script id="import-settings" type="application/json">' in page.content
     assert page.context["import_settings"] == {
@@ -93,7 +95,7 @@ def test_keeps_a_zips_pattern_and_file_questions(client: Client) -> None:
     zip_fields = {"file_pattern": "*_{student:number}_{number}_{file}", "file_questions": json.dumps(file_questions)}
     assert upload(client, assessment, original=encrypted_original(), **zip_fields).status_code == 200
 
-    page = client.get(reverse("import", args=[assessment.pk]))
+    page = client.get(reverse("assessment_settings", args=[assessment.pk]))
     settings = page.context["import_settings"]
     assert (settings["file_pattern"], settings["file_questions"]) == (
         "*_{student:number}_{number}_{file}",
@@ -116,7 +118,10 @@ def test_keeps_the_encrypted_id_mapping_file_and_its_columns(client: Client) -> 
     )
     assert response.status_code == 200
 
-    assert client.get(reverse("import", args=[assessment.pk])).context["import_settings"]["id_mapping"] == id_mapping
+    assert (
+        client.get(reverse("assessment_settings", args=[assessment.pk])).context["import_settings"]["id_mapping"]
+        == id_mapping
+    )
     fetched = client.get(reverse("import_id_mapping_file", args=[assessment.pk]))
     assert fetched.content == ENCRYPTED_FILE
 
@@ -151,15 +156,15 @@ def test_an_oversized_original_is_refused(client: Client, monkeypatch: pytest.Mo
 
 
 def test_older_imports_ask_for_the_file_again(client: Client, assessment: Assessment) -> None:
-    page = client.get(reverse("import", args=[assessment.pk]))
-    assert b"Check columns" not in page.content
+    page = client.get(reverse("assessment_settings", args=[assessment.pk]))
+    assert b'x-on:click="reopenFile"' not in page.content, "no Check columns"
     assert b"Drop the new submissions file here" in page.content
     assert b"import-settings" not in page.content
     assert client.get(reverse("import_original", args=[assessment.pk])).status_code == 404
 
 
 def test_a_replace_knows_the_questions_a_new_file_would_drop(client: Client, assessment: Assessment) -> None:
-    page = client.get(reverse("import", args=[assessment.pk]))
+    page = client.get(reverse("assessment_settings", args=[assessment.pk]))
     assert page.context["questions"] == ["Q1", "Q2", "Q3"]
     assert b"Marking is kept." not in page.content, "said once the file shows which questions stay"
 
@@ -204,13 +209,34 @@ def test_an_import_returns_the_questions_whose_answers_changed(assessment: Asses
     assert changed_by(changed.rsplit("\n", 2)[0] + "\n") == {"Q1", "Q2", "Q3"}, "a student fewer changes every question"
 
 
-def test_an_import_stays_on_the_import_page_with_what_it_did(client: Client) -> None:
+def test_a_first_import_opens_the_overview_and_a_replace_stays_in_settings(client: Client) -> None:
     assessment = create_assessment(client)
     response = upload(client, assessment)
-    assert response.headers["HX-Redirect"] == reverse("import", args=[assessment.pk])
-    page = client.get(response.headers["HX-Redirect"], follow=True).content
-    assert b"Imported 10 students and 3 questions." in page
-    assert reverse("question_document", args=[assessment.pk]).encode() in page
+    assert response.headers["HX-Redirect"] == reverse("overview", args=[assessment.pk])
+    page = client.get(response.headers["HX-Redirect"]).text
+    assert "Imported 10 students and 3 questions." in page
+    assert 'x-data="importer"' not in page
+    replaced = upload(client, assessment)
+    assert replaced.headers["HX-Redirect"] == reverse("assessment_settings", args=[assessment.pk])
+
+
+def test_the_import_url_redirects_to_the_overview_until_a_file_is_imported(client: Client) -> None:
+    assessment = create_assessment(client)
+    import_url = reverse("import", args=[assessment.pk])
+    assert client.get(import_url).headers["Location"] == reverse("overview", args=[assessment.pk])
+    upload(client, assessment)
+    assert client.get(import_url).headers["Location"] == reverse("assessment_settings", args=[assessment.pk])
+
+
+def test_an_assessment_with_nothing_imported_shows_the_import_on_its_overview(client: Client) -> None:
+    assessment = create_assessment(client)
+    overview = reverse("overview", args=[assessment.pk])
+    page = client.get(overview).text
+    assert 'x-data="importer"' in page
+    assert reverse("import_upload", args=[assessment.pk]) in page
+    viewer_page = member_client(assessment, Role.VIEWER).get(overview).text
+    assert 'x-data="importer"' not in viewer_page
+    assert "Nothing imported yet" in viewer_page
 
 
 def test_a_replace_says_which_students_it_added_and_removed(client: Client, assessment: Assessment) -> None:
@@ -236,7 +262,7 @@ def test_a_replace_can_keep_the_students_the_new_file_lacks(client: Client, asse
 def test_a_replace_knows_the_students_it_would_compare_the_new_file_with(
     client: Client, assessment: Assessment
 ) -> None:
-    page = client.get(reverse("import", args=[assessment.pk]))
+    page = client.get(reverse("assessment_settings", args=[assessment.pk]))
     assert sorted(page.context["student_ids"]) == sorted(assessment.students.values_list("encrypted_id", flat=True))
     assert 'id="import-student-ids"' in page.text
 
@@ -384,11 +410,11 @@ def read_by_the_core(file: SimpleUploadedFile, assessment: Assessment) -> Questi
     return read_question_document(content, assessment.question_set())
 
 
-def test_the_import_page_offers_the_question_document_once_there_are_questions(client: Client) -> None:
+def test_settings_offer_the_question_document_once_there_are_questions(client: Client) -> None:
     assessment = create_assessment(client)
-    assert b"Question document" not in client.get(reverse("import", args=[assessment.pk])).content
+    assert b"Question document" not in client.get(reverse("assessment_settings", args=[assessment.pk])).content
     upload(client, assessment)
-    page = client.get(reverse("import", args=[assessment.pk])).text
+    page = client.get(reverse("assessment_settings", args=[assessment.pk])).text
     assert 'data-confirm="Replace question settings?"' in page
 
 

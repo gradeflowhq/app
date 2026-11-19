@@ -1,4 +1,5 @@
 import uuid
+from collections import defaultdict
 
 from django.conf import settings
 from django.db import models
@@ -91,8 +92,24 @@ def answer_expression(key: str) -> models.Func:
 
 def imported_mark_keys(assessment: Assessment) -> set[str]:
     """The questions any student has marks for in the submissions file."""
+    return imported_mark_keys_of([assessment]).get(assessment.pk, set())
+
+
+def imported_mark_keys_of(assessments: list[Assessment]) -> dict[uuid.UUID, set[str]]:
+    """For each of the assessments with any, the questions any student has marks for in its submissions file, read in
+    one query."""
     keys = models.Func("imported_marks", function="jsonb_object_keys", output_field=models.TextField())
-    return set(assessment.students.order_by().annotate(question=keys).values_list("question", flat=True).distinct())
+    rows = (
+        Student.objects.filter(assessment__in=assessments)
+        .order_by()
+        .annotate(question=keys)
+        .values_list("assessment_id", "question")
+        .distinct()
+    )
+    keys_by_assessment: defaultdict[uuid.UUID, set[str]] = defaultdict(set)
+    for assessment_id, key in rows:
+        keys_by_assessment[assessment_id].add(key)
+    return keys_by_assessment
 
 
 def has_imported_marks(assessment: Assessment, key: str) -> bool:

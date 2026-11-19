@@ -1,31 +1,44 @@
 {% extends "layouts/course.html" %}
 {% block page_title %}Canvas · {% endblock %}
 {% block page %}
+{% partialdef choice %}
+{# The `key` picker's row: what it has chosen, and a button that opens it. #}
+<div class="setting-summary-row"{% if shown %} x-show="{{ shown }}"{% endif %}>
+  <span class="setting-summary-label">{% icon icon %}{{ label }}</span>
+  <div class="min-w-0 flex-1" x-show="{{ key }}.card.id"><p class="truncate font-semibold" x-text="{{ key }}.card.name"></p><p class="truncate text-sm text-muted" x-show="{{ key }}.card.detail" x-text="{{ key }}.card.detail"></p></div>
+  <button type="button" class="btn btn-sm" x-on:click="{{ key }}.open()" x-text="{{ key }}.card.id ? 'Change' : '{{ choose }}'">Change</button>
+</div>
+{% endpartialdef %}
 <c-page title="Canvas">
   {% if not canvas_available %}
-  <c-empty-state class="card-box" icon="link" title="Canvas isn't set up on this server">Each assessment's marks can still be downloaded from its Export page.</c-empty-state>
+  <c-empty-state class="surface" icon="link" title="Canvas isn't set up on this server">Each assessment's marks can still be downloaded from its Export page.</c-empty-state>
   {% else %}
   <div class="settings" x-data="canvasCourse" data-config="{{ config }}">
-    <c-card title="Course" x-show="loaded && !connected" x-cloak>
+    <c-panel x-show="loaded && !connected" x-cloak>
       <c-canvas-connect reason="Choosing the course needs your Canvas access token." />
-    </c-card>
-    <c-form-card id="canvas-course" title="Course" x-show="connected" x-cloak>
-      <c-alert x-show="error" x-cloak><span x-text="error"></span></c-alert>
-      {% include "exports/picker.html" with key="course" label="Canvas course" choose="Choose a course" search="Search your courses" empty="No courses match." none="You have no Canvas courses." %}
-      <input type="hidden" name="canvas_course" value="{{ form.instance.canvas_course }}" :value="course.id">
-      <input type="hidden" name="canvas_course_name" value="{{ form.instance.canvas_course_name }}" :value="course.card.name">
-      <div class="grid gap-3" x-show="course.id">
-        {% include "exports/picker.html" with key="group" label="New assignments go in" choose="Choose an assignment group" search="Search assignment groups" empty="No assignment groups match." none="This course has no assignment groups yet." create="New assignment group" panel="exports/new_group.html" %}
-      </div>
-      <input type="hidden" name="canvas_assignment_group" value="{{ form.instance.canvas_assignment_group }}" :value="group.id">
-      <input type="hidden" name="canvas_assignment_group_name" value="{{ form.instance.canvas_assignment_group_name }}" :value="group.card.name">
-      <c-more-options label="How marks are sent" :open="form.errors">
-        <p class="text-sm text-muted">Each assessment can change these on its Export page.</p>
+    </c-panel>
+    <c-panel icon="link" title="Canvas course" body_class="setting-rows" x-show="connected" x-cloak>
+      <c-slot name="actions"><c-chip icon="check" tone="success"><span x-text="canvasHost"></span></c-chip></c-slot>
+      {% include "exports/canvas.html#choice" with key="course" icon="academic-cap" label="Course" choose="Choose a course" %}
+      {% include "exports/canvas.html#choice" with key="group" icon="rectangle-stack" label="Assignment group" choose="Choose an assignment group" shown="course.id" %}
+      <c-alert class="my-4" x-show="error" x-cloak><span x-text="error"></span></c-alert>
+      {% include "exports/picker_dialog.html" with key="course" label="Canvas course" search="Search your courses" empty="No courses match." none="You have no Canvas courses." %}
+      {% include "exports/picker_dialog.html" with key="group" label="Assignment group" search="Search assignment groups" empty="No assignment groups match." none="This course has no assignment groups yet." create="New assignment group" panel="exports/new_group.html" %}
+      <form id="canvas-course" method="post" class="grid gap-5 py-4">{% csrf_token %}
+        <input type="hidden" name="canvas_course" value="{{ form.instance.canvas_course }}" :value="course.id">
+        <input type="hidden" name="canvas_course_name" value="{{ form.instance.canvas_course_name }}" :value="course.card.name">
+        <input type="hidden" name="canvas_assignment_group" value="{{ form.instance.canvas_assignment_group }}" :value="group.id">
+        <input type="hidden" name="canvas_assignment_group_name" value="{{ form.instance.canvas_assignment_group_name }}" :value="group.card.name">
+        <div>
+          <p class="font-medium">How marks are sent</p>
+          <p class="text-sm text-muted">Each assessment can change these on its Export page.</p>
+        </div>
         {{ form.marks_mode.as_field_group }}
         {{ form.rounding.as_field_group }}
         {{ form.include_feedback.as_field_group }}
-      </c-more-options>
-    </c-form-card>
+      </form>
+      <c-slot name="footer"><button form="canvas-course" class="btn btn-primary ml-auto">Save</button></c-slot>
+    </c-panel>
   </div>
   {% endif %}
 </c-page>

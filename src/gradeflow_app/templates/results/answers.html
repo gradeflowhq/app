@@ -1,50 +1,36 @@
 {% partialdef answers inline %}
-<div id="answers" class="flex min-h-0 flex-col"{% if out_of_band %} hx-swap-oob="outerMorph"{% endif %}
+<div id="answers" class="flex min-h-0 flex-1 flex-col"{% if out_of_band %} hx-swap-oob="outerMorph"{% endif %}
      hx-get="{% url 'answers' question.assessment_id question.pk %}" hx-target="this" hx-swap="outerMorph"
      hx-trigger="{% listen 'marks' question.assessment_id %}, {% listen 'jobs' question.assessment_id %}, {% listen 'grouping' question.assessment_id %}, {% listen 'preview' question.assessment_id request.user.pk %}">
   {% partial header %}
 
-  <div class="grid content-start gap-3 p-4 md:overflow-y-auto">
-    {% partial column_notices %}
-    {% if failed_grouping_job %}
-      <div role="alert" class="alert alert-warning alert-soft">{% icon "exclamation-triangle" %}<span class="flex-1">Couldn't group by meaning, so the same answers are grouped instead.</span><button class="btn btn-sm" hx-post="{% url 'answer_grouping' question.assessment_id question.pk %}" hx-target="#answers" hx-swap="outerMorph">Try again</button></div>
-    {% endif %}
-    {% if too_many_to_compare %}
-      <p class="rounded-box bg-base-100 px-4 py-3 text-sm text-muted" role="status">Too many answers to compare. Showing the same answers only.</p>
-    {% elif grouping_job or needs_grouping %}
-      <div class="relative flex items-center gap-3 overflow-hidden rounded-box bg-base-100 px-4 py-3 text-sm text-muted" role="status"{% if needs_grouping %} hx-post="{% url 'answer_grouping' question.assessment_id question.pk %}" hx-trigger="load" hx-target="#answers" hx-swap="outerMorph"{% endif %}><span class="loading loading-spinner loading-sm"></span>Grouping by meaning. Equal answers are grouped meanwhile.{% if grouping_job.progress_text %} {{ grouping_job.progress_text }}{% endif %}{% if grouping_job.progress %}<progress class="progress progress-primary absolute inset-x-0 bottom-0 h-0.5 rounded-none" value="{{ grouping_job.progress|floatformat:2 }}" max="1" aria-hidden="true"></progress>{% endif %}</div>
-    {% endif %}
+  <div class="workspace-cards">
     {% if answer_groups %}
-      <ul class="answer-groups divide-y divide-base-300" aria-label="Answers">
+      <ul class="answer-groups" aria-label="Answers">
         {% for answer_group in answer_groups %}{% include "results/answer_group.html" %}{% endfor %}
       </ul>
-      {% if hidden_count %}<button class="btn btn-ghost btn-sm justify-self-center" hx-get="{% url 'answers' question.assessment_id question.pk %}?shown_count={{ show_more }}" hx-target="#answers" hx-swap="outerMorph">Show more<span class="badge badge-sm badge-soft tabular-nums">{{ hidden_count }}</span></button>{% endif %}
+      {% if hidden_count %}<button class="btn btn-ghost btn-sm justify-self-center" hx-get="{% url 'answers' question.assessment_id question.pk %}?shown_count={{ show_more }}" hx-target="#answers" hx-swap="outerMorph">Show more<c-chip class="tabular-nums">{{ hidden_count }}</c-chip></button>{% endif %}
     {% else %}
-      <c-empty-state class="card-box" icon="inbox" title="{% if filter == 'all' %}No answers{% else %}No answers match{% endif %}" />
+      <c-empty-state class="surface" icon="inbox" title="{% if filter == 'all' %}No answers{% else %}No answers match{% endif %}">{% if filter != 'all' %}<c-slot name="action"><button class="btn" hx-get="{% url 'answers' question.assessment_id question.pk %}?filter=all" hx-target="#answers" hx-swap="outerHTML">Show all answers</button></c-slot>{% endif %}</c-empty-state>
     {% endif %}
   </div>
 </div>
 {% endpartialdef %}
 
 {% partialdef header %}
-  <header class="column-header">
-    <div class="column-head">
+  <header class="surface shrink-0 overflow-hidden">
+    <div class="panel-head">
       <c-questions-toggle />
       <h2>{{ question.key }}</h2>
       <c-question-subtitle :question="question.core_question" />
-      {% if access.can_edit %}<button class="btn btn-ghost btn-sm ml-auto" hx-get="{% url 'question_settings' question.assessment_id question.pk %}" hx-target="#drawer-body" hx-swap="innerHTML" data-dialog="drawer">{% icon "adjustments-horizontal" "size-4" %}Settings</button>{% endif %}
+      {% if access.can_edit %}<button class="btn btn-sm ml-auto" hx-get="{% url 'question_settings' question.assessment_id question.pk %}" hx-target="#drawer-body" hx-swap="innerHTML" data-dialog="drawer">{% icon "adjustments-horizontal" %}Settings</button>{% endif %}
     </div>
     {% with description=question.core_question.description %}{% partial question_description %}{% endwith %}
-    <form class="flex items-center gap-2 px-4 pb-3" hx-get="{% url 'answers' question.assessment_id question.pk %}" hx-target="#answers" hx-swap="outerMorph" hx-trigger="change delay:150ms" hx-sync="this:replace">
-      <label class="select select-sm min-w-0 max-w-52 flex-1" title="Answer groups">
-        {% icon "rectangle-stack" "size-4 text-muted" %}
-        <select name="group" aria-label="Answer groups">
-          {% for value, label in groupings.items %}<option value="{{ value }}"{% if grouping == value %} selected{% endif %}>{{ label }}</option>{% endfor %}
-        </select>
-      </label>
+    <form class="flex flex-wrap items-center gap-x-3 px-4 py-1.5" hx-get="{% url 'answers' question.assessment_id question.pk %}" hx-target="#answers" hx-swap="outerMorph" hx-trigger="change delay:150ms" hx-sync="this:replace">
+      <label class="flex items-center text-sm text-muted">Group<select name="group" class="select select-ghost select-sm w-auto font-medium text-base-content">{% for value, label in groupings.items %}<option value="{{ value }}"{% if grouping == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
       {% if grouping_options.similarity != 'exact' %}
-      <c-popover id="answers-similarity" label="How similar" panel_class="w-64 p-4">
-        <c-slot name="trigger">{% icon "adjustments-vertical" "size-4" %}</c-slot>
+      <c-popover id="answers-similarity" label="How similar" button_class="btn btn-ghost btn-square btn-sm -ml-3 text-muted" panel_class="w-64 p-4">
+        <c-slot name="trigger">{% icon "adjustments-vertical" %}</c-slot>
         <div class="grid gap-2">
           <label for="answers-threshold" class="flex justify-between text-sm"><span class="font-medium">How similar</span><span class="tabular-nums text-muted">{{ grouping_options.threshold|percent }}</span></label>
           <input id="answers-threshold" type="range" name="threshold" min="0.5" max="1" step="0.05" value="{{ grouping_options.threshold }}" class="range range-xs range-primary">
@@ -52,23 +38,27 @@
         </div>
       </c-popover>
       {% endif %}
-      <label class="select select-sm min-w-0 max-w-52 flex-1" title="Show">
-        {% icon "funnel" "size-4 text-muted" %}
-        <select name="filter" aria-label="Show">
-          {% for value, label in filters.items %}<option value="{{ value }}"{% if filter == value %} selected{% endif %}>{{ label }}</option>{% endfor %}
-        </select>
-      </label>
+      <label class="flex items-center text-sm text-muted">Show<select name="filter" class="select select-ghost select-sm w-auto font-medium text-base-content">{% for value, label in filters.items %}<option value="{{ value }}"{% if filter == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
     </form>
     {% partial preview_bar %}
+    {% partial column_notices %}
+    {% if failed_grouping_job %}
+      <div role="alert" class="notice-row" data-tone="warning">{% icon "exclamation-triangle" %}<span class="flex-1">Couldn't group by meaning, so the same answers are grouped instead.</span><button class="btn btn-sm" hx-post="{% url 'answer_grouping' question.assessment_id question.pk %}" hx-target="#answers" hx-swap="outerMorph">Try again</button></div>
+    {% endif %}
+    {% if too_many_to_compare %}
+      <p class="notice-row text-muted" role="status">Too many answers to compare. Showing the same answers only.</p>
+    {% elif grouping_job or needs_grouping %}
+      <div class="notice-row relative text-muted" role="status"{% if needs_grouping %} hx-post="{% url 'answer_grouping' question.assessment_id question.pk %}" hx-trigger="load" hx-target="#answers" hx-swap="outerMorph"{% endif %}><span class="loading loading-spinner loading-sm"></span>Grouping by meaning. Equal answers are grouped meanwhile.{% if grouping_job.progress_text %} {{ grouping_job.progress_text }}{% endif %}{% if grouping_job.progress %}<progress class="progress progress-primary absolute inset-x-0 bottom-0 h-0.5 rounded-none" value="{{ grouping_job.progress|floatformat:2 }}" max="1" aria-hidden="true"></progress>{% endif %}</div>
+    {% endif %}
   </header>
 {% endpartialdef %}
 
 {# A question's description, shortened to two lines until opened. #}
-{% partialdef question_description %}{% if description %}<details class="group/about -mt-2 px-4 pb-3 text-muted"><summary class="cursor-pointer list-none"><div class="prose-core preview-two-lines wrap-break-word text-sm group-open/about:max-h-[40vh] group-open/about:overflow-y-auto" x-data="math">{{ description|math_markdown }}</div></summary></details>{% endif %}{% endpartialdef %}
+{% partialdef question_description %}{% if description %}<details class="group/about px-4 pt-2.5 text-muted"><summary class="cursor-pointer list-none"><div class="prose-core preview-two-lines wrap-break-word text-sm group-open/about:max-h-[40vh] group-open/about:overflow-y-auto" x-data="math">{{ description|math_markdown }}</div></summary></details>{% endif %}{% endpartialdef %}
 
 {% partialdef column_notices %}
-{% if not draft %}{% for notice in out_of_date_notices %}<div role="status" class="alert alert-warning alert-soft text-sm"><div class="flex-1"><c-failure :text="notice.marking.failure">{{ notice.text }}</c-failure></div>{% if access.can_edit %}<button class="btn btn-sm whitespace-nowrap" hx-post="{% url 'marking_remark' notice.marking.assessment_id notice.marking.pk %}" hx-swap="none">Mark again</button>{% endif %}</div>{% endfor %}{% endif %}
-{% if asks_models %}<div x-data="modelServiceNotice"><p role="status" class="alert alert-info alert-soft text-sm" x-show="loaded && !connected" x-cloak>{% icon "information-circle" %}<span>This marking uses AI, and you aren't connected to an AI service. <a class="link" href="{% url 'integrations' %}">Connect one</a> to mark these answers.</span></p></div>{% endif %}
+{% if not draft %}{% for notice in out_of_date_notices %}<div role="status" class="notice-row wrap-break-word" data-tone="{% if notice.failed %}error{% else %}warning{% endif %}">{% if notice.failed %}{% icon "exclamation-circle" %}{% else %}{% icon "exclamation-triangle" %}{% endif %}<div class="min-w-0 flex-1"><c-failure :text="notice.marking.failure">{{ notice.text }}</c-failure></div>{% if access.can_edit %}<button class="btn btn-sm whitespace-nowrap" hx-post="{% url 'marking_remark' notice.marking.assessment_id notice.marking.pk %}" hx-swap="none">Mark again</button>{% endif %}</div>{% endfor %}{% endif %}
+{% if asks_models %}<div x-data="modelServiceNotice" class="contents"><p role="status" class="notice-row" data-tone="primary" x-show="loaded && !connected" x-cloak>{% icon "information-circle" %}<span>This marking uses AI, and you aren't connected to an AI service. <a class="text-link" href="{% url 'integrations' %}">Connect one</a> to mark these answers.</span></p></div>{% endif %}
 {% endpartialdef %}
 
 {# The bar that offers to preview the draft and says how its preview went; the preview replaces `preview_target`, `#answers` unless given. #}
@@ -79,29 +69,28 @@
     {% if needs_preview %}
       <div class="preview-bar">
         {% if can_preview %}<span class="font-medium">{% if never_previewed %}Not previewed yet{% else %}Marking changed{% endif %}</span>{% else %}<span class="min-w-0 text-sm text-muted">Finish setting up to preview</span>{% endif %}
-        <button class="btn btn-sm ml-auto shrink-0" hx-post="{{ preview_url }}" hx-target="{{ preview_target }}" hx-swap="outerMorph"{% if not can_preview %} disabled{% endif %}>{% icon "eye" "size-4" %}Preview</button>
+        <button class="btn btn-sm ml-auto shrink-0" hx-post="{{ preview_url }}" hx-target="{{ preview_target }}" hx-swap="outerMorph"{% if not can_preview %} disabled{% endif %}>{% icon "eye" %}Preview</button>
       </div>
     {% elif preview_job.status == "failed" %}
-      <div class="preview-bar text-error" role="alert">
-        {% icon "exclamation-circle" "size-5" %}<span class="min-w-0 flex-1">Preview failed</span>
-        <button class="btn btn-sm" hx-post="{{ preview_url }}" hx-target="{{ preview_target }}" hx-swap="outerMorph">Try again</button>
+      <div class="notice-row wrap-break-word" data-tone="error" role="alert">
+        {% icon "exclamation-circle" %}<div class="min-w-0 flex-1"><c-failure :text="preview_job.error">Preview failed{% if preview_job.error %}: {{ preview_job.error.splitlines.0 }}{% endif %}</c-failure></div>
+        <button class="btn btn-sm whitespace-nowrap" hx-post="{{ preview_url }}" hx-target="{{ preview_target }}" hx-swap="outerMorph">Try again</button>
       </div>
-      {% if preview_job.error %}<div class="wrap-break-word border-t border-error/20 bg-error/10 px-4 py-2 text-sm text-error"><c-failure :text="preview_job.error">{{ preview_job.error.splitlines.0 }}</c-failure></div>{% endif %}
     {% elif preview_job and not preview_summary %}
       {% with job=preview_job running_label="Previewing…" %}{% partial job_bar %}{% endwith %}
     {% elif preview_summary %}
       <div class="preview-bar" role="status">
-        {% icon "eye" "size-4 shrink-0 text-primary" %}<span class="font-medium max-sm:sr-only">Preview</span>
+        {% icon "eye" "text-primary" %}<span class="font-medium max-sm:sr-only">Preview</span>
         {% if is_question_group %}
           <span class="tabular-nums text-sm text-muted">{{ preview_summary.changed_count }} {% if preview_summary.changed_count == 1 %}student's results change{% else %}students' results change{% endif %}</span>
         {% else %}
           <span class="min-w-0 tabular-nums text-sm text-muted max-md:truncate">{{ preview_summary.full_marks_count }} full · {{ preview_summary.partial_marks_count }} partial · {{ preview_summary.no_marks_count }} no marks</span>
-          {% if preview_summary.changed_count %}<span class="badge badge-primary badge-soft badge-sm ml-auto shrink-0">{{ preview_summary.changed_count }} changed</span>{% endif %}
+          {% if preview_summary.changed_count %}<c-chip tone="primary" class="ml-auto">{{ preview_summary.changed_count }} changed</c-chip>{% endif %}
         {% endif %}
       </div>
       {% if preview_summary.unmarked_count %}
-      <div class="flex items-start gap-2 border-t border-warning/30 bg-warning/10 px-4 py-2 text-sm" role="alert">
-        {% icon "exclamation-triangle" "size-4 mt-0.5 shrink-0 text-warning" %}
+      <div class="notice-row" data-tone="warning" role="alert">
+        {% icon "exclamation-triangle" %}
         <p class="min-w-0"><span class="font-medium">{{ preview_summary.unmarked_count }} answer{{ preview_summary.unmarked_count|pluralize:" needs,s need" }} marking</span>{% if preview_summary.problem %}<span class="block wrap-break-word text-muted">{{ preview_summary.problem|truncatechars:300 }}</span>{% endif %}</p>
       </div>
       {% endif %}

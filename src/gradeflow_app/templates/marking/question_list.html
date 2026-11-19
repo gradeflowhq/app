@@ -3,53 +3,53 @@
 <nav id="question-list" class="workspace-questions" aria-label="Questions" data-collapsible
      hx-get="{% url 'question_list' access.assessment.pk %}?question={{ question_list.shown_id }}" hx-target="this" hx-swap="outerMorph"
      hx-trigger="{% listen 'questions' access.assessment.pk %}, {% listen 'marks' access.assessment.pk %}, {% listen 'jobs' access.assessment.pk %}, {% listen 'drafts' access.assessment.pk request.user.pk %}">
-  <div class="column-head questions-collapsed:justify-center questions-collapsed:px-0">
-    <h1 class="text-base font-semibold questions-collapsed:sr-only">Questions</h1>
-    <span class="tabular-nums ml-auto whitespace-nowrap text-sm text-muted questions-collapsed:hidden">{{ question_list.marked_count }} of {{ question_list.questions|length }}<span class="sr-only"> marked</span></span>
+  <div class="panel-head flex-nowrap questions-collapsed:justify-center questions-collapsed:px-0">
+    <h2 class="questions-collapsed:sr-only">Questions</h2>
+    <span class="tabular-nums ml-auto whitespace-nowrap text-xs text-muted questions-collapsed:hidden" title="Marked">{{ question_list.marked_count }} / {{ question_list.questions|length }}<span class="sr-only"> marked</span></span>
     <c-questions-collapse />
   </div>
   <div class="contents" hx-target:inherited="#question-work" hx-select:inherited="#question-work" hx-select-oob:inherited="#question-list:outerMorph, #live-stream" hx-swap:inherited="outerHTML">
-  <ul class="grid flex-1 content-start gap-0.5 overflow-y-auto p-2">
+  <ul class="grid flex-1 content-start overflow-y-auto py-1.5">
     {% for item in question_list.questions %}{% with question=item.question %}
     {% partial question_item %}
     {% endwith %}{% endfor %}
   </ul>
-  <div class="flex max-h-1/2 flex-col border-t border-base-300 p-2">
-  <details class="group/groups flex min-h-0 flex-col open:details-content:contents" open>
-    <summary class="flex cursor-pointer list-none items-center gap-2 rounded-field px-3 py-2 text-sm font-medium text-muted hover:bg-base-200 questions-collapsed:justify-center questions-collapsed:px-1">
-      {% icon "chevron-up" "size-4 transition-transform group-open/groups:rotate-180" %}<span class="whitespace-nowrap questions-collapsed:sr-only">Question groups</span>{% if question_list.question_groups %}<span class="badge badge-sm badge-soft tabular-nums questions-collapsed:hidden">{{ question_list.question_groups|length }}</span>{% endif %}<button type="button" class="ml-auto text-muted hover:text-base-content questions-collapsed:hidden" data-dialog="question-group-guide" aria-label="How question groups work">{% icon "question-mark-circle" "size-4" %}</button>
-    </summary>
-    <ul class="grid gap-0.5 overflow-y-auto pt-1">
+  <section class="flex max-h-2/5 flex-col border-t border-line py-1.5" aria-labelledby="question-groups-heading">
+    <div class="flex h-9 shrink-0 items-center gap-1 pl-4 questions-collapsed:hidden">
+      <h2 id="question-groups-heading" class="truncate text-xs font-semibold text-muted">Question groups</h2>
+      <button type="button" class="btn btn-ghost btn-square btn-sm text-muted" data-dialog="question-group-guide" aria-label="How question groups work" title="How question groups work">{% icon "question-mark-circle" %}</button>
+    </div>
+    <ul class="grid min-h-0 overflow-y-auto">
       {% for question_group in question_list.question_groups %}
       {% partial question_group_item %}
       {% endfor %}
+      {% if access.can_edit %}<li><a href="{% url 'question_group_new' access.assessment.pk %}" class="question-link questions-collapsed:justify-center"{% if question_list.adding %} aria-current="page"{% endif %} title="New question group">{% icon "plus" %}<span class="truncate questions-collapsed:sr-only">New question group</span></a></li>{% endif %}
     </ul>
-    {% if access.can_edit %}<a href="{% url 'question_group_new' access.assessment.pk %}" class="question-link mt-0.5 text-sm text-primary questions-collapsed:justify-center questions-collapsed:px-1"{% if question_list.adding %} aria-current="page"{% endif %} title="New question group">{% icon "plus" "size-4" %}<span class="questions-collapsed:sr-only">New question group</span></a>{% endif %}
-  </details>
-  </div>
+  </section>
   </div>
 </nav>
 {% endpartialdef %}
 
 {% partialdef question_item %}
     <li>
-      <a href="{% url 'question' access.assessment.pk question.pk %}" class="question-link questions-collapsed:justify-center questions-collapsed:px-1"{% if item.is_shown %} aria-current="page"{% endif %} title="{{ question.key }} · {{ item.badge.label }}{% if item.failure %} · {{ item.failure }}{% endif %}{% if item.unmarked_count %} · {{ item.unmarked_count }} need{{ item.unmarked_count|pluralize:"s," }} marking{% endif %}{% if item.proportion is not None %} · {{ item.proportion|percent }}{% endif %}">
-        <span class="min-w-0 flex-1 questions-collapsed:flex-initial">
-          <span class="flex items-center gap-2">
-            <span class="truncate font-medium {% if item.unmarked_count or item.badge.style == 'warning' %}questions-collapsed:text-warning{% elif item.badge.style == 'method' %}questions-collapsed:text-primary{% else %}questions-collapsed:text-muted{% endif %}">{{ question.key }}</span>
-            {% if item.failure %}<span class="text-error">{% icon "exclamation-circle" "size-4" %}<span class="sr-only">{{ item.failure }}</span></span>{% endif %}
-            {% if item.unmarked_count %}<span class="badge badge-warning badge-soft badge-sm tabular-nums gap-0.5 questions-collapsed:hidden" title="Answers that need marking">{% icon "exclamation-triangle" "size-3" %}{{ item.unmarked_count }}</span>{% endif %}
-            {% if item.has_draft %}<span class="badge badge-primary badge-soft badge-sm questions-collapsed:hidden" title="Your unsaved changes">Draft</span>{% endif %}
-            {% if item.progress is not None %}<span class="loading loading-spinner loading-xs text-primary" aria-label="Marking"></span>{% endif %}
-          </span>
-          <c-question-status :badge="item.badge" class="questions-collapsed:hidden" />
-        </span>
-        {% if item.proportion is not None %}<span class="tabular-nums shrink-0 text-sm text-muted questions-collapsed:hidden" title="Average mark">{{ item.proportion|percent }}</span>{% endif %}
-        {% if item.progress %}<progress class="progress progress-primary absolute inset-x-3 bottom-1 h-0.5 w-auto" value="{{ item.progress|floatformat:2 }}" max="1" aria-hidden="true"></progress>{% endif %}
+      <a href="{% url 'question' access.assessment.pk question.pk %}" class="question-link questions-collapsed:justify-center"{% if item.is_shown %} aria-current="page"{% endif %} title="{{ question.key }} · {{ item.badge.label }}{% if item.has_draft %} · Draft{% endif %}{% if item.failure %} · {{ item.failure }}{% endif %}{% if item.unmarked_count %} · {{ item.unmarked_count }} need{{ item.unmarked_count|pluralize:"s," }} marking{% endif %}{% if item.proportion is not None %} · {{ item.proportion|percent }}{% endif %}">
+        <span class="question-key {% if item.unmarked_count or item.badge.style == 'warning' %}text-warning{% elif item.badge.style == 'method' %}text-primary{% else %}text-muted{% endif %}">{{ question.key }}</span>
+        {% if item.failure %}<span class="shrink-0 text-error">{% icon "exclamation-circle" %}<span class="sr-only">{{ item.failure }}</span></span>{% endif %}
+        <span class="min-w-0 flex-1 truncate questions-collapsed:hidden">{{ item.badge.label }}</span>
+        {% if item.has_draft %}<span class="shrink-0 text-primary questions-collapsed:hidden">{% icon "pencil" "size-3.5" %}<span class="sr-only">Draft</span></span>{% endif %}
+        {% if item.progress is not None %}<span class="loading loading-spinner loading-xs shrink-0 text-primary" aria-label="Marking"></span>
+        {% elif item.unmarked_count %}<span class="tabular-nums flex shrink-0 items-center gap-0.5 text-xs text-warning questions-collapsed:hidden">{% icon "exclamation-triangle" "size-3.5" %}{{ item.unmarked_count }}<span class="sr-only"> need{{ item.unmarked_count|pluralize:"s," }} marking</span></span>
+        {% elif item.proportion is not None %}<span class="tabular-nums shrink-0 text-xs questions-collapsed:hidden"><span class="sr-only">Average </span>{{ item.proportion|percent }}</span>{% endif %}
+        {% if item.progress %}<progress class="progress progress-primary absolute inset-x-4 bottom-0.5 h-0.5 w-auto" value="{{ item.progress|floatformat:2 }}" max="1" aria-hidden="true"></progress>{% endif %}
       </a>
     </li>
 {% endpartialdef %}
 
 {% partialdef question_group_item %}
-      <li><a href="{{ question_group.url }}" class="question-link questions-collapsed:justify-center questions-collapsed:px-1"{% if question_group.is_shown %} aria-current="page"{% endif %} title="{% if question_group.marked_keys %}{{ question_group.marked_keys|join:", " }}{% else %}New{% endif %}{% if question_group.method_label %} · {{ question_group.method_label }}{% elif not question_group.has_draft %} · Not set up yet{% endif %}"><span class="min-w-0"><span class="flex items-center gap-2"><span class="truncate font-medium{% if not question_group.method_label and not question_group.has_draft %} questions-collapsed:text-warning{% endif %}">{% if question_group.marked_keys %}{{ question_group.marked_keys|join:", " }}{% else %}New{% endif %}</span>{% if question_group.has_draft %}<span class="badge badge-primary badge-soft badge-sm questions-collapsed:hidden" title="Your unsaved changes">Draft</span>{% endif %}</span>{% if question_group.method_label %}<span class="block truncate text-sm text-muted questions-collapsed:hidden">{{ question_group.method_label }}</span>{% elif not question_group.has_draft %}<span class="block truncate text-sm text-warning questions-collapsed:hidden">Not set up yet</span>{% endif %}</span></a></li>
+      {% firstof question_group.marked_keys|join:", " "New" as keys %}
+      <li><a href="{{ question_group.url }}" class="question-link questions-collapsed:justify-center"{% if question_group.is_shown %} aria-current="page"{% endif %} title="{{ keys }}{% if question_group.method_label %} · {{ question_group.method_label }}{% elif not question_group.has_draft %} · Not set up yet{% endif %}{% if question_group.has_draft %} · Draft{% endif %}">
+        <span class="question-key {% if question_group.method_label or question_group.has_draft %}text-primary{% else %}text-warning{% endif %}">{{ keys }}</span>
+        <span class="min-w-0 flex-1 truncate questions-collapsed:hidden">{% if question_group.method_label %}{{ question_group.method_label }}{% elif not question_group.has_draft %}Not set up yet{% endif %}</span>
+        {% if question_group.has_draft %}<span class="shrink-0 text-primary questions-collapsed:hidden">{% icon "pencil" "size-3.5" %}<span class="sr-only">Draft</span></span>{% endif %}
+      </a></li>
 {% endpartialdef %}

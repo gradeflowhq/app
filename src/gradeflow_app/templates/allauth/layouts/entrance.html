@@ -1,10 +1,10 @@
 {% extends "allauth/layouts/base.html" %}
 {% block body %}
-<c-topbar />
-<main id="main" class="mx-auto max-w-md px-6 py-14">
-  <div class="card-box overflow-hidden">
-    <div class="grid gap-6 p-8 [&_.btn]:w-full">{% block content %}{% endblock %}</div>
-    <nav class="flex justify-center gap-6 border-t border-base-300 bg-base-200/50 px-8 py-4 text-sm empty:hidden" aria-label="Other ways in">{% block links %}{% endblock %}</nav>
+<main id="main" class="grid min-h-dvh content-center justify-items-center gap-6 px-4 py-10">
+  <a href="{% if user.is_authenticated %}{% url 'courses' %}{% else %}/{% endif %}" class="flex items-center gap-2.5 rounded-field text-lg font-semibold tracking-tight"><c-logo class="size-7" />GradeFlow</a>
+  <div class="surface w-full max-w-100">
+    <div class="grid gap-5 p-6 [&_.btn]:w-full">{% block content %}{% endblock %}</div>
+    <nav class="panel-foot justify-center gap-x-6 text-sm text-muted empty:hidden" aria-label="Other ways in">{% block links %}{% endblock %}</nav>
   </div>
 </main>
 {% endblock %}

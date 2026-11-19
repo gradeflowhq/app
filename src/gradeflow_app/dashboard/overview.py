@@ -1,18 +1,19 @@
-"""What an assessment's overview shows: setup progress, a summary of the marks, and recent activity."""
+"""What an assessment's overview shows: its figures, what's left to do, a summary of the marks, and recent activity."""
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Set
 from dataclasses import dataclass
 from datetime import datetime
 from itertools import groupby
 from typing import Any, Literal
 from uuid import UUID
 
+from django.conf import settings
 from django.template.defaultfilters import pluralize
 from django.urls import reverse
 
 from gradeflow_app.accounts.models import User
 from gradeflow_app.assessments.models import Assessment, AssessmentAccess
-from gradeflow_app.dashboard.progress import progress
+from gradeflow_app.dashboard.progress import Progress, progress
 from gradeflow_app.imports.models import SubmissionsFile, imported_mark_keys
 from gradeflow_app.marking.checks import assessment_checks
 from gradeflow_app.marking.models import Marking
@@ -34,6 +35,15 @@ MAX_CHANGES_READ = 500
 """The most changes to markings, and to adjustments, read for activity: enough for runs of them to fill a page."""
 BAR_WIDTHS = (("coarse", "Coarse", -1), ("auto", "Auto", 0), ("fine", "Fine", 1))
 """The distribution's bar widths: name, label, and how many round widths finer than Rice's rule suggests."""
+
+
+@dataclass(frozen=True)
+class NextStep:
+    """What's left to do, as the overview's banner says it, and the button that opens it."""
+
+    message: str
+    action: str
+    url: str
 
 
 @dataclass(frozen=True)
@@ -65,17 +75,20 @@ class _Change:
 def overview_context(access: AssessmentAccess) -> dict[str, Any]:
     assessment = access.assessment
     accepted = assessment_checks(assessment)
-    assessment_progress = progress(assessment, accepted)
+    imported_keys = imported_mark_keys(assessment)
+    assessment_progress = progress(assessment, accepted, imported_keys)
     results = assessment_results(assessment) if assessment_progress.latest_import else None
     results_with_marks = results if results and results.has_marks else None
+    summaries = results.summaries() if results else []
     latest_events = activity(assessment, limit=OVERVIEW_ACTIVITY_LIMIT + 1)
     saved_by_key = saved_markings(assessment.markings.select_related("question"), accepted)
     return {
         "access": access,
         "progress": assessment_progress,
+        "student_count": len(results.rows) if results else 0,
+        "next_step": _next_step(assessment, assessment_progress, summaries) if results and access.can_edit else None,
         "results": results_with_marks,
-        "questions": _questions(assessment, results_with_marks, saved_by_key) if results_with_marks else [],
-        "has_adjustments": results_with_marks is not None and results_with_marks.has_adjustments,
+        "questions": _questions(summaries, saved_by_key, imported_keys) if results_with_marks else [],
         "distribution": _distribution(results_with_marks) if results_with_marks else None,
         "box_plot": (
             _box_plot(results_with_marks.statistics, results_with_marks.max_marks) if results_with_marks else None
@@ -85,13 +98,45 @@ def overview_context(access: AssessmentAccess) -> dict[str, Any]:
     }
 
 
+def _next_step(
+    assessment: Assessment, assessment_progress: Progress, summaries: list[QuestionSummary]
+) -> NextStep | None:
+    """The questions and answers left to mark, opening the first of them; then sending the marks, until they're sent."""
+    not_marked = [
+        summary.question for summary in summaries if summary.question.key not in assessment_progress.marked_keys
+    ]
+    needing = [summary for summary in summaries if summary.unmarked_count]
+    parts = []
+    if not_marked:
+        parts.append(f"{_questions_text(not_marked)} {pluralize(len(not_marked), "isn't,aren't")} marked")
+    if needing:
+        count = sum(summary.unmarked_count for summary in needing)
+        questions = _questions_text([summary.question for summary in needing])
+        parts.append(f"{count} answer{pluralize(count)} in {questions} need{pluralize(count, 's,')} marking")
+    if parts:
+        first = not_marked[0] if not_marked else needing[0].question
+        url = reverse("question", args=[assessment.pk, first.pk])
+        return NextStep(" and ".join(parts) + ".", f"Go to {first.key}", url)
+    if assessment_progress.latest_sent_marks is None and settings.GRADEFLOW_CORS_PROXY_URL:
+        return NextStep(
+            "The marks aren't sent to Canvas yet.", "Send to Canvas", reverse("export", args=[assessment.pk])
+        )
+    return None
+
+
+def _questions_text(questions: list[Question]) -> str:
+    """Up to two questions by key, as in "Q3 and Q8"; more as how many."""
+    if len(questions) > 2:
+        return f"{len(questions)} questions"
+    return " and ".join(question.key for question in questions)
+
+
 def _questions(
-    assessment: Assessment, results: Results, saved_by_key: Mapping[str, SavedMarking]
+    summaries: list[QuestionSummary], saved_by_key: Mapping[str, SavedMarking], imported_keys: Set[str]
 ) -> list[tuple[QuestionSummary, MarkingBadge]]:
-    """Each question's summary beside how its saved marking marks it."""
-    imported_keys = imported_mark_keys(assessment)
+    """Each question's summary beside its marking badge."""
     badges = []
-    for summary in results.summaries():
+    for summary in summaries:
         key = summary.question.key
         saved_marking = saved_by_key.get(key)
         method_label = saved_marking.method_label if saved_marking else None

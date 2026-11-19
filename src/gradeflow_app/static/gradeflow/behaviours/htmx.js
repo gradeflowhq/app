@@ -45,8 +45,14 @@ export function start() {
     if (event.reason?.name === "AbortError") event.preventDefault();
   });
   // A morph tells each element it keeps with a "morph" event first, so a component can take down the markup its
-  // library added. It leaves `x-show`'s style and `x-cloak` to Alpine.
+  // library added. It leaves `x-show`'s style and `x-cloak` to Alpine, and morphs an element into another only when
+  // both are the same Alpine component: a component started on a morphed element would start before its children.
   htmx.registerExtension("morph-event", {
+    init: (api) => {
+      const isSoftMatch = api.isSoftMatch;
+      api.isSoftMatch = (oldNode, newNode) =>
+        isSoftMatch(oldNode, newNode) && oldNode.getAttribute("x-data") === newNode.getAttribute("x-data");
+    },
     htmx_before_morph_node: (_, { oldNode }) => oldNode.dispatchEvent?.(new Event("morph")),
     htmx_before_morph_attr: (element, { attrName }) =>
       !(element.hasAttribute("x-show") && (attrName === "style" || attrName === "x-cloak")),
