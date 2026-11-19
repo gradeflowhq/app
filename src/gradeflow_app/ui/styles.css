@@ -357,7 +357,8 @@
   }
 }
 
-/* A bordered list inside a panel: a grey title row, then rows divided by lines. */
+/* A bordered list inside a panel: a grey title row, then rows divided by lines, continued by any in a
+   `details` after them. */
 @utility bordered-list {
   @apply overflow-hidden rounded-inner border border-line;
   & > header {
@@ -366,10 +367,12 @@
       @apply text-sm font-semibold;
     }
   }
-  & > ul > li {
+  & > ul > li,
+  & > details > ul > li {
     @apply flex min-h-9.5 items-center gap-2.5 px-3 py-1.5 text-sm;
   }
-  & > ul > li + li {
+  & > ul > li + li,
+  & > details > ul > li + li {
     @apply border-t border-line;
   }
 }

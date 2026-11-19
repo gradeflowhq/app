@@ -15,21 +15,36 @@
   {% if access.can_edit and not draft %}<label class="btn btn-sm toggle-button ml-auto">{% icon "pencil" %}Adjust marks<input type="checkbox" class="sr-only" data-adjust aria-controls="adjust-{{ answer_group.student_pks.0 }}"></label>{% endif %}
 </div>
 {% if distinct_answers|length > 1 %}
-<ul class="hidden grid-cols-1 gap-2 group-has-[[data-answers]:checked]/body:grid{% if answer_group.joined_by_similarity %} group-has-[[data-adjust]:checked]/body:grid{% endif %}" aria-label="Answers">
-  {% for answer, count in distinct_answers %}{% if not code or forloop.counter <= 3 %}
-  <li>{% include "results/answer_text.html" with expanded=True %}<p class="tabular-nums mt-1 text-sm text-muted">{{ count }} student{{ count|pluralize }}</p></li>
-  {% endif %}{% endfor %}
-  {% if code and distinct_answers|length > 3 %}<li class="tabular-nums text-sm text-muted">and {{ distinct_answers|length|add:"-3" }} more</li>{% endif %}
-</ul>
+<div class="bordered-list hidden group-has-[[data-answers]:checked]/body:block{% if answer_group.joined_by_similarity %} group-has-[[data-adjust]:checked]/body:block{% endif %}">
+  <ul aria-label="Answers">
+    {% for answer, count in distinct_answers|slice:":6" %}{% if not code or forloop.counter <= 3 %}{% partial answer_row %}{% endif %}{% endfor %}
+    {% if code and distinct_answers|length > 3 %}<li class="tabular-nums text-muted">and {{ distinct_answers|length|add:"-3" }} more</li>{% endif %}
+  </ul>
+  {% if not code and distinct_answers|length > 6 %}
+  <details class="group border-t border-line">
+    <summary class="flex min-h-9.5 cursor-pointer list-none items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-muted hover:text-base-content group-open:hidden">{% icon "chevron-down" %}Show {{ distinct_answers|length|add:"-6" }} more</summary>
+    <ul>{% for answer, count in distinct_answers|slice:"6:" %}{% partial answer_row %}{% endfor %}</ul>
+  </details>
+  {% endif %}
+</div>
 {% endif %}
 {% if answer_group.original_answers and code or answer_group.original_answers and distinct_answers|length == 1 %}
-<ul class="hidden grid-cols-1 gap-2 group-has-[[data-original]:checked]/body:grid" aria-label="Original">
-  {% for answer, count in answer_group.original_answers|slice:":3" %}
-  <li>{% if code %}<pre class="code-block">{{ answer }}</pre>{% else %}<p class="whitespace-pre-wrap wrap-break-word">{{ answer }}</p>{% endif %}<p class="tabular-nums mt-1 text-sm text-muted">{{ count }} student{{ count|pluralize }}</p></li>
-  {% endfor %}
-  {% if answer_group.original_answers|length > 3 %}<li class="tabular-nums text-sm text-muted">and {{ answer_group.original_answers|length|add:"-3" }} more</li>{% endif %}
-</ul>
+<div class="bordered-list hidden group-has-[[data-original]:checked]/body:block">
+  <ul aria-label="Original">
+    {% for answer, count in answer_group.original_answers|slice:":3" %}{% with original=True %}{% partial answer_row %}{% endwith %}{% endfor %}
+    {% if answer_group.original_answers|length > 3 %}<li class="tabular-nums text-muted">and {{ answer_group.original_answers|length|add:"-3" }} more</li>{% endif %}
+  </ul>
+</div>
 {% endif %}
+{% endpartialdef %}
+{# An answer and how many of the group's students gave it, over a bar of their share; `original` shows it as written. #}
+{% partialdef answer_row %}
+<li class="bg-linear-to-r from-primary/8 to-primary/8 bg-no-repeat" style="background-size: {% widthratio count answer_group.student_count 100 %}%">
+  <div class="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_auto] items-baseline gap-3">
+    {% if not original %}{% include "results/answer_text.html" with expanded=True %}{% elif code %}<pre class="code-block">{{ answer }}</pre>{% else %}<p class="whitespace-pre-wrap wrap-break-word">{{ answer }}</p>{% endif %}
+    <span class="tabular-nums text-muted">{{ count }}<span class="sr-only"> student{{ count|pluralize }}</span></span>
+  </div>
+</li>
 {% endpartialdef %}
 {% with low=answer_group.marks_range.0 high=answer_group.marks_range.1 max_marks=question.core_question.max_marks core_question=question.core_question feedback=answer_group.preview.feedback|default:answer_group.feedback code=question.core_question|code_language %}
 <li>

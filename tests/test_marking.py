@@ -1050,3 +1050,17 @@ def test_text_answers_in_an_answer_group_are_listed_under_answers(client: Client
     listed = between(page, 'aria-label="Answers">', "</ul>")
     assert ">Paris</p>" in listed
     assert ">paris </p>" in listed
+
+
+def test_an_answer_group_lists_its_six_commonest_answers_then_offers_the_rest(
+    client: Client, assessment: Assessment
+) -> None:
+    spellings = ["Paris"] * 4 + ["paris", "PARIS", "Paris ", "paris ", "PARIS ", " Paris"]
+    for student, answer in zip(assessment.students.order_by("pk"), spellings, strict=True):
+        student.answers = {"Q1": answer}
+        student.save()
+    page = client.get(reverse("answers", args=[assessment.pk, assessment.questions.get(key="Q1").pk])).text
+    listed = between(page, '<ul aria-label="Answers">', "</ul>")
+    assert listed.count("<li") == 6
+    assert re.search(r'style="background-size: 40%">\s*<div[^>]*>\s*<p[^>]*>Paris</p>\s*<span[^>]*>4<', listed)
+    assert "Show 1 more" in page
