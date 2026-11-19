@@ -443,7 +443,7 @@ def test_a_change_without_a_model_service_keeps_the_decisions(user: User, assess
     marking = criteria_marking(assessment)
     assert schedule_marking(marking, user) is None
     assert [notice.text for notice in out_of_date_notices(assessment_checks(assessment), ["Q3"])] == [
-        "Not marked again: the change came from someone without an AI service. The marks shown are from before."
+        "Not marked again: the change came from someone without an AI service."
     ]
 
 
@@ -464,7 +464,6 @@ def test_marking_says_what_it_waits_on(
     question = assessment.questions.get(key="Q3")
     column = client.get(reverse("answers", args=[assessment.pk, question.pk])).text
     assert "Deciding criteria: 12 of 30" in column
-    assert "from before" not in column
 
 
 def test_the_answers_column_asks_to_connect_when_marking_asks_a_model(client: Client, assessment: Assessment) -> None:

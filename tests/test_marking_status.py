@@ -76,14 +76,12 @@ def test_a_marking_that_stops_validating_schedules_nothing_and_says_so(
     assert list(Result.objects.values("student_id", "question_id", "proportion", "revision")) == previous
 
 
-def test_a_failed_run_says_the_marks_are_from_before(
-    assessment: Assessment, user: User, idle_runner: FakeRunner
-) -> None:
+def test_a_failed_run_says_why(assessment: Assessment, user: User, idle_runner: FakeRunner) -> None:
     run = schedule_marking(full_marks_marking(assessment, "Q1"), user)
     assert run is not None
     idle_runner.end(run.id, Ending.TIMED_OUT)
     assert [notice.text for notice in out_of_date_notices(assessment_checks(assessment), ["Q1"])] == [
-        "Marking failed: Ran past its time limit. The marks shown are from before."
+        "Marking failed: Ran past its time limit."
     ]
 
 

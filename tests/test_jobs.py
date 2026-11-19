@@ -318,7 +318,7 @@ def test_a_failed_remark_says_why_until_marked_again(
     post_callback(run_id, {"event": "failed", "error": "Out of time."})
     question = assessment.questions.get(key="Q1")
     column = client.get(reverse("answers", args=[assessment.pk, question.pk])).text
-    assert "Marking failed: Out of time. The marks shown are from before." in column
+    assert "Marking failed: Out of time." in column
     assert '<div role="status" class="notice-row wrap-break-word" data-tone="error">' in column, "as a failed preview"
     assert run_id not in idle_runner.held
     start_remark(start, assessment, "Q1", user)
@@ -377,7 +377,7 @@ def test_a_run_that_ended_without_calling_back_fails_with_the_runners_reason(
     assert Marking.objects.get(question__key="Q1").failure == (f"{failure}\n{details}" if failure else "")
     column = client.get(reverse("answers", args=[assessment.pk, assessment.questions.get(key="Q1").pk])).text
     if failure:
-        assert escape(f"Marking failed: {failure} The marks shown are from before.") in column
+        assert escape(f"Marking failed: {failure}") in column
         assert details in between(column, "</summary>", "</details>")
     assert run_id not in idle_runner.held
 
