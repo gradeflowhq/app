@@ -9,7 +9,7 @@
       <h2 class="truncate">{% if question_keys %}{{ question_keys|join:", " }}{% else %}Answers{% endif %}</h2>
       {% if question_keys %}<span class="tabular-nums shrink-0 text-sm text-muted">{{ student_count }} student{{ student_count|pluralize }}</span>{% endif %}
       {% if preview_summary %}
-      <form class="ml-auto flex items-center gap-2" hx-get="{{ answers_url }}" hx-target="#answers" hx-swap="outerHTML" hx-trigger="change">
+      <form class="ml-auto flex items-center gap-2" hx-get="{{ answers_url }}" hx-target="#answers" hx-swap="outerHTML" hx-trigger="change" hx-indicator="#answers .workspace-cards">
         <label for="combinations-filter" class="text-sm text-muted">Show</label>
         <select id="combinations-filter" name="filter" class="select select-sm w-32"><option value="all">All</option><option value="changed"{% if filter == "changed" %} selected{% endif %}>Changed</option></select>
       </form>

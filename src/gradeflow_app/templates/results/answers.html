@@ -26,7 +26,7 @@
       {% if access.can_edit %}<button class="btn btn-sm ml-auto" hx-get="{% url 'question_settings' question.assessment_id question.pk %}" hx-target="#drawer-body" hx-swap="innerHTML" data-dialog="drawer">{% icon "adjustments-horizontal" %}Settings</button>{% endif %}
     </div>
     {% with description=question.core_question.description %}{% partial question_description %}{% endwith %}
-    <form class="flex flex-wrap items-center gap-x-3 px-4 py-1.5" hx-get="{% url 'answers' question.assessment_id question.pk %}" hx-target="#answers" hx-swap="outerMorph" hx-trigger="change delay:150ms" hx-sync="this:replace">
+    <form class="flex flex-wrap items-center gap-x-3 px-4 py-1.5" hx-get="{% url 'answers' question.assessment_id question.pk %}" hx-target="#answers" hx-swap="outerMorph" hx-trigger="change delay:150ms" hx-sync="this:replace" hx-indicator="#answers .workspace-cards">
       <label class="flex items-center text-sm text-muted">Group<select name="group" class="select select-ghost select-sm w-auto font-medium text-base-content">{% for value, label in groupings.items %}<option value="{{ value }}"{% if grouping == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
       {% if grouping_options.similarity != 'exact' %}
       <c-popover id="answers-similarity" label="How similar" button_class="btn btn-ghost btn-square btn-sm -ml-3 text-muted" panel_class="w-64 p-4">
