@@ -1,5 +1,5 @@
 <c-vars course=None assessment=None tabs_label="" />
-{# The course and assessment, each with a menu to switch to another, then the page's `tabs`. A page can add links after the logo (`nav`) and, for people signed out, buttons at the end (`actions`). #}
+{# The course and assessment, each with a menu to switch to another, then the page's `tabs` and buttons after them (`tab_actions`). A page can add links after the logo (`nav`) and, for people signed out, buttons at the end (`actions`). #}
 {% load courses %}
 <header class="app-header">
   <nav class="flex h-13 items-center gap-1 px-4 sm:px-6" aria-label="Main">
@@ -52,5 +52,5 @@
       {% endif %}
     </div>
   </nav>
-  {% if tabs %}<nav id="tabs" class="tab-row" aria-label="{{ tabs_label }}">{{ tabs }}</nav>{% endif %}
+  {% if tabs %}<div class="flex items-center"><nav id="tabs" class="tab-row min-w-0 flex-1" aria-label="{{ tabs_label }}">{{ tabs }}</nav>{{ tab_actions }}</div>{% endif %}
 </header>

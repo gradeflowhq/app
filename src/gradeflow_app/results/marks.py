@@ -18,6 +18,8 @@ from gradeflow_app.questions.models import Question
 from gradeflow_app.results.models import Adjustment, Result
 
 MAX_BARS = 50
+MIN_STUDENTS = 20
+"""The fewest students for item analysis."""
 BAND_WIDTHS = (0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500)
 
 type Level = Literal["full", "partial", "no_marks"]
@@ -189,17 +191,69 @@ class StudentMarks:
         return sum(not award.is_marked for award in self.awards.values())
 
 
+@dataclass(frozen=True)
+class Thirds:
+    """A question's average proportion of marks for the bottom and top thirds of students, ranked by rest score."""
+
+    bottom: float
+    top: float
+
+
+def thirds(proportions: Sequence[float], rest_scores: Sequence[float]) -> Thirds | None:
+    """None for fewer than `MIN_STUDENTS`, or when every rest score is the same."""
+    if len(proportions) < MIN_STUDENTS or len(set(rest_scores)) < 2:
+        return None
+    ranked = [
+        proportion for _, proportion in sorted(zip(rest_scores, proportions, strict=True), key=lambda pair: pair[0])
+    ]
+    size = len(ranked) // 3
+    return Thirds(statistics.fmean(ranked[:size]), statistics.fmean(ranked[-size:]))
+
+
+def item_rest_correlation(proportions: Sequence[float], rest_scores: Sequence[float]) -> float | None:
+    """The corrected item-total correlation; None for fewer than `MIN_STUDENTS`, or when either side is constant."""
+    if len(proportions) < MIN_STUDENTS:
+        return None
+    try:
+        return statistics.correlation(proportions, rest_scores)
+    except statistics.StatisticsError:
+        return None
+
+
+def cronbach_alpha(marks: Sequence[Sequence[float]]) -> float | None:
+    """Of `marks`, one sequence per question over the same students; None for fewer than two questions or
+    `MIN_STUDENTS` students, or when every total is the same."""
+    if len(marks) < 2 or len(marks[0]) < MIN_STUDENTS:
+        return None
+    total_variance: float = statistics.pvariance([sum(student) for student in zip(*marks, strict=True)])
+    if not total_variance:
+        return None
+    question_variance = sum(statistics.pvariance(question) for question in marks)
+    return len(marks) / (len(marks) - 1) * (1 - question_variance / total_variance)
+
+
 @dataclass
 class QuestionSummary:
+    """A question's marks; the full, partial and no marks counts leave out blank answers."""
+
     question: Question
     marked_count: int
     average: float | None
     full_marks_count: int
+    partial_marks_count: int
     no_marks_count: int
     blank_count: int
-    adjusted_count: int
     unmarked_count: int
     """How many answers the marking couldn't mark and no one has set marks for."""
+    item_rest_correlation: float | None
+    thirds: Thirds | None
+    most_common_wrong_answer: tuple[str, int] | None
+    """The answer, not blank, most students gave for no marks, and how many gave it."""
+
+    @property
+    def has_negative_discrimination(self) -> bool:
+        """Whether students who did worse on the other questions did better on this one."""
+        return self.item_rest_correlation is not None and self.item_rest_correlation < 0
 
     @property
     def average_proportion(self) -> float | None:
@@ -279,26 +333,50 @@ class Results:
     def unmarked_count(self) -> int:
         return sum(row.unmarked_count for row in self.rows)
 
+    @property
+    def cronbach_alpha(self) -> float | None:
+        """Over the questions with marks; an answer without marks counts as 0."""
+        columns = [[row.awards[question.key].marks for row in self.rows] for question in self.questions]
+        return cronbach_alpha(
+            [
+                [0.0 if marks is None else marks for marks in column]
+                for column in columns
+                if any(marks is not None for marks in column)
+            ]
+        )
+
     def summaries(self) -> list[QuestionSummary]:
-        summaries = []
-        for question in self.questions:
-            awards = [row.awards[question.key] for row in self.rows]
-            marks = [award.marks for award in awards if award.marks is not None]
-            levels = Counter(award.level for award in awards)
-            answers = Counter(row.student.answers.get(question.key, "") for row in self.rows)
-            summaries.append(
-                QuestionSummary(
-                    question=question,
-                    marked_count=len(marks),
-                    average=statistics.fmean(marks) if marks else None,
-                    full_marks_count=levels["full"],
-                    no_marks_count=levels["no_marks"],
-                    blank_count=sum(count for answer, count in answers.items() if is_blank(question, answer)),
-                    adjusted_count=sum(award.adjustment is not None for award in awards),
-                    unmarked_count=sum(not award.is_marked for award in awards),
-                )
-            )
-        return summaries
+        totals = self.totals
+        return [self._summary(question, totals) for question in self.questions]
+
+    def _summary(self, question: Question, totals: list[float]) -> QuestionSummary:
+        awards = [row.awards[question.key] for row in self.rows]
+        answers = [row.student.answers.get(question.key, "") for row in self.rows]
+        blank_answers = {answer for answer in set(answers) if is_blank(question, answer)}
+        with_marks = [
+            (award.marks, total) for award, total in zip(awards, totals, strict=True) if award.marks is not None
+        ]
+        answered = [
+            (award, answer) for award, answer in zip(awards, answers, strict=True) if answer not in blank_answers
+        ]
+        levels = Counter(award.level for award, _ in answered)
+        wrong_answers = Counter(" ".join(answer.split()) for award, answer in answered if award.level == "no_marks")
+        max_marks = question.core_question.max_marks
+        proportions = [marks / max_marks for marks, _ in with_marks] if max_marks else []
+        rest_scores = [total - marks for marks, total in with_marks]
+        return QuestionSummary(
+            question=question,
+            marked_count=len(with_marks),
+            average=statistics.fmean(marks for marks, _ in with_marks) if with_marks else None,
+            full_marks_count=levels["full"],
+            partial_marks_count=levels["partial"],
+            no_marks_count=levels["no_marks"],
+            blank_count=len(awards) - len(answered),
+            unmarked_count=sum(not award.is_marked for award in awards),
+            item_rest_correlation=item_rest_correlation(proportions, rest_scores),
+            thirds=thirds(proportions, rest_scores),
+            most_common_wrong_answer=wrong_answers.most_common(1)[0] if wrong_answers else None,
+        )
 
 
 class Band(NamedTuple):

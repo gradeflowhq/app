@@ -290,6 +290,73 @@
     @apply bg-error-soft text-error-soft-content;
   }
 }
+
+/* A question's answers as one bar, a part per level (`data-level`), each as wide as its share of the students. */
+@utility marks-bar {
+  @apply flex h-2 w-36 gap-px overflow-hidden rounded-full bg-base-content/6;
+}
+/* The bottom and top thirds' average marks for a question as two dots along 0–100% (`--bottom`, `--top`) joined by a
+   line, then as numbers; amber with `data-negative`. */
+@utility thirds {
+  @apply flex items-center gap-2.5 text-sm whitespace-nowrap tabular-nums text-muted;
+  & > span {
+    @apply relative h-3 w-28 shrink-0 before:absolute before:inset-x-0 before:top-1.25 before:h-0.5 before:rounded-full before:bg-base-300 before:content-[''];
+  }
+  & [data-part="range"] {
+    @apply absolute top-1 h-1 rounded-full bg-primary/35;
+    left: min(var(--bottom), var(--top));
+    width: max(var(--top) - var(--bottom), var(--bottom) - var(--top));
+  }
+  & [data-third] {
+    @apply absolute top-0.25 size-2.5 -translate-x-1/2 rounded-full;
+  }
+  & [data-third="bottom"] {
+    left: var(--bottom);
+  }
+  & [data-third="top"] {
+    left: var(--top);
+  }
+  &[data-negative] {
+    @apply text-warning-soft-content;
+    & [data-part="range"] {
+      @apply bg-warning/50;
+    }
+    & [data-third="top"] {
+      @apply bg-warning;
+    }
+  }
+}
+/* A chart's legend: a swatch (`data-level` or `data-third`) before each name. */
+@utility chart-legend {
+  @apply flex flex-wrap items-center gap-x-3 text-xs text-muted;
+  & > li > span {
+    @apply mr-1.5 inline-block size-2 rounded-xs;
+  }
+  & [data-third] {
+    @apply rounded-full;
+  }
+}
+@layer utilities {
+  :is(.marks-bar, .chart-legend) [data-level="full"] {
+    @apply bg-success/80;
+  }
+  :is(.marks-bar, .chart-legend) [data-level="partial"] {
+    @apply bg-warning/80;
+  }
+  :is(.marks-bar, .chart-legend) [data-level="no_marks"] {
+    @apply bg-error/75;
+  }
+  :is(.marks-bar, .chart-legend) [data-level="blank"] {
+    @apply bg-base-300;
+  }
+  :is(.thirds, .chart-legend) [data-third="bottom"] {
+    @apply bg-base-100 inset-ring-2 inset-ring-subtle;
+  }
+  :is(.thirds, .chart-legend) [data-third="top"] {
+    @apply bg-primary;
+  }
+}
+
 /* A bordered list inside a panel: a grey title row, then rows divided by lines. */
 @utility bordered-list {
   @apply overflow-hidden rounded-inner border border-line;

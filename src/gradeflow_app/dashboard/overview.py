@@ -1,15 +1,18 @@
-"""What an assessment's overview shows: its figures, what's left to do, a summary of the marks, and recent activity."""
+"""What an assessment's overview shows: its figures, what's left to do, a summary of the marks, what's worth a look in
+the questions, and its activity."""
 
+import statistics
 from collections.abc import Mapping, Set
 from dataclasses import dataclass
 from datetime import datetime
-from itertools import groupby
+from itertools import groupby, takewhile
 from typing import Any, Literal
 from uuid import UUID
 
 from django.conf import settings
 from django.template.defaultfilters import pluralize
 from django.urls import reverse
+from django.utils.text import Truncator, get_text_list
 
 from gradeflow_app.accounts.models import User
 from gradeflow_app.assessments.models import Assessment, AssessmentAccess
@@ -19,9 +22,16 @@ from gradeflow_app.marking.checks import assessment_checks
 from gradeflow_app.marking.models import Marking
 from gradeflow_app.marking.presenters import MarkingBadge, SavedMarking, marking_badge, saved_markings
 from gradeflow_app.questions.models import Question
-from gradeflow_app.results.marks import QuestionSummary, Results, TotalStatistics, assessment_results, histogram
+from gradeflow_app.results.marks import (
+    MIN_STUDENTS,
+    QuestionSummary,
+    Results,
+    TotalStatistics,
+    assessment_results,
+    histogram,
+)
 from gradeflow_app.results.models import Adjustment
-from gradeflow_app.ui.templatetags.ui import marks
+from gradeflow_app.ui.templatetags.ui import marks, percent
 
 FIVE_NUMBER_SUMMARY = (
     ("Min", "minimum"),
@@ -30,11 +40,25 @@ FIVE_NUMBER_SUMMARY = (
     ("Q3", "upper_quartile"),
     ("Max", "maximum"),
 )
-OVERVIEW_ACTIVITY_LIMIT = 5
 MAX_CHANGES_READ = 500
 """The most changes to markings, and to adjustments, read for activity: enough for runs of them to fill a page."""
 BAR_WIDTHS = (("coarse", "Coarse", -1), ("auto", "Auto", 0), ("fine", "Fine", 1))
 """The distribution's bar widths: name, label, and how many round widths finer than Rice's rule suggests."""
+COMMON_WRONG_ANSWER_SHARE = 0.2
+"""Of the students with marks for a question, how many give the same wrong answer for it to be worth a look."""
+ALMOST_EVERYONE_SHARE = 0.95
+"""Of the students with marks for a question, how many get full marks, or no marks, for it to be worth a look."""
+MIN_BLANK_SHARE = 0.05
+"""Of the students, how many leave a question blank for it to count among the blanks near the end."""
+ACCEPTABLE_ALPHA = 0.7
+ALPHA_RATINGS = (
+    (0.9, "Excellent"),
+    (0.8, "Good"),
+    (ACCEPTABLE_ALPHA, "Acceptable"),
+    (0.6, "Questionable"),
+    (0.5, "Poor"),
+)
+"""George and Mallery's rule of thumb for Cronbach's alpha, by each rating's lowest value; below 0.5, Unacceptable."""
 
 
 @dataclass(frozen=True)
@@ -44,6 +68,18 @@ class NextStep:
     message: str
     action: str
     url: str
+
+
+@dataclass(frozen=True)
+class Finding:
+    """What stands out about `question`, or about the questions from it to `last_question`."""
+
+    question: Question
+    title: str
+    detail: str
+    icon: str
+    warning: bool = False
+    last_question: Question | None = None
 
 
 @dataclass(frozen=True)
@@ -80,7 +116,7 @@ def overview_context(access: AssessmentAccess) -> dict[str, Any]:
     results = assessment_results(assessment) if assessment_progress.latest_import else None
     results_with_marks = results if results and results.has_marks else None
     summaries = results.summaries() if results else []
-    latest_events = activity(assessment, limit=OVERVIEW_ACTIVITY_LIMIT + 1)
+    alpha = results_with_marks.cronbach_alpha if results_with_marks else None
     saved_by_key = saved_markings(assessment.markings.select_related("question"), accepted)
     return {
         "access": access,
@@ -93,8 +129,10 @@ def overview_context(access: AssessmentAccess) -> dict[str, Any]:
         "box_plot": (
             _box_plot(results_with_marks.statistics, results_with_marks.max_marks) if results_with_marks else None
         ),
-        "activity": latest_events[:OVERVIEW_ACTIVITY_LIMIT],
-        "has_more_activity": len(latest_events) > OVERVIEW_ACTIVITY_LIMIT,
+        "cronbach_alpha": alpha,
+        "alpha_rating": _alpha_rating(alpha) if alpha is not None else "",
+        "acceptable_alpha": ACCEPTABLE_ALPHA,
+        "findings": _findings(summaries, len(results_with_marks.rows)) if results_with_marks else None,
     }
 
 
@@ -172,6 +210,94 @@ def _distribution(results: Results) -> dict[str, Any]:
     bars = {name: histogram(results.totals, results.max_marks, finer_steps) for name, _, finer_steps in BAR_WIDTHS}
     widths = [(name, label, name != "auto" and bars[name] == bars["auto"]) for name, label, _ in BAR_WIDTHS]
     return {"chart": {"max_marks": results.max_marks, "bars": bars}, "widths": widths}
+
+
+def _alpha_rating(alpha: float) -> str:
+    return next((rating for lowest, rating in ALPHA_RATINGS if alpha >= lowest), "Unacceptable")
+
+
+def _findings(summaries: list[QuestionSummary], student_count: int) -> list[Finding] | None:
+    """What stands out about the questions, most serious first; None for fewer than `MIN_STUDENTS` students."""
+    if student_count < MIN_STUDENTS:
+        return None
+    with_marks = [summary for summary in summaries if summary.marked_count]
+    findings = [
+        Finding(
+            summary.question,
+            "Weaker students did better",
+            _negative_detail(summary),
+            "exclamation-triangle",
+            warning=True,
+        )
+        for summary in with_marks
+        if summary.has_negative_discrimination
+    ]
+    for summary in with_marks:
+        if summary.has_negative_discrimination:
+            continue
+        marked_count, full_count = summary.marked_count, summary.full_marks_count
+        full_or_partial = full_count + summary.partial_marks_count
+        common_answer = _common_wrong_answer(summary)
+        if full_count >= ALMOST_EVERYONE_SHARE * marked_count:
+            everyone = "Everyone" if full_count == marked_count else "Almost everyone"
+            findings.append(
+                Finding(
+                    summary.question, f"{everyone} got full marks", f"{full_count} of {marked_count}", "check-circle"
+                )
+            )
+        elif full_or_partial <= (1 - ALMOST_EVERYONE_SHARE) * marked_count:
+            no_one = "Almost no one" if full_or_partial else "No one"
+            detail = common_answer or f"{full_or_partial} of {marked_count}"
+            findings.append(Finding(summary.question, f"{no_one} got marks", detail, "x-circle"))
+        elif common_answer:
+            findings.append(Finding(summary.question, "Common wrong answer", common_answer, "users"))
+    if trailing := _blanks_near_the_end(summaries, student_count):
+        detail = f"{get_text_list([str(summary.blank_count) for summary in trailing], 'and')} left blank"
+        findings.append(
+            Finding(
+                trailing[0].question,
+                "More blanks near the end",
+                detail,
+                "arrow-trending-down",
+                last_question=trailing[-1].question,
+            )
+        )
+    return findings
+
+
+def _common_wrong_answer(summary: QuestionSummary) -> str:
+    """The most common wrong answer and how many gave it, when at least `COMMON_WRONG_ANSWER_SHARE` did."""
+    if summary.most_common_wrong_answer is None:
+        return ""
+    answer, count = summary.most_common_wrong_answer
+    return _answered(answer, count) if count >= COMMON_WRONG_ANSWER_SHARE * summary.marked_count else ""
+
+
+def _negative_detail(summary: QuestionSummary) -> str:
+    """The most common wrong answer, when more than one student gave it, else the thirds."""
+    if summary.most_common_wrong_answer:
+        answer, count = summary.most_common_wrong_answer
+        if count > 1:
+            return f"{_answered(answer, count)}, marked wrong"
+    if thirds := summary.thirds:
+        return f"Bottom third {percent(thirds.bottom)}, top third {percent(thirds.top)}"
+    return ""
+
+
+def _answered(answer: str, count: int) -> str:
+    return f"{count} answered “{Truncator(answer).chars(40)}”"
+
+
+def _blanks_near_the_end(summaries: list[QuestionSummary], student_count: int) -> list[QuestionSummary]:
+    """The last questions, two or more, each left blank by at least `MIN_BLANK_SHARE` of the students and by twice as
+    many as the questions before them on average."""
+    min_blanks = max(MIN_BLANK_SHARE * student_count, 1)
+    trailing_count = sum(1 for _ in takewhile(lambda summary: summary.blank_count >= min_blanks, reversed(summaries)))
+    if trailing_count < 2 or trailing_count == len(summaries):
+        return []
+    earlier, trailing = summaries[:-trailing_count], summaries[-trailing_count:]
+    earlier_average = statistics.fmean(summary.blank_count for summary in earlier)
+    return trailing if all(summary.blank_count >= 2 * earlier_average for summary in trailing) else []
 
 
 def activity(assessment: Assessment, limit: int) -> list[Event]:

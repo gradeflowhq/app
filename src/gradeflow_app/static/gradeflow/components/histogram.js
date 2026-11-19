@@ -8,6 +8,25 @@ const color = (name) => getComputedStyle(document.documentElement).getPropertyVa
 
 const barLabel = ([start, end]) => (start === end ? counted(start, "mark") : `${start}–${end} marks`);
 
+/** Spans each bar across its band, less a gap; Chart.js would size bars on a linear axis from the space between them. */
+const bandWidths = {
+  id: "bandWidths",
+  afterDatasetsUpdate(chart) {
+    const scale = chart.scales.x;
+    const bars = chart.getDatasetMeta(0).data;
+    const spans = chart.data.datasets[0].data.map(({ start, end }) =>
+      start === end
+        ? [scale.getPixelForValue(start - 0.5), scale.getPixelForValue(end + 0.5)]
+        : [scale.getPixelForValue(start), scale.getPixelForValue(end)],
+    );
+    const gap = 0.1 * Math.max(...spans.map(([left, right]) => right - left));
+    spans.forEach(([left, right], i) => {
+      bars[i].x = (left + right) / 2;
+      bars[i].width = right - left - gap;
+    });
+  },
+};
+
 export const histogram = () => {
   let chart = null; // kept out of Alpine's state: Chart.js overflows the stack when it updates through a proxy
   return {
@@ -19,7 +38,7 @@ export const histogram = () => {
       );
       // An empty band has no bar rather than a hairline.
       const chartPoints = (width) =>
-        barsByWidth[width].map(([start, end, students]) => ({ x: (start + end) / 2, y: students || null }));
+        barsByWidth[width].map(([start, end, students]) => ({ x: (start + end) / 2, y: students || null, start, end }));
       const [min, max] = bounds(barsByWidth[this.barWidth], maxMarks);
       await loadScript("chart-4.5.1.umd.min.js");
       if (!canvas.isConnected) return;
@@ -35,12 +54,10 @@ export const histogram = () => {
               backgroundColor: color("--color-chart"),
               hoverBackgroundColor: color("--color-primary"), // Chart.js can't shade oklch, and would show black
               borderRadius: 4,
-              barThickness: "flex",
-              categoryPercentage: 1,
-              barPercentage: 0.9,
             },
           ],
         },
+        plugins: [bandWidths],
         options: {
           responsive: true,
           maintainAspectRatio: false,

@@ -3,6 +3,7 @@ import csv
 import io
 import math
 import re
+from collections.abc import Callable, Sequence
 
 import pytest
 from django.test import Client
@@ -13,7 +14,19 @@ from gradeflow_app.accounts.models import User
 from gradeflow_app.assessments.models import Assessment
 from gradeflow_app.courses.models import CourseKey
 from gradeflow_app.live.topics import topic
-from gradeflow_app.results.marks import Award, StudentMarks, TotalStatistics, assessment_results, awards, histogram
+from gradeflow_app.results.marks import (
+    MIN_STUDENTS,
+    Award,
+    StudentMarks,
+    Thirds,
+    TotalStatistics,
+    assessment_results,
+    awards,
+    cronbach_alpha,
+    histogram,
+    item_rest_correlation,
+    thirds,
+)
 from gradeflow_app.results.models import Adjustment, Result
 from gradeflow_app.results.views import Cell
 from gradeflow_app.ui.templatetags.ui import percent
@@ -78,6 +91,40 @@ def test_bands_end_at_the_maximum_marks() -> None:
     bands = histogram([0.5, 4.5, 6.0] * 20, 6)
     assert (bands[0].start, bands[-1].end) == (0, 6)
     assert bands[-1].students == 20, "full marks fall in the last band"
+
+
+def test_thirds_rank_students_by_rest_score() -> None:
+    proportions = [0.0] * 10 + [0.5] * 10 + [1.0] * 10
+    rest_scores = list(range(30))
+    assert thirds(proportions, rest_scores) == Thirds(bottom=0.0, top=1.0)
+    assert thirds(proportions[::-1], rest_scores) == Thirds(bottom=1.0, top=0.0)
+
+
+def test_item_rest_correlation_is_negative_when_weaker_students_did_better() -> None:
+    proportions = [1.0] * 10 + [0.0] * 10
+    correlation = item_rest_correlation(proportions, list(range(20)))
+    assert correlation is not None
+    assert correlation < 0
+
+
+@pytest.mark.parametrize("statistic", [thirds, item_rest_correlation])
+def test_item_analysis_needs_enough_students_and_rest_scores_that_differ(
+    statistic: Callable[[Sequence[float], Sequence[float]], object],
+) -> None:
+    assert statistic([1.0] * 10 + [0.0] * 10, [0.0] * 20) is None, "every rest score ties"
+    assert statistic([1.0] * (MIN_STUDENTS - 1), list(range(MIN_STUDENTS - 1))) is None
+
+
+def test_cronbach_alpha() -> None:
+    first = [float(i % 5) for i in range(MIN_STUDENTS)]
+    assert cronbach_alpha([first, first]) == pytest.approx(1)
+    assert cronbach_alpha([first, [4.0 - mark for mark in first]]) is None, "every total is the same"
+    assert cronbach_alpha([first, [float(i % 3) for i in range(MIN_STUDENTS)]]) == pytest.approx(0.0728, abs=1e-4)
+
+
+@pytest.mark.parametrize("marks", [[[1.0] * MIN_STUDENTS], [[1.0, 0.0], [0.0, 1.0]]])
+def test_cronbach_alpha_needs_two_questions_and_enough_students(marks: list[list[float]]) -> None:
+    assert cronbach_alpha(marks) is None
 
 
 def test_downloads_are_named_after_the_assessment(client: Client, assessment: Assessment) -> None:
@@ -245,11 +292,10 @@ def test_totals_count_adjusted_marks_and_every_adjustment(adjusted_assessment: A
             summary.full_marks_count,
             summary.no_marks_count,
             summary.blank_count,
-            summary.adjusted_count,
         )
         for summary in results.summaries()
     ]
-    assert summaries == [("Q1", 10, 0.35, 3, 6, 1, 2), ("Q2", 1, 1, 1, 0, 1, 1), ("Q3", 0, None, 0, 0, 0, 1)]
+    assert summaries == [("Q1", 10, 0.35, 3, 5, 1), ("Q2", 1, 1, 1, 0, 1), ("Q3", 0, None, 0, 0, 0)]
 
 
 def test_a_students_page_shows_their_adjustments(client: Client, adjusted_assessment: Assessment) -> None:
@@ -399,7 +445,7 @@ def test_marks_that_round_to_the_maximum_are_full(client: Client, assessment: As
         )
 
     summary = assessment_results(assessment).summaries()[0]
-    assert (summary.full_marks_count, summary.no_marks_count) == (10, 0)
+    assert (summary.full_marks_count, summary.no_marks_count, summary.blank_count) == (9, 0, 1)
     url = reverse("answers", args=[assessment.pk, question.pk])
     assert "1 student" in client.get(url, {"filter": "full"}, headers=HTMX_HEADERS).text
     assert "1 student" not in client.get(url, {"filter": "partial"}, headers=HTMX_HEADERS).text
@@ -412,7 +458,6 @@ def test_the_overview_says_how_each_question_is_marked(client: Client, assessmen
     page = client.get(reverse("overview", args=[assessment.pk])).text
     assert page.count("Imported marks") == 1
     assert page.count("Not marked") == 2
-    assert "Adjusted</th>" not in page, "no column while no one is adjusted"
 
 
 def test_a_draft_doesnt_mark_a_question_on_the_overview(client: Client, assessment: Assessment) -> None:
@@ -420,10 +465,6 @@ def test_a_draft_doesnt_mark_a_question_on_the_overview(client: Client, assessme
     page = client.get(reverse("overview", args=[assessment.pk])).text
     assert page.count("Not marked") == 2, "only saved marking counts"
     assert "Accepted Answers" not in page
-
-
-def test_the_adjusted_column_shows_once_someone_is_adjusted(client: Client, adjusted_assessment: Assessment) -> None:
-    assert "Adjusted</th>" in client.get(reverse("overview", args=[adjusted_assessment.pk])).text
 
 
 def grid_cells(grid: list[tuple[StudentMarks, list[Cell]]]) -> dict[tuple[str, str], Cell]:

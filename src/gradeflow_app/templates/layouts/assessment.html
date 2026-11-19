@@ -10,6 +10,7 @@
       <c-tab href="{% url 'export' assessment.pk %}" label="Export" icon="paper-airplane" sections="export" />
       {% if access.can_edit %}<c-tab href="{% url 'assessment_settings' assessment.pk %}" label="Settings" icon="cog-6-tooth" sections="assessment_settings" />{% endif %}
     </c-slot>
+    <c-slot name="tab_actions"><button type="button" class="btn btn-ghost btn-sm mr-2 shrink-0 text-muted max-sm:btn-square sm:mr-4" hx-get="{% url 'activity' assessment.pk %}" hx-target="#drawer-body" data-dialog="drawer">{% icon "clock" %}<span class="max-sm:sr-only">Activity</span></button></c-slot>
   </c-topbar>
   {% endwith %}
 {% endblock %}
