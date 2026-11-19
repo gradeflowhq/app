@@ -325,7 +325,7 @@ def test_saving_or_clearing_an_adjustment_in_the_drawer_focuses_its_adjust_butto
     student = assessment.students.earliest("pk")
     url = reverse("adjust", args=[assessment.pk, assessment.questions.get(key="Q2").pk])
     for action in ("apply", "clear"):
-        fields = {"student": str(student.pk), "marks": "1", "action": action, "return_to": "student"}
+        fields = {"students": str(student.pk), "marks": "1", "action": action, "return_to": "student"}
         page = client.post(url, fields, headers=HTMX_HEADERS).text
         assert re.findall(r'aria-label="Adjust (\w+)" autofocus', page) == ["Q2"]
 
@@ -410,7 +410,7 @@ def test_adjustment_request_can_clear_feedback_without_changing_no_marks(
     )
     assert b'name="clear_feedback"' in client.get(page_url, headers=HTMX_HEADERS).content
     url = reverse("adjust", args=[assessment.pk, question.pk])
-    fields = {"student": str(student.pk), "marks": "0", "feedback": "", "return_to": return_to, "action": "apply"}
+    fields = {"students": str(student.pk), "marks": "0", "feedback": "", "return_to": return_to, "action": "apply"}
     cleared = client.post(url, fields | {"clear_feedback": "on"}, headers=HTMX_HEADERS)
     assert cleared.status_code == 200
     adjustment = Adjustment.objects.get(student=student, question=question)
@@ -537,7 +537,7 @@ def test_a_run_of_changes_to_a_questions_adjustments_shows_once(client: Client, 
     question = assessment.questions.get(key="Q1")
     student = assessment.students.get(encrypted_id=encrypted_id("S001"))
     for action in ("apply", "clear", "apply"):
-        fields = {"student": str(student.pk), "marks": "1", "action": action}
+        fields = {"students": str(student.pk), "marks": "1", "action": action}
         client.post(reverse("adjust", args=[assessment.pk, question.pk]), fields, headers=HTMX_HEADERS)
     page = client.get(reverse("activity", args=[assessment.pk]), headers=HTMX_HEADERS).text
     assert page.count("adjusted marks for Q1") == 1

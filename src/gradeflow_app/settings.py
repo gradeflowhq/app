@@ -170,6 +170,8 @@ if STATIC_ROOT:
         "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
         "staticfiles": {"BACKEND": "whitenoise.storage.CompressedStaticFilesStorage"},
     }
+WHITENOISE_IMMUTABLE_FILE_TEST = f"^/{STATIC_URL}vendor/"
+"""Vendored libraries never change at their URL: each one's folder or file name has its version."""
 
 TAILWIND_CLI_USE_DAISY_UI = True
 TAILWIND_CLI_VERSION = "2.10.34"

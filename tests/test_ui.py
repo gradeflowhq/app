@@ -184,7 +184,7 @@ def test_messages_from_in_page_actions_show_at_once(client: Client, assessment: 
     student = assessment.students.values_list("pk", flat=True).first()
     response = client.post(
         reverse("adjust", args=[assessment.pk, question.pk]),
-        {"student": [str(student)], "marks": "9"},
+        {"students": str(student), "marks": "9"},
         headers=HTMX_HEADERS,
     )
     assert response.status_code == 422

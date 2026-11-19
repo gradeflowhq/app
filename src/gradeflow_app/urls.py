@@ -36,6 +36,7 @@ assessment_urls = [
     path("questions/list/", marking.question_list, name="question_list"),
     path("questions/<uuid:question_id>/", marking.question, name="question"),
     path("questions/<uuid:question_id>/answers/", answers.answers, name="answers"),
+    path("questions/<uuid:question_id>/answers/students/", answers.answer_group_students, name="answer_group_students"),
     path("questions/<uuid:question_id>/answer-grouping/", answers.answer_grouping, name="answer_grouping"),
     path("questions/<uuid:question_id>/adjust/", answers.adjust, name="adjust"),
     path("questions/<uuid:question_id>/settings/", questions.question_settings, name="question_settings"),

@@ -46,6 +46,13 @@
   </div>
 </li>
 {% endpartialdef %}
+{# The group's students, loaded when first shown. #}
+{% partialdef students %}
+<ul class="student-id-grid hidden group-has-[[data-students]:checked]/body:grid" aria-label="Students"{% if not students %} hx-get="{% url 'answer_group_students' question.assessment_id question.pk %}?student={{ answer_group.student_pks.0 }}" hx-trigger="intersect once" hx-swap="outerHTML"{% endif %}>
+  {% for entry in students|slice:":40" %}<li><button type="button"{% if entry.adjustment %} data-adjusted{% endif %} hx-get="{% url 'student' question.assessment_id entry.student_pk %}" hx-target="#drawer-body" data-dialog="drawer"><c-student-id value="{{ entry.encrypted_student_id }}" />{% if entry.adjustment %}{% icon "pencil" %}<span class="sr-only">Adjusted</span>{% endif %}</button></li>{% endfor %}
+  {% if students|length > 40 %}<li class="col-span-full text-sm text-muted">and {{ students|length|add:"-40" }} more</li>{% endif %}
+</ul>
+{% endpartialdef %}
 {% with low=answer_group.marks_range.0 high=answer_group.marks_range.1 max_marks=question.core_question.max_marks core_question=question.core_question feedback=answer_group.preview.feedback|default:answer_group.feedback code=question.core_question|code_language %}
 <li>
 <details class="group/answer rounded-[inherit]{% if answer_group.preview.changed %} changed{% endif %}"{% if open %} open{% endif %}>
@@ -91,14 +98,11 @@
     </form>
     {% endif %}
     {% if code %}{% with distinct_answers=answer_group.normalized_answers %}{% partial toggles %}{% endwith %}{% else %}{% with distinct_answers=answer_group.answers %}{% partial toggles %}{% endwith %}{% endif %}
-    <ul class="student-id-grid hidden group-has-[[data-students]:checked]/body:grid" aria-label="Students">
-      {% for entry in answer_group.student_answers|slice:":40" %}<li><button type="button"{% if entry.adjustment %} data-adjusted{% endif %} hx-get="{% url 'student' question.assessment_id entry.student_pk %}" hx-target="#drawer-body" data-dialog="drawer"><c-student-id value="{{ entry.encrypted_student_id }}" />{% if entry.adjustment %}{% icon "pencil" %}<span class="sr-only">Adjusted</span>{% endif %}</button></li>{% endfor %}
-      {% if answer_group.student_count > 40 %}<li class="col-span-full text-sm text-muted">and {{ answer_group.student_count|add:"-40" }} more</li>{% endif %}
-    </ul>
+    {% partial students %}
     {% if access.can_edit and not draft %}
     <form id="adjust-{{ answer_group.student_pks.0 }}" class="shaded-box hidden gap-3 group-has-[[data-adjust]:checked]/body:grid" hx-post="{% url 'adjust' question.assessment_id question.pk %}" hx-target="#answers" hx-swap="outerMorph">
       {% csrf_token %}
-      {% for student in answer_group.student_pks %}<input type="hidden" name="student" value="{{ student }}">{% endfor %}
+      <input type="hidden" name="students" value="{{ answer_group.student_pks|join:' ' }}">
       <div class="flex flex-wrap items-start gap-2.5">
         <label class="grid gap-1.5"><span class="text-sm font-medium">Marks</span><span class="input w-28"><input type="number" name="marks" min="0" max="{{ max_marks }}" step="any"><span class="text-muted">/ {{ max_marks|marks }}</span></span></label>
         <label class="grid min-w-48 flex-1 gap-1.5"><span class="text-sm font-medium">Feedback <span class="font-normal text-subtle">(optional)</span></span><textarea name="feedback" rows="1" class="textarea min-h-8.5 w-full resize-none py-1.5 field-sizing-content"></textarea></label>

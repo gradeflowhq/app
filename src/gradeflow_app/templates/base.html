@@ -15,6 +15,7 @@
       if (localStorage.getItem("questions-collapsed")) document.documentElement.setAttribute("data-questions-collapsed", "");
     } catch {}
   </script>
+  <link rel="preload" href="{% static 'vendor/inter-4.1/InterVariable.woff2' %}" as="font" type="font/woff2" crossorigin>
   {% tailwind_css %}
   <link rel="stylesheet" href="{% static 'vendor/tom-select-2.6.2/tom-select.css' %}">
   <link rel="stylesheet" href="{% static 'vendor/katex-0.19.0/katex.min.css' %}">

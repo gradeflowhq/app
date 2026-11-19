@@ -14,6 +14,7 @@ import * as methodRevision from "./behaviours/method-revision.js";
 import * as pageLoading from "./behaviours/page-loading.js";
 import * as passwordForms from "./behaviours/password-forms.js";
 import * as rowLinks from "./behaviours/row-links.js";
+import * as scrollLock from "./behaviours/scroll-lock.js";
 import * as signOut from "./behaviours/sign-out.js";
 import * as studentIds from "./behaviours/student-ids.js";
 import * as timezone from "./behaviours/timezone.js";
@@ -55,6 +56,7 @@ for (const behaviour of [
   passwordForms,
   downloads,
   dialogButtons,
+  scrollLock,
   studentIds,
   methodRevision,
   htmxSetup,

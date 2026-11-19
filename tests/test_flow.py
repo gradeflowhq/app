@@ -111,14 +111,14 @@ def test_adjusting_several_students(client: Client, assessment: Assessment) -> N
     students = list(assessment.students.values_list("pk", flat=True)[:2])
     response = client.post(
         reverse("adjust", args=[assessment.pk, question.pk]),
-        {"student": [str(student_pk) for student_pk in students], "marks": "0.5", "feedback": "Close"},
+        {"students": " ".join(str(student_pk) for student_pk in students), "marks": "0.5", "feedback": "Close"},
         headers=HTMX_HEADERS,
     )
     assert response.status_code == 200
     assert Adjustment.objects.filter(question=question).count() == 2
     assert {"level": "success", "text": "Adjusted 2 students."} in json.loads(response.headers[MESSAGES_HEADER])
     response = client.post(
-        reverse("adjust", args=[assessment.pk, question.pk]), {"student": [str(students[0])], "marks": "9"}
+        reverse("adjust", args=[assessment.pk, question.pk]), {"students": str(students[0]), "marks": "9"}
     )
     assert response.status_code == 422
 
@@ -139,8 +139,8 @@ def test_adjustments_keep_who_made_each_change(client: Client, user: User, asses
     question = assessment.questions.get(key="Q2")
     first, second = (str(pk) for pk in assessment.students.values_list("pk", flat=True)[:2])
     url = reverse("adjust", args=[assessment.pk, question.pk])
-    client.post(url, {"student": [first], "marks": "0.5"})
-    client.post(url, {"student": [first, second], "marks": "1", "feedback": "Close"})
+    client.post(url, {"students": first, "marks": "0.5"})
+    client.post(url, {"students": f"{first} {second}", "marks": "1", "feedback": "Close"})
     history = Adjustment.history.filter(question=question)
     assert sorted((str(row.student_id), row.history_type, row.marks, row.feedback) for row in history) == sorted(
         [(first, "+", 0.5, None), (first, "~", 1.0, "Close"), (second, "+", 1.0, "Close")]

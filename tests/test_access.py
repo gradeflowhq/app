@@ -34,7 +34,7 @@ def test_viewers_change_nothing(client: Client, assessment: Assessment) -> None:
     owner = Member.objects.get(role=Role.OWNER)
     student = assessment.students.values_list("pk", flat=True).first()
     refused = {
-        "adjust": (reverse("adjust", args=[assessment.pk, question.pk]), {"student": [str(student)], "marks": "0"}),
+        "adjust": (reverse("adjust", args=[assessment.pk, question.pk]), {"students": str(student), "marks": "0"}),
         "draft_save": (reverse("draft_save", args=[assessment.pk, draft.pk]), {"path": "", "operation": "save"}),
         "member_role": (reverse("member_role", args=[assessment.course_id, owner.user_id]), {"role": Role.VIEWER}),
         "delete_assessment": (reverse("delete_assessment", args=[assessment.pk]), {}),

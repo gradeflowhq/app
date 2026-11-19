@@ -2,10 +2,11 @@
 @source "../templates";
 @source "../static/gradeflow";
 @source "../**/*.py";
-@plugin "daisyui" {
+@plugin "./vendor/daisyui-5.8.1/daisyui.mjs" {
   themes: false;
+  exclude: rootscrolllock, rootscrollgutter;
 }
-@plugin "daisyui/theme" {
+@plugin "./vendor/daisyui-5.8.1/daisyui-theme.mjs" {
   name: "light";
   default: true;
   color-scheme: light;
@@ -50,7 +51,7 @@
   --depth: 0;
   --noise: 0;
 }
-@plugin "daisyui/theme" {
+@plugin "./vendor/daisyui-5.8.1/daisyui-theme.mjs" {
   name: "dark";
   prefersdark: true;
   color-scheme: dark;
@@ -664,6 +665,13 @@
   }
   .modal:is([open], .modal-open, :target) {
     background-color: var(--backdrop);
+  }
+  /* The page under a modal dialog doesn't scroll (scroll-lock.js). It keeps its scrollbar's gutter, dimmed like the
+     page. */
+  :root[data-scroll-locked] {
+    overflow: hidden;
+    scrollbar-gutter: stable;
+    background-color: color-mix(in srgb, var(--color-base-200), black 35%);
   }
   /* daisyUI pulls a select back over the field's padding, which covers an icon in front of it. */
   .select > :not(select) ~ select {

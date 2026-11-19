@@ -139,16 +139,11 @@ def answers_context(
     view = answers_view(request, question)
     options = grouping_options(view)
     student_answers = answer_groups.student_answers(question)
-    texts = answer_groups.grouping_texts(student_answers, options)
-    too_many_to_compare = options.similarity != "exact" and answer_groups.too_many_to_compare(texts)
-    grouped_by = replace(options, similarity="normalized") if too_many_to_compare else options
-    compares_meaning = bool(texts) and options.similarity == "meaning" and not too_many_to_compare
-    comparison = comparisons.cached_comparison(texts) if compares_meaning else None
-    needs_comparison = compares_meaning and comparison is None
-    grouping = comparisons.grouping_state(question, texts) if needs_comparison else None
+    grouped = group_answers(student_answers, options)
+    groups = grouped.groups
+    grouping = comparisons.grouping_state(question, grouped.texts) if grouped.needs_comparison else None
     grouping_job = grouping if grouping is not None and grouping.is_active else None
     failed_grouping_job = grouping if grouping is not None and grouping.status == "failed" else None
-    groups = answer_groups.group(student_answers, grouped_by, comparison)
     job, preview_results = previews.preview_and_results(workspace)
     preview_by_student = None
     if preview_results is not None:
@@ -184,13 +179,35 @@ def answers_context(
         "preview_summary": preview_summary(groups) if preview_by_student is not None else None,
         "marking_job": _marking_job(access.assessment, [question.key]),
         "grouping_job": grouping_job,
-        "needs_grouping": needs_comparison and not grouping_job and not failed_grouping_job,
+        "needs_grouping": grouped.needs_comparison and not grouping_job and not failed_grouping_job,
         "failed_grouping_job": failed_grouping_job,
-        "too_many_to_compare": too_many_to_compare,
+        "too_many_to_compare": grouped.too_many_to_compare,
         "can_mark_by_example": can_mark_by_example(question.core_question),
         "decisions": DECISIONS.items(),
         **draft_context(workspace, job),
     }
+
+
+@dataclass(frozen=True)
+class GroupedAnswers:
+    """A question's answer groups, and the texts that grouping them by meaning compares."""
+
+    groups: list[AnswerGroup]
+    texts: list[str]
+    too_many_to_compare: bool
+    needs_comparison: bool
+
+
+def group_answers(
+    student_answers: list[answer_groups.StudentAnswer], options: answer_groups.GroupingOptions
+) -> GroupedAnswers:
+    texts = answer_groups.grouping_texts(student_answers, options)
+    too_many_to_compare = options.similarity != "exact" and answer_groups.too_many_to_compare(texts)
+    grouped_by = replace(options, similarity="normalized") if too_many_to_compare else options
+    compares_meaning = bool(texts) and options.similarity == "meaning" and not too_many_to_compare
+    comparison = comparisons.cached_comparison(texts) if compares_meaning else None
+    groups = answer_groups.group(student_answers, grouped_by, comparison)
+    return GroupedAnswers(groups, texts, too_many_to_compare, compares_meaning and comparison is None)
 
 
 def group_by_meaning(request: Request, access: AssessmentAccess, question: Question) -> None:

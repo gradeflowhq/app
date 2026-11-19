@@ -23,7 +23,7 @@
     {% if award.breakdown %}<c-breakdown :check="award.breakdown" :language="code" />{% endif %}
     {% if access.can_edit %}
     <form class="shaded-box grid gap-3" x-bind:hidden="!isFormOpen" hidden hx-post="{% url 'adjust' access.assessment.pk question.pk %}" hx-target="#drawer-body">
-      {% csrf_token %}<input type="hidden" name="student" value="{{ student.pk }}"><input type="hidden" name="return_to" value="student">
+      {% csrf_token %}<input type="hidden" name="students" value="{{ student.pk }}"><input type="hidden" name="return_to" value="student">
       {% if adjustment and award.unadjusted_marks is not None %}<p class="text-sm text-muted">{% if award.result %}The marking gives{% else %}The submissions file gives{% endif %} {{ award.unadjusted_marks|marks }}.</p>{% endif %}
       <div class="grid gap-1.5">
         <label class="text-sm font-medium" for="marks-{{ question.pk }}">Marks</label>

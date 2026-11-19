@@ -108,11 +108,11 @@ def test_adjusting_an_answer_group_query_count_does_not_grow(
     question = assessment.questions.get(key="Q2")
     url = reverse("adjust", args=[assessment.pk, question.pk])
     students = [str(pk) for pk in assessment.students.values_list("pk", flat=True)]
-    client.post(url, {"student": students[:1], "marks": "0.5"})
+    client.post(url, {"students": " ".join(students[:1]), "marks": "0.5"})
     with CaptureQueriesContext(connection) as one_of_each:
-        client.post(url, {"student": students[:2], "marks": "1"})
+        client.post(url, {"students": " ".join(students[:2]), "marks": "1"})
     with django_assert_num_queries(len(one_of_each)):
-        assert client.post(url, {"student": students[:4], "marks": "1"}).status_code == 200
+        assert client.post(url, {"students": " ".join(students[:4]), "marks": "1"}).status_code == 200
 
 
 @pytest.mark.parametrize("page", ["student", "export_comment"])

@@ -1,8 +1,12 @@
+import re
 from collections.abc import Sequence
 from unittest.mock import Mock
+from uuid import uuid4
 
 import pytest
 from django.core.cache import cache
+from django.test import Client
+from django.urls import reverse
 from gradeflow_core import AnswerComparison, QuestionResult, compare_answers
 
 from gradeflow_app.assessments.models import Assessment
@@ -10,6 +14,7 @@ from gradeflow_app.core_version import CORE_VERSION
 from gradeflow_app.marking.answers import answer_groups, comparisons
 from gradeflow_app.marking.answers.answer_groups import GroupingOptions, StudentAnswer, group
 from gradeflow_app.marking.answers.column import grouping_options
+from tests.conftest import HTMX_HEADERS, encrypted_id
 
 
 def entries(*answers: tuple[str, str]) -> list[StudentAnswer]:
@@ -123,3 +128,22 @@ def test_comparison_cache_is_bound_to_ordered_inputs_and_build(db: None, monkeyp
 @pytest.mark.parametrize("threshold", ["nan", "inf", "-inf", "invalid"])
 def test_nonfinite_threshold_uses_the_selected_mode_default(threshold: str) -> None:
     assert grouping_options({"group": "meaning", "threshold": threshold}).threshold == 0.85
+
+
+def test_an_answer_groups_students_load_grouped_as_the_answers_are(client: Client, assessment: Assessment) -> None:
+    question = assessment.questions.get(key="Q1")
+    student = assessment.students.get(answers__Q1="light and chlorophyll")
+    student.answers = student.answers | {"Q1": "Photosynthesis uses ligth"}
+    student.save(update_fields=["answers"])
+    answers_url = reverse("answers", args=[assessment.pk, question.pk])
+    url = reverse("answer_group_students", args=[assessment.pk, question.pk])
+
+    def student_ids(grouping: str) -> set[str]:
+        answers_page = client.get(answers_url, {"group": grouping}, headers=HTMX_HEADERS).text
+        assert "data-student-id" not in answers_page
+        page = client.get(url, {"student": student.pk}, headers=HTMX_HEADERS).text
+        return set(re.findall(r'data-student-id="([^"]+)"', page))
+
+    assert student_ids("answers") == {student.encrypted_id}
+    assert student_ids("spelling") == {student.encrypted_id, encrypted_id("S001"), encrypted_id("S002")}
+    assert client.get(url, {"student": uuid4()}, headers=HTMX_HEADERS).status_code == 404
