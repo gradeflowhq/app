@@ -4,6 +4,8 @@
      hx-trigger="{% listen 'marks' question.assessment_id %}, {% listen 'jobs' question.assessment_id %}, {% listen 'grouping' question.assessment_id %}, {% listen 'preview' question.assessment_id request.user.pk %}">
   {% partial header %}
 
+  {% partial list_head %}
+
   <div class="workspace-cards">
     {% if answer_groups %}
       <ul class="answer-groups" aria-label="Answers">
@@ -26,20 +28,6 @@
       {% if access.can_edit %}<button class="btn btn-sm ml-auto" hx-get="{% url 'question_settings' question.assessment_id question.pk %}" hx-target="#drawer-body" hx-swap="innerHTML" data-dialog="drawer">{% icon "adjustments-horizontal" %}Settings</button>{% endif %}
     </div>
     {% with description=question.core_question.description %}{% partial question_description %}{% endwith %}
-    <form class="flex flex-wrap items-center gap-x-3 px-4 py-1.5" hx-get="{% url 'answers' question.assessment_id question.pk %}" hx-target="#answers" hx-swap="outerMorph" hx-trigger="change delay:150ms" hx-sync="this:replace" hx-indicator="#answers .workspace-cards">
-      <label class="flex items-center text-sm text-muted">Group<select name="group" class="select select-ghost select-sm w-auto font-medium text-base-content">{% for value, label in groupings.items %}<option value="{{ value }}"{% if grouping == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
-      {% if grouping_options.similarity != 'exact' %}
-      <c-popover id="answers-similarity" label="How similar" button_class="btn btn-ghost btn-square btn-sm -ml-3 text-muted" panel_class="w-64 p-4">
-        <c-slot name="trigger">{% icon "adjustments-vertical" %}</c-slot>
-        <div class="grid gap-2">
-          <label for="answers-threshold" class="flex justify-between text-sm"><span class="font-medium">How similar</span><span class="tabular-nums text-muted">{{ grouping_options.threshold|percent }}</span></label>
-          <input id="answers-threshold" type="range" name="threshold" min="0.5" max="1" step="0.05" value="{{ grouping_options.threshold }}" class="range range-xs range-primary">
-          <p class="text-sm text-muted">Lower puts more answers together.</p>
-        </div>
-      </c-popover>
-      {% endif %}
-      <label class="flex items-center text-sm text-muted">Show<select name="filter" class="select select-ghost select-sm w-auto font-medium text-base-content">{% for value, label in filters.items %}<option value="{{ value }}"{% if filter == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
-    </form>
     {% partial preview_bar %}
     {% partial column_notices %}
     {% if failed_grouping_job %}
@@ -53,8 +41,28 @@
   </header>
 {% endpartialdef %}
 
+{% partialdef list_head %}
+<div class="flex flex-wrap items-center gap-x-2 px-1 pt-2.5">
+  <h3 class="text-sm font-semibold">Answers</h3><c-chip class="tabular-nums">{{ answer_groups|length|add:hidden_count }}</c-chip>
+  <form class="ml-auto flex flex-wrap items-center gap-x-3" hx-get="{% url 'answers' question.assessment_id question.pk %}" hx-target="#answers" hx-swap="outerMorph" hx-trigger="change delay:150ms" hx-sync="this:replace" hx-indicator="#answers .workspace-cards">
+    <label class="flex items-center text-sm text-muted">Group<select name="group" class="select select-ghost select-sm w-auto font-medium text-base-content">{% for value, label in groupings.items %}<option value="{{ value }}"{% if grouping == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+    {% if grouping_options.similarity != 'exact' %}
+    <c-popover id="answers-similarity" label="How similar" button_class="btn btn-ghost btn-square btn-sm -ml-3 text-muted" panel_class="w-64 p-4">
+      <c-slot name="trigger">{% icon "adjustments-vertical" %}</c-slot>
+      <div class="grid gap-2">
+        <label for="answers-threshold" class="flex justify-between text-sm"><span class="font-medium">How similar</span><span class="tabular-nums text-muted">{{ grouping_options.threshold|percent }}</span></label>
+        <input id="answers-threshold" type="range" name="threshold" min="0.5" max="1" step="0.05" value="{{ grouping_options.threshold }}" class="range range-xs range-primary">
+        <p class="text-sm text-muted">Lower puts more answers together.</p>
+      </div>
+    </c-popover>
+    {% endif %}
+    <label class="flex items-center text-sm text-muted">Show<select name="filter" class="select select-ghost select-sm w-auto font-medium text-base-content">{% for value, label in filters.items %}<option value="{{ value }}"{% if filter == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+  </form>
+</div>
+{% endpartialdef %}
+
 {# A question's description, shortened to two lines until opened. #}
-{% partialdef question_description %}{% if description %}<details class="group/about px-4 pt-2.5 text-muted"><summary class="cursor-pointer list-none"><div class="prose-core preview-two-lines wrap-break-word text-sm group-open/about:max-h-[40vh] group-open/about:overflow-y-auto" x-data="math">{{ description|math_markdown }}</div></summary></details>{% endif %}{% endpartialdef %}
+{% partialdef question_description %}{% if description %}<details class="group/about px-4 pt-3 pb-3.5"><summary class="cursor-pointer list-none"><div class="prose-core preview-two-lines wrap-break-word group-open/about:max-h-[40vh] group-open/about:overflow-y-auto" x-data="math">{{ description|math_markdown }}</div></summary></details>{% endif %}{% endpartialdef %}
 
 {% partialdef column_notices %}
 {% if not draft %}{% for notice in out_of_date_notices %}<div role="status" class="notice-row wrap-break-word" data-tone="{% if notice.failed %}error{% else %}warning{% endif %}">{% if notice.failed %}{% icon "exclamation-circle" "self-start mt-2" %}{% else %}{% icon "exclamation-triangle" "self-start mt-2" %}{% endif %}<div class="min-w-0 flex-1 self-start py-1.5"><c-failure :text="notice.marking.failure">{{ notice.text }}</c-failure></div>{% if access.can_edit %}<button class="btn btn-sm self-start whitespace-nowrap" hx-post="{% url 'marking_remark' notice.marking.assessment_id notice.marking.pk %}" hx-swap="none">Mark again</button>{% endif %}</div>{% endfor %}{% endif %}
