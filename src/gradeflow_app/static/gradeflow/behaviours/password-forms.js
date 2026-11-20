@@ -32,6 +32,11 @@ function showFieldError(field, message) {
 /** The fields to send in place of the passwords, and the wrapping key to store; null after showing an error. */
 async function derivePasswordFields(form) {
   const { password, oldpassword, password1, password2 } = form.elements;
+  // Checked here: the server only gets keys derived from the passwords.
+  const emptyField = [password, oldpassword, password1, password2].find((field) => field && !field.value);
+  if (emptyField) return showFieldError(emptyField, "Enter a password.");
+  if (password1?.value.length < password1?.minLength)
+    return showFieldError(password1, `Use at least ${password1.minLength} characters.`);
   const account = signedInAccount();
   if (password) {
     const { authKey, wrappingKey } = await deriveKeysFromPassword(password.value, await fetchKdfSalt(form));
