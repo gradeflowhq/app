@@ -6,9 +6,11 @@ import { registerEffects, TypeTextPlugin } from "./effects.js";
 import { groupsTimeline } from "./groups.js";
 import { heroTimeline } from "./hero.js";
 import { methodTimeline } from "./methods.js";
+import { trustTimeline } from "./trust.js";
 
 const TIMELINES = {
   hero: heroTimeline,
+  trust: trustTimeline,
   groups: groupsTimeline,
   "by-example": byExampleTimeline,
   method: methodTimeline,
@@ -246,10 +248,11 @@ function fillChapters(chapters, timeline) {
   return starts;
 }
 
-// Clicking a chapter plays from it, or with reduced motion shows its end. Dragging along the bar scrubs. `onPlay` is
-// called each time it plays.
+// Clicking a chapter plays from it, or with reduced motion shows its end. Dragging along a chapter bar scrubs; a list of
+// claims (landing/trust.html) is only clicked. `onPlay` is called each time it plays.
 function bindChapterBar(root, chapters, timeline, starts, reducedMotion, onPlay) {
-  const bar = root.querySelector(".landing-chapters");
+  const bar = root.querySelector(".landing-chapters, .landing-claims");
+  const scrubs = bar.matches(".landing-chapters");
   // Each chapter takes an equal share of the bar. The bar's end stays inside the last chapter.
   const timeAt = (clientX) => {
     const { left, width } = bar.getBoundingClientRect();
@@ -265,11 +268,12 @@ function bindChapterBar(root, chapters, timeline, starts, reducedMotion, onPlay)
       dragged = false;
     },
     onDrag: ({ x }) => {
+      if (!scrubs) return;
       dragged = true;
       timeline.pause(timeAt(x));
     },
     onDragEnd: () => {
-      if (reducedMotion) return;
+      if (reducedMotion || !dragged) return;
       timeline.play();
       onPlay();
     },

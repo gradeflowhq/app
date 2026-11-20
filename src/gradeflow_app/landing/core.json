@@ -5776,6 +5776,524 @@
    "needs_model_endpoint": true
   }
  },
+ "trust": {
+  "same_mark": {
+   "normalized_answers": {
+    "Mercury": "Mercury",
+    "Venus": "Venus",
+    "Mars": "Mars",
+    "Earth": "Earth"
+   },
+   "results": {
+    "Mercury": {
+     "proportion": 1.0,
+     "max_marks": 1.0,
+     "feedback": "Correct.",
+     "method_label": "Accepted Answers",
+     "is_marked": true,
+     "model_names": [],
+     "breakdown": null,
+     "spans": [],
+     "marks": 1.0
+    },
+    "Venus": {
+     "proportion": 0.0,
+     "max_marks": 1.0,
+     "feedback": "Expected “Mercury”.",
+     "method_label": "Accepted Answers",
+     "is_marked": true,
+     "model_names": [],
+     "breakdown": null,
+     "spans": [],
+     "marks": 0.0
+    },
+    "Mars": {
+     "proportion": 0.0,
+     "max_marks": 1.0,
+     "feedback": "Expected “Mercury”.",
+     "method_label": "Accepted Answers",
+     "is_marked": true,
+     "model_names": [],
+     "breakdown": null,
+     "spans": [],
+     "marks": 0.0
+    },
+    "Earth": {
+     "proportion": 0.0,
+     "max_marks": 1.0,
+     "feedback": "Expected “Mercury”.",
+     "method_label": "Accepted Answers",
+     "is_marked": true,
+     "model_names": [],
+     "breakdown": null,
+     "spans": [],
+     "marks": 0.0
+    }
+   }
+  },
+  "breakdown": {
+   "normalized_answers": {
+    "2 mol": "2 mol",
+    "0.5 mol": "0.5 mol",
+    "36 / 18 = 2 mol": "36 / 18 = 2 mol",
+    "2": "2",
+    "648 mol": "648 mol"
+   },
+   "results": {
+    "2 mol": {
+     "proportion": 1.0,
+     "max_marks": 3.0,
+     "feedback": "Amount: Correct.\nUnits: Has “mol”.",
+     "method_label": "Workflow",
+     "is_marked": true,
+     "model_names": [],
+     "breakdown": {
+      "title": "Split by weight between these",
+      "effect": "earned",
+      "marks": null,
+      "details": [],
+      "children": [
+       {
+        "title": "**Amount:** Is between `1.99` and `2.01`.",
+        "effect": "earned",
+        "marks": 2.0,
+        "details": [
+         {
+          "title": "Read as",
+          "value": "2",
+          "kind": "text"
+         }
+        ],
+        "children": []
+       },
+       {
+        "title": "**Units:** Includes `mol`.",
+        "effect": "earned",
+        "marks": 1.0,
+        "details": [],
+        "children": []
+       }
+      ]
+     },
+     "spans": [
+      {
+       "start": 0,
+       "end": 1,
+       "value_number": null
+      }
+     ],
+     "marks": 3.0
+    },
+    "0.5 mol": {
+     "proportion": 0.3333333333333333,
+     "max_marks": 3.0,
+     "feedback": "Amount: Too low. Expected between 1.99 and 2.01.\nUnits: Has “mol”.",
+     "method_label": "Workflow",
+     "is_marked": true,
+     "model_names": [],
+     "breakdown": {
+      "title": "Split by weight between these",
+      "effect": "partial",
+      "marks": null,
+      "details": [],
+      "children": [
+       {
+        "title": "**Amount:** Is between `1.99` and `2.01`.",
+        "effect": "no_marks",
+        "marks": 0.0,
+        "details": [
+         {
+          "title": "Read as",
+          "value": "0.5",
+          "kind": "text"
+         }
+        ],
+        "children": []
+       },
+       {
+        "title": "**Units:** Includes `mol`.",
+        "effect": "earned",
+        "marks": 1.0,
+        "details": [],
+        "children": []
+       }
+      ]
+     },
+     "spans": [
+      {
+       "start": 0,
+       "end": 3,
+       "value_number": null
+      }
+     ],
+     "marks": 1.0
+    },
+    "36 / 18 = 2 mol": {
+     "proportion": 1.0,
+     "max_marks": 3.0,
+     "feedback": "Amount: Correct.\nUnits: Has “mol”.",
+     "method_label": "Workflow",
+     "is_marked": true,
+     "model_names": [],
+     "breakdown": {
+      "title": "Split by weight between these",
+      "effect": "earned",
+      "marks": null,
+      "details": [],
+      "children": [
+       {
+        "title": "**Amount:** Is between `1.99` and `2.01`.",
+        "effect": "earned",
+        "marks": 2.0,
+        "details": [
+         {
+          "title": "Read as",
+          "value": "2",
+          "kind": "text"
+         }
+        ],
+        "children": []
+       },
+       {
+        "title": "**Units:** Includes `mol`.",
+        "effect": "earned",
+        "marks": 1.0,
+        "details": [],
+        "children": []
+       }
+      ]
+     },
+     "spans": [
+      {
+       "start": 10,
+       "end": 11,
+       "value_number": null
+      }
+     ],
+     "marks": 3.0
+    },
+    "2": {
+     "proportion": 0.6666666666666666,
+     "max_marks": 3.0,
+     "feedback": "Amount: Correct.\nUnits: Missing “mol”.",
+     "method_label": "Workflow",
+     "is_marked": true,
+     "model_names": [],
+     "breakdown": {
+      "title": "Split by weight between these",
+      "effect": "partial",
+      "marks": null,
+      "details": [],
+      "children": [
+       {
+        "title": "**Amount:** Is between `1.99` and `2.01`.",
+        "effect": "earned",
+        "marks": 2.0,
+        "details": [
+         {
+          "title": "Read as",
+          "value": "2",
+          "kind": "text"
+         }
+        ],
+        "children": []
+       },
+       {
+        "title": "**Units:** Includes `mol`.",
+        "effect": "no_marks",
+        "marks": 0.0,
+        "details": [],
+        "children": []
+       }
+      ]
+     },
+     "spans": [
+      {
+       "start": 0,
+       "end": 1,
+       "value_number": null
+      }
+     ],
+     "marks": 2.0
+    },
+    "648 mol": {
+     "proportion": 0.3333333333333333,
+     "max_marks": 3.0,
+     "feedback": "Amount: Too high. Expected between 1.99 and 2.01.\nUnits: Has “mol”.",
+     "method_label": "Workflow",
+     "is_marked": true,
+     "model_names": [],
+     "breakdown": {
+      "title": "Split by weight between these",
+      "effect": "partial",
+      "marks": null,
+      "details": [],
+      "children": [
+       {
+        "title": "**Amount:** Is between `1.99` and `2.01`.",
+        "effect": "no_marks",
+        "marks": 0.0,
+        "details": [
+         {
+          "title": "Read as",
+          "value": "648",
+          "kind": "text"
+         }
+        ],
+        "children": []
+       },
+       {
+        "title": "**Units:** Includes `mol`.",
+        "effect": "earned",
+        "marks": 1.0,
+        "details": [],
+        "children": []
+       }
+      ]
+     },
+     "spans": [
+      {
+       "start": 0,
+       "end": 3,
+       "value_number": null
+      }
+     ],
+     "marks": 1.0
+    }
+   }
+  },
+  "ai": {
+   "method_label": "Answer Criteria",
+   "normalized_answers": [
+    {
+     "Q3": "Because light travels faster than sound."
+    },
+    {
+     "Q3": "The flash reaches us sooner because it's quicker than the noise."
+    },
+    {
+     "Q3": "Sound travels faster than light."
+    },
+    {
+     "Q3": "The thunder comes later."
+    }
+   ],
+   "variants": [
+    {
+     "summary": {
+      "method_label": "Key Points",
+      "description": "Includes `light` and `faster`, a share for each.",
+      "problems": [],
+      "is_compatible": true,
+      "incompatible_version": "",
+      "needs_model_endpoint": false
+     },
+     "results": [
+      {
+       "Q3": {
+        "proportion": 1.0,
+        "max_marks": 2.0,
+        "feedback": "Has “light”.\nHas “faster”.",
+        "method_label": "Key Points",
+        "is_marked": true,
+        "model_names": [],
+        "breakdown": {
+         "title": "Includes `light` and `faster`, a share for each.",
+         "effect": "earned",
+         "marks": null,
+         "details": [],
+         "children": [
+          {
+           "title": "Includes `light`.",
+           "effect": "earned",
+           "marks": 1.0,
+           "details": [],
+           "children": []
+          },
+          {
+           "title": "Includes `faster`.",
+           "effect": "earned",
+           "marks": 1.0,
+           "details": [],
+           "children": []
+          }
+         ]
+        },
+        "spans": [],
+        "marks": 2.0
+       }
+      },
+      {
+       "Q3": {
+        "proportion": 0.0,
+        "max_marks": 2.0,
+        "feedback": "Missing “light”.\nMissing “faster”.",
+        "method_label": "Key Points",
+        "is_marked": true,
+        "model_names": [],
+        "breakdown": {
+         "title": "Includes `light` and `faster`, a share for each.",
+         "effect": "no_marks",
+         "marks": null,
+         "details": [],
+         "children": [
+          {
+           "title": "Includes `light`.",
+           "effect": "no_marks",
+           "marks": 0.0,
+           "details": [],
+           "children": []
+          },
+          {
+           "title": "Includes `faster`.",
+           "effect": "no_marks",
+           "marks": 0.0,
+           "details": [],
+           "children": []
+          }
+         ]
+        },
+        "spans": [],
+        "marks": 0.0
+       }
+      },
+      {
+       "Q3": {
+        "proportion": 1.0,
+        "max_marks": 2.0,
+        "feedback": "Has “light”.\nHas “faster”.",
+        "method_label": "Key Points",
+        "is_marked": true,
+        "model_names": [],
+        "breakdown": {
+         "title": "Includes `light` and `faster`, a share for each.",
+         "effect": "earned",
+         "marks": null,
+         "details": [],
+         "children": [
+          {
+           "title": "Includes `light`.",
+           "effect": "earned",
+           "marks": 1.0,
+           "details": [],
+           "children": []
+          },
+          {
+           "title": "Includes `faster`.",
+           "effect": "earned",
+           "marks": 1.0,
+           "details": [],
+           "children": []
+          }
+         ]
+        },
+        "spans": [],
+        "marks": 2.0
+       }
+      },
+      {
+       "Q3": {
+        "proportion": 0.0,
+        "max_marks": 2.0,
+        "feedback": "Missing “light”.\nMissing “faster”.",
+        "method_label": "Key Points",
+        "is_marked": true,
+        "model_names": [],
+        "breakdown": {
+         "title": "Includes `light` and `faster`, a share for each.",
+         "effect": "no_marks",
+         "marks": null,
+         "details": [],
+         "children": [
+          {
+           "title": "Includes `light`.",
+           "effect": "no_marks",
+           "marks": 0.0,
+           "details": [],
+           "children": []
+          },
+          {
+           "title": "Includes `faster`.",
+           "effect": "no_marks",
+           "marks": 0.0,
+           "details": [],
+           "children": []
+          }
+         ]
+        },
+        "spans": [],
+        "marks": 0.0
+       }
+      }
+     ]
+    },
+    {
+     "summary": {
+      "method_label": "Answer Criteria",
+      "description": "AI checks the answer for Says light travels faster than sound (2 marks).",
+      "problems": [],
+      "is_compatible": true,
+      "incompatible_version": "",
+      "needs_model_endpoint": true
+     },
+     "results": [
+      {
+       "Q3": {
+        "proportion": 1.0,
+        "max_marks": 2.0,
+        "feedback": "Says light travels faster than sound.",
+        "method_label": "Answer Criteria",
+        "is_marked": true,
+        "model_names": [],
+        "breakdown": null,
+        "spans": [],
+        "marks": 2.0
+       }
+      },
+      {
+       "Q3": {
+        "proportion": 1.0,
+        "max_marks": 2.0,
+        "feedback": "Says light travels faster than sound.",
+        "method_label": "Answer Criteria",
+        "is_marked": true,
+        "model_names": [],
+        "breakdown": null,
+        "spans": [],
+        "marks": 2.0
+       }
+      },
+      {
+       "Q3": {
+        "proportion": 0.0,
+        "max_marks": 2.0,
+        "feedback": "Says light travels faster than sound: Not met.",
+        "method_label": "Answer Criteria",
+        "is_marked": true,
+        "model_names": [],
+        "breakdown": null,
+        "spans": [],
+        "marks": 0.0
+       }
+      },
+      {
+       "Q3": {
+        "proportion": 0.0,
+        "max_marks": 2.0,
+        "feedback": "Says light travels faster than sound: Not met.",
+        "method_label": "Answer Criteria",
+        "is_marked": true,
+        "model_names": [],
+        "breakdown": null,
+        "spans": [],
+        "marks": 0.0
+       }
+      }
+     ]
+    }
+   ]
+  }
+ },
  "groups": {
   "normalized_answers": {
    "It falls": "It falls",
@@ -7436,175 +7954,6 @@
     }
    ]
   },
-  "answer_criteria": {
-   "method_label": "Answer Criteria",
-   "normalized_answers": [
-    {
-     "Q1": "3 × 2 = 6 and 2 × 5 = 10, so 6 + 10 = $16"
-    },
-    {
-     "Q1": "$16"
-    },
-    {
-     "Q1": "3 × 2 = 6 and 2 × 5 = 10, so she pays $6 and $10"
-    }
-   ],
-   "variants": [
-    {
-     "summary": {
-      "method_label": "Answer Criteria",
-      "description": "AI checks the answer for Correct total (2 marks).",
-      "problems": [],
-      "is_compatible": true,
-      "incompatible_version": "",
-      "needs_model_endpoint": false
-     },
-     "results": [
-      {
-       "Q1": {
-        "proportion": 0.6666666666666666,
-        "max_marks": 3.0,
-        "feedback": "Correct total.",
-        "method_label": "Answer Criteria",
-        "is_marked": true,
-        "model_names": [],
-        "breakdown": null,
-        "spans": [],
-        "marks": 2.0
-       }
-      },
-      {
-       "Q1": {
-        "proportion": 0.6666666666666666,
-        "max_marks": 3.0,
-        "feedback": "Correct total.",
-        "method_label": "Answer Criteria",
-        "is_marked": true,
-        "model_names": [],
-        "breakdown": null,
-        "spans": [],
-        "marks": 2.0
-       }
-      },
-      {
-       "Q1": {
-        "proportion": 0.0,
-        "max_marks": 3.0,
-        "feedback": "Correct total: Not met.",
-        "method_label": "Answer Criteria",
-        "is_marked": true,
-        "model_names": [],
-        "breakdown": null,
-        "spans": [],
-        "marks": 0.0
-       }
-      }
-     ]
-    },
-    {
-     "summary": {
-      "method_label": "Answer Criteria",
-      "description": "AI checks the answer for each of these:\n- Correct total (2 marks)\n- Shows the working (1 mark)",
-      "problems": [],
-      "is_compatible": true,
-      "incompatible_version": "",
-      "needs_model_endpoint": false
-     },
-     "results": [
-      {
-       "Q1": {
-        "proportion": 1.0,
-        "max_marks": 3.0,
-        "feedback": "Correct total.\nShows the working.",
-        "method_label": "Answer Criteria",
-        "is_marked": true,
-        "model_names": [],
-        "breakdown": null,
-        "spans": [],
-        "marks": 3.0
-       }
-      },
-      {
-       "Q1": {
-        "proportion": 0.6666666666666666,
-        "max_marks": 3.0,
-        "feedback": "Correct total.\nShows the working: Not met.",
-        "method_label": "Answer Criteria",
-        "is_marked": true,
-        "model_names": [],
-        "breakdown": null,
-        "spans": [],
-        "marks": 2.0
-       }
-      },
-      {
-       "Q1": {
-        "proportion": 0.3333333333333333,
-        "max_marks": 3.0,
-        "feedback": "Correct total: Not met.\nShows the working.",
-        "method_label": "Answer Criteria",
-        "is_marked": true,
-        "model_names": [],
-        "breakdown": null,
-        "spans": [],
-        "marks": 1.0
-       }
-      }
-     ]
-    },
-    {
-     "summary": {
-      "method_label": "Answer Criteria",
-      "description": "AI checks the answer for each of these:\n- Correct total (2 marks)\n- Shows the working (1 mark)\n- Forgot to sum (-1 mark)",
-      "problems": [],
-      "is_compatible": true,
-      "incompatible_version": "",
-      "needs_model_endpoint": false
-     },
-     "results": [
-      {
-       "Q1": {
-        "proportion": 1.0,
-        "max_marks": 3.0,
-        "feedback": "Correct total.\nShows the working.",
-        "method_label": "Answer Criteria",
-        "is_marked": true,
-        "model_names": [],
-        "breakdown": null,
-        "spans": [],
-        "marks": 3.0
-       }
-      },
-      {
-       "Q1": {
-        "proportion": 0.6666666666666666,
-        "max_marks": 3.0,
-        "feedback": "Correct total.\nShows the working: Not met.",
-        "method_label": "Answer Criteria",
-        "is_marked": true,
-        "model_names": [],
-        "breakdown": null,
-        "spans": [],
-        "marks": 2.0
-       }
-      },
-      {
-       "Q1": {
-        "proportion": 0.0,
-        "max_marks": 3.0,
-        "feedback": "Correct total: Not met.\nShows the working.\nPenalty: Forgot to sum.",
-        "method_label": "Answer Criteria",
-        "is_marked": true,
-        "model_names": [],
-        "breakdown": null,
-        "spans": [],
-        "marks": 0.0
-       }
-      }
-     ]
-    }
-   ]
-  },
   "code_tests": {
    "method_label": "Code Tests",
    "normalized_answers": [
@@ -8577,30 +8926,33 @@
     }
    ]
   },
-  "custom_code": {
-   "method_label": "Custom Code",
+  "equivalent_expression": {
+   "method_label": "Equivalent Expression",
    "normalized_answers": [
     {
-     "Q5": "Level"
+     "Q8": "x - 1"
     },
     {
-     "Q5": "Racecar"
+     "Q8": "x + 1"
     },
     {
-     "Q5": "A"
+     "Q8": "1 - x"
     },
     {
-     "Q5": "Hannah"
+     "Q8": "1 + x"
     },
     {
-     "Q5": "Banana"
+     "Q8": "-1 + x"
+    },
+    {
+     "Q8": "x"
     }
    ],
    "variants": [
     {
      "summary": {
-      "method_label": "Custom Code",
-      "description": "Python code decides the marks:\n\n```python\nword = answer.strip()\ncorrect = word == word[::-1]\nfeedback = \"Correct.\" if correct else \"Expected a word that reads the same backwards.\"\n```",
+      "method_label": "Equivalent Expression",
+      "description": "Equals `x - 1`.",
       "problems": [],
       "is_compatible": true,
       "incompatible_version": "",
@@ -8608,37 +8960,11 @@
      },
      "results": [
       {
-       "Q5": {
-        "proportion": 0.0,
-        "max_marks": 1.0,
-        "feedback": "Expected a word that reads the same backwards.",
-        "method_label": "Custom Code",
-        "is_marked": true,
-        "model_names": [],
-        "breakdown": null,
-        "spans": [],
-        "marks": 0.0
-       }
-      },
-      {
-       "Q5": {
-        "proportion": 0.0,
-        "max_marks": 1.0,
-        "feedback": "Expected a word that reads the same backwards.",
-        "method_label": "Custom Code",
-        "is_marked": true,
-        "model_names": [],
-        "breakdown": null,
-        "spans": [],
-        "marks": 0.0
-       }
-      },
-      {
-       "Q5": {
+       "Q8": {
         "proportion": 1.0,
         "max_marks": 1.0,
         "feedback": "Correct.",
-        "method_label": "Custom Code",
+        "method_label": "Equivalent Expression",
         "is_marked": true,
         "model_names": [],
         "breakdown": null,
@@ -8647,11 +8973,11 @@
        }
       },
       {
-       "Q5": {
+       "Q8": {
         "proportion": 0.0,
         "max_marks": 1.0,
-        "feedback": "Expected a word that reads the same backwards.",
-        "method_label": "Custom Code",
+        "feedback": "Expected an expression equal to “x - 1”.",
+        "method_label": "Equivalent Expression",
         "is_marked": true,
         "model_names": [],
         "breakdown": null,
@@ -8660,11 +8986,50 @@
        }
       },
       {
-       "Q5": {
+       "Q8": {
         "proportion": 0.0,
         "max_marks": 1.0,
-        "feedback": "Expected a word that reads the same backwards.",
-        "method_label": "Custom Code",
+        "feedback": "Expected an expression equal to “x - 1”.",
+        "method_label": "Equivalent Expression",
+        "is_marked": true,
+        "model_names": [],
+        "breakdown": null,
+        "spans": [],
+        "marks": 0.0
+       }
+      },
+      {
+       "Q8": {
+        "proportion": 0.0,
+        "max_marks": 1.0,
+        "feedback": "Expected an expression equal to “x - 1”.",
+        "method_label": "Equivalent Expression",
+        "is_marked": true,
+        "model_names": [],
+        "breakdown": null,
+        "spans": [],
+        "marks": 0.0
+       }
+      },
+      {
+       "Q8": {
+        "proportion": 1.0,
+        "max_marks": 1.0,
+        "feedback": "Correct.",
+        "method_label": "Equivalent Expression",
+        "is_marked": true,
+        "model_names": [],
+        "breakdown": null,
+        "spans": [],
+        "marks": 1.0
+       }
+      },
+      {
+       "Q8": {
+        "proportion": 0.0,
+        "max_marks": 1.0,
+        "feedback": "Expected an expression equal to “x - 1”.",
+        "method_label": "Equivalent Expression",
         "is_marked": true,
         "model_names": [],
         "breakdown": null,
@@ -8676,8 +9041,8 @@
     },
     {
      "summary": {
-      "method_label": "Custom Code",
-      "description": "Python code decides the marks:\n\n```python\nword = answer.strip().lower()\ncorrect = word == word[::-1]\nfeedback = \"Correct.\" if correct else \"Expected a word that reads the same backwards.\"\n```",
+      "method_label": "Equivalent Expression",
+      "description": "Equals `x - 1` or `x + 1`.",
       "problems": [],
       "is_compatible": true,
       "incompatible_version": "",
@@ -8685,11 +9050,11 @@
      },
      "results": [
       {
-       "Q5": {
+       "Q8": {
         "proportion": 1.0,
         "max_marks": 1.0,
         "feedback": "Correct.",
-        "method_label": "Custom Code",
+        "method_label": "Equivalent Expression",
         "is_marked": true,
         "model_names": [],
         "breakdown": null,
@@ -8698,11 +9063,11 @@
        }
       },
       {
-       "Q5": {
+       "Q8": {
         "proportion": 1.0,
         "max_marks": 1.0,
         "feedback": "Correct.",
-        "method_label": "Custom Code",
+        "method_label": "Equivalent Expression",
         "is_marked": true,
         "model_names": [],
         "breakdown": null,
@@ -8711,37 +9076,50 @@
        }
       },
       {
-       "Q5": {
-        "proportion": 1.0,
-        "max_marks": 1.0,
-        "feedback": "Correct.",
-        "method_label": "Custom Code",
-        "is_marked": true,
-        "model_names": [],
-        "breakdown": null,
-        "spans": [],
-        "marks": 1.0
-       }
-      },
-      {
-       "Q5": {
-        "proportion": 1.0,
-        "max_marks": 1.0,
-        "feedback": "Correct.",
-        "method_label": "Custom Code",
-        "is_marked": true,
-        "model_names": [],
-        "breakdown": null,
-        "spans": [],
-        "marks": 1.0
-       }
-      },
-      {
-       "Q5": {
+       "Q8": {
         "proportion": 0.0,
         "max_marks": 1.0,
-        "feedback": "Expected a word that reads the same backwards.",
-        "method_label": "Custom Code",
+        "feedback": "Expected an expression equal to “x - 1” or “x + 1”.",
+        "method_label": "Equivalent Expression",
+        "is_marked": true,
+        "model_names": [],
+        "breakdown": null,
+        "spans": [],
+        "marks": 0.0
+       }
+      },
+      {
+       "Q8": {
+        "proportion": 1.0,
+        "max_marks": 1.0,
+        "feedback": "Correct.",
+        "method_label": "Equivalent Expression",
+        "is_marked": true,
+        "model_names": [],
+        "breakdown": null,
+        "spans": [],
+        "marks": 1.0
+       }
+      },
+      {
+       "Q8": {
+        "proportion": 1.0,
+        "max_marks": 1.0,
+        "feedback": "Correct.",
+        "method_label": "Equivalent Expression",
+        "is_marked": true,
+        "model_names": [],
+        "breakdown": null,
+        "spans": [],
+        "marks": 1.0
+       }
+      },
+      {
+       "Q8": {
+        "proportion": 0.0,
+        "max_marks": 1.0,
+        "feedback": "Expected an expression equal to “x - 1” or “x + 1”.",
+        "method_label": "Equivalent Expression",
         "is_marked": true,
         "model_names": [],
         "breakdown": null,
@@ -8753,8 +9131,8 @@
     },
     {
      "summary": {
-      "method_label": "Custom Code",
-      "description": "Python code decides the marks:\n\n```python\nword = answer.strip().lower()\ncorrect = len(word) > 1 and word == word[::-1]\nfeedback = \"Correct.\" if correct else \"Expected a word that reads the same backwards.\"\n```",
+      "method_label": "Equivalent Expression",
+      "description": "Equals `x - 1`, `x + 1` or `1 - x`.",
       "problems": [],
       "is_compatible": true,
       "incompatible_version": "",
@@ -8762,11 +9140,11 @@
      },
      "results": [
       {
-       "Q5": {
+       "Q8": {
         "proportion": 1.0,
         "max_marks": 1.0,
         "feedback": "Correct.",
-        "method_label": "Custom Code",
+        "method_label": "Equivalent Expression",
         "is_marked": true,
         "model_names": [],
         "breakdown": null,
@@ -8775,11 +9153,11 @@
        }
       },
       {
-       "Q5": {
+       "Q8": {
         "proportion": 1.0,
         "max_marks": 1.0,
         "feedback": "Correct.",
-        "method_label": "Custom Code",
+        "method_label": "Equivalent Expression",
         "is_marked": true,
         "model_names": [],
         "breakdown": null,
@@ -8788,24 +9166,11 @@
        }
       },
       {
-       "Q5": {
-        "proportion": 0.0,
-        "max_marks": 1.0,
-        "feedback": "Expected a word that reads the same backwards.",
-        "method_label": "Custom Code",
-        "is_marked": true,
-        "model_names": [],
-        "breakdown": null,
-        "spans": [],
-        "marks": 0.0
-       }
-      },
-      {
-       "Q5": {
+       "Q8": {
         "proportion": 1.0,
         "max_marks": 1.0,
         "feedback": "Correct.",
-        "method_label": "Custom Code",
+        "method_label": "Equivalent Expression",
         "is_marked": true,
         "model_names": [],
         "breakdown": null,
@@ -8814,59 +9179,11 @@
        }
       },
       {
-       "Q5": {
-        "proportion": 0.0,
-        "max_marks": 1.0,
-        "feedback": "Expected a word that reads the same backwards.",
-        "method_label": "Custom Code",
-        "is_marked": true,
-        "model_names": [],
-        "breakdown": null,
-        "spans": [],
-        "marks": 0.0
-       }
-      }
-     ]
-    }
-   ]
-  },
-  "conditional": {
-   "method_label": "Conditional",
-   "normalized_answers": [
-    {
-     "Q4a": "northern",
-     "Q4b": "summer"
-    },
-    {
-     "Q4a": "southern",
-     "Q4b": "winter"
-    },
-    {
-     "Q4a": "northern",
-     "Q4b": "winter"
-    },
-    {
-     "Q4a": "southern",
-     "Q4b": "summer"
-    }
-   ],
-   "variants": [
-    {
-     "summary": {
-      "method_label": "Multiple Choice",
-      "description": "Chooses exactly `summer`.",
-      "problems": [],
-      "is_compatible": true,
-      "incompatible_version": "",
-      "needs_model_endpoint": false
-     },
-     "results": [
-      {
-       "Q4b": {
+       "Q8": {
         "proportion": 1.0,
         "max_marks": 1.0,
         "feedback": "Correct.",
-        "method_label": "Multiple Choice",
+        "method_label": "Equivalent Expression",
         "is_marked": true,
         "model_names": [],
         "breakdown": null,
@@ -8875,294 +9192,27 @@
        }
       },
       {
-       "Q4b": {
-        "proportion": 0.0,
-        "max_marks": 1.0,
-        "feedback": "Expected “summer”.",
-        "method_label": "Multiple Choice",
-        "is_marked": true,
-        "model_names": [],
-        "breakdown": null,
-        "spans": [],
-        "marks": 0.0
-       }
-      },
-      {
-       "Q4b": {
-        "proportion": 0.0,
-        "max_marks": 1.0,
-        "feedback": "Expected “summer”.",
-        "method_label": "Multiple Choice",
-        "is_marked": true,
-        "model_names": [],
-        "breakdown": null,
-        "spans": [],
-        "marks": 0.0
-       }
-      },
-      {
-       "Q4b": {
+       "Q8": {
         "proportion": 1.0,
         "max_marks": 1.0,
         "feedback": "Correct.",
-        "method_label": "Multiple Choice",
+        "method_label": "Equivalent Expression",
         "is_marked": true,
         "model_names": [],
         "breakdown": null,
         "spans": [],
         "marks": 1.0
        }
-      }
-     ]
-    },
-    {
-     "summary": {
-      "method_label": "Conditional",
-      "description": "If all are correct:\n- **Q4a:** Chooses exactly `northern`.\n\nThen:\n- **Q4b:** Chooses exactly `summer`.",
-      "problems": [],
-      "is_compatible": true,
-      "incompatible_version": "",
-      "needs_model_endpoint": false
-     },
-     "results": [
-      {
-       "Q4b": {
-        "proportion": 1.0,
-        "max_marks": 1.0,
-        "feedback": "Correct.",
-        "method_label": "Conditional",
-        "is_marked": true,
-        "model_names": [],
-        "breakdown": {
-         "title": "If all are correct",
-         "effect": "earned",
-         "marks": null,
-         "details": [],
-         "children": [
-          {
-           "title": "**Q4a:** Chooses exactly `northern`.",
-           "effect": "met",
-           "marks": null,
-           "details": [],
-           "children": []
-          },
-          {
-           "title": "Chooses exactly `summer`.",
-           "effect": "earned",
-           "marks": null,
-           "details": [],
-           "children": []
-          }
-         ]
-        },
-        "spans": [],
-        "marks": 1.0
-       }
       },
       {
-       "Q4b": {
+       "Q8": {
         "proportion": 0.0,
         "max_marks": 1.0,
-        "feedback": "",
-        "method_label": "Conditional",
+        "feedback": "Expected an expression equal to “x - 1”, “x + 1” or “1 - x”.",
+        "method_label": "Equivalent Expression",
         "is_marked": true,
         "model_names": [],
         "breakdown": null,
-        "spans": [],
-        "marks": 0.0
-       }
-      },
-      {
-       "Q4b": {
-        "proportion": 0.0,
-        "max_marks": 1.0,
-        "feedback": "Expected “summer”.",
-        "method_label": "Conditional",
-        "is_marked": true,
-        "model_names": [],
-        "breakdown": {
-         "title": "If all are correct",
-         "effect": "no_marks",
-         "marks": null,
-         "details": [],
-         "children": [
-          {
-           "title": "**Q4a:** Chooses exactly `northern`.",
-           "effect": "met",
-           "marks": null,
-           "details": [],
-           "children": []
-          },
-          {
-           "title": "Chooses exactly `summer`.",
-           "effect": "no_marks",
-           "marks": null,
-           "details": [],
-           "children": []
-          }
-         ]
-        },
-        "spans": [],
-        "marks": 0.0
-       }
-      },
-      {
-       "Q4b": {
-        "proportion": 0.0,
-        "max_marks": 1.0,
-        "feedback": "",
-        "method_label": "Conditional",
-        "is_marked": true,
-        "model_names": [],
-        "breakdown": null,
-        "spans": [],
-        "marks": 0.0
-       }
-      }
-     ]
-    },
-    {
-     "summary": {
-      "method_label": "Conditional",
-      "description": "If all are correct:\n- **Q4a:** Chooses exactly `northern`.\n\nThen:\n- **Q4b:** Chooses exactly `summer`.\n\nOtherwise:\n- **Q4b:** Chooses exactly `winter`.",
-      "problems": [],
-      "is_compatible": true,
-      "incompatible_version": "",
-      "needs_model_endpoint": false
-     },
-     "results": [
-      {
-       "Q4b": {
-        "proportion": 1.0,
-        "max_marks": 1.0,
-        "feedback": "Correct.",
-        "method_label": "Conditional",
-        "is_marked": true,
-        "model_names": [],
-        "breakdown": {
-         "title": "If all are correct",
-         "effect": "earned",
-         "marks": null,
-         "details": [],
-         "children": [
-          {
-           "title": "**Q4a:** Chooses exactly `northern`.",
-           "effect": "met",
-           "marks": null,
-           "details": [],
-           "children": []
-          },
-          {
-           "title": "Chooses exactly `summer`.",
-           "effect": "earned",
-           "marks": null,
-           "details": [],
-           "children": []
-          }
-         ]
-        },
-        "spans": [],
-        "marks": 1.0
-       }
-      },
-      {
-       "Q4b": {
-        "proportion": 1.0,
-        "max_marks": 1.0,
-        "feedback": "Correct.",
-        "method_label": "Conditional",
-        "is_marked": true,
-        "model_names": [],
-        "breakdown": {
-         "title": "If all are correct",
-         "effect": "earned",
-         "marks": null,
-         "details": [],
-         "children": [
-          {
-           "title": "**Q4a:** Chooses exactly `northern`.",
-           "effect": "not_met",
-           "marks": null,
-           "details": [],
-           "children": []
-          },
-          {
-           "title": "Chooses exactly `winter`.",
-           "effect": "earned",
-           "marks": null,
-           "details": [],
-           "children": []
-          }
-         ]
-        },
-        "spans": [],
-        "marks": 1.0
-       }
-      },
-      {
-       "Q4b": {
-        "proportion": 0.0,
-        "max_marks": 1.0,
-        "feedback": "Expected “summer”.",
-        "method_label": "Conditional",
-        "is_marked": true,
-        "model_names": [],
-        "breakdown": {
-         "title": "If all are correct",
-         "effect": "no_marks",
-         "marks": null,
-         "details": [],
-         "children": [
-          {
-           "title": "**Q4a:** Chooses exactly `northern`.",
-           "effect": "met",
-           "marks": null,
-           "details": [],
-           "children": []
-          },
-          {
-           "title": "Chooses exactly `summer`.",
-           "effect": "no_marks",
-           "marks": null,
-           "details": [],
-           "children": []
-          }
-         ]
-        },
-        "spans": [],
-        "marks": 0.0
-       }
-      },
-      {
-       "Q4b": {
-        "proportion": 0.0,
-        "max_marks": 1.0,
-        "feedback": "Expected “winter”.",
-        "method_label": "Conditional",
-        "is_marked": true,
-        "model_names": [],
-        "breakdown": {
-         "title": "If all are correct",
-         "effect": "no_marks",
-         "marks": null,
-         "details": [],
-         "children": [
-          {
-           "title": "**Q4a:** Chooses exactly `northern`.",
-           "effect": "not_met",
-           "marks": null,
-           "details": [],
-           "children": []
-          },
-          {
-           "title": "Chooses exactly `winter`.",
-           "effect": "no_marks",
-           "marks": null,
-           "details": [],
-           "children": []
-          }
-         ]
-        },
         "spans": [],
         "marks": 0.0
        }
@@ -10624,33 +10674,31 @@
     }
    ]
   },
-  "equivalent_expression": {
-   "method_label": "Equivalent Expression",
+  "conditional": {
+   "method_label": "Conditional",
    "normalized_answers": [
     {
-     "Q8": "x - 1"
+     "Q4a": "northern",
+     "Q4b": "summer"
     },
     {
-     "Q8": "x + 1"
+     "Q4a": "southern",
+     "Q4b": "winter"
     },
     {
-     "Q8": "1 - x"
+     "Q4a": "northern",
+     "Q4b": "winter"
     },
     {
-     "Q8": "1 + x"
-    },
-    {
-     "Q8": "-1 + x"
-    },
-    {
-     "Q8": "x"
+     "Q4a": "southern",
+     "Q4b": "summer"
     }
    ],
    "variants": [
     {
      "summary": {
-      "method_label": "Equivalent Expression",
-      "description": "Equals `x - 1`.",
+      "method_label": "Multiple Choice",
+      "description": "Chooses exactly `summer`.",
       "problems": [],
       "is_compatible": true,
       "incompatible_version": "",
@@ -10658,11 +10706,11 @@
      },
      "results": [
       {
-       "Q8": {
+       "Q4b": {
         "proportion": 1.0,
         "max_marks": 1.0,
         "feedback": "Correct.",
-        "method_label": "Equivalent Expression",
+        "method_label": "Multiple Choice",
         "is_marked": true,
         "model_names": [],
         "breakdown": null,
@@ -10671,11 +10719,11 @@
        }
       },
       {
-       "Q8": {
+       "Q4b": {
         "proportion": 0.0,
         "max_marks": 1.0,
-        "feedback": "Expected an expression equal to “x - 1”.",
-        "method_label": "Equivalent Expression",
+        "feedback": "Expected “summer”.",
+        "method_label": "Multiple Choice",
         "is_marked": true,
         "model_names": [],
         "breakdown": null,
@@ -10684,11 +10732,11 @@
        }
       },
       {
-       "Q8": {
+       "Q4b": {
         "proportion": 0.0,
         "max_marks": 1.0,
-        "feedback": "Expected an expression equal to “x - 1”.",
-        "method_label": "Equivalent Expression",
+        "feedback": "Expected “summer”.",
+        "method_label": "Multiple Choice",
         "is_marked": true,
         "model_names": [],
         "breakdown": null,
@@ -10697,37 +10745,117 @@
        }
       },
       {
-       "Q8": {
-        "proportion": 0.0,
-        "max_marks": 1.0,
-        "feedback": "Expected an expression equal to “x - 1”.",
-        "method_label": "Equivalent Expression",
-        "is_marked": true,
-        "model_names": [],
-        "breakdown": null,
-        "spans": [],
-        "marks": 0.0
-       }
-      },
-      {
-       "Q8": {
+       "Q4b": {
         "proportion": 1.0,
         "max_marks": 1.0,
         "feedback": "Correct.",
-        "method_label": "Equivalent Expression",
+        "method_label": "Multiple Choice",
         "is_marked": true,
         "model_names": [],
         "breakdown": null,
         "spans": [],
         "marks": 1.0
        }
+      }
+     ]
+    },
+    {
+     "summary": {
+      "method_label": "Conditional",
+      "description": "If all are correct:\n- **Q4a:** Chooses exactly `northern`.\n\nThen:\n- **Q4b:** Chooses exactly `summer`.",
+      "problems": [],
+      "is_compatible": true,
+      "incompatible_version": "",
+      "needs_model_endpoint": false
+     },
+     "results": [
+      {
+       "Q4b": {
+        "proportion": 1.0,
+        "max_marks": 1.0,
+        "feedback": "Correct.",
+        "method_label": "Conditional",
+        "is_marked": true,
+        "model_names": [],
+        "breakdown": {
+         "title": "If all are correct",
+         "effect": "earned",
+         "marks": null,
+         "details": [],
+         "children": [
+          {
+           "title": "**Q4a:** Chooses exactly `northern`.",
+           "effect": "met",
+           "marks": null,
+           "details": [],
+           "children": []
+          },
+          {
+           "title": "Chooses exactly `summer`.",
+           "effect": "earned",
+           "marks": null,
+           "details": [],
+           "children": []
+          }
+         ]
+        },
+        "spans": [],
+        "marks": 1.0
+       }
       },
       {
-       "Q8": {
+       "Q4b": {
         "proportion": 0.0,
         "max_marks": 1.0,
-        "feedback": "Expected an expression equal to “x - 1”.",
-        "method_label": "Equivalent Expression",
+        "feedback": "",
+        "method_label": "Conditional",
+        "is_marked": true,
+        "model_names": [],
+        "breakdown": null,
+        "spans": [],
+        "marks": 0.0
+       }
+      },
+      {
+       "Q4b": {
+        "proportion": 0.0,
+        "max_marks": 1.0,
+        "feedback": "Expected “summer”.",
+        "method_label": "Conditional",
+        "is_marked": true,
+        "model_names": [],
+        "breakdown": {
+         "title": "If all are correct",
+         "effect": "no_marks",
+         "marks": null,
+         "details": [],
+         "children": [
+          {
+           "title": "**Q4a:** Chooses exactly `northern`.",
+           "effect": "met",
+           "marks": null,
+           "details": [],
+           "children": []
+          },
+          {
+           "title": "Chooses exactly `summer`.",
+           "effect": "no_marks",
+           "marks": null,
+           "details": [],
+           "children": []
+          }
+         ]
+        },
+        "spans": [],
+        "marks": 0.0
+       }
+      },
+      {
+       "Q4b": {
+        "proportion": 0.0,
+        "max_marks": 1.0,
+        "feedback": "",
+        "method_label": "Conditional",
         "is_marked": true,
         "model_names": [],
         "breakdown": null,
@@ -10739,8 +10867,8 @@
     },
     {
      "summary": {
-      "method_label": "Equivalent Expression",
-      "description": "Equals `x - 1` or `x + 1`.",
+      "method_label": "Conditional",
+      "description": "If all are correct:\n- **Q4a:** Chooses exactly `northern`.\n\nThen:\n- **Q4b:** Chooses exactly `summer`.\n\nOtherwise:\n- **Q4b:** Chooses exactly `winter`.",
       "problems": [],
       "is_compatible": true,
       "incompatible_version": "",
@@ -10748,37 +10876,181 @@
      },
      "results": [
       {
-       "Q8": {
+       "Q4b": {
         "proportion": 1.0,
         "max_marks": 1.0,
         "feedback": "Correct.",
-        "method_label": "Equivalent Expression",
+        "method_label": "Conditional",
         "is_marked": true,
         "model_names": [],
-        "breakdown": null,
+        "breakdown": {
+         "title": "If all are correct",
+         "effect": "earned",
+         "marks": null,
+         "details": [],
+         "children": [
+          {
+           "title": "**Q4a:** Chooses exactly `northern`.",
+           "effect": "met",
+           "marks": null,
+           "details": [],
+           "children": []
+          },
+          {
+           "title": "Chooses exactly `summer`.",
+           "effect": "earned",
+           "marks": null,
+           "details": [],
+           "children": []
+          }
+         ]
+        },
         "spans": [],
         "marks": 1.0
        }
       },
       {
-       "Q8": {
+       "Q4b": {
         "proportion": 1.0,
         "max_marks": 1.0,
         "feedback": "Correct.",
-        "method_label": "Equivalent Expression",
+        "method_label": "Conditional",
         "is_marked": true,
         "model_names": [],
-        "breakdown": null,
+        "breakdown": {
+         "title": "If all are correct",
+         "effect": "earned",
+         "marks": null,
+         "details": [],
+         "children": [
+          {
+           "title": "**Q4a:** Chooses exactly `northern`.",
+           "effect": "not_met",
+           "marks": null,
+           "details": [],
+           "children": []
+          },
+          {
+           "title": "Chooses exactly `winter`.",
+           "effect": "earned",
+           "marks": null,
+           "details": [],
+           "children": []
+          }
+         ]
+        },
         "spans": [],
         "marks": 1.0
        }
       },
       {
-       "Q8": {
+       "Q4b": {
         "proportion": 0.0,
         "max_marks": 1.0,
-        "feedback": "Expected an expression equal to “x - 1” or “x + 1”.",
-        "method_label": "Equivalent Expression",
+        "feedback": "Expected “summer”.",
+        "method_label": "Conditional",
+        "is_marked": true,
+        "model_names": [],
+        "breakdown": {
+         "title": "If all are correct",
+         "effect": "no_marks",
+         "marks": null,
+         "details": [],
+         "children": [
+          {
+           "title": "**Q4a:** Chooses exactly `northern`.",
+           "effect": "met",
+           "marks": null,
+           "details": [],
+           "children": []
+          },
+          {
+           "title": "Chooses exactly `summer`.",
+           "effect": "no_marks",
+           "marks": null,
+           "details": [],
+           "children": []
+          }
+         ]
+        },
+        "spans": [],
+        "marks": 0.0
+       }
+      },
+      {
+       "Q4b": {
+        "proportion": 0.0,
+        "max_marks": 1.0,
+        "feedback": "Expected “winter”.",
+        "method_label": "Conditional",
+        "is_marked": true,
+        "model_names": [],
+        "breakdown": {
+         "title": "If all are correct",
+         "effect": "no_marks",
+         "marks": null,
+         "details": [],
+         "children": [
+          {
+           "title": "**Q4a:** Chooses exactly `northern`.",
+           "effect": "not_met",
+           "marks": null,
+           "details": [],
+           "children": []
+          },
+          {
+           "title": "Chooses exactly `winter`.",
+           "effect": "no_marks",
+           "marks": null,
+           "details": [],
+           "children": []
+          }
+         ]
+        },
+        "spans": [],
+        "marks": 0.0
+       }
+      }
+     ]
+    }
+   ]
+  },
+  "custom_code": {
+   "method_label": "Custom Code",
+   "normalized_answers": [
+    {
+     "Q5": "Level"
+    },
+    {
+     "Q5": "Racecar"
+    },
+    {
+     "Q5": "A"
+    },
+    {
+     "Q5": "Hannah"
+    },
+    {
+     "Q5": "Banana"
+    }
+   ],
+   "variants": [
+    {
+     "summary": {
+      "method_label": "Custom Code",
+      "description": "Python code decides the marks:\n\n```python\nword = answer.strip()\ncorrect = word == word[::-1]\nfeedback = \"Correct.\" if correct else \"Expected a word that reads the same backwards.\"\n```",
+      "problems": [],
+      "is_compatible": true,
+      "incompatible_version": "",
+      "needs_model_endpoint": false
+     },
+     "results": [
+      {
+       "Q5": {
+        "proportion": 0.0,
+        "max_marks": 1.0,
+        "feedback": "Expected a word that reads the same backwards.",
+        "method_label": "Custom Code",
         "is_marked": true,
         "model_names": [],
         "breakdown": null,
@@ -10787,37 +11059,50 @@
        }
       },
       {
-       "Q8": {
-        "proportion": 1.0,
-        "max_marks": 1.0,
-        "feedback": "Correct.",
-        "method_label": "Equivalent Expression",
-        "is_marked": true,
-        "model_names": [],
-        "breakdown": null,
-        "spans": [],
-        "marks": 1.0
-       }
-      },
-      {
-       "Q8": {
-        "proportion": 1.0,
-        "max_marks": 1.0,
-        "feedback": "Correct.",
-        "method_label": "Equivalent Expression",
-        "is_marked": true,
-        "model_names": [],
-        "breakdown": null,
-        "spans": [],
-        "marks": 1.0
-       }
-      },
-      {
-       "Q8": {
+       "Q5": {
         "proportion": 0.0,
         "max_marks": 1.0,
-        "feedback": "Expected an expression equal to “x - 1” or “x + 1”.",
-        "method_label": "Equivalent Expression",
+        "feedback": "Expected a word that reads the same backwards.",
+        "method_label": "Custom Code",
+        "is_marked": true,
+        "model_names": [],
+        "breakdown": null,
+        "spans": [],
+        "marks": 0.0
+       }
+      },
+      {
+       "Q5": {
+        "proportion": 1.0,
+        "max_marks": 1.0,
+        "feedback": "Correct.",
+        "method_label": "Custom Code",
+        "is_marked": true,
+        "model_names": [],
+        "breakdown": null,
+        "spans": [],
+        "marks": 1.0
+       }
+      },
+      {
+       "Q5": {
+        "proportion": 0.0,
+        "max_marks": 1.0,
+        "feedback": "Expected a word that reads the same backwards.",
+        "method_label": "Custom Code",
+        "is_marked": true,
+        "model_names": [],
+        "breakdown": null,
+        "spans": [],
+        "marks": 0.0
+       }
+      },
+      {
+       "Q5": {
+        "proportion": 0.0,
+        "max_marks": 1.0,
+        "feedback": "Expected a word that reads the same backwards.",
+        "method_label": "Custom Code",
         "is_marked": true,
         "model_names": [],
         "breakdown": null,
@@ -10829,8 +11114,8 @@
     },
     {
      "summary": {
-      "method_label": "Equivalent Expression",
-      "description": "Equals `x - 1`, `x + 1` or `1 - x`.",
+      "method_label": "Custom Code",
+      "description": "Python code decides the marks:\n\n```python\nword = answer.strip().lower()\ncorrect = word == word[::-1]\nfeedback = \"Correct.\" if correct else \"Expected a word that reads the same backwards.\"\n```",
       "problems": [],
       "is_compatible": true,
       "incompatible_version": "",
@@ -10838,11 +11123,11 @@
      },
      "results": [
       {
-       "Q8": {
+       "Q5": {
         "proportion": 1.0,
         "max_marks": 1.0,
         "feedback": "Correct.",
-        "method_label": "Equivalent Expression",
+        "method_label": "Custom Code",
         "is_marked": true,
         "model_names": [],
         "breakdown": null,
@@ -10851,11 +11136,11 @@
        }
       },
       {
-       "Q8": {
+       "Q5": {
         "proportion": 1.0,
         "max_marks": 1.0,
         "feedback": "Correct.",
-        "method_label": "Equivalent Expression",
+        "method_label": "Custom Code",
         "is_marked": true,
         "model_names": [],
         "breakdown": null,
@@ -10864,11 +11149,11 @@
        }
       },
       {
-       "Q8": {
+       "Q5": {
         "proportion": 1.0,
         "max_marks": 1.0,
         "feedback": "Correct.",
-        "method_label": "Equivalent Expression",
+        "method_label": "Custom Code",
         "is_marked": true,
         "model_names": [],
         "breakdown": null,
@@ -10877,11 +11162,11 @@
        }
       },
       {
-       "Q8": {
+       "Q5": {
         "proportion": 1.0,
         "max_marks": 1.0,
         "feedback": "Correct.",
-        "method_label": "Equivalent Expression",
+        "method_label": "Custom Code",
         "is_marked": true,
         "model_names": [],
         "breakdown": null,
@@ -10890,24 +11175,257 @@
        }
       },
       {
-       "Q8": {
-        "proportion": 1.0,
-        "max_marks": 1.0,
-        "feedback": "Correct.",
-        "method_label": "Equivalent Expression",
-        "is_marked": true,
-        "model_names": [],
-        "breakdown": null,
-        "spans": [],
-        "marks": 1.0
-       }
-      },
-      {
-       "Q8": {
+       "Q5": {
         "proportion": 0.0,
         "max_marks": 1.0,
-        "feedback": "Expected an expression equal to “x - 1”, “x + 1” or “1 - x”.",
-        "method_label": "Equivalent Expression",
+        "feedback": "Expected a word that reads the same backwards.",
+        "method_label": "Custom Code",
+        "is_marked": true,
+        "model_names": [],
+        "breakdown": null,
+        "spans": [],
+        "marks": 0.0
+       }
+      }
+     ]
+    },
+    {
+     "summary": {
+      "method_label": "Custom Code",
+      "description": "Python code decides the marks:\n\n```python\nword = answer.strip().lower()\ncorrect = len(word) > 1 and word == word[::-1]\nfeedback = \"Correct.\" if correct else \"Expected a word that reads the same backwards.\"\n```",
+      "problems": [],
+      "is_compatible": true,
+      "incompatible_version": "",
+      "needs_model_endpoint": false
+     },
+     "results": [
+      {
+       "Q5": {
+        "proportion": 1.0,
+        "max_marks": 1.0,
+        "feedback": "Correct.",
+        "method_label": "Custom Code",
+        "is_marked": true,
+        "model_names": [],
+        "breakdown": null,
+        "spans": [],
+        "marks": 1.0
+       }
+      },
+      {
+       "Q5": {
+        "proportion": 1.0,
+        "max_marks": 1.0,
+        "feedback": "Correct.",
+        "method_label": "Custom Code",
+        "is_marked": true,
+        "model_names": [],
+        "breakdown": null,
+        "spans": [],
+        "marks": 1.0
+       }
+      },
+      {
+       "Q5": {
+        "proportion": 0.0,
+        "max_marks": 1.0,
+        "feedback": "Expected a word that reads the same backwards.",
+        "method_label": "Custom Code",
+        "is_marked": true,
+        "model_names": [],
+        "breakdown": null,
+        "spans": [],
+        "marks": 0.0
+       }
+      },
+      {
+       "Q5": {
+        "proportion": 1.0,
+        "max_marks": 1.0,
+        "feedback": "Correct.",
+        "method_label": "Custom Code",
+        "is_marked": true,
+        "model_names": [],
+        "breakdown": null,
+        "spans": [],
+        "marks": 1.0
+       }
+      },
+      {
+       "Q5": {
+        "proportion": 0.0,
+        "max_marks": 1.0,
+        "feedback": "Expected a word that reads the same backwards.",
+        "method_label": "Custom Code",
+        "is_marked": true,
+        "model_names": [],
+        "breakdown": null,
+        "spans": [],
+        "marks": 0.0
+       }
+      }
+     ]
+    }
+   ]
+  },
+  "answer_criteria": {
+   "method_label": "Answer Criteria",
+   "normalized_answers": [
+    {
+     "Q1": "3 × 2 = 6 and 2 × 5 = 10, so 6 + 10 = $16"
+    },
+    {
+     "Q1": "$16"
+    },
+    {
+     "Q1": "3 × 2 = 6 and 2 × 5 = 10, so she pays $6 and $10"
+    }
+   ],
+   "variants": [
+    {
+     "summary": {
+      "method_label": "Answer Criteria",
+      "description": "AI checks the answer for Correct total (2 marks).",
+      "problems": [],
+      "is_compatible": true,
+      "incompatible_version": "",
+      "needs_model_endpoint": true
+     },
+     "results": [
+      {
+       "Q1": {
+        "proportion": 0.6666666666666666,
+        "max_marks": 3.0,
+        "feedback": "Correct total.",
+        "method_label": "Answer Criteria",
+        "is_marked": true,
+        "model_names": [],
+        "breakdown": null,
+        "spans": [],
+        "marks": 2.0
+       }
+      },
+      {
+       "Q1": {
+        "proportion": 0.6666666666666666,
+        "max_marks": 3.0,
+        "feedback": "Correct total.",
+        "method_label": "Answer Criteria",
+        "is_marked": true,
+        "model_names": [],
+        "breakdown": null,
+        "spans": [],
+        "marks": 2.0
+       }
+      },
+      {
+       "Q1": {
+        "proportion": 0.0,
+        "max_marks": 3.0,
+        "feedback": "Correct total: Not met.",
+        "method_label": "Answer Criteria",
+        "is_marked": true,
+        "model_names": [],
+        "breakdown": null,
+        "spans": [],
+        "marks": 0.0
+       }
+      }
+     ]
+    },
+    {
+     "summary": {
+      "method_label": "Answer Criteria",
+      "description": "AI checks the answer for each of these:\n- Correct total (2 marks)\n- Shows the working (1 mark)",
+      "problems": [],
+      "is_compatible": true,
+      "incompatible_version": "",
+      "needs_model_endpoint": true
+     },
+     "results": [
+      {
+       "Q1": {
+        "proportion": 1.0,
+        "max_marks": 3.0,
+        "feedback": "Correct total.\nShows the working.",
+        "method_label": "Answer Criteria",
+        "is_marked": true,
+        "model_names": [],
+        "breakdown": null,
+        "spans": [],
+        "marks": 3.0
+       }
+      },
+      {
+       "Q1": {
+        "proportion": 0.6666666666666666,
+        "max_marks": 3.0,
+        "feedback": "Correct total.\nShows the working: Not met.",
+        "method_label": "Answer Criteria",
+        "is_marked": true,
+        "model_names": [],
+        "breakdown": null,
+        "spans": [],
+        "marks": 2.0
+       }
+      },
+      {
+       "Q1": {
+        "proportion": 0.3333333333333333,
+        "max_marks": 3.0,
+        "feedback": "Correct total: Not met.\nShows the working.",
+        "method_label": "Answer Criteria",
+        "is_marked": true,
+        "model_names": [],
+        "breakdown": null,
+        "spans": [],
+        "marks": 1.0
+       }
+      }
+     ]
+    },
+    {
+     "summary": {
+      "method_label": "Answer Criteria",
+      "description": "AI checks the answer for each of these:\n- Correct total (2 marks)\n- Shows the working (1 mark)\n- Forgot to sum (-1 mark)",
+      "problems": [],
+      "is_compatible": true,
+      "incompatible_version": "",
+      "needs_model_endpoint": true
+     },
+     "results": [
+      {
+       "Q1": {
+        "proportion": 1.0,
+        "max_marks": 3.0,
+        "feedback": "Correct total.\nShows the working.",
+        "method_label": "Answer Criteria",
+        "is_marked": true,
+        "model_names": [],
+        "breakdown": null,
+        "spans": [],
+        "marks": 3.0
+       }
+      },
+      {
+       "Q1": {
+        "proportion": 0.6666666666666666,
+        "max_marks": 3.0,
+        "feedback": "Correct total.\nShows the working: Not met.",
+        "method_label": "Answer Criteria",
+        "is_marked": true,
+        "model_names": [],
+        "breakdown": null,
+        "spans": [],
+        "marks": 2.0
+       }
+      },
+      {
+       "Q1": {
+        "proportion": 0.0,
+        "max_marks": 3.0,
+        "feedback": "Correct total: Not met.\nShows the working.\nPenalty: Forgot to sum.",
+        "method_label": "Answer Criteria",
         "is_marked": true,
         "model_names": [],
         "breakdown": null,

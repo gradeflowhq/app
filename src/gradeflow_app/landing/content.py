@@ -146,8 +146,31 @@ class Hero(LandingModel):
     students: list[HeroStudent]
 
 
+# The trust demo.
+
+
+class TrustQuestion(LandingModel):
+    question_key: str
+    question_set: QuestionSet
+    answers: list[Answer]
+    """The commonest first."""
+    marking: MarkingJson
+
+
+class Trust(LandingModel):
+    same_mark: TrustQuestion
+    student_names: list[str]
+    """The student IDs of `same_mark`, in its answers' order: names, as an ID column holding names gives them."""
+    breakdown: TrustQuestion
+    opened_answer: str
+    """The answer to `breakdown` whose group the demo opens."""
+    ai: Example
+    """Marked by rules, then by a method that asks the AI service. Its results are what a model gave when run once."""
+
+
 class LandingContent(LandingModel):
     hero: Hero
+    trust: Trust
     groups: Groups
     by_example: ByExample
     examples: dict[str, Example]
@@ -247,8 +270,22 @@ class CoreExample(LandingModel):
     variants: list[CoreVariant]
 
 
+class CoreTrustQuestion(LandingModel):
+    normalized_answers: dict[str, str]
+    """Each answer as the question reads it, by answer."""
+    results: dict[str, QuestionResult]
+    """Each answer's result, by answer."""
+
+
+class CoreTrust(LandingModel):
+    same_mark: CoreTrustQuestion
+    breakdown: CoreTrustQuestion
+    ai: CoreExample
+
+
 class CoreOutput(LandingModel):
     hero: CoreHero
+    trust: CoreTrust
     groups: CoreGroups
     by_example: CoreByExample
     examples: dict[str, CoreExample]

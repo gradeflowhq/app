@@ -48,9 +48,9 @@
 {% endpartialdef %}
 {# The group's students, loaded when first shown. #}
 {% partialdef students %}
-<ul class="student-id-grid hidden group-has-[[data-students]:checked]/body:grid" aria-label="Students"{% if not students %} hx-get="{% url 'answer_group_students' question.assessment_id question.pk %}?student={{ answer_group.student_pks.0 }}" hx-trigger="intersect once" hx-swap="outerHTML"{% endif %}>
+<ul class="student-id-grid hidden group-has-[[data-students]:checked]/body:flex" aria-label="Students"{% if not students %} hx-get="{% url 'answer_group_students' question.assessment_id question.pk %}?student={{ answer_group.student_pks.0 }}" hx-trigger="intersect once" hx-swap="outerHTML"{% endif %}>
   {% for entry in students|slice:":40" %}<li><button type="button"{% if entry.adjustment %} data-adjusted{% endif %} hx-get="{% url 'student' question.assessment_id entry.student_pk %}" hx-target="#drawer-body" data-dialog="drawer"><c-student-id value="{{ entry.encrypted_student_id }}" />{% if entry.adjustment %}{% icon "pencil" %}<span class="sr-only">Adjusted</span>{% endif %}</button></li>{% endfor %}
-  {% if students|length > 40 %}<li class="col-span-full text-sm text-muted">and {{ students|length|add:"-40" }} more</li>{% endif %}
+  {% if students|length > 40 %}<li class="basis-full text-sm text-muted">and {{ students|length|add:"-40" }} more</li>{% endif %}
 </ul>
 {% endpartialdef %}
 {% with low=answer_group.marks_range.0 high=answer_group.marks_range.1 max_marks=question.core_question.max_marks core_question=question.core_question feedback=answer_group.preview.feedback|default:answer_group.feedback code=question.core_question|code_language %}

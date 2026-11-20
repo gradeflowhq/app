@@ -1049,6 +1049,297 @@
       }
     ]
   },
+  "trust": {
+    "same_mark": {
+      "question_key": "Q1",
+      "question_set": {
+        "Q1": {
+          "type": "text",
+          "max_marks": 1,
+          "description": "Which planet is closest to the Sun?",
+          "reading": {
+            "ignore_case": false
+          }
+        }
+      },
+      "answers": [
+        {
+          "text": "Mercury",
+          "student_count": 58
+        },
+        {
+          "text": "Venus",
+          "student_count": 19
+        },
+        {
+          "text": "Mars",
+          "student_count": 7
+        },
+        {
+          "text": "Earth",
+          "student_count": 4
+        }
+      ],
+      "marking": {
+        "question": "Q1",
+        "uses": "gradeflow/accepted-answers@1",
+        "with": {
+          "answers": [
+            "Mercury"
+          ]
+        }
+      }
+    },
+    "student_names": [
+      "Adaeze Okafor",
+      "Aditya Menon",
+      "Aisha Haddad",
+      "Ananya Patel",
+      "Andres Silva",
+      "Aoi Sato",
+      "Arjun Menon",
+      "Bayu Wijaya",
+      "Camila Fernandes",
+      "Chiamaka Nwosu",
+      "Clara Evans",
+      "Daichi Ito",
+      "Dewi Wijaya",
+      "Diego Fernandes",
+      "Elena Evans",
+      "Emeka Okafor",
+      "Faizal Aziz",
+      "Farah Ismail",
+      "Hao Chen",
+      "Hyun Choi",
+      "Ines Silva",
+      "Isla Murphy",
+      "Jia Hui Lee",
+      "Jun Lim",
+      "Kai Chen",
+      "Kwame Okafor",
+      "Li Na Chen",
+      "Liam Volkov",
+      "Linh Le",
+      "Lucia Morales",
+      "Lukas Jensen",
+      "Mai Nguyen",
+      "Mateo Silva",
+      "Min-jun Choi",
+      "Ming Wong",
+      "Minh Nguyen",
+      "Noah Fischer",
+      "Omar Abdullah",
+      "Oscar Fischer",
+      "Ploy Srisuk",
+      "Putri Santoso",
+      "Rafael Santos",
+      "Rahul Sharma",
+      "Rizal Wijaya",
+      "Rohan Das",
+      "Sakura Yamada",
+      "Seo-yeon Kim",
+      "Shu Fen Lee",
+      "Sneha Nair",
+      "Tariq Haddad",
+      "Thanh Nguyen",
+      "Valentina Reyes",
+      "Vikram Iyer",
+      "Wei Zhou",
+      "Yusuf Rahman",
+      "Zainab Yilmaz",
+      "Zawadi Kamau",
+      "Zhi Hao Lim",
+      "Anh Pham",
+      "Arthit Srisuk",
+      "Daniel Murphy",
+      "Femi Mensah",
+      "Freya Bauer",
+      "Gabriel Morales",
+      "Isabela Santos",
+      "Ji-woo Kim",
+      "Karim Aziz",
+      "Karthik Iyer",
+      "Kofi Adeyemi",
+      "Layla Haddad",
+      "Mei Ling Tan",
+      "Nadia Abdullah",
+      "Ren Ito",
+      "Sofia Fernandes",
+      "Xin Yi Lim",
+      "Yu Ting Zhou",
+      "Yuki Yamada",
+      "Amara Adeyemi",
+      "Haruto Ito",
+      "Jonas Murphy",
+      "Kavya Patel",
+      "Mila Murphy",
+      "Ngozi Boateng",
+      "Priya Patel",
+      "Divya Nair",
+      "Hamza Ismail",
+      "Hannah Volkov",
+      "Meera Iyer"
+    ],
+    "breakdown": {
+      "question_key": "Q2",
+      "question_set": {
+        "Q2": {
+          "type": "text",
+          "max_marks": 3,
+          "description": "How many moles are in 36 g of water? Water's molar mass is 18 g/mol. Give the units.",
+          "reading": {
+            "ignore_case": false
+          }
+        }
+      },
+      "answers": [
+        {
+          "text": "2 mol",
+          "student_count": 48
+        },
+        {
+          "text": "0.5 mol",
+          "student_count": 29
+        },
+        {
+          "text": "36 / 18 = 2 mol",
+          "student_count": 17
+        },
+        {
+          "text": "2",
+          "student_count": 12
+        },
+        {
+          "text": "648 mol",
+          "student_count": 6
+        }
+      ],
+      "marking": {
+        "question": "Q2",
+        "uses": "gradeflow/workflow@1",
+        "with": {
+          "marks_by": "proportional",
+          "steps": [
+            {
+              "id": "amount",
+              "uses": "gradeflow/extract@1",
+              "with": {
+                "type": "number",
+                "occurrence": "last"
+              }
+            },
+            {
+              "name": "Amount",
+              "weight": 2,
+              "input": "{{ steps.amount.output }}",
+              "uses": "gradeflow/number-range@1",
+              "with": {
+                "min_value": 1.99,
+                "max_value": 2.01
+              }
+            },
+            {
+              "name": "Units",
+              "uses": "gradeflow/key-points@1",
+              "with": {
+                "points": [
+                  "mol"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    "opened_answer": "0.5 mol",
+    "ai": {
+      "method_ref": "gradeflow/answer-criteria@1",
+      "question_set": {
+        "Q3": {
+          "type": "text",
+          "max_marks": 2,
+          "description": "Why do we see lightning before we hear thunder?",
+          "reading": {
+            "ignore_case": false
+          }
+        }
+      },
+      "answers": [
+        {
+          "answers": {
+            "Q3": "Because light travels faster than sound."
+          },
+          "student_count": 19
+        },
+        {
+          "answers": {
+            "Q3": "The flash reaches us sooner because it's quicker than the noise."
+          },
+          "student_count": 31
+        },
+        {
+          "answers": {
+            "Q3": "Sound travels faster than light."
+          },
+          "student_count": 24
+        },
+        {
+          "answers": {
+            "Q3": "The thunder comes later."
+          },
+          "student_count": 8
+        }
+      ],
+      "variants": [
+        {
+          "change": "Key Points",
+          "marking": {
+            "question": "Q3",
+            "uses": "gradeflow/key-points@1",
+            "with": {
+              "points": [
+                "light",
+                "faster"
+              ]
+            }
+          }
+        },
+        {
+          "change": "Answer Criteria",
+          "marking": {
+            "question": "Q3",
+            "uses": "gradeflow/answer-criteria@1",
+            "with": {
+              "criteria": [
+                {
+                  "text": "Says light travels faster than sound",
+                  "marks": 2
+                }
+              ]
+            }
+          },
+          "results": [
+            {
+              "marks": 2.0,
+              "feedback": "Says light travels faster than sound."
+            },
+            {
+              "marks": 2.0,
+              "feedback": "Says light travels faster than sound."
+            },
+            {
+              "marks": 0.0,
+              "feedback": "Says light travels faster than sound: Not met."
+            },
+            {
+              "marks": 0.0,
+              "feedback": "Says light travels faster than sound: Not met."
+            }
+          ]
+        }
+      ]
+    }
+  },
   "groups": {
     "question_key": "Q1",
     "question_set": {
@@ -1374,140 +1665,6 @@
         }
       ]
     },
-    "answer_criteria": {
-      "method_ref": "gradeflow/answer-criteria@1",
-      "question_set": {
-        "Q1": {
-          "type": "text",
-          "max_marks": 3,
-          "description": "Pens cost $2 and books $5. What do 3 pens and 2 books cost? Show your working."
-        }
-      },
-      "answers": [
-        {
-          "answers": {
-            "Q1": "3 × 2 = 6 and 2 × 5 = 10, so 6 + 10 = $16"
-          },
-          "student_count": 188
-        },
-        {
-          "answers": {
-            "Q1": "$16"
-          },
-          "student_count": 74
-        },
-        {
-          "answers": {
-            "Q1": "3 × 2 = 6 and 2 × 5 = 10, so she pays $6 and $10"
-          },
-          "student_count": 31
-        }
-      ],
-      "variants": [
-        {
-          "change": "Start with one criterion: Correct total",
-          "marking": {
-            "question": "Q1",
-            "uses": "gradeflow/answer-criteria@1",
-            "with": {
-              "criteria": [
-                {
-                  "text": "Correct total",
-                  "marks": 2
-                }
-              ],
-              "model_answer": "3 × 2 = 6 and 2 × 5 = 10, so 6 + 10 = $16"
-            }
-          },
-          "results": [
-            {
-              "marks": 2,
-              "feedback": "Correct total."
-            },
-            {
-              "marks": 2,
-              "feedback": "Correct total."
-            },
-            {
-              "marks": 0,
-              "feedback": "Correct total: Not met."
-            }
-          ]
-        },
-        {
-          "change": "Add a criterion: Shows the working",
-          "marking": {
-            "question": "Q1",
-            "uses": "gradeflow/answer-criteria@1",
-            "with": {
-              "criteria": [
-                {
-                  "text": "Correct total",
-                  "marks": 2
-                },
-                {
-                  "text": "Shows the working",
-                  "marks": 1
-                }
-              ],
-              "model_answer": "3 × 2 = 6 and 2 × 5 = 10, so 6 + 10 = $16"
-            }
-          },
-          "results": [
-            {
-              "marks": 3,
-              "feedback": "Correct total.\nShows the working."
-            },
-            {
-              "marks": 2,
-              "feedback": "Correct total.\nShows the working: Not met."
-            },
-            {
-              "marks": 1,
-              "feedback": "Correct total: Not met.\nShows the working."
-            }
-          ]
-        },
-        {
-          "change": "Add a penalty: Forgot to sum",
-          "marking": {
-            "question": "Q1",
-            "uses": "gradeflow/answer-criteria@1",
-            "with": {
-              "criteria": [
-                {
-                  "text": "Correct total",
-                  "marks": 2
-                },
-                {
-                  "text": "Shows the working",
-                  "marks": 1
-                },
-                {
-                  "text": "Forgot to sum",
-                  "marks": -1
-                }
-              ],
-              "model_answer": "3 × 2 = 6 and 2 × 5 = 10, so 6 + 10 = $16"
-            }
-          },
-          "results": [
-            {
-              "marks": 3,
-              "feedback": "Correct total.\nShows the working."
-            },
-            {
-              "marks": 2,
-              "feedback": "Correct total.\nShows the working: Not met."
-            },
-            {
-              "marks": 0,
-              "feedback": "Correct total: Not met.\nShows the working.\nPenalty: Forgot to sum."
-            }
-          ]
-        }
-      ]
-    },
     "code_tests": {
       "method_ref": "gradeflow/code-tests@1",
       "question_set": {
@@ -1616,215 +1773,89 @@
         }
       ]
     },
-    "custom_code": {
-      "method_ref": "gradeflow/custom-code@1",
+    "equivalent_expression": {
+      "method_ref": "gradeflow/equivalent-expression@1",
       "question_set": {
-        "Q5": {
+        "Q8": {
           "type": "text",
-          "description": "Name a word that reads the same backwards.",
-          "max_marks": 1,
-          "reading": {
-            "ignore_case": false
-          }
+          "description": "Give a factor of x² - 1.",
+          "max_marks": 1
         }
       },
       "answers": [
         {
           "answers": {
-            "Q5": "Level"
+            "Q8": "x - 1"
           },
-          "student_count": 154
+          "student_count": 210
         },
         {
           "answers": {
-            "Q5": "Racecar"
+            "Q8": "x + 1"
           },
-          "student_count": 97
+          "student_count": 180
         },
         {
           "answers": {
-            "Q5": "A"
-          },
-          "student_count": 48
-        },
-        {
-          "answers": {
-            "Q5": "Hannah"
+            "Q8": "1 - x"
           },
           "student_count": 41
         },
         {
           "answers": {
-            "Q5": "Banana"
+            "Q8": "1 + x"
           },
-          "student_count": 23
+          "student_count": 30
+        },
+        {
+          "answers": {
+            "Q8": "-1 + x"
+          },
+          "student_count": 25
+        },
+        {
+          "answers": {
+            "Q8": "x"
+          },
+          "student_count": 15
         }
       ],
       "variants": [
         {
-          "change": "Start with a simple check",
+          "change": "Accept x - 1",
           "marking": {
-            "question": "Q5",
-            "uses": "gradeflow/custom-code@1",
+            "question": "Q8",
+            "uses": "gradeflow/equivalent-expression@1",
             "with": {
-              "code": "word = answer.strip()\ncorrect = word == word[::-1]\nfeedback = \"Correct.\" if correct else \"Expected a word that reads the same backwards.\"\n"
-            }
-          }
-        },
-        {
-          "change": "Ignore case",
-          "marking": {
-            "question": "Q5",
-            "uses": "gradeflow/custom-code@1",
-            "with": {
-              "code": "word = answer.strip().lower()\ncorrect = word == word[::-1]\nfeedback = \"Correct.\" if correct else \"Expected a word that reads the same backwards.\"\n"
-            }
-          }
-        },
-        {
-          "change": "Need at least two letters",
-          "marking": {
-            "question": "Q5",
-            "uses": "gradeflow/custom-code@1",
-            "with": {
-              "code": "word = answer.strip().lower()\ncorrect = len(word) > 1 and word == word[::-1]\nfeedback = \"Correct.\" if correct else \"Expected a word that reads the same backwards.\"\n"
-            }
-          }
-        }
-      ]
-    },
-    "conditional": {
-      "method_ref": "gradeflow/conditional@1",
-      "question_set": {
-        "Q4a": {
-          "type": "choice",
-          "description": "Pick a hemisphere.",
-          "options": [
-            "northern",
-            "southern"
-          ]
-        },
-        "Q4b": {
-          "type": "choice",
-          "description": "Which season is it there in July?",
-          "max_marks": 1,
-          "options": [
-            "summer",
-            "winter"
-          ]
-        }
-      },
-      "answers": [
-        {
-          "answers": {
-            "Q4a": "northern",
-            "Q4b": "summer"
-          },
-          "student_count": 182
-        },
-        {
-          "answers": {
-            "Q4a": "southern",
-            "Q4b": "winter"
-          },
-          "student_count": 141
-        },
-        {
-          "answers": {
-            "Q4a": "northern",
-            "Q4b": "winter"
-          },
-          "student_count": 23
-        },
-        {
-          "answers": {
-            "Q4a": "southern",
-            "Q4b": "summer"
-          },
-          "student_count": 17
-        }
-      ],
-      "variants": [
-        {
-          "change": "Start without a condition",
-          "marking": {
-            "question": "Q4b",
-            "uses": "gradeflow/multiple-choice@1",
-            "with": {
-              "correct": [
-                "summer"
+              "answers": [
+                "x - 1"
               ]
             }
           }
         },
         {
-          "change": "Add If: Q4a chooses northern",
+          "change": "Add x + 1",
           "marking": {
-            "uses": "gradeflow/conditional@1",
+            "question": "Q8",
+            "uses": "gradeflow/equivalent-expression@1",
             "with": {
-              "condition": [
-                {
-                  "question": "Q4a",
-                  "uses": "gradeflow/multiple-choice@1",
-                  "with": {
-                    "correct": [
-                      "northern"
-                    ]
-                  }
-                }
-              ],
-              "then": [
-                {
-                  "question": "Q4b",
-                  "uses": "gradeflow/multiple-choice@1",
-                  "with": {
-                    "correct": [
-                      "summer"
-                    ]
-                  }
-                }
-              ],
-              "otherwise": []
+              "answers": [
+                "x - 1",
+                "x + 1"
+              ]
             }
           }
         },
         {
-          "change": "Add Otherwise: Q4b chooses winter",
+          "change": "Add 1 - x",
           "marking": {
-            "uses": "gradeflow/conditional@1",
+            "question": "Q8",
+            "uses": "gradeflow/equivalent-expression@1",
             "with": {
-              "condition": [
-                {
-                  "question": "Q4a",
-                  "uses": "gradeflow/multiple-choice@1",
-                  "with": {
-                    "correct": [
-                      "northern"
-                    ]
-                  }
-                }
-              ],
-              "then": [
-                {
-                  "question": "Q4b",
-                  "uses": "gradeflow/multiple-choice@1",
-                  "with": {
-                    "correct": [
-                      "summer"
-                    ]
-                  }
-                }
-              ],
-              "otherwise": [
-                {
-                  "question": "Q4b",
-                  "uses": "gradeflow/multiple-choice@1",
-                  "with": {
-                    "correct": [
-                      "winter"
-                    ]
-                  }
-                }
+              "answers": [
+                "x - 1",
+                "x + 1",
+                "1 - x"
               ]
             }
           }
@@ -2072,92 +2103,352 @@
         }
       ]
     },
-    "equivalent_expression": {
-      "method_ref": "gradeflow/equivalent-expression@1",
+    "conditional": {
+      "method_ref": "gradeflow/conditional@1",
       "question_set": {
-        "Q8": {
-          "type": "text",
-          "description": "Give a factor of x² - 1.",
-          "max_marks": 1
+        "Q4a": {
+          "type": "choice",
+          "description": "Pick a hemisphere.",
+          "options": [
+            "northern",
+            "southern"
+          ]
+        },
+        "Q4b": {
+          "type": "choice",
+          "description": "Which season is it there in July?",
+          "max_marks": 1,
+          "options": [
+            "summer",
+            "winter"
+          ]
         }
       },
       "answers": [
         {
           "answers": {
-            "Q8": "x - 1"
+            "Q4a": "northern",
+            "Q4b": "summer"
           },
-          "student_count": 210
+          "student_count": 182
         },
         {
           "answers": {
-            "Q8": "x + 1"
+            "Q4a": "southern",
+            "Q4b": "winter"
           },
-          "student_count": 180
+          "student_count": 141
         },
         {
           "answers": {
-            "Q8": "1 - x"
+            "Q4a": "northern",
+            "Q4b": "winter"
+          },
+          "student_count": 23
+        },
+        {
+          "answers": {
+            "Q4a": "southern",
+            "Q4b": "summer"
+          },
+          "student_count": 17
+        }
+      ],
+      "variants": [
+        {
+          "change": "Start without a condition",
+          "marking": {
+            "question": "Q4b",
+            "uses": "gradeflow/multiple-choice@1",
+            "with": {
+              "correct": [
+                "summer"
+              ]
+            }
+          }
+        },
+        {
+          "change": "Add If: Q4a chooses northern",
+          "marking": {
+            "uses": "gradeflow/conditional@1",
+            "with": {
+              "condition": [
+                {
+                  "question": "Q4a",
+                  "uses": "gradeflow/multiple-choice@1",
+                  "with": {
+                    "correct": [
+                      "northern"
+                    ]
+                  }
+                }
+              ],
+              "then": [
+                {
+                  "question": "Q4b",
+                  "uses": "gradeflow/multiple-choice@1",
+                  "with": {
+                    "correct": [
+                      "summer"
+                    ]
+                  }
+                }
+              ],
+              "otherwise": []
+            }
+          }
+        },
+        {
+          "change": "Add Otherwise: Q4b chooses winter",
+          "marking": {
+            "uses": "gradeflow/conditional@1",
+            "with": {
+              "condition": [
+                {
+                  "question": "Q4a",
+                  "uses": "gradeflow/multiple-choice@1",
+                  "with": {
+                    "correct": [
+                      "northern"
+                    ]
+                  }
+                }
+              ],
+              "then": [
+                {
+                  "question": "Q4b",
+                  "uses": "gradeflow/multiple-choice@1",
+                  "with": {
+                    "correct": [
+                      "summer"
+                    ]
+                  }
+                }
+              ],
+              "otherwise": [
+                {
+                  "question": "Q4b",
+                  "uses": "gradeflow/multiple-choice@1",
+                  "with": {
+                    "correct": [
+                      "winter"
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "custom_code": {
+      "method_ref": "gradeflow/custom-code@1",
+      "question_set": {
+        "Q5": {
+          "type": "text",
+          "description": "Name a word that reads the same backwards.",
+          "max_marks": 1,
+          "reading": {
+            "ignore_case": false
+          }
+        }
+      },
+      "answers": [
+        {
+          "answers": {
+            "Q5": "Level"
+          },
+          "student_count": 154
+        },
+        {
+          "answers": {
+            "Q5": "Racecar"
+          },
+          "student_count": 97
+        },
+        {
+          "answers": {
+            "Q5": "A"
+          },
+          "student_count": 48
+        },
+        {
+          "answers": {
+            "Q5": "Hannah"
           },
           "student_count": 41
         },
         {
           "answers": {
-            "Q8": "1 + x"
+            "Q5": "Banana"
           },
-          "student_count": 30
-        },
-        {
-          "answers": {
-            "Q8": "-1 + x"
-          },
-          "student_count": 25
-        },
-        {
-          "answers": {
-            "Q8": "x"
-          },
-          "student_count": 15
+          "student_count": 23
         }
       ],
       "variants": [
         {
-          "change": "Accept x - 1",
+          "change": "Start with a simple check",
           "marking": {
-            "question": "Q8",
-            "uses": "gradeflow/equivalent-expression@1",
+            "question": "Q5",
+            "uses": "gradeflow/custom-code@1",
             "with": {
-              "answers": [
-                "x - 1"
-              ]
+              "code": "word = answer.strip()\ncorrect = word == word[::-1]\nfeedback = \"Correct.\" if correct else \"Expected a word that reads the same backwards.\"\n"
             }
           }
         },
         {
-          "change": "Add x + 1",
+          "change": "Ignore case",
           "marking": {
-            "question": "Q8",
-            "uses": "gradeflow/equivalent-expression@1",
+            "question": "Q5",
+            "uses": "gradeflow/custom-code@1",
             "with": {
-              "answers": [
-                "x - 1",
-                "x + 1"
-              ]
+              "code": "word = answer.strip().lower()\ncorrect = word == word[::-1]\nfeedback = \"Correct.\" if correct else \"Expected a word that reads the same backwards.\"\n"
             }
           }
         },
         {
-          "change": "Add 1 - x",
+          "change": "Need at least two letters",
           "marking": {
-            "question": "Q8",
-            "uses": "gradeflow/equivalent-expression@1",
+            "question": "Q5",
+            "uses": "gradeflow/custom-code@1",
             "with": {
-              "answers": [
-                "x - 1",
-                "x + 1",
-                "1 - x"
-              ]
+              "code": "word = answer.strip().lower()\ncorrect = len(word) > 1 and word == word[::-1]\nfeedback = \"Correct.\" if correct else \"Expected a word that reads the same backwards.\"\n"
             }
           }
+        }
+      ]
+    },
+    "answer_criteria": {
+      "method_ref": "gradeflow/answer-criteria@1",
+      "question_set": {
+        "Q1": {
+          "type": "text",
+          "max_marks": 3,
+          "description": "Pens cost $2 and books $5. What do 3 pens and 2 books cost? Show your working."
+        }
+      },
+      "answers": [
+        {
+          "answers": {
+            "Q1": "3 × 2 = 6 and 2 × 5 = 10, so 6 + 10 = $16"
+          },
+          "student_count": 188
+        },
+        {
+          "answers": {
+            "Q1": "$16"
+          },
+          "student_count": 74
+        },
+        {
+          "answers": {
+            "Q1": "3 × 2 = 6 and 2 × 5 = 10, so she pays $6 and $10"
+          },
+          "student_count": 31
+        }
+      ],
+      "variants": [
+        {
+          "change": "Start with one criterion: Correct total",
+          "marking": {
+            "question": "Q1",
+            "uses": "gradeflow/answer-criteria@1",
+            "with": {
+              "criteria": [
+                {
+                  "text": "Correct total",
+                  "marks": 2
+                }
+              ],
+              "model_answer": "3 × 2 = 6 and 2 × 5 = 10, so 6 + 10 = $16"
+            }
+          },
+          "results": [
+            {
+              "marks": 2,
+              "feedback": "Correct total."
+            },
+            {
+              "marks": 2,
+              "feedback": "Correct total."
+            },
+            {
+              "marks": 0,
+              "feedback": "Correct total: Not met."
+            }
+          ]
+        },
+        {
+          "change": "Add a criterion: Shows the working",
+          "marking": {
+            "question": "Q1",
+            "uses": "gradeflow/answer-criteria@1",
+            "with": {
+              "criteria": [
+                {
+                  "text": "Correct total",
+                  "marks": 2
+                },
+                {
+                  "text": "Shows the working",
+                  "marks": 1
+                }
+              ],
+              "model_answer": "3 × 2 = 6 and 2 × 5 = 10, so 6 + 10 = $16"
+            }
+          },
+          "results": [
+            {
+              "marks": 3,
+              "feedback": "Correct total.\nShows the working."
+            },
+            {
+              "marks": 2,
+              "feedback": "Correct total.\nShows the working: Not met."
+            },
+            {
+              "marks": 1,
+              "feedback": "Correct total: Not met.\nShows the working."
+            }
+          ]
+        },
+        {
+          "change": "Add a penalty: Forgot to sum",
+          "marking": {
+            "question": "Q1",
+            "uses": "gradeflow/answer-criteria@1",
+            "with": {
+              "criteria": [
+                {
+                  "text": "Correct total",
+                  "marks": 2
+                },
+                {
+                  "text": "Shows the working",
+                  "marks": 1
+                },
+                {
+                  "text": "Forgot to sum",
+                  "marks": -1
+                }
+              ],
+              "model_answer": "3 × 2 = 6 and 2 × 5 = 10, so 6 + 10 = $16"
+            }
+          },
+          "results": [
+            {
+              "marks": 3,
+              "feedback": "Correct total.\nShows the working."
+            },
+            {
+              "marks": 2,
+              "feedback": "Correct total.\nShows the working: Not met."
+            },
+            {
+              "marks": 0,
+              "feedback": "Correct total: Not met.\nShows the working.\nPenalty: Forgot to sum."
+            }
+          ]
         }
       ]
     }

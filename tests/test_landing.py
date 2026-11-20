@@ -21,6 +21,8 @@ from gradeflow_app.landing.content import (
     CoreGroups,
     CoreHero,
     CoreOutput,
+    CoreTrust,
+    CoreTrustQuestion,
     CoreVariant,
     EditorContent,
     Example,
@@ -29,12 +31,14 @@ from gradeflow_app.landing.content import (
     MarkingJson,
     MethodChoice,
     StepCards,
+    TrustQuestion,
     core_output,
     landing_content,
 )
 from gradeflow_app.landing.groups import CHAPTERS as GROUPS_CHAPTERS
 from gradeflow_app.landing.hero import CHAPTERS
 from gradeflow_app.landing.page import SECTIONS
+from gradeflow_app.landing.trust import CLAIMS
 from gradeflow_app.libraries.collection import OfferedMethods
 from gradeflow_app.marking.answers.answer_groups import StudentAnswer, group
 from gradeflow_app.marking.answers.column import GROUPINGS
@@ -82,6 +86,19 @@ def test_each_method_shows_every_change_to_its_settings() -> None:
         assert f'data-example="{key}"' in page
         for variant in example.variants:
             assert variant.change in page
+
+
+def test_the_trust_demo_shows_each_claim_on_its_own_answers() -> None:
+    page = unescape(Client().get(reverse("landing")).text)
+    trust = landing_content().trust
+    for text in [
+        *CLAIMS,
+        *(description for _, description in CLAIMS.values()),
+        *(answer.text for answer in [*trust.same_mark.answers, *trust.breakdown.answers]),
+        *(row.answers[key] for row in trust.ai.answers for key in row.answers),
+        trust.student_names[0],
+    ]:
+        assert text in page
 
 
 def test_the_demos_show_answers_grouped_and_marked_by_example() -> None:
@@ -145,7 +162,7 @@ def summary(marking: MarkingJson) -> MarkingSummary:
 def draft_summary(question_set: QuestionSet, marking: MarkingJson) -> MarkingSummary:
     """The summary of `marking` as its editor shows it, which has none until its settings are complete."""
     draft = MarkingDraft(marking, question_set, marking.get("question"))
-    return MarkingSummary(draft.label(""), draft.describe(""))
+    return MarkingSummary(draft.label(""), draft.describe(""), needs_model_endpoint=draft.needs_model_endpoint(""))
 
 
 def editor_content(question_set: QuestionSet, marking: MarkingJson, path: str = "") -> EditorContent:
@@ -220,6 +237,24 @@ def core_hero() -> CoreHero:
             for stage in content.editing_stages
         ],
         summary=summary(saved_marking),
+    )
+
+
+def core_trust_question(content: TrustQuestion) -> CoreTrustQuestion:
+    question = content.question_set[content.question_key]
+    answers = [answer.text for answer in content.answers]
+    return CoreTrustQuestion(
+        normalized_answers={answer: question.normalize(answer) for answer in answers},
+        results=results(content.question_set, content.marking, answers, content.question_key),
+    )
+
+
+def core_trust() -> CoreTrust:
+    content = landing_content().trust
+    return CoreTrust(
+        same_mark=core_trust_question(content.same_mark),
+        breakdown=core_trust_question(content.breakdown),
+        ai=core_example(content.ai),
     )
 
 
@@ -305,6 +340,7 @@ def other_methods() -> list[str]:
 def generated() -> CoreOutput:
     return CoreOutput(
         hero=core_hero(),
+        trust=core_trust(),
         groups=core_groups(),
         by_example=core_by_example(),
         examples={key: core_example(content) for key, content in landing_content().examples.items()},

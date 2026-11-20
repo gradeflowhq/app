@@ -835,9 +835,9 @@
 /* An answer group's students, as equal buttons of their IDs; an adjusted one (`data-adjusted`) is outlined, with a
    pencil. */
 @utility student-id-grid {
-  @apply grid grid-cols-[repeat(auto-fill,minmax(6.5rem,1fr))] gap-1.5;
+  @apply flex flex-wrap gap-1.5;
   & button {
-    @apply flex h-7 w-full cursor-pointer items-center justify-center gap-1 rounded-field border border-base-300 bg-base-100 px-2 font-mono text-xs transition-colors hover:bg-base-200;
+    @apply flex h-7 min-w-26 cursor-pointer whitespace-nowrap items-center justify-center gap-1 rounded-field border border-base-300 bg-base-100 px-2 font-mono text-xs transition-colors hover:bg-base-200;
   }
   & button[data-adjusted] {
     @apply border-primary/40 bg-secondary/40;
@@ -1114,6 +1114,20 @@
   @apply block h-1 w-full overflow-hidden rounded-full bg-base-300;
   & > span {
     @apply block h-full origin-left scale-x-0 bg-primary;
+  }
+}
+
+/* The trust demo's claims, a chapter each: the current one raised, its track filling along its foot. */
+@utility landing-claims {
+  @apply grid gap-2;
+  & button {
+    @apply grid w-full cursor-pointer grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3.5 gap-y-3 rounded-box border border-transparent p-4 text-left transition-colors hover:bg-base-100/60 aria-[current=true]:border-line aria-[current=true]:bg-base-100 aria-[current=true]:shadow-xs;
+  }
+  & .landing-chapters-track {
+    @apply col-span-full h-0.5 bg-transparent;
+  }
+  & [aria-current="false"] .landing-chapters-track {
+    @apply invisible;
   }
 }
 

@@ -1,0 +1,32 @@
+{# The trust demo: the claims, a chapter each, beside the answers that show each one. `show_students` lists a group's students, which the first claim opens. #}
+{% partialdef header %}{% with question=column.question groupings=column.groupings grouping=column.grouping grouping_options=column.grouping_options filters=column.filters filter="all" answer_groups=column.answer_groups hidden_count=0 %}{% include "results/answers.html#header" %}<div class="max-md:hidden">{% include "results/answers.html#list_head" %}</div>{% endwith %}{% endpartialdef %}
+{% partialdef answers %}{% with question=column.question %}<ul class="answer-groups relative" aria-label="Answers" data-shown="{{ shown|yesno:'1,0' }}" data-answer-list>{% for answer_group in column.answer_groups %}{% with open=False grouping=column.grouping draft=column.draft %}{% if show_students %}{% with students=answer_group.student_answers %}{% include "results/answer_group.html" %}{% endwith %}{% else %}{% include "results/answer_group.html" %}{% endif %}{% endwith %}{% endfor %}</ul>{% endwith %}{% endpartialdef %}
+<div class="mx-auto grid max-w-6xl items-center gap-6 md:grid-cols-[minmax(0,19rem)_minmax(0,1fr)] lg:gap-10" x-data="landingDemo" data-demo="trust">
+  <ol class="landing-claims max-md:order-last" aria-label="Steps">
+    {% for title, claim in trust.chapters.items %}
+    <li><button type="button" aria-current="false" data-chapter="{{ title }}"><span class="icon-tile">{% icon claim.0 %}</span><span class="grid gap-1"><span class="font-semibold">{{ title }}</span><span class="text-sm text-muted">{{ claim.1 }}</span></span><span class="landing-chapters-track"><span></span></span></button></li>
+    {% endfor %}
+  </ol>
+  <div role="img" aria-label="Students with the same answer sharing its mark; an answer's checks and feedback; and a question marked by rules, then by AI, which corrects two marks.">
+    <div class="landing-mockup relative" inert aria-hidden="true" data-mockup>
+      <div class="landing-demo-height [--landing-demo-offset:14rem] text-left">
+        <section class="flex h-full flex-col" aria-label="Answers" data-pane="same-mark" data-shown="1">
+          {% with column=trust.same_mark %}{% partial header %}<div class="workspace-cards">{% with shown=True show_students=True %}{% partial answers %}{% endwith %}</div>{% endwith %}
+        </section>
+        <section class="flex h-full flex-col" aria-label="Answers" data-pane="breakdown" data-shown="0" data-opened-group-index="{{ trust.opened_group_index }}">
+          {% with column=trust.breakdown %}{% partial header %}<div class="workspace-cards">{% with shown=True %}{% partial answers %}{% endwith %}</div>{% endwith %}
+        </section>
+        <div class="grid h-full gap-5 max-md:grid-rows-[auto_minmax(0,1fr)] md:grid-cols-[minmax(0,1fr)_18rem] md:grid-rows-[minmax(0,1fr)]" data-pane="ai" data-shown="0">
+          <section class="relative flex min-h-0 min-w-0 flex-col" aria-label="Answers">
+            {% with column=trust.ai_columns.0 %}{% partial header %}{% endwith %}
+            <div class="workspace-cards">{% for column in trust.ai_columns %}{% with shown=forloop.first %}{% partial answers %}{% endwith %}{% endfor %}</div>
+          </section>
+          <aside class="flex min-h-0 min-w-0 flex-col max-md:order-first max-md:[&_.panel-foot,&_.panel-head]:hidden" aria-label="Marking">
+            <c-landing.editor><c-landing.summaries name="trust" :summaries="trust.ai_summaries" /></c-landing.editor>
+          </aside>
+        </div>
+      </div>
+      <c-landing.pointer />
+    </div>
+  </div>
+</div>

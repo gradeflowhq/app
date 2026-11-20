@@ -1,7 +1,7 @@
 {# The method demos, one for each method's tab. #}
 <div x-data="methodDemos" x-on:change="choose">
   <div class="mb-5 flex items-center gap-2 border-b border-line">
-    <div class="tab-row landing-method-tabs min-w-0 flex-1" role="radiogroup" aria-label="Method">{% for method in methods %}<label class="tab-link cursor-pointer"><input type="radio" class="sr-only" name="example" value="{{ method.example_key }}"{% if forloop.first %} checked{% endif %}>{{ method.label }}</label>{% endfor %}</div>
+    <div class="tab-row landing-method-tabs min-w-0 flex-1" role="radiogroup" aria-label="Method">{% for method in methods %}<label class="tab-link cursor-pointer"><input type="radio" class="sr-only" name="example" value="{{ method.example_key }}"{% if forloop.first %} checked{% endif %}>{{ method.label }}{% if method.summaries.0.needs_model_endpoint %}<c-ai-service />{% endif %}</label>{% endfor %}</div>
     <button type="button" class="btn btn-ghost btn-square btn-sm shrink-0 motion-reduce:hidden" x-on:click="togglePlaying" :aria-label="playing ? 'Pause' : 'Play'" aria-label="Pause"><span x-show="playing">{% icon "pause" %}</span><span x-show="!playing" x-cloak>{% icon "play" %}</span></button>
   </div>
   {% for method in methods %}
@@ -32,7 +32,7 @@
             </div>
           </section>
           <aside class="flex min-h-0 min-w-0 flex-col max-md:order-first max-md:[&_.panel-foot,&_.panel-head]:hidden" aria-label="Marking">
-            <c-landing.editor><c-landing.summaries :summaries="method.summaries" /></c-landing.editor>
+            <c-landing.editor><c-landing.summaries name="{{ method.example_key }}" :summaries="method.summaries" /></c-landing.editor>
           </aside>
         </div>
       </div>
