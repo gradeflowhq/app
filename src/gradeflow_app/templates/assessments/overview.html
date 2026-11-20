@@ -15,7 +15,7 @@
       <c-figure icon="users" label="Students" value="{{ student_count }}" />
       {% if results %}<c-figure icon="chart-bar" label="Average" value="{{ results.statistics.mean|marks }}" detail="/ {{ results.max_marks|marks }}" />
       {% else %}<c-figure icon="chart-bar" label="Average" value="—" />{% endif %}
-      <c-figure icon="list-bullet" label="Questions marked" value="{{ progress.marked_count }}" detail="of {{ progress.question_count }}" />
+      <c-figure icon="list-bullet" label="Marked" value="{{ progress.marked_count }}" detail="of {{ progress.question_count }}" />
       {% if results.unmarked_count %}<c-figure icon="exclamation-triangle" label="Need marking" value="{{ results.unmarked_count }}" detail="answer{{ results.unmarked_count|pluralize }}" warning />{% endif %}
       {% if results.adjusted_count %}<c-figure icon="pencil" label="Adjusted" value="{{ results.adjusted_count }}" detail="student{{ results.adjusted_count|pluralize }}" href="{% url 'students' assessment.pk %}?show=adjusted" />{% endif %}
       <c-figure icon="paper-airplane" label="Canvas" value="{% if progress.latest_sent_marks %}Sent {{ progress.latest_sent_marks.sent_at|ago }}{% else %}Not sent{% endif %}" />

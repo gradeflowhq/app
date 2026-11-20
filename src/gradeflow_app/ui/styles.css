@@ -628,7 +628,7 @@
 @utility tab-link {
   @apply relative flex shrink-0 items-center gap-2 px-3 font-medium whitespace-nowrap text-muted outline-offset-[-2px] transition-colors hover:text-base-content;
   &::after {
-    @apply absolute inset-x-0 -bottom-px h-0.5 content-[''];
+    @apply absolute inset-x-0 bottom-0 h-0.5 content-[''];
   }
   &[aria-current="page"] {
     @apply text-primary after:bg-primary;
