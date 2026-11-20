@@ -141,9 +141,9 @@ def test_an_answer_groups_students_load_grouped_as_the_answers_are(client: Clien
     def student_ids(grouping: str) -> set[str]:
         answers_page = client.get(answers_url, {"group": grouping}, headers=HTMX_HEADERS).text
         assert "data-student-id" not in answers_page
-        page = client.get(url, {"student": student.pk}, headers=HTMX_HEADERS).text
+        page = client.get(url, {"student": str(student.pk)}, headers=HTMX_HEADERS).text
         return set(re.findall(r'data-student-id="([^"]+)"', page))
 
     assert student_ids("answers") == {student.encrypted_id}
     assert student_ids("spelling") == {student.encrypted_id, encrypted_id("S001"), encrypted_id("S002")}
-    assert client.get(url, {"student": uuid4()}, headers=HTMX_HEADERS).status_code == 404
+    assert client.get(url, {"student": str(uuid4())}, headers=HTMX_HEADERS).status_code == 404
