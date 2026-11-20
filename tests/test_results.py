@@ -292,10 +292,19 @@ def test_totals_count_adjusted_marks_and_every_adjustment(adjusted_assessment: A
             summary.full_marks_count,
             summary.no_marks_count,
             summary.blank_count,
+            summary.not_marked_count,
         )
         for summary in results.summaries()
     ]
-    assert summaries == [("Q1", 10, 0.35, 3, 5, 1), ("Q2", 1, 1, 1, 0, 1), ("Q3", 0, None, 0, 0, 0)]
+    assert summaries == [("Q1", 10, 0.35, 3, 5, 1, 0), ("Q2", 1, 1, 1, 0, 1, 8), ("Q3", 0, None, 0, 0, 0, 10)]
+
+
+def test_a_group_with_some_students_marked_says_how_many_are_not(
+    client: Client, adjusted_assessment: Assessment
+) -> None:
+    question = adjusted_assessment.questions.get(key="Q2")
+    page = client.get(reverse("answers", args=[adjusted_assessment.pk, question.pk]), headers=HTMX_HEADERS).text
+    assert "4 not marked" in page, "beside the one adjusted student's marks"
 
 
 def test_a_students_page_shows_their_adjustments(client: Client, adjusted_assessment: Assessment) -> None:
@@ -457,13 +466,13 @@ def test_marks_that_round_to_the_maximum_are_full(client: Client, assessment: As
 def test_the_overview_says_how_each_question_is_marked(client: Client, assessment: Assessment) -> None:
     page = client.get(reverse("overview", args=[assessment.pk])).text
     assert page.count("Imported marks") == 1
-    assert page.count("Not marked") == 2
+    assert page.count("Not marked</span>") == 2
 
 
 def test_a_draft_doesnt_mark_a_question_on_the_overview(client: Client, assessment: Assessment) -> None:
     start_marking(client, assessment, "Q2", "gradeflow/accepted-answers@1")
     page = client.get(reverse("overview", args=[assessment.pk])).text
-    assert page.count("Not marked") == 2, "only saved marking counts"
+    assert page.count("Not marked</span>") == 2, "only saved marking counts"
     assert "Accepted Answers" not in page
 
 

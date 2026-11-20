@@ -365,7 +365,11 @@
     @apply bg-error/75;
   }
   :is(.marks-bar, .chart-legend) [data-level="blank"] {
-    @apply bg-base-300;
+    @apply bg-base-content/25;
+  }
+  /* Not marked is the bar's empty track. */
+  .chart-legend [data-level="not_marked"] {
+    @apply bg-base-content/6 inset-ring inset-ring-base-content/10;
   }
   :is(.thirds, .chart-legend) [data-third="bottom"] {
     @apply bg-base-100 inset-ring-2 inset-ring-subtle;

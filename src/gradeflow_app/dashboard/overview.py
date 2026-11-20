@@ -125,6 +125,7 @@ def overview_context(access: AssessmentAccess) -> dict[str, Any]:
         "next_step": _next_step(assessment, assessment_progress, summaries) if results and access.can_edit else None,
         "results": results_with_marks,
         "questions": _questions(summaries, saved_by_key, imported_keys) if results_with_marks else [],
+        "has_not_marked_answers": any(summary.not_marked_count for summary in summaries),
         "distribution": _distribution(results_with_marks) if results_with_marks else None,
         "box_plot": (
             _box_plot(results_with_marks.statistics, results_with_marks.max_marks) if results_with_marks else None

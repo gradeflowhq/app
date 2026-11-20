@@ -184,6 +184,11 @@ class AnswerGroup:
         return sum(not entry.is_marked for entry in self.student_answers)
 
     @property
+    def not_marked_count(self) -> int:
+        """How many of its students have no marks, including those that need marking."""
+        return sum(entry.marks is None for entry in self.student_answers)
+
+    @property
     def all_unmarked(self) -> bool:
         """Whether the marking couldn't mark any of its students."""
         return self.unmarked_count == self.student_count

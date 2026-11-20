@@ -74,7 +74,7 @@
       <c-panel icon="list-bullet" title="Questions" class="self-start{% if findings is None %} lg:col-span-2{% endif %}" body_class="overflow-x-auto rounded-b-box">
         <c-slot name="actions">
           <ul class="chart-legend max-sm:hidden" aria-label="Legend">
-            <li><span data-level="full"></span>Full</li><li><span data-level="partial"></span>Partial</li><li><span data-level="no_marks"></span>No marks</li><li><span data-level="blank"></span>Blank</li>
+            <li><span data-level="full"></span>Full</li><li><span data-level="partial"></span>Partial</li><li><span data-level="no_marks"></span>No marks</li><li><span data-level="blank"></span>Blank</li>{% if has_not_marked_answers %}<li><span data-level="not_marked"></span>Not marked</li>{% endif %}
             {% if findings is not None %}<li class="max-md:hidden lg:max-xl:hidden"><span data-third="bottom"></span>Bottom third</li><li class="max-md:hidden lg:max-xl:hidden"><span data-third="top"></span>Top third</li>{% endif %}
           </ul>
         </c-slot>
@@ -98,7 +98,7 @@
                 </div>{% endif %}
               </td>
               <td class="max-sm:hidden">
-                <div class="marks-bar" role="img" aria-label="{{ summary.full_marks_count }} full, {{ summary.partial_marks_count }} partial, {{ summary.no_marks_count }} no marks, {{ summary.blank_count }} blank">
+                <div class="marks-bar" role="img" aria-label="{{ summary.full_marks_count }} full, {{ summary.partial_marks_count }} partial, {{ summary.no_marks_count }} no marks, {{ summary.blank_count }} blank{% if summary.not_marked_count %}, {{ summary.not_marked_count }} not marked{% endif %}">
                   {% if summary.full_marks_count %}<span data-level="full" style="width: {% widthratio summary.full_marks_count student_count 100 %}%"></span>{% endif %}
                   {% if summary.partial_marks_count %}<span data-level="partial" style="width: {% widthratio summary.partial_marks_count student_count 100 %}%"></span>{% endif %}
                   {% if summary.no_marks_count %}<span data-level="no_marks" style="width: {% widthratio summary.no_marks_count student_count 100 %}%"></span>{% endif %}

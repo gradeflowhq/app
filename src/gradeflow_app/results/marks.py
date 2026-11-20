@@ -243,6 +243,8 @@ class QuestionSummary:
     partial_marks_count: int
     no_marks_count: int
     blank_count: int
+    not_marked_count: int
+    """How many answers, not blank, have no marks, including those that need marking."""
     unmarked_count: int
     """How many answers the marking couldn't mark and no one has set marks for."""
     item_rest_correlation: float | None
@@ -372,6 +374,7 @@ class Results:
             partial_marks_count=levels["partial"],
             no_marks_count=levels["no_marks"],
             blank_count=len(awards) - len(answered),
+            not_marked_count=levels[None],
             unmarked_count=sum(not award.is_marked for award in awards),
             item_rest_correlation=item_rest_correlation(proportions, rest_scores),
             thirds=thirds(proportions, rest_scores),

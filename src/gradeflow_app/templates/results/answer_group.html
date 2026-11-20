@@ -71,8 +71,9 @@
         {% endif %}
         <span class="tabular-nums flex min-w-24 items-center justify-end gap-1.5 whitespace-nowrap text-xs text-muted">{% icon "users" "size-3.5 text-subtle" %}{{ answer_group.student_count }} student{{ answer_group.student_count|pluralize }}</span>
       </div>
-      {% if answer_group.adjusted_count or draft and answer_group.decisions %}
+      {% if answer_group.adjusted_count or draft and answer_group.decisions or low is not None and answer_group.not_marked_count and not answer_group.preview %}
       <div class="flex flex-wrap justify-end gap-1.5">
+        {% if low is not None and answer_group.not_marked_count and not answer_group.preview %}<c-chip tone="warning">{{ answer_group.not_marked_count }} not marked</c-chip>{% endif %}
         {% if answer_group.adjusted_count %}<c-chip tone="primary" icon="pencil">{{ answer_group.adjusted_count }} adjusted</c-chip>{% endif %}
         {% if draft %}{% partial decision %}{% endif %}
       </div>
