@@ -574,6 +574,15 @@ def test_a_question_groups_answers_show_by_combination(client: Client, assessmen
     assert reverse("question_group_draft_answers", args=[assessment.pk, new_draft.pk]) in new_draft_answers
 
 
+def test_a_question_groups_answers_show_what_each_question_asks(client: Client, assessment: Assessment) -> None:
+    marking = question_group_marking(assessment)
+    question = assessment.questions.get(key="Q1")
+    question.core_question = Question.load({**question.definition, "description": "Which arrives first?"})
+    question.save()
+    page = htmx_page(client, reverse("question_group_answers", args=[assessment.pk, marking.pk]))
+    assert "Which arrives first?" in page, "the condition's question"
+
+
 def test_restoring_a_version_opens_it_as_a_draft(client: Client, assessment: Assessment) -> None:
     url, draft = start_marking(client, assessment, "Q1", "gradeflow/accepted-answers@1")
     client.post(url, {"path": "", "fields_posted": "1", "answers": ["light"]})

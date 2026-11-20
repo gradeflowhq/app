@@ -12,6 +12,7 @@
     </form>
     {% endif %}
   </div>
+  {% if descriptions %}<details class="group/about px-4 pt-3 pb-3.5"><summary class="cursor-pointer list-none"><dl class="grid grid-cols-[3rem_minmax(0,1fr)] items-baseline gap-x-3 gap-y-1 group-open/about:max-h-[40vh] group-open/about:overflow-y-auto">{% for key, description in descriptions.items %}<dt class="text-sm font-semibold">{{ key }}</dt><dd class="prose-core preview-two-lines wrap-break-word" x-data="math">{{ description|math_markdown }}</dd>{% endfor %}</dl></summary></details>{% endif %}
   {% include "results/answers.html#preview_bar" %}
   {% include "results/answers.html#column_notices" %}
 </header>

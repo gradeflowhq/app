@@ -12,7 +12,7 @@
           <section class="relative flex min-h-0 min-w-0 flex-col" aria-label="Answers">
             {% with column=method.columns.0 %}
             {% if method.is_question_group %}
-            {% with question_keys=column.question_keys student_count=column.student_count %}{% include "marking/combinations.html#header" %}{% endwith %}
+            {% with question_keys=column.question_keys descriptions=column.descriptions student_count=column.student_count %}{% include "marking/combinations.html#header" %}{% endwith %}
             {% else %}
             {% with question=column.question groupings=column.groupings grouping=column.grouping grouping_options=column.grouping_options filters=column.filters filter="all" answer_groups=column.answer_groups hidden_count=0 %}{% include "results/answers.html#header" %}<div class="max-md:hidden">{% include "results/answers.html#list_head" %}</div>{% endwith %}
             {% endif %}

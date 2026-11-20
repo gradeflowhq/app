@@ -32,6 +32,8 @@ class CombinationsColumn:
     """A question group's answers column, as marking/combinations.html reads it."""
 
     question_keys: list[str]
+    descriptions: dict[str, str]
+    """The description of each question that has one, by key."""
     rows: list[Combination]
 
     @property
@@ -122,7 +124,11 @@ def combinations_columns(example: Example, core: CoreExample) -> list[Combinatio
             changed = any(cell.changed for cell in cells)
             rows.append(Combination(cells, answer.student_count, answer.student_count if changed else 0))
         rows.sort(key=lambda row: -row.student_count)
-        return CombinationsColumn([key for key in example.question_set if key in results[0]], rows)
+        return CombinationsColumn(
+            [key for key in example.question_set if key in results[0]],
+            {key: question.description for key, question in example.question_set.items() if question.description},
+            rows,
+        )
 
     return variant_columns(core, column)
 

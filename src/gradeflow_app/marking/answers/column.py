@@ -247,6 +247,11 @@ def combinations_context(
     return {
         "access": access,
         "question_keys": keys,
+        "descriptions": {
+            question.key: description
+            for question in assessment.questions.filter(key__in=[*keys, *read_keys])
+            if (description := question.core_question.description)
+        },
         "out_of_date_notices": out_of_date_notices(
             accepted, set(keys) | set(subject.marking.questions_marked if subject.marking else [])
         ),
