@@ -261,12 +261,15 @@ export function registerEffects() {
         .fromTo(targets, { autoAlpha: 0, y }, { autoAlpha: 1, y: 0, duration: 0.3, immediateRender: false }),
     { y: 6 },
   );
-  effect("hide", (targets) => gsap.timeline().set(targets, { attr: { "data-shown": 0 } }));
+  // Single tweens, not timelines of sets: a frame landing exactly on a set at a nested timeline's start can render it
+  // as not reached, and GSAP never renders a zero-duration timeline again.
+  effect("hide", (targets) => gsap.to(targets, { attr: { "data-shown": 0 }, duration: 0, immediateRender: false }));
   effect("swap", ([from, to]) =>
-    gsap
-      .timeline()
-      .set(from, { attr: { "data-shown": 0 } })
-      .set(to, { attr: { "data-shown": 1 } }),
+    gsap.to([from, to], {
+      attr: { "data-shown": (_, target) => Number(target === to) },
+      duration: 0,
+      immediateRender: false,
+    }),
   );
 
   // Another page: its tab is the current one and the page rises in.
@@ -301,20 +304,18 @@ export function registerEffects() {
   effect("pickMethod", ([button], { label }) => {
     const picker = mockupOf(button).querySelector("[data-picker]");
     const item = picker.querySelector(`[data-label="${label}"]`);
-    const selectMethod = (method) =>
-      gsap
-        .timeline()
-        .set(picker.querySelectorAll("[data-label]"), { attr: { "aria-current": "false" } })
-        .set(method, { attr: { "aria-current": "true" } })
-        .set(picker.querySelectorAll("[data-use-method]"), { attr: { "data-shown": 0 } })
-        .set(picker.querySelector(`[data-use-method="${method.dataset.label}"]`), { attr: { "data-shown": 1 } });
-    return gsap
-      .timeline()
-      .click(button)
-      .add(selectMethod(picker.querySelector("[data-label]")))
-      .openDialog(picker)
-      .click(item)
-      .add(selectMethod(item))
+    // `method` is the current one and its Use button shows, set in `timeline` itself (see `hide`).
+    const selectMethod = (timeline, method) =>
+      timeline
+        .set(picker.querySelectorAll("[data-label]"), {
+          attr: { "aria-current": (_, option) => String(option === method) },
+        })
+        .set(picker.querySelectorAll("[data-use-method]"), {
+          attr: { "data-shown": (_, useButton) => Number(useButton.dataset.useMethod === method.dataset.label) },
+        });
+    const timeline = gsap.timeline().click(button);
+    selectMethod(timeline, picker.querySelector("[data-label]")).openDialog(picker).click(item);
+    return selectMethod(timeline, item)
       .click(picker.querySelector("[data-use-button]"), { duration: 0.4 })
       .to(picker, { autoAlpha: 0, duration: 0.2 });
   });

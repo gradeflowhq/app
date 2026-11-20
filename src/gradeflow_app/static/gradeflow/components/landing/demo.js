@@ -25,13 +25,13 @@ const CONDITIONS = {
 const REPEAT_DELAY = 2;
 const SCROLL_MARGIN = 16;
 
-// GSAP, its plugins and the demos' effects, once the page's intro animation has finished or stopped: building a demo
-// blocks the main thread for a moment.
+// GSAP, its plugins and the demos' effects, once the page's intro animation has finished or stopped and its fonts have
+// loaded: building a demo blocks the main thread for a moment and measures the page.
 async function loadGsap() {
   await loadScript("gsap-3.13.0/gsap.min.js");
   await Promise.all([loadScript("gsap-3.13.0/ScrollTrigger.min.js"), loadScript("gsap-3.13.0/ScrollToPlugin.min.js")]);
   const introAnimations = document.querySelector(".landing-hero-intro").getAnimations({ subtree: true });
-  await Promise.allSettled(introAnimations.map((animation) => animation.finished));
+  await Promise.allSettled([...introAnimations.map((animation) => animation.finished), document.fonts.ready]);
   gsap.registerPlugin(ScrollTrigger, ScrollToPlugin, TypeTextPlugin);
   // Tweens write when they first render rather than at the end of the tick, as tweens after them measure the page.
   gsap.defaults({ lazy: false });
@@ -46,13 +46,27 @@ async function loadGsapOnce() {
   await new Promise((resolve) => setTimeout(resolve));
 }
 
+// `gsap.matchMedia` over `CONDITIONS`, without GSAP recording what `setUp` makes: the cleanup it returns rewinds its
+// timelines instead. Reverting them tween by tween leaves fromTo start values, scrolls and typed text for the next build
+// to measure.
+function matchConditions(setUp) {
+  const media = gsap.matchMedia();
+  media.add(CONDITIONS, (context) => {
+    let cleanup;
+    context.ignore(() => {
+      cleanup = setUp(context.conditions);
+    });
+    return cleanup;
+  });
+  return media;
+}
+
 export const landingDemo = () => {
   let media;
   return {
     async init() {
       await loadGsapOnce();
-      media = gsap.matchMedia();
-      media.add(CONDITIONS, ({ conditions }) => play(this.$root, conditions.reducedMotion));
+      media = matchConditions(({ reducedMotion }) => play(this.$root, reducedMotion));
     },
     destroy() {
       media?.revert();
@@ -71,9 +85,7 @@ export const methodDemos = () => {
     playing: true,
     async init() {
       await loadGsapOnce();
-      media = gsap.matchMedia();
-      media.add(CONDITIONS, (context) => {
-        const { reducedMotion } = context.conditions;
+      media = matchConditions(({ reducedMotion }) => {
         const roots = [...this.$root.querySelectorAll("[data-demo]")];
         const builtDemos = new Map();
         let shownRoot = roots.find((root) => !root.hidden);
@@ -88,11 +100,9 @@ export const methodDemos = () => {
           builtDemos.get(shownRoot)?.timeline.pause();
           shownRoot = root;
           if (!builtDemos.has(root)) {
-            const demo = context.add(() =>
-              build(root, reducedMotion, () => {
-                this.playing = true;
-              }),
-            );
+            const demo = build(root, reducedMotion, () => {
+              this.playing = true;
+            });
             if (!reducedMotion) {
               demo.timeline.eventCallback("onComplete", () => {
                 const next = roots[(roots.indexOf(shownRoot) + 1) % roots.length];
@@ -109,7 +119,7 @@ export const methodDemos = () => {
           if (!reducedMotion) sync();
         };
         // The first demo is built as the section comes into view, not with the page.
-        ScrollTrigger.create({
+        const trigger = ScrollTrigger.create({
           trigger: this.$root,
           start: "top bottom",
           end: "bottom top",
@@ -127,6 +137,7 @@ export const methodDemos = () => {
           },
         };
         return () => {
+          trigger.kill();
           for (const demo of builtDemos.values()) demo.stop();
         };
       });
@@ -173,11 +184,14 @@ function build(root, reducedMotion, onPlay) {
     gsap.set(mockup.querySelectorAll("[data-pointer], [data-dragged-file]"), { autoAlpha: 0 });
     timeline.progress(1);
   }
-  bindChapterBar(root, chapters, timeline, starts, reducedMotion, onPlay);
+  const chapterBar = bindChapterBar(root, chapters, timeline, starts, reducedMotion, onPlay);
   return {
     timeline,
+    // Leaves the page as the demo found it.
     stop() {
       resizeObserver.disconnect();
+      chapterBar.kill();
+      timeline.pause(0).kill();
     },
   };
 }
@@ -185,9 +199,10 @@ function build(root, reducedMotion, onPlay) {
 // Plays the demo at `root` while it's on screen, over and over.
 function play(root, reducedMotion) {
   const { timeline, stop } = build(root, reducedMotion, () => {});
+  let trigger;
   if (!reducedMotion) {
     timeline.repeat(-1).repeatDelay(REPEAT_DELAY);
-    ScrollTrigger.create({
+    trigger = ScrollTrigger.create({
       trigger: root.querySelector("[data-mockup]"),
       animation: timeline,
       start: "top bottom",
@@ -198,6 +213,7 @@ function play(root, reducedMotion) {
   const unbindDemoLinks = bindDemoLinks(root, timeline, reducedMotion);
   return () => {
     stop();
+    trigger?.kill();
     unbindDemoLinks();
   };
 }
@@ -249,7 +265,7 @@ function fillChapters(chapters, timeline) {
 }
 
 // Clicking a chapter plays from it, or with reduced motion shows its end. Dragging along a chapter bar scrubs; a list of
-// claims (landing/trust.html) is only clicked. `onPlay` is called each time it plays.
+// claims (landing/trust.html) is only clicked. `onPlay` is called each time it plays. Returns the bar's Observer.
 function bindChapterBar(root, chapters, timeline, starts, reducedMotion, onPlay) {
   const bar = root.querySelector(".landing-chapters, .landing-claims");
   const scrubs = bar.matches(".landing-chapters");
@@ -259,7 +275,7 @@ function bindChapterBar(root, chapters, timeline, starts, reducedMotion, onPlay)
     return gsap.utils.interpolate(starts, gsap.utils.clamp(0, 0.999, (clientX - left) / width));
   };
   let dragged = false;
-  ScrollTrigger.observe({
+  return ScrollTrigger.observe({
     target: bar,
     type: "pointer",
     dragMinimum: 5,

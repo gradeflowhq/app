@@ -106,7 +106,11 @@ export function heroTimeline(timeline, mockup, [importing, writing, marking, adj
   swapAndResize(timeline, [markingHeader, idleHeader], "marked");
   flipList(timeline, [unmarked, marked], "<");
   timeline
-    .from($$("[data-marks]", marked), { autoAlpha: 0, scale: 0.4, stagger: 0.08, ease: "back.out(3)" }, "<")
+    .from(
+      $$("[data-marks]", marked),
+      { autoAlpha: 0, scale: 0.4, stagger: 0.08, ease: "back.out(3)", immediateRender: false },
+      "<",
+    )
     .set(allMarked, { attr: { "data-shown": 1 } }, "<")
     .set(othersMarked, { autoAlpha: 0 }, "<")
     .set(markingList.children[0], { autoAlpha: 0 }, "<")
