@@ -33,7 +33,7 @@
       {% url 'question_methods' question.assessment_id question.pk as guide_url %}
       <button type="button" class="btn btn-ghost btn-sm -my-1 -mr-2 shrink-0" hx-get="{{ guide_url }}" hx-target="#picker-body" data-dialog="picker">{% icon "magnifying-glass" %}Browse</button>
     </div>
-    <form class="grid gap-5" hx-post="{% url 'marking_start' question.assessment_id question.pk %}" hx-target="#marking-panel" hx-swap="outerHTML">
+    <form class="grid gap-5" hx-post="{% url 'marking_start' question.assessment_id question.pk %}" hx-target="#marking-panel" hx-swap="outerHTML" data-focus-after-swap="#open-step">
       {% csrf_token %}
       <ul class="method-choices">{% for method in panel.choices.everyday %}<c-method-choice :method="method" guide_url="{{ guide_url }}" />{% endfor %}</ul>
       {% if panel.choices.saved %}

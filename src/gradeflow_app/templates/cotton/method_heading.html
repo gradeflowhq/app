@@ -1,9 +1,9 @@
-<c-vars label archived=False ai_service_id="" />
-{# A method's name, and whether it's archived. `ai_service_id`: the ID of its Uses AI button, when it uses AI. The slot goes at the end of the row. #}
+<c-vars label archived=False ai_service_id="" heading_id="" />
+{# A method's name, and whether it's archived. `ai_service_id`: the ID of its Uses AI button, when it uses AI. `heading_id`: an ID that makes the heading focusable. The slot goes at the end of the row. #}
 <div class="flex items-center gap-3">
   <span class="icon-tile size-9" data-tone="primary">{% icon "check-circle" "size-5" %}</span>
   <div class="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
-    <h3 class="min-w-0 wrap-break-word text-[15px] font-semibold">{{ label }}</h3>
+    <h3{% if heading_id %} id="{{ heading_id }}" tabindex="-1"{% endif %} class="min-w-0 wrap-break-word text-[15px] font-semibold outline-none">{{ label }}</h3>
     {% if archived %}<c-chip icon="archive-box">Archived</c-chip>{% endif %}
     {% if ai_service_id %}<c-ai-service id="{{ ai_service_id }}" />{% endif %}
   </div>
