@@ -1055,7 +1055,7 @@
       "Q1": {
         "type": "text",
         "max_marks": 1,
-        "description": "What do mitochondria do in a cell?",
+        "description": "What happens to the quantity demanded of a good when its price rises?",
         "reading": {
           "ignore_case": false
         }
@@ -1063,64 +1063,64 @@
     },
     "answers": [
       {
-        "text": "Release energy",
+        "text": "It falls",
         "student_count": 58,
-        "meaning_group": "energy"
+        "meaning_group": "falls"
       },
       {
-        "text": "Releases energy for the cell",
+        "text": "Quantity demanded falls",
         "student_count": 24,
-        "meaning_group": "energy"
+        "meaning_group": "falls"
       },
       {
-        "text": "Produce ATP",
+        "text": "People buy less",
         "student_count": 21,
-        "meaning_group": "atp"
+        "meaning_group": "less"
       },
       {
-        "text": "Makes ATP",
+        "text": "Consumers buy less",
         "student_count": 16,
-        "meaning_group": "atp"
+        "meaning_group": "less"
       },
       {
-        "text": "Produces ATP for the cell",
+        "text": "People buy less of it",
         "student_count": 9,
-        "meaning_group": "atp"
+        "meaning_group": "less"
       },
       {
-        "text": "Store DNA",
+        "text": "It rises",
         "student_count": 8,
-        "meaning_group": "dna"
+        "meaning_group": "rises"
       },
       {
-        "text": "Relese energy",
+        "text": "It fals",
         "student_count": 7,
-        "meaning_group": "energy"
+        "meaning_group": "falls"
       },
       {
-        "text": "Make proteins",
+        "text": "Supply rises",
         "student_count": 6,
-        "meaning_group": "proteins"
+        "meaning_group": "supply"
       },
       {
-        "text": "Release enrgy",
+        "text": "Quantity demanded fals",
         "student_count": 5,
-        "meaning_group": "energy"
+        "meaning_group": "falls"
       },
       {
-        "text": "Stores genetic information",
+        "text": "Demand goes up",
         "student_count": 5,
-        "meaning_group": "dna"
+        "meaning_group": "rises"
       },
       {
-        "text": "Releases energy for the cel",
+        "text": "Quantity demaned falls",
         "student_count": 4,
-        "meaning_group": "energy"
+        "meaning_group": "falls"
       },
       {
-        "text": "Produse ATP",
+        "text": "Peple buy less",
         "student_count": 4,
-        "meaning_group": "atp"
+        "meaning_group": "less"
       }
     ],
     "marking": {
@@ -1128,16 +1128,16 @@
       "uses": "gradeflow/accepted-answers@1",
       "with": {
         "answers": [
-          "Release energy",
-          "Releases energy for the cell"
+          "It falls",
+          "Quantity demanded falls"
         ],
         "match": "spelling"
       }
     },
     "adjustment": {
-      "answer": "Produce ATP",
+      "answer": "People buy less",
       "marks": 1,
-      "feedback": "Correct: making ATP is how they release energy."
+      "feedback": "Correct: buying less is the fall in quantity demanded."
     }
   },
   "by_example": {
@@ -1146,7 +1146,7 @@
       "Q1": {
         "type": "text",
         "max_marks": 2,
-        "description": "Which gas do plants take in for photosynthesis?",
+        "description": "Translate into English: « la bibliothèque ».",
         "reading": {
           "ignore_case": false
         }
@@ -1154,27 +1154,27 @@
     },
     "answers": [
       {
-        "text": "Carbon dioxide",
+        "text": "The library",
         "student_count": 71
       },
       {
-        "text": "CO2",
+        "text": "Library",
         "student_count": 33
       },
       {
-        "text": "Oxygen",
+        "text": "The bookshop",
         "student_count": 18
       },
       {
-        "text": "Carbon",
+        "text": "The bookcase",
         "student_count": 12
       },
       {
-        "text": "Nitrogen",
+        "text": "The book",
         "student_count": 9
       },
       {
-        "text": "Carbon monoxide",
+        "text": "Bookshop",
         "student_count": 8
       }
     ],
@@ -1183,14 +1183,14 @@
       "uses": "gradeflow/accepted-answers@1",
       "with": {
         "answers": [
-          "Carbon dioxide"
+          "The library"
         ]
       }
     },
     "decisions": {
-      "CO2": "full_marks",
-      "Carbon": "partial_marks",
-      "Carbon monoxide": "not_allowed"
+      "Library": "full_marks",
+      "The bookcase": "partial_marks",
+      "The bookshop": "not_allowed"
     }
   },
   "examples": {
@@ -1199,7 +1199,7 @@
       "question_set": {
         "Q2": {
           "type": "text",
-          "description": "Where in a cell is energy released? Answer in 10 words or fewer.",
+          "description": "Why was the Berlin Wall built? Answer in 10 words or fewer.",
           "max_marks": 2,
           "reading": {
             "ignore_case": false
@@ -1209,31 +1209,31 @@
       "answers": [
         {
           "answers": {
-            "Q2": "In the mitochondria"
+            "Q2": "To stop people leaving East Germany"
           },
           "student_count": 241
         },
         {
           "answers": {
-            "Q2": "The powerhouse of the cell"
+            "Q2": "To stop emigration to the West"
           },
           "student_count": 52
         },
         {
           "answers": {
-            "Q2": "In the mitochondria, where cellular respiration releases energy stored in glucose"
+            "Q2": "To stop East Germans leaving for the West, where many skilled workers had already gone"
           },
           "student_count": 63
         },
         {
           "answers": {
-            "Q2": "In the nucleus"
+            "Q2": "To keep West Germany out"
           },
           "student_count": 38
         },
         {
           "answers": {
-            "Q2": "The nucleus controls the cell and releases energy for everything it does"
+            "Q2": "It was built to keep the Western armies out of East Germany"
           },
           "student_count": 9
         }
@@ -1251,7 +1251,7 @@
                   "uses": "gradeflow/key-points@1",
                   "with": {
                     "points": [
-                      "mitochondria"
+                      "leaving"
                     ]
                   }
                 }
@@ -1271,7 +1271,7 @@
                   "uses": "gradeflow/key-points@1",
                   "with": {
                     "points": [
-                      "mitochondria"
+                      "leaving"
                     ]
                   }
                 },
@@ -1303,7 +1303,7 @@
                         "uses": "gradeflow/key-points@1",
                         "with": {
                           "points": [
-                            "mitochondria"
+                            "leaving"
                           ]
                         }
                       },
@@ -1311,7 +1311,7 @@
                         "uses": "gradeflow/key-points@1",
                         "with": {
                           "points": [
-                            "powerhouse"
+                            "emigration"
                           ]
                         }
                       }
@@ -1346,7 +1346,7 @@
                         "uses": "gradeflow/key-points@1",
                         "with": {
                           "points": [
-                            "mitochondria"
+                            "leaving"
                           ]
                         }
                       },
@@ -1354,7 +1354,7 @@
                         "uses": "gradeflow/key-points@1",
                         "with": {
                           "points": [
-                            "powerhouse"
+                            "emigration"
                           ]
                         }
                       }
@@ -1366,42 +1366,6 @@
                   "with": {
                     "max_length": 10,
                     "unit": "words"
-                  }
-                }
-              ]
-            }
-          }
-        },
-        {
-          "change": "Remove the step Length",
-          "marking": {
-            "question": "Q2",
-            "uses": "gradeflow/workflow@1",
-            "with": {
-              "marks_by": "all_correct",
-              "steps": [
-                {
-                  "uses": "gradeflow/workflow@1",
-                  "with": {
-                    "marks_by": "any_correct",
-                    "steps": [
-                      {
-                        "uses": "gradeflow/key-points@1",
-                        "with": {
-                          "points": [
-                            "mitochondria"
-                          ]
-                        }
-                      },
-                      {
-                        "uses": "gradeflow/key-points@1",
-                        "with": {
-                          "points": [
-                            "powerhouse"
-                          ]
-                        }
-                      }
-                    ]
                   }
                 }
               ]
@@ -1734,46 +1698,48 @@
       "question_set": {
         "Q4a": {
           "type": "choice",
+          "description": "Pick a hemisphere.",
           "options": [
-            "artery",
-            "vein"
+            "northern",
+            "southern"
           ]
         },
         "Q4b": {
           "type": "choice",
+          "description": "Which season is it there in July?",
           "max_marks": 1,
           "options": [
-            "towards",
-            "away"
+            "summer",
+            "winter"
           ]
         }
       },
       "answers": [
         {
           "answers": {
-            "Q4a": "artery",
-            "Q4b": "away"
+            "Q4a": "northern",
+            "Q4b": "summer"
           },
           "student_count": 182
         },
         {
           "answers": {
-            "Q4a": "vein",
-            "Q4b": "towards"
+            "Q4a": "southern",
+            "Q4b": "winter"
           },
           "student_count": 141
         },
         {
           "answers": {
-            "Q4a": "artery",
-            "Q4b": "towards"
+            "Q4a": "northern",
+            "Q4b": "winter"
           },
           "student_count": 23
         },
         {
           "answers": {
-            "Q4a": "vein",
-            "Q4b": "away"
+            "Q4a": "southern",
+            "Q4b": "summer"
           },
           "student_count": 17
         }
@@ -1786,13 +1752,13 @@
             "uses": "gradeflow/multiple-choice@1",
             "with": {
               "correct": [
-                "away"
+                "summer"
               ]
             }
           }
         },
         {
-          "change": "Add If: Q4a chooses artery",
+          "change": "Add If: Q4a chooses northern",
           "marking": {
             "uses": "gradeflow/conditional@1",
             "with": {
@@ -1802,7 +1768,7 @@
                   "uses": "gradeflow/multiple-choice@1",
                   "with": {
                     "correct": [
-                      "artery"
+                      "northern"
                     ]
                   }
                 }
@@ -1813,7 +1779,7 @@
                   "uses": "gradeflow/multiple-choice@1",
                   "with": {
                     "correct": [
-                      "away"
+                      "summer"
                     ]
                   }
                 }
@@ -1823,7 +1789,7 @@
           }
         },
         {
-          "change": "Add Otherwise: Q4b chooses towards",
+          "change": "Add Otherwise: Q4b chooses winter",
           "marking": {
             "uses": "gradeflow/conditional@1",
             "with": {
@@ -1833,7 +1799,7 @@
                   "uses": "gradeflow/multiple-choice@1",
                   "with": {
                     "correct": [
-                      "artery"
+                      "northern"
                     ]
                   }
                 }
@@ -1844,7 +1810,7 @@
                   "uses": "gradeflow/multiple-choice@1",
                   "with": {
                     "correct": [
-                      "away"
+                      "summer"
                     ]
                   }
                 }
@@ -1855,7 +1821,7 @@
                   "uses": "gradeflow/multiple-choice@1",
                   "with": {
                     "correct": [
-                      "towards"
+                      "winter"
                     ]
                   }
                 }
@@ -1870,10 +1836,12 @@
       "question_set": {
         "Q3a": {
           "type": "number",
+          "description": "A ball is dropped from 45 m. How long does it take to land, in seconds?",
           "max_marks": 1
         },
         "Q3b": {
           "type": "number",
+          "description": "How fast is it going when it lands, in m/s?",
           "max_marks": 1
         }
       },

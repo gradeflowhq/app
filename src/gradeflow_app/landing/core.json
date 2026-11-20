@@ -5778,21 +5778,21 @@
  },
  "groups": {
   "normalized_answers": {
-   "Release energy": "Release energy",
-   "Releases energy for the cell": "Releases energy for the cell",
-   "Produce ATP": "Produce ATP",
-   "Makes ATP": "Makes ATP",
-   "Produces ATP for the cell": "Produces ATP for the cell",
-   "Store DNA": "Store DNA",
-   "Relese energy": "Relese energy",
-   "Make proteins": "Make proteins",
-   "Release enrgy": "Release enrgy",
-   "Stores genetic information": "Stores genetic information",
-   "Releases energy for the cel": "Releases energy for the cel",
-   "Produse ATP": "Produse ATP"
+   "It falls": "It falls",
+   "Quantity demanded falls": "Quantity demanded falls",
+   "People buy less": "People buy less",
+   "Consumers buy less": "Consumers buy less",
+   "People buy less of it": "People buy less of it",
+   "It rises": "It rises",
+   "It fals": "It fals",
+   "Supply rises": "Supply rises",
+   "Quantity demanded fals": "Quantity demanded fals",
+   "Demand goes up": "Demand goes up",
+   "Quantity demaned falls": "Quantity demaned falls",
+   "Peple buy less": "Peple buy less"
   },
   "results": {
-   "Release energy": {
+   "It falls": {
     "proportion": 1.0,
     "max_marks": 1.0,
     "feedback": "Correct.",
@@ -5803,7 +5803,7 @@
     "spans": [],
     "marks": 1.0
    },
-   "Releases energy for the cell": {
+   "Quantity demanded falls": {
     "proportion": 1.0,
     "max_marks": 1.0,
     "feedback": "Correct.",
@@ -5814,10 +5814,10 @@
     "spans": [],
     "marks": 1.0
    },
-   "Produce ATP": {
+   "People buy less": {
     "proportion": 0.0,
     "max_marks": 1.0,
-    "feedback": "Expected “Release energy” or “Releases energy for the cell”.",
+    "feedback": "Expected “It falls” or “Quantity demanded falls”.",
     "method_label": "Accepted Answers",
     "is_marked": true,
     "model_names": [],
@@ -5825,10 +5825,10 @@
     "spans": [],
     "marks": 0.0
    },
-   "Makes ATP": {
+   "Consumers buy less": {
     "proportion": 0.0,
     "max_marks": 1.0,
-    "feedback": "Expected “Release energy” or “Releases energy for the cell”.",
+    "feedback": "Expected “It falls” or “Quantity demanded falls”.",
     "method_label": "Accepted Answers",
     "is_marked": true,
     "model_names": [],
@@ -5836,10 +5836,10 @@
     "spans": [],
     "marks": 0.0
    },
-   "Produces ATP for the cell": {
+   "People buy less of it": {
     "proportion": 0.0,
     "max_marks": 1.0,
-    "feedback": "Expected “Release energy” or “Releases energy for the cell”.",
+    "feedback": "Expected “It falls” or “Quantity demanded falls”.",
     "method_label": "Accepted Answers",
     "is_marked": true,
     "model_names": [],
@@ -5847,10 +5847,10 @@
     "spans": [],
     "marks": 0.0
    },
-   "Store DNA": {
+   "It rises": {
     "proportion": 0.0,
     "max_marks": 1.0,
-    "feedback": "Expected “Release energy” or “Releases energy for the cell”.",
+    "feedback": "Expected “It falls” or “Quantity demanded falls”.",
     "method_label": "Accepted Answers",
     "is_marked": true,
     "model_names": [],
@@ -5858,10 +5858,10 @@
     "spans": [],
     "marks": 0.0
    },
-   "Relese energy": {
+   "It fals": {
     "proportion": 1.0,
     "max_marks": 1.0,
-    "feedback": "Accepted as “Release energy”.",
+    "feedback": "Accepted as “It falls”.",
     "method_label": "Accepted Answers",
     "is_marked": true,
     "model_names": [],
@@ -5869,10 +5869,10 @@
     "spans": [],
     "marks": 1.0
    },
-   "Make proteins": {
+   "Supply rises": {
     "proportion": 0.0,
     "max_marks": 1.0,
-    "feedback": "Expected “Release energy” or “Releases energy for the cell”.",
+    "feedback": "Expected “It falls” or “Quantity demanded falls”.",
     "method_label": "Accepted Answers",
     "is_marked": true,
     "model_names": [],
@@ -5880,10 +5880,10 @@
     "spans": [],
     "marks": 0.0
    },
-   "Release enrgy": {
+   "Quantity demanded fals": {
     "proportion": 1.0,
     "max_marks": 1.0,
-    "feedback": "Accepted as “Release energy”.",
+    "feedback": "Accepted as “Quantity demanded falls”.",
     "method_label": "Accepted Answers",
     "is_marked": true,
     "model_names": [],
@@ -5891,10 +5891,10 @@
     "spans": [],
     "marks": 1.0
    },
-   "Stores genetic information": {
+   "Demand goes up": {
     "proportion": 0.0,
     "max_marks": 1.0,
-    "feedback": "Expected “Release energy” or “Releases energy for the cell”.",
+    "feedback": "Expected “It falls” or “Quantity demanded falls”.",
     "method_label": "Accepted Answers",
     "is_marked": true,
     "model_names": [],
@@ -5902,10 +5902,10 @@
     "spans": [],
     "marks": 0.0
    },
-   "Releases energy for the cel": {
+   "Quantity demaned falls": {
     "proportion": 1.0,
     "max_marks": 1.0,
-    "feedback": "Accepted as “Releases energy for the cell”.",
+    "feedback": "Accepted as “Quantity demanded falls”.",
     "method_label": "Accepted Answers",
     "is_marked": true,
     "model_names": [],
@@ -5913,10 +5913,10 @@
     "spans": [],
     "marks": 1.0
    },
-   "Produse ATP": {
+   "Peple buy less": {
     "proportion": 0.0,
     "max_marks": 1.0,
-    "feedback": "Expected “Release energy” or “Releases energy for the cell”.",
+    "feedback": "Expected “It falls” or “Quantity demanded falls”.",
     "method_label": "Accepted Answers",
     "is_marked": true,
     "model_names": [],
@@ -5927,48 +5927,48 @@
   },
   "spelling_groups": [
    [
-    "Release energy",
-    "Release enrgy",
-    "Relese energy"
+    "Quantity demanded falls",
+    "Quantity demanded fals",
+    "Quantity demaned falls"
    ],
    [
-    "Produce ATP",
-    "Produse ATP"
+    "It falls",
+    "It fals"
    ],
    [
-    "Releases energy for the cel",
-    "Releases energy for the cell"
+    "People buy less",
+    "Peple buy less"
    ],
    [
-    "Make proteins"
+    "Consumers buy less"
    ],
    [
-    "Makes ATP"
+    "Demand goes up"
    ],
    [
-    "Produces ATP for the cell"
+    "It rises"
    ],
    [
-    "Store DNA"
+    "People buy less of it"
    ],
    [
-    "Stores genetic information"
+    "Supply rises"
    ]
   ]
  },
  "by_example": {
   "normalized_answers": {
-   "Carbon dioxide": "Carbon dioxide",
-   "CO2": "CO2",
-   "Oxygen": "Oxygen",
-   "Carbon": "Carbon",
-   "Nitrogen": "Nitrogen",
-   "Carbon monoxide": "Carbon monoxide"
+   "The library": "The library",
+   "Library": "Library",
+   "The bookshop": "The bookshop",
+   "The bookcase": "The bookcase",
+   "The book": "The book",
+   "Bookshop": "Bookshop"
   },
   "stages": [
    {
     "results": {
-     "Carbon dioxide": {
+     "The library": {
       "proportion": 1.0,
       "max_marks": 2.0,
       "feedback": "Correct.",
@@ -5979,10 +5979,10 @@
       "spans": [],
       "marks": 2.0
      },
-     "CO2": {
+     "Library": {
       "proportion": 0.0,
       "max_marks": 2.0,
-      "feedback": "Expected “Carbon dioxide”.",
+      "feedback": "Expected “The library”.",
       "method_label": "Accepted Answers",
       "is_marked": true,
       "model_names": [],
@@ -5990,10 +5990,10 @@
       "spans": [],
       "marks": 0.0
      },
-     "Oxygen": {
+     "The bookshop": {
       "proportion": 0.0,
       "max_marks": 2.0,
-      "feedback": "Expected “Carbon dioxide”.",
+      "feedback": "Expected “The library”.",
       "method_label": "Accepted Answers",
       "is_marked": true,
       "model_names": [],
@@ -6001,10 +6001,10 @@
       "spans": [],
       "marks": 0.0
      },
-     "Carbon": {
+     "The bookcase": {
       "proportion": 0.0,
       "max_marks": 2.0,
-      "feedback": "Expected “Carbon dioxide”.",
+      "feedback": "Expected “The library”.",
       "method_label": "Accepted Answers",
       "is_marked": true,
       "model_names": [],
@@ -6012,10 +6012,10 @@
       "spans": [],
       "marks": 0.0
      },
-     "Nitrogen": {
+     "The book": {
       "proportion": 0.0,
       "max_marks": 2.0,
-      "feedback": "Expected “Carbon dioxide”.",
+      "feedback": "Expected “The library”.",
       "method_label": "Accepted Answers",
       "is_marked": true,
       "model_names": [],
@@ -6023,10 +6023,10 @@
       "spans": [],
       "marks": 0.0
      },
-     "Carbon monoxide": {
+     "Bookshop": {
       "proportion": 0.0,
       "max_marks": 2.0,
-      "feedback": "Expected “Carbon dioxide”.",
+      "feedback": "Expected “The library”.",
       "method_label": "Accepted Answers",
       "is_marked": true,
       "model_names": [],
@@ -6037,19 +6037,19 @@
     },
     "summary": {
      "method_label": "Accepted Answers",
-     "description": "Matches `Carbon dioxide`.",
+     "description": "Matches `The library`.",
      "problems": [],
      "is_compatible": true,
      "incompatible_version": "",
      "needs_model_endpoint": false
     },
     "decisions": {
-     "Carbon dioxide": "full_marks"
+     "The library": "full_marks"
     }
    },
    {
     "results": {
-     "Carbon dioxide": {
+     "The library": {
       "proportion": 1.0,
       "max_marks": 2.0,
       "feedback": "Correct.",
@@ -6060,7 +6060,7 @@
       "spans": [],
       "marks": 2.0
      },
-     "CO2": {
+     "Library": {
       "proportion": 1.0,
       "max_marks": 2.0,
       "feedback": "Correct.",
@@ -6071,10 +6071,10 @@
       "spans": [],
       "marks": 2.0
      },
-     "Oxygen": {
+     "The bookshop": {
       "proportion": 0.0,
       "max_marks": 2.0,
-      "feedback": "Expected “Carbon dioxide” or “CO2”.",
+      "feedback": "Expected “The library” or “Library”.",
       "method_label": "Accepted Answers",
       "is_marked": true,
       "model_names": [],
@@ -6082,10 +6082,10 @@
       "spans": [],
       "marks": 0.0
      },
-     "Carbon": {
+     "The bookcase": {
       "proportion": 0.0,
       "max_marks": 2.0,
-      "feedback": "Expected “Carbon dioxide” or “CO2”.",
+      "feedback": "Expected “The library” or “Library”.",
       "method_label": "Accepted Answers",
       "is_marked": true,
       "model_names": [],
@@ -6093,10 +6093,10 @@
       "spans": [],
       "marks": 0.0
      },
-     "Nitrogen": {
+     "The book": {
       "proportion": 0.0,
       "max_marks": 2.0,
-      "feedback": "Expected “Carbon dioxide” or “CO2”.",
+      "feedback": "Expected “The library” or “Library”.",
       "method_label": "Accepted Answers",
       "is_marked": true,
       "model_names": [],
@@ -6104,10 +6104,10 @@
       "spans": [],
       "marks": 0.0
      },
-     "Carbon monoxide": {
+     "Bookshop": {
       "proportion": 0.0,
       "max_marks": 2.0,
-      "feedback": "Expected “Carbon dioxide” or “CO2”.",
+      "feedback": "Expected “The library” or “Library”.",
       "method_label": "Accepted Answers",
       "is_marked": true,
       "model_names": [],
@@ -6118,20 +6118,20 @@
     },
     "summary": {
      "method_label": "Accepted Answers",
-     "description": "Matches `Carbon dioxide` or `CO2`.",
+     "description": "Matches `The library` or `Library`.",
      "problems": [],
      "is_compatible": true,
      "incompatible_version": "",
      "needs_model_endpoint": false
     },
     "decisions": {
-     "Carbon dioxide": "full_marks",
-     "CO2": "full_marks"
+     "The library": "full_marks",
+     "Library": "full_marks"
     }
    },
    {
     "results": {
-     "Carbon dioxide": {
+     "The library": {
       "proportion": 1.0,
       "max_marks": 2.0,
       "feedback": "Correct.",
@@ -6145,14 +6145,14 @@
        "details": [],
        "children": [
         {
-         "title": "Matches `Carbon dioxide` or `CO2`.",
+         "title": "Matches `The library` or `Library`.",
          "effect": "earned",
          "marks": null,
          "details": [],
          "children": []
         },
         {
-         "title": "Matches `Carbon`.",
+         "title": "Matches `The bookcase`.",
          "effect": "uncounted",
          "marks": null,
          "details": [],
@@ -6163,7 +6163,7 @@
       "spans": [],
       "marks": 2.0
      },
-     "CO2": {
+     "Library": {
       "proportion": 1.0,
       "max_marks": 2.0,
       "feedback": "Correct.",
@@ -6177,14 +6177,14 @@
        "details": [],
        "children": [
         {
-         "title": "Matches `Carbon dioxide` or `CO2`.",
+         "title": "Matches `The library` or `Library`.",
          "effect": "earned",
          "marks": null,
          "details": [],
          "children": []
         },
         {
-         "title": "Matches `Carbon`.",
+         "title": "Matches `The bookcase`.",
          "effect": "uncounted",
          "marks": null,
          "details": [],
@@ -6195,10 +6195,10 @@
       "spans": [],
       "marks": 2.0
      },
-     "Oxygen": {
+     "The bookshop": {
       "proportion": 0.0,
       "max_marks": 2.0,
-      "feedback": "Expected “Carbon dioxide” or “CO2”.",
+      "feedback": "Expected “The library” or “Library”.",
       "method_label": "Workflow",
       "is_marked": true,
       "model_names": [],
@@ -6209,14 +6209,14 @@
        "details": [],
        "children": [
         {
-         "title": "Matches `Carbon dioxide` or `CO2`.",
+         "title": "Matches `The library` or `Library`.",
          "effect": "no_marks",
          "marks": null,
          "details": [],
          "children": []
         },
         {
-         "title": "Matches `Carbon`.",
+         "title": "Matches `The bookcase`.",
          "effect": "no_marks",
          "marks": null,
          "details": [],
@@ -6227,7 +6227,7 @@
       "spans": [],
       "marks": 0.0
      },
-     "Carbon": {
+     "The bookcase": {
       "proportion": 0.5,
       "max_marks": 2.0,
       "feedback": "Partly correct (50% of the marks).",
@@ -6241,14 +6241,14 @@
        "details": [],
        "children": [
         {
-         "title": "Matches `Carbon dioxide` or `CO2`.",
+         "title": "Matches `The library` or `Library`.",
          "effect": "uncounted",
          "marks": null,
          "details": [],
          "children": []
         },
         {
-         "title": "Matches `Carbon`.",
+         "title": "Matches `The bookcase`.",
          "effect": "earned",
          "marks": null,
          "details": [],
@@ -6259,10 +6259,10 @@
       "spans": [],
       "marks": 1.0
      },
-     "Nitrogen": {
+     "The book": {
       "proportion": 0.0,
       "max_marks": 2.0,
-      "feedback": "Expected “Carbon dioxide” or “CO2”.",
+      "feedback": "Expected “The library” or “Library”.",
       "method_label": "Workflow",
       "is_marked": true,
       "model_names": [],
@@ -6273,14 +6273,14 @@
        "details": [],
        "children": [
         {
-         "title": "Matches `Carbon dioxide` or `CO2`.",
+         "title": "Matches `The library` or `Library`.",
          "effect": "no_marks",
          "marks": null,
          "details": [],
          "children": []
         },
         {
-         "title": "Matches `Carbon`.",
+         "title": "Matches `The bookcase`.",
          "effect": "no_marks",
          "marks": null,
          "details": [],
@@ -6291,10 +6291,10 @@
       "spans": [],
       "marks": 0.0
      },
-     "Carbon monoxide": {
+     "Bookshop": {
       "proportion": 0.0,
       "max_marks": 2.0,
-      "feedback": "Expected “Carbon dioxide” or “CO2”.",
+      "feedback": "Expected “The library” or “Library”.",
       "method_label": "Workflow",
       "is_marked": true,
       "model_names": [],
@@ -6305,14 +6305,14 @@
        "details": [],
        "children": [
         {
-         "title": "Matches `Carbon dioxide` or `CO2`.",
+         "title": "Matches `The library` or `Library`.",
          "effect": "no_marks",
          "marks": null,
          "details": [],
          "children": []
         },
         {
-         "title": "Matches `Carbon`.",
+         "title": "Matches `The bookcase`.",
          "effect": "no_marks",
          "marks": null,
          "details": [],
@@ -6326,21 +6326,21 @@
     },
     "summary": {
      "method_label": "Workflow",
-     "description": "Any one of these:\n- Matches `Carbon dioxide` or `CO2`.\n- **50% of the marks:** Matches `Carbon`.",
+     "description": "Any one of these:\n- Matches `The library` or `Library`.\n- **50% of the marks:** Matches `The bookcase`.",
      "problems": [],
      "is_compatible": true,
      "incompatible_version": "",
      "needs_model_endpoint": false
     },
     "decisions": {
-     "Carbon dioxide": "full_marks",
-     "CO2": "full_marks",
-     "Carbon": "partial_marks"
+     "The library": "full_marks",
+     "Library": "full_marks",
+     "The bookcase": "partial_marks"
     }
    },
    {
     "results": {
-     "Carbon dioxide": {
+     "The library": {
       "proportion": 1.0,
       "max_marks": 2.0,
       "feedback": "Correct.",
@@ -6360,14 +6360,14 @@
          "details": [],
          "children": [
           {
-           "title": "Matches `Carbon dioxide` or `CO2`.",
+           "title": "Matches `The library` or `Library`.",
            "effect": "earned",
            "marks": null,
            "details": [],
            "children": []
           },
           {
-           "title": "Matches `Carbon`.",
+           "title": "Matches `The bookcase`.",
            "effect": "uncounted",
            "marks": null,
            "details": [],
@@ -6376,7 +6376,7 @@
          ]
         },
         {
-         "title": "**Not allowed:** Matches `Carbon monoxide`.",
+         "title": "**Not allowed:** Matches `The bookshop`.",
          "effect": "earned",
          "marks": null,
          "details": [],
@@ -6387,7 +6387,7 @@
       "spans": [],
       "marks": 2.0
      },
-     "CO2": {
+     "Library": {
       "proportion": 1.0,
       "max_marks": 2.0,
       "feedback": "Correct.",
@@ -6407,14 +6407,14 @@
          "details": [],
          "children": [
           {
-           "title": "Matches `Carbon dioxide` or `CO2`.",
+           "title": "Matches `The library` or `Library`.",
            "effect": "earned",
            "marks": null,
            "details": [],
            "children": []
           },
           {
-           "title": "Matches `Carbon`.",
+           "title": "Matches `The bookcase`.",
            "effect": "uncounted",
            "marks": null,
            "details": [],
@@ -6423,7 +6423,7 @@
          ]
         },
         {
-         "title": "**Not allowed:** Matches `Carbon monoxide`.",
+         "title": "**Not allowed:** Matches `The bookshop`.",
          "effect": "earned",
          "marks": null,
          "details": [],
@@ -6434,10 +6434,10 @@
       "spans": [],
       "marks": 2.0
      },
-     "Oxygen": {
+     "The bookshop": {
       "proportion": 0.0,
       "max_marks": 2.0,
-      "feedback": "Expected “Carbon dioxide” or “CO2”.",
+      "feedback": "Expected “The library” or “Library”.\nNot allowed. Matches “The bookshop”.",
       "method_label": "Workflow",
       "is_marked": true,
       "model_names": [],
@@ -6454,14 +6454,14 @@
          "details": [],
          "children": [
           {
-           "title": "Matches `Carbon dioxide` or `CO2`.",
+           "title": "Matches `The library` or `Library`.",
            "effect": "no_marks",
            "marks": null,
            "details": [],
            "children": []
           },
           {
-           "title": "Matches `Carbon`.",
+           "title": "Matches `The bookcase`.",
            "effect": "no_marks",
            "marks": null,
            "details": [],
@@ -6470,8 +6470,8 @@
          ]
         },
         {
-         "title": "**Not allowed:** Matches `Carbon monoxide`.",
-         "effect": "earned",
+         "title": "**Not allowed:** Matches `The bookshop`.",
+         "effect": "no_marks",
          "marks": null,
          "details": [],
          "children": []
@@ -6481,7 +6481,7 @@
       "spans": [],
       "marks": 0.0
      },
-     "Carbon": {
+     "The bookcase": {
       "proportion": 0.5,
       "max_marks": 2.0,
       "feedback": "Partly correct (50% of the marks).",
@@ -6501,14 +6501,14 @@
          "details": [],
          "children": [
           {
-           "title": "Matches `Carbon dioxide` or `CO2`.",
+           "title": "Matches `The library` or `Library`.",
            "effect": "uncounted",
            "marks": null,
            "details": [],
            "children": []
           },
           {
-           "title": "Matches `Carbon`.",
+           "title": "Matches `The bookcase`.",
            "effect": "earned",
            "marks": null,
            "details": [],
@@ -6517,7 +6517,7 @@
          ]
         },
         {
-         "title": "**Not allowed:** Matches `Carbon monoxide`.",
+         "title": "**Not allowed:** Matches `The bookshop`.",
          "effect": "earned",
          "marks": null,
          "details": [],
@@ -6528,10 +6528,10 @@
       "spans": [],
       "marks": 1.0
      },
-     "Nitrogen": {
+     "The book": {
       "proportion": 0.0,
       "max_marks": 2.0,
-      "feedback": "Expected “Carbon dioxide” or “CO2”.",
+      "feedback": "Expected “The library” or “Library”.",
       "method_label": "Workflow",
       "is_marked": true,
       "model_names": [],
@@ -6548,14 +6548,14 @@
          "details": [],
          "children": [
           {
-           "title": "Matches `Carbon dioxide` or `CO2`.",
+           "title": "Matches `The library` or `Library`.",
            "effect": "no_marks",
            "marks": null,
            "details": [],
            "children": []
           },
           {
-           "title": "Matches `Carbon`.",
+           "title": "Matches `The bookcase`.",
            "effect": "no_marks",
            "marks": null,
            "details": [],
@@ -6564,7 +6564,7 @@
          ]
         },
         {
-         "title": "**Not allowed:** Matches `Carbon monoxide`.",
+         "title": "**Not allowed:** Matches `The bookshop`.",
          "effect": "earned",
          "marks": null,
          "details": [],
@@ -6575,10 +6575,10 @@
       "spans": [],
       "marks": 0.0
      },
-     "Carbon monoxide": {
+     "Bookshop": {
       "proportion": 0.0,
       "max_marks": 2.0,
-      "feedback": "Expected “Carbon dioxide” or “CO2”.\nNot allowed. Matches “Carbon monoxide”.",
+      "feedback": "Expected “The library” or “Library”.",
       "method_label": "Workflow",
       "is_marked": true,
       "model_names": [],
@@ -6595,14 +6595,14 @@
          "details": [],
          "children": [
           {
-           "title": "Matches `Carbon dioxide` or `CO2`.",
+           "title": "Matches `The library` or `Library`.",
            "effect": "no_marks",
            "marks": null,
            "details": [],
            "children": []
           },
           {
-           "title": "Matches `Carbon`.",
+           "title": "Matches `The bookcase`.",
            "effect": "no_marks",
            "marks": null,
            "details": [],
@@ -6611,8 +6611,8 @@
          ]
         },
         {
-         "title": "**Not allowed:** Matches `Carbon monoxide`.",
-         "effect": "no_marks",
+         "title": "**Not allowed:** Matches `The bookshop`.",
+         "effect": "earned",
          "marks": null,
          "details": [],
          "children": []
@@ -6625,17 +6625,17 @@
     },
     "summary": {
      "method_label": "Workflow",
-     "description": "All of these:\n- Any one of these:\n  - Matches `Carbon dioxide` or `CO2`.\n  - **50% of the marks:** Matches `Carbon`.\n- **Not allowed:** Matches `Carbon monoxide`.",
+     "description": "All of these:\n- Any one of these:\n  - Matches `The library` or `Library`.\n  - **50% of the marks:** Matches `The bookcase`.\n- **Not allowed:** Matches `The bookshop`.",
      "problems": [],
      "is_compatible": true,
      "incompatible_version": "",
      "needs_model_endpoint": false
     },
     "decisions": {
-     "Carbon dioxide": "full_marks",
-     "CO2": "full_marks",
-     "Carbon": "partial_marks",
-     "Carbon monoxide": "not_allowed"
+     "The library": "full_marks",
+     "Library": "full_marks",
+     "The bookcase": "partial_marks",
+     "The bookshop": "not_allowed"
     }
    }
   ]
@@ -6645,26 +6645,26 @@
    "method_label": "Workflow",
    "normalized_answers": [
     {
-     "Q2": "In the mitochondria"
+     "Q2": "To stop people leaving East Germany"
     },
     {
-     "Q2": "The powerhouse of the cell"
+     "Q2": "To stop emigration to the West"
     },
     {
-     "Q2": "In the mitochondria, where cellular respiration releases energy stored in glucose"
+     "Q2": "To stop East Germans leaving for the West, where many skilled workers had already gone"
     },
     {
-     "Q2": "In the nucleus"
+     "Q2": "To keep West Germany out"
     },
     {
-     "Q2": "The nucleus controls the cell and releases energy for everything it does"
+     "Q2": "It was built to keep the Western armies out of East Germany"
     }
    ],
    "variants": [
     {
      "summary": {
       "method_label": "Workflow",
-      "description": "Split by weight between these:\n- Includes `mitochondria`.",
+      "description": "Split by weight between these:\n- Includes `leaving`.",
       "problems": [],
       "is_compatible": true,
       "incompatible_version": "",
@@ -6675,7 +6675,7 @@
        "Q2": {
         "proportion": 1.0,
         "max_marks": 2.0,
-        "feedback": "Has “mitochondria”.",
+        "feedback": "Has “leaving”.",
         "method_label": "Workflow",
         "is_marked": true,
         "model_names": [],
@@ -6688,7 +6688,7 @@
        "Q2": {
         "proportion": 0.0,
         "max_marks": 2.0,
-        "feedback": "Missing “mitochondria”.",
+        "feedback": "Missing “leaving”.",
         "method_label": "Workflow",
         "is_marked": true,
         "model_names": [],
@@ -6701,7 +6701,7 @@
        "Q2": {
         "proportion": 1.0,
         "max_marks": 2.0,
-        "feedback": "Has “mitochondria”.",
+        "feedback": "Has “leaving”.",
         "method_label": "Workflow",
         "is_marked": true,
         "model_names": [],
@@ -6714,7 +6714,7 @@
        "Q2": {
         "proportion": 0.0,
         "max_marks": 2.0,
-        "feedback": "Missing “mitochondria”.",
+        "feedback": "Missing “leaving”.",
         "method_label": "Workflow",
         "is_marked": true,
         "model_names": [],
@@ -6727,7 +6727,7 @@
        "Q2": {
         "proportion": 0.0,
         "max_marks": 2.0,
-        "feedback": "Missing “mitochondria”.",
+        "feedback": "Missing “leaving”.",
         "method_label": "Workflow",
         "is_marked": true,
         "model_names": [],
@@ -6741,7 +6741,7 @@
     {
      "summary": {
       "method_label": "Workflow",
-      "description": "Split by weight between these:\n- Includes `mitochondria`.\n- Has at most `10` words.",
+      "description": "Split by weight between these:\n- Includes `leaving`.\n- Has at most `10` words.",
       "problems": [],
       "is_compatible": true,
       "incompatible_version": "",
@@ -6752,7 +6752,7 @@
        "Q2": {
         "proportion": 1.0,
         "max_marks": 2.0,
-        "feedback": "Has “mitochondria”.\nCorrect length.",
+        "feedback": "Has “leaving”.\nCorrect length.",
         "method_label": "Workflow",
         "is_marked": true,
         "model_names": [],
@@ -6763,7 +6763,7 @@
          "details": [],
          "children": [
           {
-           "title": "Includes `mitochondria`.",
+           "title": "Includes `leaving`.",
            "effect": "earned",
            "marks": 1.0,
            "details": [],
@@ -6786,7 +6786,7 @@
        "Q2": {
         "proportion": 0.5,
         "max_marks": 2.0,
-        "feedback": "Missing “mitochondria”.\nCorrect length.",
+        "feedback": "Missing “leaving”.\nCorrect length.",
         "method_label": "Workflow",
         "is_marked": true,
         "model_names": [],
@@ -6797,7 +6797,7 @@
          "details": [],
          "children": [
           {
-           "title": "Includes `mitochondria`.",
+           "title": "Includes `leaving`.",
            "effect": "no_marks",
            "marks": 0.0,
            "details": [],
@@ -6820,7 +6820,7 @@
        "Q2": {
         "proportion": 0.5,
         "max_marks": 2.0,
-        "feedback": "Has “mitochondria”.\nToo long: 11 words. Expected at most 10.",
+        "feedback": "Has “leaving”.\nToo long: 15 words. Expected at most 10.",
         "method_label": "Workflow",
         "is_marked": true,
         "model_names": [],
@@ -6831,7 +6831,7 @@
          "details": [],
          "children": [
           {
-           "title": "Includes `mitochondria`.",
+           "title": "Includes `leaving`.",
            "effect": "earned",
            "marks": 1.0,
            "details": [],
@@ -6854,7 +6854,7 @@
        "Q2": {
         "proportion": 0.5,
         "max_marks": 2.0,
-        "feedback": "Missing “mitochondria”.\nCorrect length.",
+        "feedback": "Missing “leaving”.\nCorrect length.",
         "method_label": "Workflow",
         "is_marked": true,
         "model_names": [],
@@ -6865,7 +6865,7 @@
          "details": [],
          "children": [
           {
-           "title": "Includes `mitochondria`.",
+           "title": "Includes `leaving`.",
            "effect": "no_marks",
            "marks": 0.0,
            "details": [],
@@ -6888,7 +6888,7 @@
        "Q2": {
         "proportion": 0.0,
         "max_marks": 2.0,
-        "feedback": "Missing “mitochondria”.\nToo long: 12 words. Expected at most 10.",
+        "feedback": "Missing “leaving”.\nToo long: 12 words. Expected at most 10.",
         "method_label": "Workflow",
         "is_marked": true,
         "model_names": [],
@@ -6899,268 +6899,11 @@
          "details": [],
          "children": [
           {
-           "title": "Includes `mitochondria`.",
+           "title": "Includes `leaving`.",
            "effect": "no_marks",
            "marks": 0.0,
            "details": [],
            "children": []
-          },
-          {
-           "title": "Has at most `10` words.",
-           "effect": "no_marks",
-           "marks": 0.0,
-           "details": [],
-           "children": []
-          }
-         ]
-        },
-        "spans": [],
-        "marks": 0.0
-       }
-      }
-     ]
-    },
-    {
-     "summary": {
-      "method_label": "Workflow",
-      "description": "Split by weight between these:\n- Any one of these:\n  - Includes `mitochondria`.\n  - Includes `powerhouse`.\n- Has at most `10` words.",
-      "problems": [],
-      "is_compatible": true,
-      "incompatible_version": "",
-      "needs_model_endpoint": false
-     },
-     "results": [
-      {
-       "Q2": {
-        "proportion": 1.0,
-        "max_marks": 2.0,
-        "feedback": "Has “mitochondria”.\nCorrect length.",
-        "method_label": "Workflow",
-        "is_marked": true,
-        "model_names": [],
-        "breakdown": {
-         "title": "Split by weight between these",
-         "effect": "earned",
-         "marks": null,
-         "details": [],
-         "children": [
-          {
-           "title": "Any one of these",
-           "effect": "earned",
-           "marks": 1.0,
-           "details": [],
-           "children": [
-            {
-             "title": "Includes `mitochondria`.",
-             "effect": "earned",
-             "marks": null,
-             "details": [],
-             "children": []
-            },
-            {
-             "title": "Includes `powerhouse`.",
-             "effect": "uncounted",
-             "marks": null,
-             "details": [],
-             "children": []
-            }
-           ]
-          },
-          {
-           "title": "Has at most `10` words.",
-           "effect": "earned",
-           "marks": 1.0,
-           "details": [],
-           "children": []
-          }
-         ]
-        },
-        "spans": [],
-        "marks": 2.0
-       }
-      },
-      {
-       "Q2": {
-        "proportion": 1.0,
-        "max_marks": 2.0,
-        "feedback": "Has “powerhouse”.\nCorrect length.",
-        "method_label": "Workflow",
-        "is_marked": true,
-        "model_names": [],
-        "breakdown": {
-         "title": "Split by weight between these",
-         "effect": "earned",
-         "marks": null,
-         "details": [],
-         "children": [
-          {
-           "title": "Any one of these",
-           "effect": "earned",
-           "marks": 1.0,
-           "details": [],
-           "children": [
-            {
-             "title": "Includes `mitochondria`.",
-             "effect": "uncounted",
-             "marks": null,
-             "details": [],
-             "children": []
-            },
-            {
-             "title": "Includes `powerhouse`.",
-             "effect": "earned",
-             "marks": null,
-             "details": [],
-             "children": []
-            }
-           ]
-          },
-          {
-           "title": "Has at most `10` words.",
-           "effect": "earned",
-           "marks": 1.0,
-           "details": [],
-           "children": []
-          }
-         ]
-        },
-        "spans": [],
-        "marks": 2.0
-       }
-      },
-      {
-       "Q2": {
-        "proportion": 0.5,
-        "max_marks": 2.0,
-        "feedback": "Has “mitochondria”.\nToo long: 11 words. Expected at most 10.",
-        "method_label": "Workflow",
-        "is_marked": true,
-        "model_names": [],
-        "breakdown": {
-         "title": "Split by weight between these",
-         "effect": "partial",
-         "marks": null,
-         "details": [],
-         "children": [
-          {
-           "title": "Any one of these",
-           "effect": "earned",
-           "marks": 1.0,
-           "details": [],
-           "children": [
-            {
-             "title": "Includes `mitochondria`.",
-             "effect": "earned",
-             "marks": null,
-             "details": [],
-             "children": []
-            },
-            {
-             "title": "Includes `powerhouse`.",
-             "effect": "uncounted",
-             "marks": null,
-             "details": [],
-             "children": []
-            }
-           ]
-          },
-          {
-           "title": "Has at most `10` words.",
-           "effect": "no_marks",
-           "marks": 0.0,
-           "details": [],
-           "children": []
-          }
-         ]
-        },
-        "spans": [],
-        "marks": 1.0
-       }
-      },
-      {
-       "Q2": {
-        "proportion": 0.5,
-        "max_marks": 2.0,
-        "feedback": "Missing “mitochondria”.\nCorrect length.",
-        "method_label": "Workflow",
-        "is_marked": true,
-        "model_names": [],
-        "breakdown": {
-         "title": "Split by weight between these",
-         "effect": "partial",
-         "marks": null,
-         "details": [],
-         "children": [
-          {
-           "title": "Any one of these",
-           "effect": "no_marks",
-           "marks": 0.0,
-           "details": [],
-           "children": [
-            {
-             "title": "Includes `mitochondria`.",
-             "effect": "no_marks",
-             "marks": null,
-             "details": [],
-             "children": []
-            },
-            {
-             "title": "Includes `powerhouse`.",
-             "effect": "no_marks",
-             "marks": null,
-             "details": [],
-             "children": []
-            }
-           ]
-          },
-          {
-           "title": "Has at most `10` words.",
-           "effect": "earned",
-           "marks": 1.0,
-           "details": [],
-           "children": []
-          }
-         ]
-        },
-        "spans": [],
-        "marks": 1.0
-       }
-      },
-      {
-       "Q2": {
-        "proportion": 0.0,
-        "max_marks": 2.0,
-        "feedback": "Missing “mitochondria”.\nToo long: 12 words. Expected at most 10.",
-        "method_label": "Workflow",
-        "is_marked": true,
-        "model_names": [],
-        "breakdown": {
-         "title": "Split by weight between these",
-         "effect": "no_marks",
-         "marks": null,
-         "details": [],
-         "children": [
-          {
-           "title": "Any one of these",
-           "effect": "no_marks",
-           "marks": 0.0,
-           "details": [],
-           "children": [
-            {
-             "title": "Includes `mitochondria`.",
-             "effect": "no_marks",
-             "marks": null,
-             "details": [],
-             "children": []
-            },
-            {
-             "title": "Includes `powerhouse`.",
-             "effect": "no_marks",
-             "marks": null,
-             "details": [],
-             "children": []
-            }
-           ]
           },
           {
            "title": "Has at most `10` words.",
@@ -7180,7 +6923,7 @@
     {
      "summary": {
       "method_label": "Workflow",
-      "description": "All of these:\n- Any one of these:\n  - Includes `mitochondria`.\n  - Includes `powerhouse`.\n- Has at most `10` words.",
+      "description": "Split by weight between these:\n- Any one of these:\n  - Includes `leaving`.\n  - Includes `emigration`.\n- Has at most `10` words.",
       "problems": [],
       "is_compatible": true,
       "incompatible_version": "",
@@ -7191,12 +6934,12 @@
        "Q2": {
         "proportion": 1.0,
         "max_marks": 2.0,
-        "feedback": "Has “mitochondria”.\nCorrect length.",
+        "feedback": "Has “leaving”.\nCorrect length.",
         "method_label": "Workflow",
         "is_marked": true,
         "model_names": [],
         "breakdown": {
-         "title": "All of these",
+         "title": "Split by weight between these",
          "effect": "earned",
          "marks": null,
          "details": [],
@@ -7204,18 +6947,18 @@
           {
            "title": "Any one of these",
            "effect": "earned",
-           "marks": null,
+           "marks": 1.0,
            "details": [],
            "children": [
             {
-             "title": "Includes `mitochondria`.",
+             "title": "Includes `leaving`.",
              "effect": "earned",
              "marks": null,
              "details": [],
              "children": []
             },
             {
-             "title": "Includes `powerhouse`.",
+             "title": "Includes `emigration`.",
              "effect": "uncounted",
              "marks": null,
              "details": [],
@@ -7226,7 +6969,7 @@
           {
            "title": "Has at most `10` words.",
            "effect": "earned",
-           "marks": null,
+           "marks": 1.0,
            "details": [],
            "children": []
           }
@@ -7240,12 +6983,12 @@
        "Q2": {
         "proportion": 1.0,
         "max_marks": 2.0,
-        "feedback": "Has “powerhouse”.\nCorrect length.",
+        "feedback": "Has “emigration”.\nCorrect length.",
         "method_label": "Workflow",
         "is_marked": true,
         "model_names": [],
         "breakdown": {
-         "title": "All of these",
+         "title": "Split by weight between these",
          "effect": "earned",
          "marks": null,
          "details": [],
@@ -7253,18 +6996,18 @@
           {
            "title": "Any one of these",
            "effect": "earned",
-           "marks": null,
+           "marks": 1.0,
            "details": [],
            "children": [
             {
-             "title": "Includes `mitochondria`.",
+             "title": "Includes `leaving`.",
              "effect": "uncounted",
              "marks": null,
              "details": [],
              "children": []
             },
             {
-             "title": "Includes `powerhouse`.",
+             "title": "Includes `emigration`.",
              "effect": "earned",
              "marks": null,
              "details": [],
@@ -7275,7 +7018,7 @@
           {
            "title": "Has at most `10` words.",
            "effect": "earned",
-           "marks": null,
+           "marks": 1.0,
            "details": [],
            "children": []
           }
@@ -7287,33 +7030,33 @@
       },
       {
        "Q2": {
-        "proportion": 0.0,
+        "proportion": 0.5,
         "max_marks": 2.0,
-        "feedback": "Too long: 11 words. Expected at most 10.",
+        "feedback": "Has “leaving”.\nToo long: 15 words. Expected at most 10.",
         "method_label": "Workflow",
         "is_marked": true,
         "model_names": [],
         "breakdown": {
-         "title": "All of these",
-         "effect": "no_marks",
+         "title": "Split by weight between these",
+         "effect": "partial",
          "marks": null,
          "details": [],
          "children": [
           {
            "title": "Any one of these",
            "effect": "earned",
-           "marks": null,
+           "marks": 1.0,
            "details": [],
            "children": [
             {
-             "title": "Includes `mitochondria`.",
+             "title": "Includes `leaving`.",
              "effect": "earned",
              "marks": null,
              "details": [],
              "children": []
             },
             {
-             "title": "Includes `powerhouse`.",
+             "title": "Includes `emigration`.",
              "effect": "uncounted",
              "marks": null,
              "details": [],
@@ -7324,45 +7067,45 @@
           {
            "title": "Has at most `10` words.",
            "effect": "no_marks",
-           "marks": null,
+           "marks": 0.0,
            "details": [],
            "children": []
           }
          ]
         },
         "spans": [],
-        "marks": 0.0
+        "marks": 1.0
        }
       },
       {
        "Q2": {
-        "proportion": 0.0,
+        "proportion": 0.5,
         "max_marks": 2.0,
-        "feedback": "Missing “mitochondria”.",
+        "feedback": "Missing “leaving”.\nCorrect length.",
         "method_label": "Workflow",
         "is_marked": true,
         "model_names": [],
         "breakdown": {
-         "title": "All of these",
-         "effect": "no_marks",
+         "title": "Split by weight between these",
+         "effect": "partial",
          "marks": null,
          "details": [],
          "children": [
           {
            "title": "Any one of these",
            "effect": "no_marks",
-           "marks": null,
+           "marks": 0.0,
            "details": [],
            "children": [
             {
-             "title": "Includes `mitochondria`.",
+             "title": "Includes `leaving`.",
              "effect": "no_marks",
              "marks": null,
              "details": [],
              "children": []
             },
             {
-             "title": "Includes `powerhouse`.",
+             "title": "Includes `emigration`.",
              "effect": "no_marks",
              "marks": null,
              "details": [],
@@ -7373,26 +7116,26 @@
           {
            "title": "Has at most `10` words.",
            "effect": "earned",
-           "marks": null,
+           "marks": 1.0,
            "details": [],
            "children": []
           }
          ]
         },
         "spans": [],
-        "marks": 0.0
+        "marks": 1.0
        }
       },
       {
        "Q2": {
         "proportion": 0.0,
         "max_marks": 2.0,
-        "feedback": "Missing “mitochondria”.\nToo long: 12 words. Expected at most 10.",
+        "feedback": "Missing “leaving”.\nToo long: 12 words. Expected at most 10.",
         "method_label": "Workflow",
         "is_marked": true,
         "model_names": [],
         "breakdown": {
-         "title": "All of these",
+         "title": "Split by weight between these",
          "effect": "no_marks",
          "marks": null,
          "details": [],
@@ -7400,18 +7143,18 @@
           {
            "title": "Any one of these",
            "effect": "no_marks",
-           "marks": null,
+           "marks": 0.0,
            "details": [],
            "children": [
             {
-             "title": "Includes `mitochondria`.",
+             "title": "Includes `leaving`.",
              "effect": "no_marks",
              "marks": null,
              "details": [],
              "children": []
             },
             {
-             "title": "Includes `powerhouse`.",
+             "title": "Includes `emigration`.",
              "effect": "no_marks",
              "marks": null,
              "details": [],
@@ -7422,7 +7165,7 @@
           {
            "title": "Has at most `10` words.",
            "effect": "no_marks",
-           "marks": null,
+           "marks": 0.0,
            "details": [],
            "children": []
           }
@@ -7437,7 +7180,7 @@
     {
      "summary": {
       "method_label": "Workflow",
-      "description": "All of these:\n- Any one of these:\n  - Includes `mitochondria`.\n  - Includes `powerhouse`.",
+      "description": "All of these:\n- Any one of these:\n  - Includes `leaving`.\n  - Includes `emigration`.\n- Has at most `10` words.",
       "problems": [],
       "is_compatible": true,
       "incompatible_version": "",
@@ -7448,59 +7191,40 @@
        "Q2": {
         "proportion": 1.0,
         "max_marks": 2.0,
-        "feedback": "Has “mitochondria”.",
+        "feedback": "Has “leaving”.\nCorrect length.",
         "method_label": "Workflow",
         "is_marked": true,
         "model_names": [],
         "breakdown": {
-         "title": "Any one of these",
+         "title": "All of these",
          "effect": "earned",
          "marks": null,
          "details": [],
          "children": [
           {
-           "title": "Includes `mitochondria`.",
+           "title": "Any one of these",
            "effect": "earned",
            "marks": null,
            "details": [],
-           "children": []
+           "children": [
+            {
+             "title": "Includes `leaving`.",
+             "effect": "earned",
+             "marks": null,
+             "details": [],
+             "children": []
+            },
+            {
+             "title": "Includes `emigration`.",
+             "effect": "uncounted",
+             "marks": null,
+             "details": [],
+             "children": []
+            }
+           ]
           },
           {
-           "title": "Includes `powerhouse`.",
-           "effect": "uncounted",
-           "marks": null,
-           "details": [],
-           "children": []
-          }
-         ]
-        },
-        "spans": [],
-        "marks": 2.0
-       }
-      },
-      {
-       "Q2": {
-        "proportion": 1.0,
-        "max_marks": 2.0,
-        "feedback": "Has “powerhouse”.",
-        "method_label": "Workflow",
-        "is_marked": true,
-        "model_names": [],
-        "breakdown": {
-         "title": "Any one of these",
-         "effect": "earned",
-         "marks": null,
-         "details": [],
-         "children": [
-          {
-           "title": "Includes `mitochondria`.",
-           "effect": "uncounted",
-           "marks": null,
-           "details": [],
-           "children": []
-          },
-          {
-           "title": "Includes `powerhouse`.",
+           "title": "Has at most `10` words.",
            "effect": "earned",
            "marks": null,
            "details": [],
@@ -7516,26 +7240,41 @@
        "Q2": {
         "proportion": 1.0,
         "max_marks": 2.0,
-        "feedback": "Has “mitochondria”.",
+        "feedback": "Has “emigration”.\nCorrect length.",
         "method_label": "Workflow",
         "is_marked": true,
         "model_names": [],
         "breakdown": {
-         "title": "Any one of these",
+         "title": "All of these",
          "effect": "earned",
          "marks": null,
          "details": [],
          "children": [
           {
-           "title": "Includes `mitochondria`.",
+           "title": "Any one of these",
            "effect": "earned",
            "marks": null,
            "details": [],
-           "children": []
+           "children": [
+            {
+             "title": "Includes `leaving`.",
+             "effect": "uncounted",
+             "marks": null,
+             "details": [],
+             "children": []
+            },
+            {
+             "title": "Includes `emigration`.",
+             "effect": "earned",
+             "marks": null,
+             "details": [],
+             "children": []
+            }
+           ]
           },
           {
-           "title": "Includes `powerhouse`.",
-           "effect": "uncounted",
+           "title": "Has at most `10` words.",
+           "effect": "earned",
            "marks": null,
            "details": [],
            "children": []
@@ -7550,25 +7289,40 @@
        "Q2": {
         "proportion": 0.0,
         "max_marks": 2.0,
-        "feedback": "Missing “mitochondria”.",
+        "feedback": "Too long: 15 words. Expected at most 10.",
         "method_label": "Workflow",
         "is_marked": true,
         "model_names": [],
         "breakdown": {
-         "title": "Any one of these",
+         "title": "All of these",
          "effect": "no_marks",
          "marks": null,
          "details": [],
          "children": [
           {
-           "title": "Includes `mitochondria`.",
-           "effect": "no_marks",
+           "title": "Any one of these",
+           "effect": "earned",
            "marks": null,
            "details": [],
-           "children": []
+           "children": [
+            {
+             "title": "Includes `leaving`.",
+             "effect": "earned",
+             "marks": null,
+             "details": [],
+             "children": []
+            },
+            {
+             "title": "Includes `emigration`.",
+             "effect": "uncounted",
+             "marks": null,
+             "details": [],
+             "children": []
+            }
+           ]
           },
           {
-           "title": "Includes `powerhouse`.",
+           "title": "Has at most `10` words.",
            "effect": "no_marks",
            "marks": null,
            "details": [],
@@ -7584,25 +7338,89 @@
        "Q2": {
         "proportion": 0.0,
         "max_marks": 2.0,
-        "feedback": "Missing “mitochondria”.",
+        "feedback": "Missing “leaving”.",
         "method_label": "Workflow",
         "is_marked": true,
         "model_names": [],
         "breakdown": {
-         "title": "Any one of these",
+         "title": "All of these",
          "effect": "no_marks",
          "marks": null,
          "details": [],
          "children": [
           {
-           "title": "Includes `mitochondria`.",
+           "title": "Any one of these",
            "effect": "no_marks",
            "marks": null,
            "details": [],
-           "children": []
+           "children": [
+            {
+             "title": "Includes `leaving`.",
+             "effect": "no_marks",
+             "marks": null,
+             "details": [],
+             "children": []
+            },
+            {
+             "title": "Includes `emigration`.",
+             "effect": "no_marks",
+             "marks": null,
+             "details": [],
+             "children": []
+            }
+           ]
           },
           {
-           "title": "Includes `powerhouse`.",
+           "title": "Has at most `10` words.",
+           "effect": "earned",
+           "marks": null,
+           "details": [],
+           "children": []
+          }
+         ]
+        },
+        "spans": [],
+        "marks": 0.0
+       }
+      },
+      {
+       "Q2": {
+        "proportion": 0.0,
+        "max_marks": 2.0,
+        "feedback": "Missing “leaving”.\nToo long: 12 words. Expected at most 10.",
+        "method_label": "Workflow",
+        "is_marked": true,
+        "model_names": [],
+        "breakdown": {
+         "title": "All of these",
+         "effect": "no_marks",
+         "marks": null,
+         "details": [],
+         "children": [
+          {
+           "title": "Any one of these",
+           "effect": "no_marks",
+           "marks": null,
+           "details": [],
+           "children": [
+            {
+             "title": "Includes `leaving`.",
+             "effect": "no_marks",
+             "marks": null,
+             "details": [],
+             "children": []
+            },
+            {
+             "title": "Includes `emigration`.",
+             "effect": "no_marks",
+             "marks": null,
+             "details": [],
+             "children": []
+            }
+           ]
+          },
+          {
+           "title": "Has at most `10` words.",
            "effect": "no_marks",
            "marks": null,
            "details": [],
@@ -9016,27 +8834,27 @@
    "method_label": "Conditional",
    "normalized_answers": [
     {
-     "Q4a": "artery",
-     "Q4b": "away"
+     "Q4a": "northern",
+     "Q4b": "summer"
     },
     {
-     "Q4a": "vein",
-     "Q4b": "towards"
+     "Q4a": "southern",
+     "Q4b": "winter"
     },
     {
-     "Q4a": "artery",
-     "Q4b": "towards"
+     "Q4a": "northern",
+     "Q4b": "winter"
     },
     {
-     "Q4a": "vein",
-     "Q4b": "away"
+     "Q4a": "southern",
+     "Q4b": "summer"
     }
    ],
    "variants": [
     {
      "summary": {
       "method_label": "Multiple Choice",
-      "description": "Chooses exactly `away`.",
+      "description": "Chooses exactly `summer`.",
       "problems": [],
       "is_compatible": true,
       "incompatible_version": "",
@@ -9060,7 +8878,7 @@
        "Q4b": {
         "proportion": 0.0,
         "max_marks": 1.0,
-        "feedback": "Expected “away”.",
+        "feedback": "Expected “summer”.",
         "method_label": "Multiple Choice",
         "is_marked": true,
         "model_names": [],
@@ -9073,7 +8891,7 @@
        "Q4b": {
         "proportion": 0.0,
         "max_marks": 1.0,
-        "feedback": "Expected “away”.",
+        "feedback": "Expected “summer”.",
         "method_label": "Multiple Choice",
         "is_marked": true,
         "model_names": [],
@@ -9100,7 +8918,7 @@
     {
      "summary": {
       "method_label": "Conditional",
-      "description": "If all are correct:\n- **Q4a:** Chooses exactly `artery`.\n\nThen:\n- **Q4b:** Chooses exactly `away`.",
+      "description": "If all are correct:\n- **Q4a:** Chooses exactly `northern`.\n\nThen:\n- **Q4b:** Chooses exactly `summer`.",
       "problems": [],
       "is_compatible": true,
       "incompatible_version": "",
@@ -9122,14 +8940,14 @@
          "details": [],
          "children": [
           {
-           "title": "**Q4a:** Chooses exactly `artery`.",
+           "title": "**Q4a:** Chooses exactly `northern`.",
            "effect": "met",
            "marks": null,
            "details": [],
            "children": []
           },
           {
-           "title": "Chooses exactly `away`.",
+           "title": "Chooses exactly `summer`.",
            "effect": "earned",
            "marks": null,
            "details": [],
@@ -9158,7 +8976,7 @@
        "Q4b": {
         "proportion": 0.0,
         "max_marks": 1.0,
-        "feedback": "Expected “away”.",
+        "feedback": "Expected “summer”.",
         "method_label": "Conditional",
         "is_marked": true,
         "model_names": [],
@@ -9169,14 +8987,14 @@
          "details": [],
          "children": [
           {
-           "title": "**Q4a:** Chooses exactly `artery`.",
+           "title": "**Q4a:** Chooses exactly `northern`.",
            "effect": "met",
            "marks": null,
            "details": [],
            "children": []
           },
           {
-           "title": "Chooses exactly `away`.",
+           "title": "Chooses exactly `summer`.",
            "effect": "no_marks",
            "marks": null,
            "details": [],
@@ -9206,7 +9024,7 @@
     {
      "summary": {
       "method_label": "Conditional",
-      "description": "If all are correct:\n- **Q4a:** Chooses exactly `artery`.\n\nThen:\n- **Q4b:** Chooses exactly `away`.\n\nOtherwise:\n- **Q4b:** Chooses exactly `towards`.",
+      "description": "If all are correct:\n- **Q4a:** Chooses exactly `northern`.\n\nThen:\n- **Q4b:** Chooses exactly `summer`.\n\nOtherwise:\n- **Q4b:** Chooses exactly `winter`.",
       "problems": [],
       "is_compatible": true,
       "incompatible_version": "",
@@ -9228,14 +9046,14 @@
          "details": [],
          "children": [
           {
-           "title": "**Q4a:** Chooses exactly `artery`.",
+           "title": "**Q4a:** Chooses exactly `northern`.",
            "effect": "met",
            "marks": null,
            "details": [],
            "children": []
           },
           {
-           "title": "Chooses exactly `away`.",
+           "title": "Chooses exactly `summer`.",
            "effect": "earned",
            "marks": null,
            "details": [],
@@ -9262,14 +9080,14 @@
          "details": [],
          "children": [
           {
-           "title": "**Q4a:** Chooses exactly `artery`.",
+           "title": "**Q4a:** Chooses exactly `northern`.",
            "effect": "not_met",
            "marks": null,
            "details": [],
            "children": []
           },
           {
-           "title": "Chooses exactly `towards`.",
+           "title": "Chooses exactly `winter`.",
            "effect": "earned",
            "marks": null,
            "details": [],
@@ -9285,7 +9103,7 @@
        "Q4b": {
         "proportion": 0.0,
         "max_marks": 1.0,
-        "feedback": "Expected “away”.",
+        "feedback": "Expected “summer”.",
         "method_label": "Conditional",
         "is_marked": true,
         "model_names": [],
@@ -9296,14 +9114,14 @@
          "details": [],
          "children": [
           {
-           "title": "**Q4a:** Chooses exactly `artery`.",
+           "title": "**Q4a:** Chooses exactly `northern`.",
            "effect": "met",
            "marks": null,
            "details": [],
            "children": []
           },
           {
-           "title": "Chooses exactly `away`.",
+           "title": "Chooses exactly `summer`.",
            "effect": "no_marks",
            "marks": null,
            "details": [],
@@ -9319,7 +9137,7 @@
        "Q4b": {
         "proportion": 0.0,
         "max_marks": 1.0,
-        "feedback": "Expected “towards”.",
+        "feedback": "Expected “winter”.",
         "method_label": "Conditional",
         "is_marked": true,
         "model_names": [],
@@ -9330,14 +9148,14 @@
          "details": [],
          "children": [
           {
-           "title": "**Q4a:** Chooses exactly `artery`.",
+           "title": "**Q4a:** Chooses exactly `northern`.",
            "effect": "not_met",
            "marks": null,
            "details": [],
            "children": []
           },
           {
-           "title": "Chooses exactly `towards`.",
+           "title": "Chooses exactly `winter`.",
            "effect": "no_marks",
            "marks": null,
            "details": [],
