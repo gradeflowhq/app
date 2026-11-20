@@ -19,12 +19,9 @@ export function groupsTimeline(timeline, mockup, [same, spelling, meaning, adjus
       .selectOption($("select[name=group]", header), { menu, value }, label)
       .swap([header, nextHeader])
       .mergeGroups(groups, { targetIndexes: mergeTargetIndexes }, "+=0.2");
-    flipList(
-      timeline,
-      [list, nextList],
-      "+=0",
-      [...nextList.children].map((group, index) => [groups[nextGroupIndexes.indexOf(index)], group]),
-    );
+    flipList(timeline, [list, nextList], "+=0", {
+      pairs: [...nextList.children].map((group, index) => [groups[nextGroupIndexes.indexOf(index)], group]),
+    });
   };
 
   timeline.addLabel(same).set({}, {}, "+=0.6");

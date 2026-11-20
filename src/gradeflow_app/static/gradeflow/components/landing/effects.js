@@ -70,13 +70,15 @@ export const measuredScrollTop = (timeline, scroller, target, alignTop) =>
   measured(timeline, scrollTopToShow(scroller, target, alignTop));
 
 // One list of answer groups replacing another at `position`: each group of `to` in `pairs` moves and resizes from the
-// group of `from` it replaces, by default the one at the same index, and the list's height follows. The offsets are
-// measured where the timeline leaves the page. Plain sets and tweens, not the Flip plugin, keep seeking exact.
+// group of `from` it replaces, by default the one at the same index, and the list's height follows. With
+// `scrollAnchor`, a group of `to`, the list's scroller jumps to put it at the top and the groups start from where they
+// were on screen, so the anchor stays still. The offsets are measured where the timeline leaves the page. Plain sets and
+// tweens, not the Flip plugin, keep seeking exact.
 export function flipList(
   timeline,
   [from, to],
   position,
-  pairs = [...to.children].map((group, index) => [from.children[index], group]),
+  { pairs = [...to.children].map((group, index) => [from.children[index], group]), scrollAnchor } = {},
 ) {
   // Each group's top and height in its list, moved as it may be.
   const offsets = (list, groups) => {
@@ -84,31 +86,42 @@ export function flipList(
     return groups.map((group) => [rectInMockup(group).top - top, rectInMockup(group).height]);
   };
   const groups = pairs.map(([, group]) => group);
-  const before = measured(timeline, () =>
+  const scroller = scrollerOf(to);
+  const [before, scrollTop] = measured(timeline, () => [
     offsets(
       from,
       pairs.map(([group]) => group),
     ),
-  );
+    scroller?.scrollTop,
+  ]);
   const fromHeight = Math.max(...before.map(([top, height]) => top + height));
   timeline.swap([from, to], position);
+  // A scroll alongside the move would shake: scrolls snap to whole pixels in Safari.
+  let scrollDelta = 0;
+  if (scrollAnchor) {
+    const anchorScrollTop = measuredScrollTop(timeline, scroller, scrollAnchor, true);
+    scrollDelta = anchorScrollTop - scrollTop;
+    timeline.set(scroller, { scrollTop: anchorScrollTop }, "<");
+  }
   const [after, toHeight] = measured(timeline, () => [offsets(to, groups), to.offsetHeight]);
   const moveTween = { duration: 0.55, ease: EASE, immediateRender: false };
   // Out of the flow while they move, whichever way the timeline reaches them.
   const outOfFlow = { position: "absolute", left: 0, right: 0 };
   // The list keeps its height while its groups are out of the flow: a shorter list would clamp its scroller's scroll.
-  timeline.fromTo(to, { height: fromHeight }, { height: toHeight, ...moveTween, clearProps: "height" }, "<").fromTo(
-    groups,
-    { ...outOfFlow, top: (i) => before[i][0], height: (i) => before[i][1] },
-    {
-      ...outOfFlow,
-      top: (i) => after[i][0],
-      height: (i) => after[i][1],
-      ...moveTween,
-      clearProps: "position,left,right,top,height",
-    },
-    "<",
-  );
+  timeline
+    .fromTo(to, { height: fromHeight + scrollDelta }, { height: toHeight, ...moveTween, clearProps: "height" }, "<")
+    .fromTo(
+      groups,
+      { ...outOfFlow, top: (i) => before[i][0] + scrollDelta, height: (i) => before[i][1] },
+      {
+        ...outOfFlow,
+        top: (i) => after[i][0],
+        height: (i) => after[i][1],
+        ...moveTween,
+        clearProps: "position,left,right,top,height",
+      },
+      "<",
+    );
 }
 
 // One block replacing another at `position`, its height growing or shrinking from the first's.
@@ -131,10 +144,11 @@ export function swapAndResize(timeline, [from, to], position) {
   );
 }
 
-// A change to a marking previewed at `position`: the next answers and summary replace the current ones, the marks
-// `changed` pop in, the summary's text fades in and its new lines (`data-new`) rise in.
-export function previewChange(timeline, [list, nextList], summaries, changed, position) {
-  flipList(timeline, [list, nextList], position);
+// A change to a marking previewed at `position`: the next answers and summary replace the current ones, the group
+// `scrollAnchor` held at the top as in `flipList`, the marks `changed` pop in, the summary's text fades in and its new
+// lines (`data-new`) rise in.
+export function previewChange(timeline, [list, nextList], summaries, changed, position, scrollAnchor) {
+  flipList(timeline, [list, nextList], position, { scrollAnchor });
   swapAndResize(timeline, summaries, "<");
   timeline
     .from(changed, { autoAlpha: 0, scale: 0.6, duration: 0.35, ease: "back.out(3)", immediateRender: false }, "<")

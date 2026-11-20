@@ -23,18 +23,16 @@ export function byExampleTimeline(timeline, mockup, labels) {
       .click($("summary", group))
       .openDetails($("details", group))
       .click($(`[name=decision][value=${decisions[index]}]`, group));
+    const nextGroup = nextList.children[groupIndexes[index]];
+    swapAndResize(timeline, headers.slice(index, index + 2));
+    // This group stays at the top as the group decided before closes.
     previewChange(
       timeline,
       [list, nextList],
       summaries.slice(index, index + 2),
-      $("[data-marks]", nextList.children[groupIndexes[index]]),
-    );
-    swapAndResize(timeline, headers.slice(index, index + 2), "<");
-    // This group stays at the top as the group decided before closes.
-    timeline.scroll(
-      cards,
-      { to: measuredScrollTop(timeline, cards, nextList.children[groupIndexes[index]], true) },
+      $("[data-marks]", nextGroup),
       "<",
+      nextGroup,
     );
   });
   timeline.set({}, {}, "+=1.4");
