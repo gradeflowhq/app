@@ -1,0 +1,24 @@
+{# The Students page (results/students.html), its IDs shown decrypted. #}
+<div class="page landing-hero-page grid-rows-[minmax(0,1fr)]" data-page="students">
+  <div class="students-grid surface">
+    <div class="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-t-box border-b border-line bg-base-200/50 px-4 py-2.5">
+      <c-search label="Search student ID" class="input-sm w-64 max-w-full" />
+      <div class="segmented" role="radiogroup" aria-label="Show">
+        <label class="segment"><input type="radio" name="hero-show" value="all" class="sr-only" checked>All</label>
+        <label class="segment" data-filter-adjusted><input type="radio" name="hero-show" value="adjusted" class="sr-only">{% icon "pencil" "size-3.5" %}Adjusted<span class="tabular-nums text-subtle">{{ hero.adjusted_count }}</span></label>
+        <label class="segment"><input type="radio" name="hero-show" value="needs_marking" class="sr-only">{% icon "exclamation-triangle" "size-3.5" %}Need marking</label>
+      </div>
+      <div class="ml-auto flex items-center gap-3"><span class="btn btn-sm">{% icon "arrow-down-tray" %}Download</span></div>
+    </div>
+    <div class="students-grid-scroll">
+      <table class="table">
+        <thead><tr><th><button type="button"><span>Student ID</span></button></th><th><button type="button"><span>Total<small>/ {{ hero.total_max_marks|marks }}</small></span></button></th>{% for key, question in content.question_set.items %}<th><button type="button"><span>{{ key }}<small>/ {{ question.max_marks|marks }}</small></span></button></th>{% endfor %}<th></th></tr></thead>
+        <tbody>
+          {% for row in hero.students %}
+          <tr data-shown="1"{% if row.adjusted %} data-adjusted{% endif %}><td><button type="button"><span class="font-mono tabular-nums">{{ row.student_id }}</span></button></td><td>{{ row.total|marks }}<small>{{ row.total|percent:hero.total_max_marks }}</small></td>{% for cell in row.cells %}<td data-state="{{ cell.level }}"{% if cell.adjusted %} data-adjusted title="Adjusted"{% endif %}><span class="mark-pill" data-level="{{ cell.level }}">{{ cell.marks|marks }}</span></td>{% endfor %}<td></td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

@@ -19,6 +19,9 @@
       "katex",
       "monaco",
       "TomSelect",
+      "gsap",
+      "ScrollTrigger",
+      "ScrollToPlugin",
       "require",
       "define"
     ]

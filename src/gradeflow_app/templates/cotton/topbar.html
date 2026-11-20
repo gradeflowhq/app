@@ -3,7 +3,7 @@
 {% load courses %}
 <header class="app-header">
   <nav class="flex h-13 items-center gap-1 px-4 sm:px-6" aria-label="Main">
-    <a href="{% if user.is_authenticated %}{% url 'courses' %}{% else %}/{% endif %}" class="mr-1.5 flex shrink-0 items-center gap-2 rounded-field py-1 pr-1 text-[15px] font-semibold tracking-tight">
+    <a {% if user.is_authenticated %}href="{% url 'courses' %}"{% else %}href="/" hx-boost="false"{% endif %} class="mr-1.5 flex shrink-0 items-center gap-2 rounded-field py-1 pr-1 text-[15px] font-semibold tracking-tight">
       <c-logo />
       <span{% if course or nav %} class="max-md:sr-only"{% endif %}>GradeFlow</span>
     </a>

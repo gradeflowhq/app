@@ -1,8 +1,25 @@
-<c-vars course="" assessment="" class="" />
-{# The app as the landing page shows it: a window whose title bar says where in GradeFlow it is, or holds `title_bar`. #}
+<c-vars course assessment marker question_count student_count class="" />
+{# The app's top bar and an assessment's tabs, as c-topbar and c-tab draw them for `marker`, around the hero's pages. The tab counts start hidden. #}
 <div class="landing-app-frame {{ class }}" {{ attrs }}>
-  <div class="flex min-h-12 flex-wrap items-center gap-2 border-b border-base-300 bg-base-200/60 px-4 py-2 text-sm text-muted">
-    {% if course %}<c-logo class="size-4" /><span class="min-w-0 truncate">{{ course }}</span><span aria-hidden="true">/</span><span class="shrink-0 font-medium text-base-content">{{ assessment }}</span>{% else %}{{ title_bar }}{% endif %}
-  </div>
+  <header class="app-header static">
+    <nav class="flex h-13 items-center gap-1 px-6">
+      <span class="mr-1.5 flex shrink-0 items-center gap-2 rounded-field py-1 pr-1 text-[15px] font-semibold tracking-tight"><c-logo /><span class="max-md:sr-only">GradeFlow</span></span>
+      <ol class="flex min-w-0 items-center">
+        <c-breadcrumb href="" name="{{ course }}" icon="academic-cap" id="hero-course-switcher" menu_label="Switch course" class="max-sm:hidden"><li><a class="font-medium"><span class="truncate">{{ course }}</span>{% icon "check" "ml-auto" %}</a></li></c-breadcrumb>
+        <c-breadcrumb href="" name="{{ assessment }}" icon="document-text" id="hero-assessment-switcher" menu_label="Switch assessment" current="true"><li><a class="font-medium"><span class="truncate">{{ assessment }}</span>{% icon "check" "ml-auto" %}</a></li></c-breadcrumb>
+      </ol>
+      <span class="btn btn-ghost btn-circle btn-sm ml-auto"><c-avatar :user="marker" size="size-7.5" /></span>
+    </nav>
+    <div class="flex items-center">
+      <nav class="tab-row min-w-0 flex-1">
+        <a class="tab-link" aria-current="page" data-tab="overview">{% icon "squares-2x2" %}Overview</a>
+        <a class="tab-link" aria-current="false" data-tab="questions">{% icon "list-bullet" %}Questions<c-chip class="tabular-nums" data-shown="0">{{ question_count }}</c-chip></a>
+        <a class="tab-link" aria-current="false" data-tab="students">{% icon "users" %}Students<c-chip class="tabular-nums" data-shown="0">{{ student_count }}</c-chip></a>
+        <a class="tab-link" aria-current="false" data-tab="export">{% icon "paper-airplane" %}Export</a>
+        <a class="tab-link" aria-current="false">{% icon "cog-6-tooth" %}Settings</a>
+      </nav>
+      <span class="btn btn-ghost btn-sm mr-4 shrink-0 text-muted max-sm:hidden">{% icon "clock" %}Activity</span>
+    </div>
+  </header>
   {{ slot }}
 </div>

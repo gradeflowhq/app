@@ -1,0 +1,17 @@
+<c-vars class="" />
+{# The marking editor's panel (marking/editor.html), with `slot` in place of the form and no field help. Other attributes go on the panel. #}
+<div class="workspace-panel active-ring [&_.field-help]:hidden {{ class }}" {{ attrs }}>
+  <header class="panel-head">
+    <h2>Edit marking</h2><c-chip tone="primary">Draft</c-chip>
+    <div class="ml-auto flex items-center gap-2">
+      <span class="btn btn-ghost btn-square btn-sm text-muted">{% icon "question-mark-circle" %}</span>
+      <span class="btn btn-ghost btn-square btn-sm">{% icon "ellipsis-horizontal" "size-5" %}</span>
+    </div>
+  </header>
+  <div data-editor-body>{{ slot }}</div>
+  <footer class="panel-foot">
+    <span class="flex items-center gap-1.5 text-sm text-muted">{% icon "check" %}Draft saved</span>
+    <span class="btn btn-ghost ml-auto text-error">Discard</span>
+    <span class="btn btn-primary" data-save>{% icon "check" %}Save marking</span>
+  </footer>
+</div>

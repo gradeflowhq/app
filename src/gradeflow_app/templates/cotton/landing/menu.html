@@ -1,0 +1,3 @@
+<c-vars name choices />
+{# The list a select opens, over a demo's mockup: its `choices`, by value. #}
+<div class="landing-menu" data-menu="{{ name }}"><ul class="menu w-full p-1">{% for value, label in choices %}<li><a data-value="{{ value }}">{{ label }}</a></li>{% endfor %}</ul></div>

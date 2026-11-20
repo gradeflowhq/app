@@ -1,0 +1,32 @@
+{# The Overview page (assessments/overview.html), before and after the import. #}
+<div class="page landing-hero-page" data-page="overview">
+  <c-panel icon="arrow-up-tray" title="Submissions file" body_class="px-4" data-shown="1" data-import>
+    <c-slot name="actions"><span class="btn btn-ghost btn-square btn-sm -mr-2 text-muted">{% icon "question-mark-circle" %}</span></c-slot>
+    <div class="py-4">
+      <div class="flex flex-col items-center gap-2 rounded-box border-2 border-dashed border-base-300 px-6 py-10 text-center" data-shown="1" data-drop-zone>
+        <span class="grid size-10 place-items-center rounded-full bg-secondary text-secondary-content">{% icon "arrow-up-tray" "size-5" %}</span>
+        <span class="font-semibold">Drop the submissions file here</span>
+        <span class="text-sm text-muted">CSV, Excel or zip · <span class="text-link">Browse</span></span>
+      </div>
+      <div class="flex flex-col items-center gap-3 rounded-box border-2 border-dashed border-base-300 px-6 py-10 text-center" data-shown="0" data-reading>
+        <span class="grid size-10 place-items-center rounded-full bg-secondary text-secondary-content">{% icon "document-text" "size-5" %}</span>
+        <span class="max-w-full truncate font-semibold">{{ content.file_name }}</span>
+        <span class="text-sm text-muted">Reading the file…</span>
+      </div>
+      <p class="mt-4 flex items-center justify-center gap-2 text-sm text-muted">{% icon "lock-closed" %}The file is encrypted on this computer. GradeFlow can read only its answers and marks.</p>
+    </div>
+  </c-panel>
+  <div class="contents" data-shown="0" data-imported>
+    <div class="surface figures">
+      <c-figure icon="users" label="Students" value="{{ hero.student_count }}" />
+      <c-figure icon="chart-bar" label="Average" value="—" />
+      <c-figure icon="list-bullet" label="Questions marked" value="0" detail="of {{ content.question_set|length }}" />
+      <c-figure icon="paper-airplane" label="Canvas" value="Not sent" />
+    </div>
+    <c-alert warning role="">
+      <c-slot name="action"><span class="btn btn-sm" data-go-to-question>Go to {{ content.question_key }}{% icon "chevron-right" %}</span></c-slot>
+      {{ content.question_set|length }} questions aren't marked.
+    </c-alert>
+    <c-panel><c-empty-state icon="chart-bar" title="No marks yet" /></c-panel>
+  </div>
+</div>

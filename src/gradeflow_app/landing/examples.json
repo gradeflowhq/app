@@ -1,225 +1,1055 @@
 {
-  "workspace": {
-    "course": "Introduction to Programming",
+  "hero": {
+    "course": "Introductory Biology",
     "assessment": "Final Exam",
-    "question_key": "Q5",
+    "file_name": "final-exam-results.xlsx",
+    "marker_name": "Ana Tan",
+    "canvas_host": "canvas.example.edu",
+    "question_key": "Q1",
     "question_set": {
-      "Q5": {
-        "type": "code",
+      "Q1": {
+        "type": "text",
         "max_marks": 3,
-        "description": "Write a recursive function sum_digits(n) that returns the sum of n's digits, with a docstring. Don't use loops."
+        "description": "Why does an enzyme stop working at high temperatures?",
+        "reading": {
+          "ignore_case": false
+        }
+      },
+      "Q2": {
+        "type": "choice",
+        "max_marks": 2,
+        "options": [
+          "A",
+          "B",
+          "C",
+          "D"
+        ]
+      },
+      "Q3": {
+        "type": "text",
+        "max_marks": 5
+      },
+      "Q4": {
+        "type": "number",
+        "max_marks": 4
+      },
+      "Q5": {
+        "type": "text",
+        "max_marks": 3
+      },
+      "Q6": {
+        "type": "text",
+        "max_marks": 4
+      },
+      "Q7": {
+        "type": "text",
+        "max_marks": 6
+      },
+      "Q8": {
+        "type": "choice",
+        "max_marks": 3,
+        "options": [
+          "A",
+          "B",
+          "C",
+          "D"
+        ]
       }
     },
-    "questions": [
-      {
-        "question_key": "Q1",
-        "method": "gradeflow/multiple-choice@1",
-        "average": 82
-      },
+    "other_questions": [
       {
         "question_key": "Q2",
-        "method": "gradeflow/accepted-answers@1",
-        "average": 76
+        "method_ref": "gradeflow/multiple-choice@1",
+        "average_percent": 88
       },
       {
         "question_key": "Q3",
-        "method": "gradeflow/key-points@1",
-        "average": 64
+        "method_ref": "gradeflow/key-points@1",
+        "average_percent": 76
       },
       {
         "question_key": "Q4",
-        "method": "gradeflow/code-tests@1",
-        "average": 71
+        "method_ref": "gradeflow/number-range@1",
+        "average_percent": 64
       },
       {
         "question_key": "Q5",
-        "method": "gradeflow/workflow@1",
-        "average": 80
+        "method_ref": "gradeflow/accepted-answers@1",
+        "average_percent": 71
       },
       {
-        "question_key": "Q6a",
-        "in_question_group": true,
-        "average": 58
+        "question_key": "Q6",
+        "method_ref": "gradeflow/answer-criteria@1",
+        "average_percent": 58
       },
       {
-        "question_key": "Q6b",
-        "in_question_group": true,
-        "average": 49
+        "question_key": "Q7",
+        "method_ref": "gradeflow/key-points@1",
+        "average_percent": 67
       },
       {
-        "question_key": "Q7"
+        "question_key": "Q8",
+        "method_ref": "gradeflow/multiple-choice@1",
+        "average_percent": 91
       }
     ],
-    "marking": {
-      "question": "Q5",
-      "uses": "gradeflow/workflow@1",
-      "with": {
-        "marks_by": "proportional",
-        "steps": [
-          {
-            "uses": "gradeflow/code-tests@1",
-            "with": {
-              "marks_by": "proportional",
-              "tests": [
-                {
-                  "expression": "sum_digits(7)",
-                  "expected": "7"
-                },
-                {
-                  "expression": "sum_digits(1234)",
-                  "expected": "10"
-                }
-              ]
-            }
-          },
-          {
-            "name": "Recursive, no loops",
-            "uses": "gradeflow/workflow@1",
-            "with": {
-              "marks_by": "all_correct",
-              "steps": [
-                {
-                  "uses": "gradeflow/code-uses@1",
-                  "with": {
-                    "looks_for": "recursion"
-                  }
-                },
-                {
-                  "uses": "gradeflow/not-allowed@1",
-                  "with": {
-                    "check": {
-                      "uses": "gradeflow/code-uses@1",
-                      "with": {
-                        "looks_for": "loop"
-                      }
-                    }
-                  }
-                }
-              ]
-            }
-          },
-          {
-            "name": "Docstring",
-            "uses": "gradeflow/pattern@1",
-            "with": {
-              "pattern": "\"\"\""
-            }
-          }
-        ]
+    "answers": [
+      {
+        "text": "The enzyme is denatured, so its active site changes shape and the substrate no longer fits.",
+        "student_count": 46,
+        "result": {
+          "marks": 3,
+          "feedback": "Has “the enzyme is denatured”.\nHas “the active site changes shape”.\nExplains that the substrate no longer fits the active site."
+        }
+      },
+      {
+        "text": "It denatures.",
+        "student_count": 31,
+        "result": {
+          "marks": 1,
+          "feedback": "Has “the enzyme is denatured”.\nMissing “the active site changes shape”.\nExplains that the substrate no longer fits the active site: Not met."
+        }
+      },
+      {
+        "text": "The active site changes shape so the substrate can't bind.",
+        "student_count": 28,
+        "result": {
+          "marks": 2,
+          "feedback": "Missing “the enzyme is denatured”.\nHas “the active site changes shape”.\nExplains that the substrate no longer fits the active site."
+        }
+      },
+      {
+        "text": "The enzyme melts.",
+        "student_count": 17,
+        "result": {
+          "marks": 0,
+          "feedback": "Missing “the enzyme is denatured”.\nMissing “the active site changes shape”.\nExplains that the substrate no longer fits the active site: Not met."
+        }
+      },
+      {
+        "text": "Enzyme gets denatured by the heat.",
+        "student_count": 15,
+        "result": {
+          "marks": 1,
+          "feedback": "Has “the enzyme is denatured”.\nMissing “the active site changes shape”.\nExplains that the substrate no longer fits the active site: Not met."
+        }
+      },
+      {
+        "text": "it melts at high temperatures",
+        "student_count": 12,
+        "result": {
+          "marks": 0,
+          "feedback": "Missing “the enzyme is denatured”.\nMissing “the active site changes shape”.\nExplains that the substrate no longer fits the active site: Not met."
+        }
+      },
+      {
+        "text": "Heat bends the active site out of shape, the substrate won't fit",
+        "student_count": 9,
+        "result": {
+          "marks": 2,
+          "feedback": "Missing “the enzyme is denatured”.\nHas “the active site changes shape”.\nExplains that the substrate no longer fits the active site."
+        }
+      },
+      {
+        "text": "Enzymes melt when they get too hot.",
+        "student_count": 8,
+        "result": {
+          "marks": 0,
+          "feedback": "Missing “the enzyme is denatured”.\nMissing “the active site changes shape”.\nExplains that the substrate no longer fits the active site: Not met."
+        }
+      },
+      {
+        "text": "Heat denatures the enzyme, so the active site changes shape and the substrate can't fit.",
+        "student_count": 7,
+        "result": {
+          "marks": 3,
+          "feedback": "Has “the enzyme is denatured”.\nHas “the active site changes shape”.\nExplains that the substrate no longer fits the active site."
+        }
+      },
+      {
+        "text": "The enzyme is denatured: its active site loses its shape, so the substrate no longer fits.",
+        "student_count": 7,
+        "result": {
+          "marks": 3,
+          "feedback": "Has “the enzyme is denatured”.\nHas “the active site changes shape”.\nExplains that the substrate no longer fits the active site."
+        }
+      },
+      {
+        "text": "High temperatures denature the enzyme, changing its active site so the substrate can't fit.",
+        "student_count": 7,
+        "result": {
+          "marks": 3,
+          "feedback": "Has “the enzyme is denatured”.\nHas “the active site changes shape”.\nExplains that the substrate no longer fits the active site."
+        }
+      },
+      {
+        "text": "The enzyme's active site changes shape, so the substrate no longer fits.",
+        "student_count": 6,
+        "result": {
+          "marks": 2,
+          "feedback": "Missing “the enzyme is denatured”.\nHas “the active site changes shape”.\nExplains that the substrate no longer fits the active site."
+        }
+      },
+      {
+        "text": "It gets denatured and stops working.",
+        "student_count": 6,
+        "result": {
+          "marks": 1,
+          "feedback": "Has “the enzyme is denatured”.\nMissing “the active site changes shape”.\nExplains that the substrate no longer fits the active site: Not met."
+        }
+      },
+      {
+        "text": "The bonds holding the enzyme's shape break, so the active site changes and the substrate can't bind.",
+        "student_count": 6,
+        "result": {
+          "marks": 2,
+          "feedback": "Missing “the enzyme is denatured”.\nHas “the active site changes shape”.\nExplains that the substrate no longer fits the active site."
+        }
+      },
+      {
+        "text": "Denaturation changes the shape of the active site, so substrates can't fit.",
+        "student_count": 6,
+        "result": {
+          "marks": 3,
+          "feedback": "Has “the enzyme is denatured”.\nHas “the active site changes shape”.\nExplains that the substrate no longer fits the active site."
+        }
+      },
+      {
+        "text": "The enzyme denatures and its active site changes shape.",
+        "student_count": 6,
+        "result": {
+          "marks": 2,
+          "feedback": "Has “the enzyme is denatured”.\nHas “the active site changes shape”.\nExplains that the substrate no longer fits the active site: Not met."
+        }
+      },
+      {
+        "text": "The heat denatures it, the active site changes shape and the substrate won't fit any more.",
+        "student_count": 5,
+        "result": {
+          "marks": 3,
+          "feedback": "Has “the enzyme is denatured”.\nHas “the active site changes shape”.\nExplains that the substrate no longer fits the active site."
+        }
+      },
+      {
+        "text": "The enzyme is denatured and the substrate no longer fits.",
+        "student_count": 5,
+        "result": {
+          "marks": 2,
+          "feedback": "Has “the enzyme is denatured”.\nMissing “the active site changes shape”.\nExplains that the substrate no longer fits the active site."
+        }
+      },
+      {
+        "text": "Too much heat denatures the enzyme.",
+        "student_count": 5,
+        "result": {
+          "marks": 1,
+          "feedback": "Has “the enzyme is denatured”.\nMissing “the active site changes shape”.\nExplains that the substrate no longer fits the active site: Not met."
+        }
+      },
+      {
+        "text": "The active site changes shape.",
+        "student_count": 5,
+        "result": {
+          "marks": 1,
+          "feedback": "Missing “the enzyme is denatured”.\nHas “the active site changes shape”.\nExplains that the substrate no longer fits the active site: Not met."
+        }
+      },
+      {
+        "text": "The enzyme denatures.",
+        "student_count": 4,
+        "result": {
+          "marks": 1,
+          "feedback": "Has “the enzyme is denatured”.\nMissing “the active site changes shape”.\nExplains that the substrate no longer fits the active site: Not met."
+        }
       }
+    ],
+    "editing_stages": [
+      {
+        "marking": {
+          "question": "Q1",
+          "uses": "gradeflow/workflow@1",
+          "with": {}
+        }
+      },
+      {
+        "marking": {
+          "question": "Q1",
+          "uses": "gradeflow/workflow@1",
+          "with": {
+            "marks_by": "proportional"
+          }
+        }
+      },
+      {
+        "marking": {
+          "question": "Q1",
+          "uses": "gradeflow/workflow@1",
+          "with": {
+            "marks_by": "proportional",
+            "steps": [
+              {
+                "uses": "gradeflow/key-points@1",
+                "with": {}
+              }
+            ]
+          }
+        },
+        "open_step_path": "/with/steps/0"
+      },
+      {
+        "marking": {
+          "question": "Q1",
+          "uses": "gradeflow/workflow@1",
+          "with": {
+            "marks_by": "proportional",
+            "steps": [
+              {
+                "uses": "gradeflow/key-points@1",
+                "with": {
+                  "points": [
+                    "the enzyme is denatured"
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        "open_step_path": "/with/steps/0"
+      },
+      {
+        "marking": {
+          "question": "Q1",
+          "uses": "gradeflow/workflow@1",
+          "with": {
+            "marks_by": "proportional",
+            "steps": [
+              {
+                "uses": "gradeflow/key-points@1",
+                "with": {
+                  "points": [
+                    "the enzyme is denatured",
+                    "the active site changes shape"
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        "open_step_path": "/with/steps/0"
+      },
+      {
+        "marking": {
+          "question": "Q1",
+          "uses": "gradeflow/workflow@1",
+          "with": {
+            "marks_by": "proportional",
+            "steps": [
+              {
+                "uses": "gradeflow/key-points@1",
+                "with": {
+                  "points": [
+                    "the enzyme is denatured",
+                    "the active site changes shape"
+                  ],
+                  "match": "meaning"
+                }
+              }
+            ]
+          }
+        },
+        "open_step_path": "/with/steps/0"
+      },
+      {
+        "marking": {
+          "question": "Q1",
+          "uses": "gradeflow/workflow@1",
+          "with": {
+            "marks_by": "proportional",
+            "steps": [
+              {
+                "weight": 2,
+                "uses": "gradeflow/key-points@1",
+                "with": {
+                  "points": [
+                    "the enzyme is denatured",
+                    "the active site changes shape"
+                  ],
+                  "match": "meaning"
+                }
+              }
+            ]
+          }
+        },
+        "open_step_path": "/with/steps/0"
+      },
+      {
+        "marking": {
+          "question": "Q1",
+          "uses": "gradeflow/workflow@1",
+          "with": {
+            "marks_by": "proportional",
+            "steps": [
+              {
+                "weight": 2,
+                "uses": "gradeflow/key-points@1",
+                "with": {
+                  "points": [
+                    "the enzyme is denatured",
+                    "the active site changes shape"
+                  ],
+                  "match": "meaning"
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "marking": {
+          "question": "Q1",
+          "uses": "gradeflow/workflow@1",
+          "with": {
+            "marks_by": "proportional",
+            "steps": [
+              {
+                "weight": 2,
+                "uses": "gradeflow/key-points@1",
+                "with": {
+                  "points": [
+                    "the enzyme is denatured",
+                    "the active site changes shape"
+                  ],
+                  "match": "meaning"
+                }
+              },
+              {
+                "uses": "gradeflow/answer-criteria@1",
+                "with": {}
+              }
+            ]
+          }
+        },
+        "open_step_path": "/with/steps/1"
+      },
+      {
+        "marking": {
+          "question": "Q1",
+          "uses": "gradeflow/workflow@1",
+          "with": {
+            "marks_by": "proportional",
+            "steps": [
+              {
+                "weight": 2,
+                "uses": "gradeflow/key-points@1",
+                "with": {
+                  "points": [
+                    "the enzyme is denatured",
+                    "the active site changes shape"
+                  ],
+                  "match": "meaning"
+                }
+              },
+              {
+                "uses": "gradeflow/answer-criteria@1",
+                "with": {
+                  "criteria": [
+                    {}
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        "open_step_path": "/with/steps/1"
+      },
+      {
+        "marking": {
+          "question": "Q1",
+          "uses": "gradeflow/workflow@1",
+          "with": {
+            "marks_by": "proportional",
+            "steps": [
+              {
+                "weight": 2,
+                "uses": "gradeflow/key-points@1",
+                "with": {
+                  "points": [
+                    "the enzyme is denatured",
+                    "the active site changes shape"
+                  ],
+                  "match": "meaning"
+                }
+              },
+              {
+                "uses": "gradeflow/answer-criteria@1",
+                "with": {
+                  "criteria": [
+                    {
+                      "text": "Explains that the substrate no longer fits the active site"
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        "open_step_path": "/with/steps/1"
+      },
+      {
+        "marking": {
+          "question": "Q1",
+          "uses": "gradeflow/workflow@1",
+          "with": {
+            "marks_by": "proportional",
+            "steps": [
+              {
+                "weight": 2,
+                "uses": "gradeflow/key-points@1",
+                "with": {
+                  "points": [
+                    "the enzyme is denatured",
+                    "the active site changes shape"
+                  ],
+                  "match": "meaning"
+                }
+              },
+              {
+                "uses": "gradeflow/answer-criteria@1",
+                "with": {
+                  "criteria": [
+                    {
+                      "text": "Explains that the substrate no longer fits the active site"
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "marking": {
+          "question": "Q1",
+          "uses": "gradeflow/workflow@1",
+          "with": {
+            "marks_by": "proportional",
+            "steps": [
+              {
+                "weight": 2,
+                "uses": "gradeflow/key-points@1",
+                "with": {
+                  "points": [
+                    "the enzyme is denatured",
+                    "the active site changes shape"
+                  ],
+                  "match": "meaning"
+                }
+              },
+              {
+                "uses": "gradeflow/answer-criteria@1",
+                "with": {
+                  "criteria": [
+                    {
+                      "text": "Explains that the substrate no longer fits the active site"
+                    }
+                  ]
+                }
+              },
+              {
+                "uses": "gradeflow/length@1",
+                "with": {}
+              }
+            ]
+          }
+        },
+        "open_step_path": "/with/steps/2"
+      },
+      {
+        "marking": {
+          "question": "Q1",
+          "uses": "gradeflow/workflow@1",
+          "with": {
+            "marks_by": "proportional",
+            "steps": [
+              {
+                "weight": 2,
+                "uses": "gradeflow/key-points@1",
+                "with": {
+                  "points": [
+                    "the enzyme is denatured",
+                    "the active site changes shape"
+                  ],
+                  "match": "meaning"
+                }
+              },
+              {
+                "uses": "gradeflow/answer-criteria@1",
+                "with": {
+                  "criteria": [
+                    {
+                      "text": "Explains that the substrate no longer fits the active site"
+                    }
+                  ]
+                }
+              },
+              {
+                "uses": "gradeflow/length@1",
+                "with": {
+                  "min_length": 41
+                }
+              }
+            ]
+          }
+        },
+        "open_step_path": "/with/steps/2"
+      },
+      {
+        "marking": {
+          "question": "Q1",
+          "uses": "gradeflow/workflow@1",
+          "with": {
+            "marks_by": "proportional",
+            "steps": [
+              {
+                "weight": 2,
+                "uses": "gradeflow/key-points@1",
+                "with": {
+                  "points": [
+                    "the enzyme is denatured",
+                    "the active site changes shape"
+                  ],
+                  "match": "meaning"
+                }
+              },
+              {
+                "uses": "gradeflow/answer-criteria@1",
+                "with": {
+                  "criteria": [
+                    {
+                      "text": "Explains that the substrate no longer fits the active site"
+                    }
+                  ]
+                }
+              },
+              {
+                "uses": "gradeflow/length@1",
+                "with": {
+                  "min_length": 41,
+                  "unit": "words"
+                }
+              }
+            ]
+          }
+        },
+        "open_step_path": "/with/steps/2"
+      },
+      {
+        "marking": {
+          "question": "Q1",
+          "uses": "gradeflow/workflow@1",
+          "with": {
+            "marks_by": "proportional",
+            "steps": [
+              {
+                "weight": 2,
+                "uses": "gradeflow/key-points@1",
+                "with": {
+                  "points": [
+                    "the enzyme is denatured",
+                    "the active site changes shape"
+                  ],
+                  "match": "meaning"
+                }
+              },
+              {
+                "uses": "gradeflow/answer-criteria@1",
+                "with": {
+                  "criteria": [
+                    {
+                      "text": "Explains that the substrate no longer fits the active site"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "Too long",
+                "uses": "gradeflow/length@1",
+                "with": {
+                  "min_length": 41,
+                  "unit": "words"
+                }
+              }
+            ]
+          }
+        },
+        "open_step_path": "/with/steps/2"
+      },
+      {
+        "marking": {
+          "question": "Q1",
+          "uses": "gradeflow/workflow@1",
+          "with": {
+            "marks_by": "proportional",
+            "steps": [
+              {
+                "weight": 2,
+                "uses": "gradeflow/key-points@1",
+                "with": {
+                  "points": [
+                    "the enzyme is denatured",
+                    "the active site changes shape"
+                  ],
+                  "match": "meaning"
+                }
+              },
+              {
+                "uses": "gradeflow/answer-criteria@1",
+                "with": {
+                  "criteria": [
+                    {
+                      "text": "Explains that the substrate no longer fits the active site"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "Too long",
+                "weight": -1,
+                "uses": "gradeflow/length@1",
+                "with": {
+                  "min_length": 41,
+                  "unit": "words"
+                }
+              }
+            ]
+          }
+        },
+        "open_step_path": "/with/steps/2"
+      },
+      {
+        "marking": {
+          "question": "Q1",
+          "uses": "gradeflow/workflow@1",
+          "with": {
+            "marks_by": "proportional",
+            "steps": [
+              {
+                "weight": 2,
+                "uses": "gradeflow/key-points@1",
+                "with": {
+                  "points": [
+                    "the enzyme is denatured",
+                    "the active site changes shape"
+                  ],
+                  "match": "meaning"
+                }
+              },
+              {
+                "uses": "gradeflow/answer-criteria@1",
+                "with": {
+                  "criteria": [
+                    {
+                      "text": "Explains that the substrate no longer fits the active site"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "Too long",
+                "weight": -1,
+                "uses": "gradeflow/length@1",
+                "with": {
+                  "min_length": 41,
+                  "unit": "words"
+                }
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "adjustment": {
+      "answer": "The enzyme melts.",
+      "marks": 1,
+      "feedback": "Close: it's denatured, not melted."
     },
-    "answer_groups": [
-      [
-        {
-          "text": "def sum_digits(n):\n    if n == 0:\n        return 0\n    return n % 10 + sum_digits(n // 10)",
-          "student_count": 83
-        },
-        {
-          "text": "def sum_digits(n):\n    if n < 10:\n        return n\n    return n % 10 + sum_digits(n // 10)",
-          "student_count": 8
-        }
-      ],
-      [
-        {
-          "text": "def sum_digits(n):\n    \"\"\"The sum of n's digits.\"\"\"\n    if n == 0:\n        return 0\n    return n % 10 + sum_digits(n // 10)",
-          "student_count": 46
-        },
-        {
-          "text": "def sum_digits(n):\n    \"\"\"The sum of n's digits.\"\"\"\n    if n < 10:\n        return n\n    return n % 10 + sum_digits(n // 10)",
-          "student_count": 6
-        }
-      ],
-      [
-        {
-          "text": "def sum_digits(n):\n    return sum(int(d) for d in str(n))",
-          "student_count": 38
-        },
-        {
-          "text": "def sum_digits(n):\n    return sum(map(int, str(n)))",
-          "student_count": 6
-        }
-      ],
-      [
-        {
-          "text": "def sum_digits(n):\n    if n < 10:\n        return 0\n    return n % 10 + sum_digits(n // 10)",
-          "student_count": 21
-        }
-      ],
-      [
-        {
-          "text": "def sum_digits(n):\n    total = 0\n    while n > 0:\n        total += n % 10\n        n //= 10\n    return total",
-          "student_count": 13
-        }
-      ],
-      [
-        {
-          "text": "def sum_digits(n):\n    return n % 10 + sum_digits(n // 10)",
-          "student_count": 12
-        }
-      ]
-    ],
-    "question_groups": [
+    "students": [
       {
-        "questions": [
-          "Q6a",
-          "Q6b"
-        ],
-        "method": "gradeflow/answer-sets@1"
+        "student_id": "24816031",
+        "answer": "The enzyme is denatured, so its active site changes shape and the substrate no longer fits.",
+        "marks": {
+          "Q2": 2,
+          "Q3": 5,
+          "Q4": 4,
+          "Q5": 3,
+          "Q6": 3,
+          "Q7": 5,
+          "Q8": 3
+        }
+      },
+      {
+        "student_id": "24816254",
+        "answer": "It denatures.",
+        "marks": {
+          "Q2": 2,
+          "Q3": 3,
+          "Q4": 4,
+          "Q5": 2,
+          "Q6": 4,
+          "Q7": 6,
+          "Q8": 3
+        }
+      },
+      {
+        "student_id": "24816407",
+        "answer": "The enzyme melts.",
+        "marks": {
+          "Q2": 1,
+          "Q3": 2,
+          "Q4": 0,
+          "Q5": 3,
+          "Q6": 2,
+          "Q7": 4,
+          "Q8": 3
+        }
+      },
+      {
+        "student_id": "24816598",
+        "answer": "The active site changes shape so the substrate can't bind.",
+        "marks": {
+          "Q2": 2,
+          "Q3": 4,
+          "Q4": 4,
+          "Q5": 3,
+          "Q6": 3,
+          "Q7": 5,
+          "Q8": 2
+        }
+      },
+      {
+        "student_id": "24816733",
+        "answer": "The enzyme is denatured, so its active site changes shape and the substrate no longer fits.",
+        "marks": {
+          "Q2": 2,
+          "Q3": 5,
+          "Q4": 3,
+          "Q5": 3,
+          "Q6": 4,
+          "Q7": 6,
+          "Q8": 3
+        }
+      },
+      {
+        "student_id": "24816912",
+        "answer": "Enzyme gets denatured by the heat.",
+        "marks": {
+          "Q2": 0,
+          "Q3": 3,
+          "Q4": 4,
+          "Q5": 1,
+          "Q6": 2,
+          "Q7": 3,
+          "Q8": 3
+        }
+      },
+      {
+        "student_id": "24817046",
+        "answer": "it melts at high temperatures",
+        "marks": {
+          "Q2": 2,
+          "Q3": 1,
+          "Q4": 4,
+          "Q5": 2,
+          "Q6": 1,
+          "Q7": 2,
+          "Q8": 0
+        }
+      },
+      {
+        "student_id": "24817215",
+        "answer": "The enzyme is denatured, so its active site changes shape and the substrate no longer fits.",
+        "marks": {
+          "Q2": 2,
+          "Q3": 4,
+          "Q4": 4,
+          "Q5": 3,
+          "Q6": 4,
+          "Q7": 5,
+          "Q8": 3
+        }
+      },
+      {
+        "student_id": "24817380",
+        "answer": "Heat bends the active site out of shape, the substrate won't fit",
+        "marks": {
+          "Q2": 2,
+          "Q3": 5,
+          "Q4": 0,
+          "Q5": 3,
+          "Q6": 3,
+          "Q7": 4,
+          "Q8": 3
+        }
+      },
+      {
+        "student_id": "24817524",
+        "answer": "It denatures.",
+        "marks": {
+          "Q2": 1,
+          "Q3": 3,
+          "Q4": 4,
+          "Q5": 2,
+          "Q6": 4,
+          "Q7": 3,
+          "Q8": 3
+        }
+      },
+      {
+        "student_id": "24817691",
+        "answer": "Enzymes melt when they get too hot.",
+        "marks": {
+          "Q2": 2,
+          "Q3": 2,
+          "Q4": 4,
+          "Q5": 0,
+          "Q6": 2,
+          "Q7": 3,
+          "Q8": 3
+        }
+      },
+      {
+        "student_id": "24817853",
+        "answer": "The active site changes shape so the substrate can't bind.",
+        "marks": {
+          "Q2": 2,
+          "Q3": 4,
+          "Q4": 4,
+          "Q5": 3,
+          "Q6": 4,
+          "Q7": 6,
+          "Q8": 3
+        }
+      },
+      {
+        "student_id": "24818012",
+        "answer": "The enzyme melts.",
+        "marks": {
+          "Q2": 1,
+          "Q3": 2,
+          "Q4": 3,
+          "Q5": 2,
+          "Q6": 2,
+          "Q7": 3,
+          "Q8": 2
+        }
+      },
+      {
+        "student_id": "24818179",
+        "answer": "The enzyme melts.",
+        "marks": {
+          "Q2": 2,
+          "Q3": 3,
+          "Q4": 4,
+          "Q5": 1,
+          "Q6": 3,
+          "Q7": 4,
+          "Q8": 2
+        }
+      },
+      {
+        "student_id": "24818346",
+        "answer": "The enzyme melts.",
+        "marks": {
+          "Q2": 1,
+          "Q3": 1,
+          "Q4": 2,
+          "Q5": 2,
+          "Q6": 1,
+          "Q7": 2,
+          "Q8": 1
+        }
+      },
+      {
+        "student_id": "24818520",
+        "answer": "The enzyme melts.",
+        "marks": {
+          "Q2": 2,
+          "Q3": 2,
+          "Q4": 3,
+          "Q5": 3,
+          "Q6": 2,
+          "Q7": 5,
+          "Q8": 3
+        }
+      },
+      {
+        "student_id": "24818694",
+        "answer": "The enzyme melts.",
+        "marks": {
+          "Q2": 0,
+          "Q3": 2,
+          "Q4": 1,
+          "Q5": 1,
+          "Q6": 2,
+          "Q7": 3,
+          "Q8": 2
+        }
+      },
+      {
+        "student_id": "24818857",
+        "answer": "The enzyme melts.",
+        "marks": {
+          "Q2": 2,
+          "Q3": 4,
+          "Q4": 3,
+          "Q5": 2,
+          "Q6": 3,
+          "Q7": 4,
+          "Q8": 3
+        }
+      },
+      {
+        "student_id": "24819031",
+        "answer": "The enzyme melts.",
+        "marks": {
+          "Q2": 1,
+          "Q3": 3,
+          "Q4": 2,
+          "Q5": 3,
+          "Q6": 2,
+          "Q7": 2,
+          "Q8": 1
+        }
+      },
+      {
+        "student_id": "24819208",
+        "answer": "The enzyme melts.",
+        "marks": {
+          "Q2": 2,
+          "Q3": 1,
+          "Q4": 4,
+          "Q5": 2,
+          "Q6": 1,
+          "Q7": 3,
+          "Q8": 2
+        }
+      },
+      {
+        "student_id": "24819375",
+        "answer": "The enzyme melts.",
+        "marks": {
+          "Q2": 1,
+          "Q3": 2,
+          "Q4": 2,
+          "Q5": 1,
+          "Q6": 3,
+          "Q7": 4,
+          "Q8": 2
+        }
       }
-    ],
-    "edited_marking": {
-      "question": "Q5",
-      "uses": "gradeflow/workflow@1",
-      "with": {
-        "marks_by": "proportional",
-        "steps": [
-          {
-            "uses": "gradeflow/code-tests@1",
-            "with": {
-              "marks_by": "proportional",
-              "tests": [
-                {
-                  "expression": "sum_digits(7)",
-                  "expected": "7"
-                },
-                {
-                  "expression": "sum_digits(1234)",
-                  "expected": "10"
-                }
-              ]
-            }
-          },
-          {
-            "name": "Recursive, no loops",
-            "uses": "gradeflow/workflow@1",
-            "with": {
-              "marks_by": "all_correct",
-              "steps": [
-                {
-                  "uses": "gradeflow/code-uses@1",
-                  "with": {
-                    "looks_for": "recursion"
-                  }
-                },
-                {
-                  "uses": "gradeflow/not-allowed@1",
-                  "with": {
-                    "check": {
-                      "uses": "gradeflow/code-uses@1",
-                      "with": {
-                        "looks_for": "loop"
-                      }
-                    }
-                  }
-                }
-              ]
-            }
-          }
-        ]
-      }
-    }
+    ]
   },
-  "review": {
+  "groups": {
     "question_key": "Q1",
     "question_set": {
       "Q1": {
@@ -234,43 +1064,63 @@
     "answers": [
       {
         "text": "Release energy",
-        "student_count": 98,
-        "meaning_group": "release"
+        "student_count": 58,
+        "meaning_group": "energy"
       },
       {
         "text": "Releases energy for the cell",
-        "student_count": 42,
-        "meaning_group": "for the cell"
+        "student_count": 24,
+        "meaning_group": "energy"
       },
       {
-        "text": "Produce energy for the cell",
-        "student_count": 27,
-        "meaning_group": "for the cell"
+        "text": "Produce ATP",
+        "student_count": 21,
+        "meaning_group": "atp"
       },
       {
-        "text": "Produces ATP",
-        "student_count": 17,
-        "meaning_group": "ATP"
+        "text": "Makes ATP",
+        "student_count": 16,
+        "meaning_group": "atp"
       },
       {
-        "text": "Store genetic information",
-        "student_count": 15,
-        "meaning_group": "genetic"
-      },
-      {
-        "text": "They release energy",
-        "student_count": 13,
-        "meaning_group": "release"
-      },
-      {
-        "text": "Make proteins",
-        "student_count": 12,
-        "meaning_group": "proteins"
+        "text": "Produces ATP for the cell",
+        "student_count": 9,
+        "meaning_group": "atp"
       },
       {
         "text": "Store DNA",
+        "student_count": 8,
+        "meaning_group": "dna"
+      },
+      {
+        "text": "Relese energy",
         "student_count": 7,
-        "meaning_group": "genetic"
+        "meaning_group": "energy"
+      },
+      {
+        "text": "Make proteins",
+        "student_count": 6,
+        "meaning_group": "proteins"
+      },
+      {
+        "text": "Release enrgy",
+        "student_count": 5,
+        "meaning_group": "energy"
+      },
+      {
+        "text": "Stores genetic information",
+        "student_count": 5,
+        "meaning_group": "dna"
+      },
+      {
+        "text": "Releases energy for the cel",
+        "student_count": 4,
+        "meaning_group": "energy"
+      },
+      {
+        "text": "Produse ATP",
+        "student_count": 4,
+        "meaning_group": "atp"
       }
     ],
     "marking": {
@@ -278,41 +1128,82 @@
       "uses": "gradeflow/accepted-answers@1",
       "with": {
         "answers": [
-          "Release energy"
+          "Release energy",
+          "Releases energy for the cell"
+        ],
+        "match": "spelling"
+      }
+    },
+    "adjustment": {
+      "answer": "Produce ATP",
+      "marks": 1,
+      "feedback": "Correct: making ATP is how they release energy."
+    }
+  },
+  "by_example": {
+    "question_key": "Q1",
+    "question_set": {
+      "Q1": {
+        "type": "text",
+        "max_marks": 2,
+        "description": "Which gas do plants take in for photosynthesis?",
+        "reading": {
+          "ignore_case": false
+        }
+      }
+    },
+    "answers": [
+      {
+        "text": "Carbon dioxide",
+        "student_count": 71
+      },
+      {
+        "text": "CO2",
+        "student_count": 33
+      },
+      {
+        "text": "Oxygen",
+        "student_count": 18
+      },
+      {
+        "text": "Carbon",
+        "student_count": 12
+      },
+      {
+        "text": "Nitrogen",
+        "student_count": 9
+      },
+      {
+        "text": "Carbon monoxide",
+        "student_count": 8
+      }
+    ],
+    "marking": {
+      "question": "Q1",
+      "uses": "gradeflow/accepted-answers@1",
+      "with": {
+        "answers": [
+          "Carbon dioxide"
         ]
       }
     },
-    "decisions": [
-      {
-        "answers": [
-          "Releases energy for the cell"
-        ],
-        "decision": "full_marks"
-      },
-      {
-        "answers": [
-          "Produces ATP"
-        ],
-        "decision": "partial_marks"
-      }
-    ],
-    "adjustment": {
-      "answer": "Produce energy for the cell",
-      "marks": 0.5,
-      "feedback": "Energy is released, not produced."
-    },
-    "decided_answer": "Releases energy for the cell"
+    "decisions": {
+      "CO2": "full_marks",
+      "Carbon": "partial_marks",
+      "Carbon monoxide": "not_allowed"
+    }
   },
   "examples": {
     "workflow": {
-      "method": "gradeflow/workflow@1",
-      "question_key": "Q2",
-      "question_text": "Where in a cell is energy released? Answer in 10 words or fewer.",
-      "marked_question": "Q2",
+      "method_ref": "gradeflow/workflow@1",
       "question_set": {
         "Q2": {
           "type": "text",
-          "max_marks": 2
+          "description": "Where in a cell is energy released? Answer in 10 words or fewer.",
+          "max_marks": 2,
+          "reading": {
+            "ignore_case": false
+          }
         }
       },
       "answers": [
@@ -520,10 +1411,7 @@
       ]
     },
     "answer_criteria": {
-      "method": "gradeflow/answer-criteria@1",
-      "question_key": "Q1",
-      "question_text": "Pens cost $2 and books $5. What do 3 pens and 2 books cost? Show your working.",
-      "marked_question": "Q1",
+      "method_ref": "gradeflow/answer-criteria@1",
       "question_set": {
         "Q1": {
           "type": "text",
@@ -553,32 +1441,7 @@
       ],
       "variants": [
         {
-          "change": "Start with no criteria",
-          "marking": {
-            "question": "Q1",
-            "uses": "gradeflow/answer-criteria@1",
-            "with": {
-              "criteria": [],
-              "model_answer": "3 × 2 = 6 and 2 × 5 = 10, so 6 + 10 = $16"
-            }
-          },
-          "results": [
-            {
-              "marks": null,
-              "feedback": ""
-            },
-            {
-              "marks": null,
-              "feedback": ""
-            },
-            {
-              "marks": null,
-              "feedback": ""
-            }
-          ]
-        },
-        {
-          "change": "Add a criterion: Correct total",
+          "change": "Start with one criterion: Correct total",
           "marking": {
             "question": "Q1",
             "uses": "gradeflow/answer-criteria@1",
@@ -682,13 +1545,11 @@
       ]
     },
     "code_tests": {
-      "method": "gradeflow/code-tests@1",
-      "question_key": "Q7",
-      "question_text": "Write is_even(n), which returns True when n is even.",
-      "marked_question": "Q7",
+      "method_ref": "gradeflow/code-tests@1",
       "question_set": {
         "Q7": {
           "type": "code",
+          "description": "Write is_even(n), which returns True when n is even.",
           "max_marks": 2
         }
       },
@@ -792,13 +1653,11 @@
       ]
     },
     "custom_code": {
-      "method": "gradeflow/custom-code@1",
-      "question_key": "Q5",
-      "question_text": "Name a word that reads the same backwards.",
-      "marked_question": "Q5",
+      "method_ref": "gradeflow/custom-code@1",
       "question_set": {
         "Q5": {
           "type": "text",
+          "description": "Name a word that reads the same backwards.",
           "max_marks": 1,
           "reading": {
             "ignore_case": false
@@ -820,6 +1679,12 @@
         },
         {
           "answers": {
+            "Q5": "A"
+          },
+          "student_count": 48
+        },
+        {
+          "answers": {
             "Q5": "Hannah"
           },
           "student_count": 41
@@ -829,12 +1694,6 @@
             "Q5": "Banana"
           },
           "student_count": 23
-        },
-        {
-          "answers": {
-            "Q5": "A"
-          },
-          "student_count": 6
         }
       ],
       "variants": [
@@ -871,10 +1730,7 @@
       ]
     },
     "conditional": {
-      "method": "gradeflow/conditional@1",
-      "question_key": "Q4",
-      "question_text": "a) Artery or vein? b) Does it carry blood towards or away from the heart?",
-      "marked_question": "Q4b",
+      "method_ref": "gradeflow/conditional@1",
       "question_set": {
         "Q4a": {
           "type": "choice",
@@ -1010,10 +1866,7 @@
       ]
     },
     "answer_sets": {
-      "method": "gradeflow/answer-sets@1",
-      "question_key": "Q3",
-      "question_text": "A stone is dropped from a 45 m cliff. Ignore air resistance. a) How long does it take to land, in seconds? b) How fast is it going when it lands, in m/s?",
-      "marked_question": "Q3b",
+      "method_ref": "gradeflow/answer-sets@1",
       "question_set": {
         "Q3a": {
           "type": "number",
@@ -1252,13 +2105,11 @@
       ]
     },
     "equivalent_expression": {
-      "method": "gradeflow/equivalent-expression@1",
-      "question_key": "Q8",
-      "question_text": "Give a factor of x² - 1.",
-      "marked_question": "Q8",
+      "method_ref": "gradeflow/equivalent-expression@1",
       "question_set": {
         "Q8": {
           "type": "text",
+          "description": "Give a factor of x² - 1.",
           "max_marks": 1
         }
       },
@@ -1277,6 +2128,12 @@
         },
         {
           "answers": {
+            "Q8": "1 - x"
+          },
+          "student_count": 41
+        },
+        {
+          "answers": {
             "Q8": "1 + x"
           },
           "student_count": 30
@@ -1292,12 +2149,6 @@
             "Q8": "x"
           },
           "student_count": 15
-        },
-        {
-          "answers": {
-            "Q8": "1 - x"
-          },
-          "student_count": 12
         }
       ],
       "variants": [

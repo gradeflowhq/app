@@ -1,0 +1,23 @@
+{# Q1's marking: the methods offered (marking/panel.html), the editor at each stage of the mark scheme (marking/editor.html) and the saved marking. #}
+{% url 'question_methods' question.assessment_id question.pk as guide_url %}
+<c-panel class="workspace-panel" title="Marking" body_class="grid content-start gap-4 p-4" data-shown="1" data-method-choices>
+  <c-slot name="actions"><span class="btn btn-ghost btn-square btn-sm text-muted">{% icon "question-mark-circle" %}</span></c-slot>
+  <div class="flex items-start gap-3">
+    <div class="min-w-0 flex-1"><h3 class="font-semibold">{{ hero.picker_title }}</h3></div>
+    <span class="btn btn-ghost btn-sm -my-1 -mr-2 shrink-0">{% icon "magnifying-glass" %}Browse</span>
+  </div>
+  <div class="grid gap-5">
+    <ul class="method-choices">{% for method in hero.everyday %}<c-method-choice :method="method" guide_url="{{ guide_url }}" />{% endfor %}</ul>
+    <c-more-options label="Advanced"><ul class="method-choices">{% for method in hero.advanced_choices %}<c-method-choice :method="method" guide_url="{{ guide_url }}" />{% endfor %}</ul></c-more-options>
+  </div>
+</c-panel>
+<c-landing.editor data-shown="0" data-marking-editor>
+  {% for stage in hero.editor_stages %}
+  <div class="contents" data-shown="{{ forloop.first|yesno:'1,0' }}" data-stage{% if stage.edit %} data-edit-action="{{ stage.edit.action }}" data-edit-field-name="{{ stage.edit.field_name }}" data-edit-value="{{ stage.edit.value }}"{% endif %}>{% include "marking/step.html" with editor=stage.editor %}</div>
+  {% endfor %}
+</c-landing.editor>
+<c-panel class="workspace-panel" title="Marking" body_class="grid content-start gap-4 p-4" data-shown="0" data-saved-marking>
+  <c-slot name="actions"><span class="btn btn-ghost btn-square btn-sm text-muted">{% icon "question-mark-circle" %}</span><span class="btn btn-ghost btn-square btn-sm">{% icon "ellipsis-horizontal" "size-5" %}</span><span class="btn btn-primary btn-sm">{% icon "pencil-square" %}Edit marking</span></c-slot>
+  <c-marking-summary :summary="hero.summary" />
+  <c-slot name="footer">{% with last_save=hero.last_save %}{% include "marking/panel.html#last_save" %}{% endwith %}</c-slot>
+</c-panel>

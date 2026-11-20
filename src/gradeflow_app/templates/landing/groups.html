@@ -1,0 +1,27 @@
+{# The grouping demo. #}
+{% with content=groups.content question=groups.question %}
+<div class="mx-auto max-w-6xl" x-data="landingDemo" data-demo="groups">
+  <div role="img" aria-label="A question's answers grouped by the same answers, then by similar spelling, then by similar meaning, and the marks of one group adjusted.">
+    <div class="landing-mockup relative" inert aria-hidden="true" data-mockup>
+      <section class="landing-demo-height [--landing-demo-offset:20.5rem] flex flex-col text-left" aria-label="Answers" data-adjusted-group-index="{{ groups.adjusted_group_index }}" data-adjusted-marks="{{ content.adjustment.marks|marks }}" data-adjusted-feedback="{{ content.adjustment.feedback }}">
+        {% for grouping in groups.groupings|slice:":3" %}{% with column=grouping.column %}
+        <div class="contents" data-shown="{{ forloop.first|yesno:'1,0' }}" data-answers-header>
+          {% with groupings=column.groupings grouping=column.grouping grouping_options=column.grouping_options filters=column.filters filter="all" answer_groups=column.answer_groups hidden_count=0 %}{% include "results/answers.html#header" %}{% include "results/answers.html#list_head" %}{% endwith %}
+        </div>
+        {% endwith %}{% endfor %}
+        <div class="workspace-cards">
+          {% for grouping in groups.groupings %}
+          <ul class="answer-groups relative" aria-label="Answers" data-shown="{{ forloop.first|yesno:'1,0' }}" data-answer-list{% if grouping.next_group_indexes %} data-next-group-indexes="{{ grouping.next_group_indexes|join:' ' }}"{% endif %}>
+            {% for answer_group in grouping.column.answer_groups %}{% with open=False grouping=grouping.column.grouping %}{% include "results/answer_group.html" %}{% endwith %}{% endfor %}
+          </ul>
+          {% endfor %}
+        </div>
+      </section>
+      <c-landing.menu name="group" :choices="groups.groupings.0.column.groupings.items" />
+      <c-landing.toast name="adjusted">Adjusted {{ groups.adjusted_count }} students.</c-landing.toast>
+      <c-landing.pointer />
+    </div>
+  </div>
+  <c-landing.chapters :chapters="groups.chapters" />
+</div>
+{% endwith %}

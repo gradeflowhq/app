@@ -1,0 +1,34 @@
+{# The Export page (exports/export.html) with a Canvas course and assignment chosen, before and after the marks are sent. #}
+<div class="page landing-hero-page" data-page="export">
+  <div class="main-with-aside items-start">
+    <div class="grid gap-5">
+      <c-panel icon="paper-airplane" title="Canvas" body_class="setting-rows">
+        <c-slot name="actions"><span class="flex items-center gap-2"><span class="muted-link text-xs">{{ content.canvas_host }}</span><c-chip icon="check" tone="success">Connected</c-chip></span></c-slot>
+        <div class="setting-summary-row">
+          <span class="setting-summary-label">{% icon "academic-cap" %}Course</span>
+          <p class="min-w-0 flex-1 truncate font-semibold">{{ content.course }}</p>
+          <span class="btn btn-sm">Change</span>
+        </div>
+        <div class="setting-summary-row">
+          <span class="setting-summary-label">{% icon "document-text" %}Assignment</span>
+          <div class="flex min-w-0 flex-1 items-center gap-4"><div class="min-w-0 flex-1"><p class="truncate font-semibold">{{ content.assessment }}</p></div><span class="btn btn-sm">Change</span></div>
+        </div>
+        <div class="setting-summary-row">
+          <span class="setting-summary-label">{% icon "adjustments-horizontal" %}How marks are sent</span>
+          <span class="flex min-w-0 flex-1 flex-wrap items-center gap-2 font-semibold">{{ hero.sending_summary }}</span>
+          <span class="btn btn-sm">Change{% icon "chevron-down" %}</span>
+        </div>
+        <c-slot name="footer"><span class="btn">{% icon "chat-bubble-left" %}Preview comment</span><span class="btn btn-primary ml-auto" data-send-to-canvas>{% icon "paper-airplane" %}Send to Canvas</span></c-slot>
+      </c-panel>
+      <c-panel icon="clock" title="Sent to Canvas" body_class="overflow-x-auto rounded-b-box" data-shown="0" data-sent-to-canvas>
+        <table class="table">
+          <thead><tr><th>Assignment</th><th class="text-right">Students</th><th>Sent by</th><th>When</th></tr></thead>
+          <tbody><tr><td><span class="flex items-center gap-2">{% icon "check-circle" "text-success" %}<span class="font-medium">{{ content.assessment }}</span></span></td><td class="tabular-nums text-right">{{ hero.student_count }}</td><td><span class="flex items-center gap-2"><c-avatar :user="hero.marker" size="size-6" />{{ hero.marker }}</span></td><td class="whitespace-nowrap text-muted">{{ hero.last_save.saved_at|ago }}</td></tr></tbody>
+        </table>
+      </c-panel>
+    </div>
+    <c-panel icon="arrow-down-tray" title="Download" body_class="setting-rows">
+      <c-setting-row icon="table-cells" label="Results as CSV" detail="{{ hero.student_count }} students"><span class="btn btn-sm">{% icon "arrow-down-tray" %}Download</span></c-setting-row>
+    </c-panel>
+  </div>
+</div>

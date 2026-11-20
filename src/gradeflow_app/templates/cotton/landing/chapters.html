@@ -1,0 +1,7 @@
+<c-vars chapters />
+{# A demo's chapter bar: a chapter each, with its icon or, without one, its caption. #}
+<ol class="landing-chapters" aria-label="Steps">
+  {% for label, icon_name in chapters.items %}
+  <li><button type="button" aria-current="false" data-chapter="{{ label }}"><span class="landing-chapters-track"><span></span></span>{% if icon_name %}<span class="flex items-center gap-1.5">{% icon icon_name %}<span class="max-sm:sr-only">{{ label }}</span></span>{% else %}<span class="landing-chapters-caption">{{ label }}</span>{% endif %}</button></li>
+  {% endfor %}
+</ol>

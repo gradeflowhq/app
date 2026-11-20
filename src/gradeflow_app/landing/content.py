@@ -25,78 +25,54 @@ class LandingModel(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
 
-# The hero: one question's answers in the workspace, grouped by their feedback.
-
-
 class Answer(LandingModel):
     text: str
     student_count: int
 
 
-class WorkspaceQuestion(LandingModel):
-    question_key: str
-    method: str | None = None
-    """The method of its own marking."""
-    in_question_group: bool = False
-    average: int | None = None
-    """Its average mark, as a percentage."""
+class GroupAdjustment(LandingModel):
+    """The marks and feedback set for the students in the group of `answer`."""
 
-
-class WorkspaceQuestionGroup(LandingModel):
-    questions: list[str]
-    method: str
-
-
-class Workspace(LandingModel):
-    course: str
-    assessment: str
-    question_key: str
-    question_set: QuestionSet
-    questions: list[WorkspaceQuestion]
-    question_groups: list[WorkspaceQuestionGroup]
-    marking: MarkingJson
-    edited_marking: MarkingJson
-    """The marking without its Docstring step."""
-    answer_groups: list[list[Answer]]
-    """Answers with the same feedback, the commonest first."""
-
-
-# The review section: Q1's answers grouped, marked by example and adjusted.
-
-
-class ReviewAnswer(Answer):
-    meaning_group: str
-    """Its group by meaning, at GradeFlow's default of 85% similar."""
-
-
-class ReviewDecision(LandingModel):
-    answers: list[str]
-    decision: Decision
-
-
-class ReviewAdjustment(LandingModel):
     answer: str
     marks: float
     feedback: str
 
 
-class Review(LandingModel):
+# The grouping demo.
+
+
+class AnswerWithMeaningGroup(Answer):
+    meaning_group: str
+    """Its group by meaning, at GradeFlow's default of 85% similar."""
+
+
+class Groups(LandingModel):
     question_key: str
     question_set: QuestionSet
-    answers: list[ReviewAnswer]
+    answers: list[AnswerWithMeaningGroup]
+    """The commonest first."""
+    marking: MarkingJson
+    adjustment: GroupAdjustment
+
+
+# The marking-by-example demo.
+
+
+class ByExample(LandingModel):
+    question_key: str
+    question_set: QuestionSet
+    answers: list[Answer]
     """The commonest first."""
     marking: MarkingJson
     """The marking before marking by example."""
-    decisions: list[ReviewDecision]
-    decided_answer: str
-    """The answer marked by example that shows open."""
-    adjustment: ReviewAdjustment
+    decisions: dict[str, Decision]
+    """Each decision, by answer, in the order they're made."""
 
 
-# The methods: an example of each, its settings changed one step at a time.
+# The method demos.
 
 
-class ExampleAnswer(LandingModel):
+class ExampleSubmission(LandingModel):
     answers: dict[str, str]
     """Each answer, by question."""
     student_count: int
@@ -117,23 +93,63 @@ class ExampleVariant(LandingModel):
 
 
 class Example(LandingModel):
-    method: str
-    question_key: str
-    question_text: str
-    marked_question: str
-    """The question whose marks it shows."""
+    """A method marking one question, or a question group's questions together."""
+
+    method_ref: str
     question_set: QuestionSet
-    answers: list[ExampleAnswer]
+    answers: list[ExampleSubmission]
     variants: list[ExampleVariant]
 
-    @property
-    def max_marks(self) -> float:
-        return self.question_set[self.marked_question].max_marks
+
+# The hero.
+
+
+class HeroAnswer(Answer):
+    result: LanguageModelResult
+    """What the mark scheme gives it. Given here, as its Key Points need a local model and its Answer Criteria the AI
+    service."""
+
+
+class OtherQuestion(LandingModel):
+    question_key: str
+    method_ref: str
+    average_percent: int
+
+
+class EditingStage(LandingModel):
+    marking: MarkingJson
+    open_step_path: str | None = None
+
+
+class HeroStudent(LandingModel):
+    student_id: str
+    answer: str
+    """Their answer to the question marked."""
+    marks: dict[str, float]
+    """Their marks for the other questions, by question."""
+
+
+class Hero(LandingModel):
+    course: str
+    assessment: str
+    file_name: str
+    marker_name: str
+    canvas_host: str
+    question_key: str
+    question_set: QuestionSet
+    other_questions: list[OtherQuestion]
+    answers: list[HeroAnswer]
+    """The commonest first."""
+    editing_stages: list[EditingStage]
+    """The mark scheme as it's written, one stage for each change the editor shows."""
+    adjustment: GroupAdjustment
+    students: list[HeroStudent]
 
 
 class LandingContent(LandingModel):
-    workspace: Workspace
-    review: Review
+    hero: Hero
+    groups: Groups
+    by_example: ByExample
     examples: dict[str, Example]
 
 
@@ -160,49 +176,81 @@ class EditorContent(LandingModel):
     steps: list[StepCards]
 
 
-class CoreWorkspace(LandingModel):
+class MethodChoice(LandingModel):
+    """A method to choose, as the lists of methods show it."""
+
+    ref: str
+    label: str
+    summary: str
+    needs_model_endpoint: bool
+
+
+class CoreEditingStage(LandingModel):
+    """What the editor shows at a stage of writing the mark scheme."""
+
+    marking: EditorContent
+    open_step: EditorContent | None
+
+
+class CoreHero(LandingModel):
     method_labels: dict[str, str]
-    """The label of each method the questions and question groups use, by reference."""
-    normalized: list[list[str]]
-    """Each answer of each answer group, as the question reads it."""
-    results: list[list[QuestionResult]]
+    """The label of each other question's method, by question."""
+    normalized_answers: dict[str, str]
+    """Each answer as the question reads it, by answer."""
+    results: dict[str, QuestionResult]
+    """Each answer's result, by answer."""
+    everyday: list[MethodChoice]
+    """The everyday methods offered for the question."""
+    advanced_choices: list[MethodChoice]
+    step_choices: list[MethodChoice]
+    """The everyday methods offered for a step of its marking."""
+    editing_stages: list[CoreEditingStage]
     summary: MarkingSummary
-    editor: EditorContent
-    edited_results: list[QuestionResult]
-    """Each answer's result with the edited marking, in the order of the answer groups."""
-    edited_summary: MarkingSummary
-    edited_editor: EditorContent
+    """The mark scheme, saved."""
 
 
-class CoreReview(LandingModel):
-    normalized: list[str]
-    """Each answer, as the question reads it."""
-    results: list[QuestionResult]
+class CoreGroups(LandingModel):
+    normalized_answers: dict[str, str]
+    """Each answer as the question reads it, by answer."""
+    results: dict[str, QuestionResult]
+    """Each answer's result, by answer."""
+    spelling_groups: list[list[str]]
+    """The answers of each group by similar spelling, as the answers column groups them."""
+
+
+class CoreByExampleStage(LandingModel):
+    """The marking after a decision of marking by example, or before the first."""
+
+    results: dict[str, QuestionResult]
+    """Each answer's result, by answer."""
     summary: MarkingSummary
-    editor: EditorContent
-    decided_results: list[QuestionResult]
-    """Each answer's result once marked by example."""
-    decided_summary: MarkingSummary
-    decided_editor: EditorContent
     decisions: dict[str, Decision]
-    """The decisions marking by example gave, by answer as the question reads it."""
+    """The decisions so far, by answer as the question reads it."""
+
+
+class CoreByExample(LandingModel):
+    normalized_answers: dict[str, str]
+    """Each answer as the question reads it, by answer."""
+    stages: list[CoreByExampleStage]
 
 
 class CoreVariant(LandingModel):
-    description: str
-    results: list[QuestionResult]
-    """Each answer's result for the question the example shows."""
+    summary: MarkingSummary
+    results: list[dict[str, QuestionResult]]
+    """Each answer's result for each question the marking gives marks to, by question."""
 
 
 class CoreExample(LandingModel):
     method_label: str
-    method_summary: str
+    normalized_answers: list[dict[str, str]]
+    """Each answer to each question, as the question reads it."""
     variants: list[CoreVariant]
 
 
 class CoreOutput(LandingModel):
-    workspace: CoreWorkspace
-    review: CoreReview
+    hero: CoreHero
+    groups: CoreGroups
+    by_example: CoreByExample
     examples: dict[str, CoreExample]
     other_methods: list[str]
     """The labels of the methods for the page's questions that have no example, simplest first."""

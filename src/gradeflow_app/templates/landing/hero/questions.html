@@ -1,0 +1,30 @@
+{# The question workspace (marking/workspace.html): the question list, Q1's answers and its marking. The answers section copies workspace-answers' layout without the class, whose rule fading marks under an outdated preview bar would match the hidden marking head. #}
+{% with question=hero.question %}
+<div class="landing-hero-page grid grid-cols-[minmax(0,1fr)_24rem] grid-rows-[minmax(0,1fr)] gap-5 px-6 py-6 lg:grid-cols-[15rem_minmax(0,1fr)_24rem]" data-page="questions">
+  <nav class="workspace-questions" aria-label="Questions">
+    <div class="panel-head flex-nowrap"><h2>Questions</h2><span class="tabular-nums ml-auto whitespace-nowrap text-xs text-muted"><span data-marked-count>0</span> / {{ content.question_set|length }}</span></div>
+    <div class="grid flex-1 content-start overflow-hidden py-1.5">
+      {% for question_list in hero.question_lists %}
+      <ul class="col-start-1 row-start-1 grid content-start" data-shown="{{ forloop.first|yesno:'1,0' }}" data-question-list>{% for item in question_list %}{% with question=item.question %}{% include "marking/question_list.html#question_item" %}{% endwith %}{% endfor %}</ul>
+      {% endfor %}
+    </div>
+  </nav>
+  <section class="relative flex min-w-0 flex-col md:min-h-0" aria-label="Answers" data-adjusted-group-index="{{ hero.adjusted_group_index }}" data-adjusted-marks="{{ content.adjustment.marks|marks }}" data-adjusted-feedback="{{ content.adjustment.feedback }}">
+    {% for column in hero.header_columns %}
+    <div class="shrink-0" data-shown="{{ forloop.first|yesno:'1,0' }}" data-answers-header>
+      {% with groupings=column.groupings grouping=column.grouping grouping_options=column.grouping_options filters=column.filters filter="all" marking_job=column.marking_job answer_groups=column.answer_groups hidden_count=hero.hidden_count %}{% include "results/answers.html#header" %}{% include "results/answers.html#list_head" %}{% endwith %}
+    </div>
+    {% endfor %}
+    <div class="workspace-cards">
+      {% for answer_list in hero.answer_group_lists %}
+      <ul class="answer-groups relative" aria-label="Answers" data-shown="{{ forloop.first|yesno:'1,0' }}" data-answer-list>
+        {% for answer_group in answer_list %}{% with open=False grouping="answers" %}{% include "results/answer_group.html" %}{% endwith %}{% endfor %}
+      </ul>
+      {% endfor %}
+    </div>
+  </section>
+  <aside class="workspace-marking" aria-label="Marking">
+    {% include "landing/hero/marking.html" %}
+  </aside>
+</div>
+{% endwith %}

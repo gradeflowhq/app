@@ -1,0 +1,26 @@
+{# The headline, then the hero demo. #}
+<div class="landing-hero-intro mx-auto grid max-w-5xl justify-items-center gap-6 text-center">
+  <c-logo class="size-14" />
+  <a class="inline-flex items-center gap-2 rounded-full border border-base-300 bg-base-100 px-3.5 py-1.5 text-sm font-medium text-muted hover:text-base-content" href="{{ github_url }}" target="_blank" rel="noopener" hx-boost="false"><c-github class="size-4 text-base-content" />Open source on GitHub{% icon "arrow-right" "size-3.5" mini=True %}</a>
+  <h1 class="text-balance text-3xl font-semibold tracking-tight sm:text-5xl md:text-6xl">A mark scheme that marks the assessment for you.</h1>
+  <p class="max-w-2xl text-pretty text-lg text-muted sm:text-xl">Set it up once and every student is marked the same way. Review answers in groups, change the scheme any time, and send the marks to Canvas or download them as a spreadsheet.</p>
+  <div class="mt-2 flex w-full max-w-sm flex-col gap-3 sm:w-auto sm:max-w-none sm:flex-row"><a class="btn btn-primary btn-lg" href="{% url 'account_signup' %}">Create an account</a><a class="btn btn-lg" href="#how-it-works" hx-boost="false">See how it works</a></div>
+</div>
+{% with content=hero.content %}
+<div id="how-it-works" class="landing-hero mx-auto mt-14 scroll-mt-16 sm:mt-18" x-data="landingDemo" data-demo="hero">
+  <div class="landing-hero-aspect-box" role="img" aria-label="GradeFlow importing an assessment, writing a mark scheme for its first question, marking it, adjusting one group of answers, then sending the marks to Canvas.">
+    <div class="landing-mockup landing-hero-mockup" inert aria-hidden="true" data-mockup data-width="1152">
+      <c-landing.app-frame course="{{ content.course }}" assessment="{{ content.assessment }}" :marker="hero.marker" question_count="{{ content.question_set|length }}" student_count="{{ hero.student_count }}" class="flex h-full flex-col">
+        <div class="relative min-h-0 flex-1 bg-base-200">
+          {% include "landing/hero/overview.html" %}
+          {% include "landing/hero/questions.html" %}
+          {% include "landing/hero/students.html" %}
+          {% include "landing/hero/export.html" %}
+        </div>
+      </c-landing.app-frame>
+      {% include "landing/hero/overlays.html" %}
+    </div>
+  </div>
+  <c-landing.chapters :chapters="hero.chapters" />
+</div>
+{% endwith %}

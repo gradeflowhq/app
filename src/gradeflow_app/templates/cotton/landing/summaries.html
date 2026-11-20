@@ -1,0 +1,8 @@
+<c-vars summaries />
+{# A marking's summary after each change, under its method's name as the editor shows them. components/landing/new-lines.js marks the lines each change adds. #}
+{% for summary in summaries %}
+<div class="landing-new-lines grid content-start gap-4 p-4" data-shown="{{ forloop.first|yesno:'1,0' }}" data-summary>
+  <c-method-heading :label="summary.method_label" />
+  <c-summary :text="summary.description" />
+</div>
+{% endfor %}

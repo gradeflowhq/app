@@ -6,6 +6,7 @@
   themes: false;
   exclude: rootscrolllock, rootscrollgutter;
 }
+
 @plugin "./vendor/daisyui-5.8.1/daisyui-theme.mjs" {
   name: "light";
   default: true;
@@ -51,6 +52,7 @@
   --depth: 0;
   --noise: 0;
 }
+
 @plugin "./vendor/daisyui-5.8.1/daisyui-theme.mjs" {
   name: "dark";
   prefersdark: true;
@@ -96,6 +98,7 @@
   --depth: 0;
   --noise: 0;
 }
+
 @font-face {
   font-family: "Inter";
   font-style: normal;
@@ -110,6 +113,7 @@
   font-display: swap;
   src: url("../vendor/inter-4.1/InterVariable-Italic.woff2") format("woff2");
 }
+
 /* Body text is 14 px on 20 px lines, secondary text 13 px (`text-sm`) or 12 px (`text-xs`). Boxes inside a panel are
    10 px round (`rounded-inner`). */
 @theme {
@@ -121,6 +125,7 @@
   --text-sm--line-height: 1.25rem;
   --radius-inner: 0.625rem;
 }
+
 /* `line`: lines inside a panel, fainter than its border. Soft colours: tints, with text that reads on them. */
 @theme inline {
   --color-muted: color-mix(in oklab, var(--color-base-content) 64%, transparent);
@@ -133,6 +138,7 @@
   --color-error-soft: var(--error-soft);
   --color-error-soft-content: var(--error-soft-content);
 }
+
 /* Inside the marking workspace's question list while it is collapsed to its keys: from lg up, where it is a column. */
 @custom-variant questions-collapsed {
   @media (width >= 64rem) {
@@ -141,6 +147,7 @@
     }
   }
 }
+
 @layer base {
   html {
     font-feature-settings: "ss01";
@@ -188,14 +195,17 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
 /* Every page's content: the full width, inside the same gutters, level with the logo and the tabs. */
 @utility page {
   @apply grid w-full grid-cols-1 content-start gap-5 px-4 py-6 sm:px-6;
 }
+
 /* A settings page's panels: narrower than lists, so a form's fields fill its panel at a readable width. */
 @utility settings {
   @apply grid max-w-3xl grid-cols-1 gap-5;
 }
+
 /* A wide column and a 420 px one on its right; a lone child spans both. */
 @utility main-with-aside {
   @apply grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_26.25rem];
@@ -203,6 +213,7 @@
     @apply lg:col-span-2;
   }
 }
+
 /* One-action settings in a panel, divided; a dialog among them is no row. */
 @utility setting-rows {
   @apply px-4;
@@ -210,10 +221,12 @@
     @apply border-t border-line;
   }
 }
+
 /* A white box on the grey page. */
 @utility surface {
   @apply rounded-box border border-base-300 bg-base-100 shadow-xs;
 }
+
 /* A panel's title row. */
 @utility panel-head {
   @apply flex min-h-12 shrink-0 flex-wrap items-center gap-x-2 gap-y-1 border-b border-line px-4 py-1.5;
@@ -228,6 +241,7 @@
 @utility panel-foot {
   @apply flex flex-wrap items-center gap-2 rounded-b-box border-t border-line bg-base-200/50 px-4 py-3;
 }
+
 /* Figures side by side, divided by each one's right and bottom shadows, clipped at the edges. */
 @utility figures {
   @apply grid grid-cols-2 overflow-hidden sm:grid-cols-3 lg:auto-cols-fr lg:grid-flow-col lg:grid-cols-none;
@@ -254,6 +268,7 @@
 @utility icon-tile {
   @apply grid size-8 shrink-0 place-items-center rounded-field bg-base-content/6 text-muted;
 }
+
 /* A round status with an icon, grey unless given a tone. */
 @utility chip {
   @apply inline-flex h-5.5 w-fit shrink-0 items-center gap-1 rounded-full bg-base-content/6 px-2 text-xs font-medium whitespace-nowrap text-base-content/80;
@@ -261,6 +276,7 @@
     @apply size-3.5;
   }
 }
+
 /* The tones of chips, icon tiles and check effects (`data-tone`): the primary tint, green, amber or red. */
 @layer utilities {
   :is(.chip, .icon-tile, .check-effect) {
@@ -278,6 +294,7 @@
     }
   }
 }
+
 /* Marks as a round pill, coloured by their level (`data-level`, as `marks_level` gives it). */
 @utility mark-pill {
   @apply inline-flex h-6 min-w-14 shrink-0 items-center justify-center gap-1 rounded-full bg-base-content/6 px-2.5 text-xs font-semibold whitespace-nowrap tabular-nums;
@@ -445,10 +462,12 @@
     @apply max-md:bottom-30;
   }
 }
+
 /* The open or edited item. */
 @utility active-ring {
   @apply ring-3 ring-secondary outline-1 -outline-offset-1 outline-primary/40;
 }
+
 /* A row of the question list. */
 @utility question-link {
   @apply relative flex h-9 items-center gap-2 px-4 text-sm text-muted transition-colors hover:bg-base-200/60 hover:text-base-content;
@@ -459,9 +478,11 @@
 @utility question-key {
   @apply max-w-1/2 min-w-6.5 shrink-0 truncate font-semibold questions-collapsed:max-w-full;
 }
+
 @utility shaded-box {
   @apply rounded-inner border border-line bg-base-200/50 px-3.5 py-3;
 }
+
 /* A notice across a panel: amber (`data-tone="warning"`), red (`error`), the primary tint (`primary`) or
    grey. */
 @utility notice-row {
@@ -482,10 +503,12 @@
     }
   }
 }
+
 /* Methods to start marking with, as one list of rows. */
 @utility method-choices {
   @apply divide-y divide-line overflow-hidden surface;
 }
+
 /* A labelled row of a settings summary: the label, then what's set, then an action. */
 @utility setting-summary-row {
   @apply flex flex-wrap items-center gap-x-4 gap-y-2 py-3.5;
@@ -496,6 +519,7 @@
     @apply text-subtle;
   }
 }
+
 /* Text edited where it stands: the text and the field that replaces it share one box, outset so the words line up
    with their neighbours, and the field shows focus as a soft ring rather than an outline over those neighbours. */
 @utility edit-in-place {
@@ -504,6 +528,7 @@
     @apply border-base-300 bg-base-100 shadow-none focus:border-primary focus:outline-hidden focus:ring-3 focus:ring-primary/15;
   }
 }
+
 /* Code as written, such as a Code question's answer, or a field that edits it in place. */
 @utility code-block {
   @apply block w-full overflow-x-auto whitespace-pre rounded-box border border-base-300 bg-base-200/50 px-3 py-2 font-mono text-[13px]/relaxed;
@@ -511,6 +536,7 @@
     @apply resize-none focus:border-primary focus:outline-hidden focus:ring-3 focus:ring-primary/15;
   }
 }
+
 /* A segmented control, as tall as a small button: a `segment` label around each radio input, or a `segment` tab or
    pressed button. */
 @utility segmented {
@@ -519,10 +545,12 @@
 @utility segment {
   @apply flex h-7 cursor-pointer items-center gap-1.5 px-2.5 text-sm font-medium whitespace-nowrap text-muted outline-offset-[-2px] transition-colors hover:text-base-content focus-visible:outline-2 focus-visible:outline-primary has-checked:bg-secondary has-checked:text-secondary-content has-focus-visible:outline-2 has-focus-visible:outline-primary has-disabled:cursor-not-allowed has-disabled:opacity-40 aria-pressed:bg-secondary aria-pressed:text-secondary-content aria-selected:bg-secondary aria-selected:text-secondary-content;
 }
+
 /* A row or card a change affects: a bar down its left edge, curving with its corners. */
 @utility changed {
   @apply relative before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:border-l-3 before:border-primary;
 }
+
 @utility preview-bar {
   @apply relative flex min-h-12 items-center gap-2 border-t border-line bg-secondary/60 px-4 py-2;
   /* Below md, in the workspace, it sits above the workspace switch, so it stays in reach as the answers scroll; its
@@ -531,6 +559,7 @@
     @apply max-md:fixed max-md:inset-x-0 max-md:bottom-14 max-md:z-20 max-md:bg-[color-mix(in_oklab,var(--color-secondary)_60%,var(--color-base-100))];
   }
 }
+
 /* Long content shortened to about ten lines and faded at the end, until shown in full (components/collapsible.js). */
 @utility collapsible {
   @apply max-h-64 overflow-hidden;
@@ -542,6 +571,7 @@
     mask-image: none;
   }
 }
+
 /* Links: `text-link` in a sentence, `muted-link` for a secondary one beside other content. */
 @utility text-link {
   @apply font-medium text-primary underline-offset-2 hover:underline;
@@ -549,6 +579,7 @@
 @utility muted-link {
   @apply text-muted underline-offset-2 hover:text-base-content hover:underline;
 }
+
 /* A breadcrumb after the logo: a separator, then its icon and a name that truncates. */
 @utility breadcrumb {
   @apply flex min-w-0 items-center before:mx-0.5 before:text-base-300 before:content-['/'];
@@ -562,6 +593,7 @@
     @apply text-base-content;
   }
 }
+
 /* The top bar and, under it, the page's tabs. */
 @utility app-header {
   @apply sticky top-0 z-30 border-b border-base-300 bg-base-100;
@@ -601,10 +633,12 @@
     }
   }
 }
+
 /* An initial on a tinted square, sized where it's used. */
 @utility initial-badge {
   @apply grid shrink-0 place-items-center rounded-md bg-primary/10 font-semibold uppercase text-primary;
 }
+
 /* Plain buttons are white with a border, so they read as buttons on the grey page and on cards alike. In the
    utilities layer, as daisyUI's own button rules are. */
 @layer utilities {
@@ -679,6 +713,7 @@
     padding-inline-start: 0;
   }
 }
+
 @layer components {
   /* Pygments' token classes from the highlight filter. Not red, green or amber, which mean marks. */
   .code-k, .code-kc, .code-kd, .code-kn, .code-kp, .code-kr, .code-kt, .code-ow {
@@ -743,6 +778,7 @@
     }
   }
 }
+
 /* A student ID this browser can't open, as a lock and masked digits (behaviours/student-ids.js).
    Its text, "Encrypted", is for assistive technology only. */
 [data-student-id-state="encrypted"] {
@@ -756,10 +792,12 @@
     content: "••••••••" / "";
   }
 }
+
 /* Marks the draft no longer gives, while it waits to be previewed, or the saved marking's, while it marks again. */
 .workspace-answers:has(#preview-bar[data-outdated]) [data-marks] {
   @apply opacity-40;
 }
+
 /* Answer groups as cards on the grey page. */
 @utility answer-groups {
   @apply grid gap-2;
@@ -774,6 +812,7 @@
     @apply active-ring;
   }
 }
+
 /* A button that shows or hides a part: tinted while its checkbox is checked or it is pressed. */
 @utility toggle-button {
   @apply has-focus-visible:outline-2 has-focus-visible:outline-primary;
@@ -792,6 +831,7 @@
     }
   }
 }
+
 /* An answer group's students, as equal buttons of their IDs; an adjusted one (`data-adjusted`) is outlined, with a
    pencil. */
 @utility student-id-grid {
@@ -806,6 +846,7 @@
     }
   }
 }
+
 /* How a check of a breakdown marked an answer: a round icon, green, amber or red by `data-tone`, else grey. */
 @utility check-effect {
   @apply grid size-5 shrink-0 place-items-center rounded-full bg-base-content/6 text-muted;
@@ -813,6 +854,7 @@
     @apply size-3;
   }
 }
+
 /* The loading bar behaviours/page-loading.js shows while a page opens: a quarter of the way in a moment, then slowing towards 90%, and
    on arrival the rest of the way before it fades. Transitions, unlike animations, carry on from where they stop.
    Tailwind's scale-x-* set `scale`, which would multiply with this `transform`. */
@@ -849,6 +891,7 @@
     background-color: var(--btn-fg);
   }
 }
+
 /* Tom Select, in the theme's look. */
 .ts-wrapper.input {
   @apply h-auto min-h-(--size) flex-wrap gap-1 py-1.5 whitespace-normal;
@@ -885,6 +928,7 @@
     @apply text-muted;
   }
 }
+
 /* The Students grid: a page no taller than the window, whose table scrolls both ways inside its panel under a sticky
    header, with the student ID and, from sm, the total kept in view on the left. */
 @utility students-grid-page {
@@ -976,6 +1020,7 @@
     @apply ring-[1.5px] ring-primary ring-inset;
   }
 }
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -984,188 +1029,186 @@
     transition-duration: 0.01ms !important;
   }
 }
-/* The landing page's closing call to action has a glow behind it, and its demos sit in windows of the app. */
-@utility landing-glow {
-  background: radial-gradient(56% 64% at 50% 0%, color-mix(in oklab, var(--color-primary) 16%, transparent), transparent 72%);
-}
-/* Ticks, crosses and halves around the hero's headline, each written in pen strokes, then faded. Smaller ones are
-   fainter. Hidden on a phone, and still with reduced motion. */
-@utility landing-marks {
-  @apply pointer-events-none absolute inset-x-0 top-0 -z-10 h-[34rem] max-sm:hidden;
-  & > svg {
-    position: absolute;
-    width: var(--size);
-    height: var(--size);
-    opacity: var(--strength);
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 2.25;
-    stroke-linecap: round;
-    stroke-linejoin: round;
+
+/* A mockup of the app in a landing page demo (components/landing/demo.js). The animation sets `data-shown` and moves
+   things; this decides what shows. Overlays start hidden, and scroll bars never show. */
+@utility landing-mockup {
+  & * {
+    scrollbar-width: none;
+    transition-property: none !important;
   }
+  & [data-shown="0"] {
+    @apply hidden!;
+  }
+  /* Answer groups render off screen too, to be measured and moved. */
+  & .answer-groups > li {
+    content-visibility: visible;
+  }
+  /* The answers scroll at any width. The room below the last group keeps a scroll from being clamped at the end.
+     They fade out where the demo's fixed height clips them. */
+  & .workspace-cards {
+    @apply overflow-y-auto after:h-80 after:content-[''];
+    mask-image: linear-gradient(to bottom, #000 calc(100% - 3rem), transparent);
+    /* No scroll anchoring: only the timeline scrolls them. */
+    overflow-anchor: none;
+  }
+  /* Summaries show in full. */
+  & .collapsible {
+    @apply max-h-none;
+    mask-image: none;
+  }
+  /* A summary's code wraps: nothing in a mockup scrolls sideways. */
+  & .prose-core pre {
+    @apply whitespace-pre-wrap wrap-break-word;
+  }
+  & [data-focus="1"] {
+    @apply outline-2 outline-offset-2 outline-base-content;
+  }
+}
+
+/* A section's demo fits under the site's header with the section's heading and the chapter bar, which take
+   `--landing-demo-offset`. On phones, some of the page shows around it. */
+@utility landing-demo-height {
+  height: clamp(24rem, 100svh - var(--landing-demo-offset), 34rem);
+  @variant max-sm {
+    height: min(40rem, 70svh);
+  }
+}
+
+@utility landing-menu {
+  @apply invisible absolute top-0 left-0 z-50 rounded-box border border-base-300 bg-base-100 opacity-0 shadow-lg;
+}
+
+@utility landing-toast {
+  @apply invisible absolute z-50 opacity-0;
+}
+
+/* The pointer, with the ring of its click. */
+@utility landing-pointer {
+  @apply pointer-events-none invisible absolute top-0 left-0 z-60 opacity-0;
+  & > span {
+    @apply absolute -top-2.5 -left-2.5 size-5 rounded-full border-2 border-primary opacity-0;
+  }
+}
+
+/* A demo's chapter bar. */
+@utility landing-chapters {
+  @apply relative mt-5 grid touch-none auto-cols-fr grid-flow-col gap-2 select-none sm:gap-3;
+  & button {
+    @apply grid w-full cursor-pointer content-start gap-2 text-left text-sm font-medium text-muted transition-colors hover:text-base-content aria-[current=true]:text-base-content max-sm:justify-items-center;
+  }
+  &:has(.landing-chapters-caption) {
+    @apply max-sm:pb-7;
+  }
+}
+
+/* A chapter's caption: on phones only the current chapter's, under the bar. */
+@utility landing-chapters-caption {
+  @apply max-sm:hidden;
+  [aria-current="true"] > & {
+    @apply max-sm:absolute max-sm:inset-x-0 max-sm:bottom-0 max-sm:block max-sm:text-center;
+  }
+}
+
+@utility landing-chapters-track {
+  @apply block h-1 w-full overflow-hidden rounded-full bg-base-300;
+  & > span {
+    @apply block h-full origin-left scale-x-0 bg-primary;
+  }
+}
+
+/* The method examples' tabs: the chosen one underlined, as a page's tab is. */
+@utility landing-method-tabs {
+  & .tab-link:has(:checked) {
+    @apply text-primary after:bg-primary;
+  }
+  & .tab-link:has(:focus-visible) {
+    @apply outline-2 outline-primary;
+  }
+}
+
+/* The hero's demo: on a short screen, narrow enough for its chapter bar to show under the site's header. */
+@utility landing-hero {
+  max-width: clamp(48rem, (100svh - 9rem) * 1152 / 720, 72rem);
+}
+
+/* The box the hero's mockup scales to fit, in the mockup's 1152 × 720 proportions. */
+@utility landing-hero-aspect-box {
+  @apply relative aspect-[1152/720] w-full;
+}
+
+/* The hero's mockup, rendered at 1152 × 720 and scaled to fit (`data-width`). */
+@utility landing-hero-mockup {
+  @apply absolute top-0 left-0 h-180 w-288 origin-top-left text-left;
+}
+
+/* A page of the hero's mockup: those after the first start hidden. */
+@utility landing-hero-page {
+  @apply absolute inset-0;
+  &:not(:first-child) {
+    @apply invisible opacity-0;
+  }
+}
+
+/* A dialog's backdrop over the hero's mockup, hidden until the dialog opens. */
+@utility landing-hero-backdrop {
+  @apply invisible absolute inset-0 z-40 grid place-items-center bg-(--backdrop) opacity-0;
+}
+
+@utility landing-hero-dialog {
+  @apply w-full rounded-box border border-base-300 bg-base-100 shadow-2xl;
+}
+
+/* The file dragged into the hero's mockup, hidden until then. */
+@utility landing-hero-file {
+  @apply invisible absolute top-0 left-0 z-50 flex items-center gap-2 rounded-field border border-base-300 bg-base-100 px-3 py-2 text-sm font-medium opacity-0 shadow-lg;
+}
+
+/* The headline's logo grows, each leaf from where they meet, then the rest rises in. */
+@utility landing-hero-intro {
   @variant motion-safe {
-    & > svg {
-      animation: landing-mark 9s ease-in-out var(--delay) infinite both;
+    & > :not(svg) {
+      animation: landing-fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
     }
-    & path {
-      stroke-dasharray: 1;
-      animation: landing-mark-stroke 9s ease-out var(--delay) infinite both;
+    & > :nth-child(2) {
+      animation-delay: 0.8s;
     }
-    & path:nth-child(2) {
-      animation-name: landing-mark-stroke-2;
+    & > :nth-child(3) {
+      animation-delay: 0.92s;
     }
-    & path:nth-child(3) {
-      animation-name: landing-mark-stroke-3;
+    & > :nth-child(4) {
+      animation-delay: 1.04s;
     }
-  }
-  & > :nth-child(1) {
-    left: 7%;
-    top: 16%;
-    rotate: -8deg;
-    --delay: 0s;
-    --size: 2.5rem;
-    --strength: 0.45;
-  }
-  & > :nth-child(2) {
-    left: 17%;
-    top: 42%;
-    rotate: 5deg;
-    --delay: 1.6s;
-    --size: 2rem;
-    --strength: 0.35;
-  }
-  & > :nth-child(3) {
-    left: 5%;
-    top: 66%;
-    rotate: 4deg;
-    --delay: 3.2s;
-    --size: 2.75rem;
-    --strength: 0.5;
-  }
-  & > :nth-child(4) {
-    left: 20%;
-    top: 84%;
-    rotate: -6deg;
-    --delay: 4.8s;
-    --size: 2rem;
-    --strength: 0.35;
-  }
-  & > :nth-child(5) {
-    left: 24%;
-    top: 4%;
-    rotate: 10deg;
-    --delay: 6.4s;
-    --size: 1.75rem;
-    --strength: 0.3;
-  }
-  & > :nth-child(6) {
-    left: 91%;
-    top: 20%;
-    rotate: 7deg;
-    --delay: 0.8s;
-    --size: 2.75rem;
-    --strength: 0.5;
-  }
-  & > :nth-child(7) {
-    left: 80%;
-    top: 44%;
-    rotate: -5deg;
-    --delay: 2.4s;
-    --size: 2rem;
-    --strength: 0.35;
-  }
-  & > :nth-child(8) {
-    left: 94%;
-    top: 60%;
-    rotate: -7deg;
-    --delay: 4s;
-    --size: 2.25rem;
-    --strength: 0.4;
-  }
-  & > :nth-child(9) {
-    left: 83%;
-    top: 80%;
-    rotate: -3deg;
-    --delay: 5.6s;
-    --size: 2.5rem;
-    --strength: 0.45;
-  }
-  & > :nth-child(10) {
-    left: 75%;
-    top: 5%;
-    rotate: -10deg;
-    --delay: 7.2s;
-    --size: 1.75rem;
-    --strength: 0.3;
+    & > :nth-child(5) {
+      animation-delay: 1.16s;
+    }
+    & > svg path {
+      transform-box: fill-box;
+      transform-origin: 97% 100%;
+      animation: landing-logo-grow 1s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    }
+    & > svg path:last-child {
+      transform-origin: 0 100%;
+      animation-delay: 0.35s;
+    }
   }
 }
-@utility landing-mark-tick {
-  color: color-mix(in oklab, var(--color-success) 80%, var(--color-base-content));
+
+@keyframes landing-logo-grow {
+  from {
+    rotate: -12deg;
+    scale: 0;
+  }
 }
-@utility landing-mark-cross {
-  color: color-mix(in oklab, var(--color-error) 80%, var(--color-base-content));
-}
-@utility landing-mark-half {
-  color: color-mix(in oklab, var(--color-warning) 80%, var(--color-base-content));
-}
-/* A mark fades in and settles as it's written, holds, then fades out. */
-@keyframes landing-mark {
-  0% {
+
+@keyframes landing-fade-up {
+  from {
     opacity: 0;
-    scale: 0.92;
-  }
-  4%,
-  55% {
-    opacity: var(--strength);
-    scale: 1;
-  }
-  68%,
-  100% {
-    opacity: 0;
-    scale: 1;
+    translate: 0 0.875rem;
   }
 }
-/* A mark's strokes are written one after another. */
-@keyframes landing-mark-stroke {
-  0% {
-    stroke-dashoffset: 1;
-  }
-  7%,
-  100% {
-    stroke-dashoffset: 0;
-  }
-}
-/* A later stroke stays hidden until it starts. */
-@keyframes landing-mark-stroke-2 {
-  0%,
-  6% {
-    stroke-dashoffset: 1;
-    stroke-opacity: 0;
-  }
-  6.1% {
-    stroke-opacity: 1;
-  }
-  12%,
-  100% {
-    stroke-dashoffset: 0;
-    stroke-opacity: 1;
-  }
-}
-@keyframes landing-mark-stroke-3 {
-  0%,
-  11% {
-    stroke-dashoffset: 1;
-    stroke-opacity: 0;
-  }
-  11.1% {
-    stroke-opacity: 1;
-  }
-  18%,
-  100% {
-    stroke-dashoffset: 0;
-    stroke-opacity: 1;
-  }
-}
+
+/* The app's frame around the hero's pages, with a drop shadow. */
 @utility landing-app-frame {
   @apply overflow-hidden rounded-2xl border border-base-300 bg-base-100;
   /* A glow of the primary colour, for the dark theme. */
@@ -1175,104 +1218,20 @@
     0 48px 96px -40px oklch(25% 0.04 260 / 0.22),
     0 32px 96px -48px color-mix(in oklab, var(--color-primary) 35%, transparent);
 }
-/* A scene's control pressed before the next frame. */
-@utility landing-scene {
-  & [data-pressed] {
-    @apply scale-95 ring-3 ring-primary/40 transition;
-  }
-}
-/* A tab of the review section's steps: its number, title and description. */
-@utility landing-review-tab {
-  @apply flex cursor-pointer items-start gap-3.5 rounded-box border border-transparent p-4 text-left transition-colors hover:bg-base-200/70 aria-selected:border-base-300 aria-selected:bg-base-100 aria-selected:shadow-sm max-sm:flex-col max-sm:items-center max-sm:gap-2 max-sm:p-3 max-sm:text-center max-sm:text-sm;
-}
-@utility landing-review-tab-number {
-  @apply grid size-7 shrink-0 place-items-center rounded-full border border-base-300 text-sm font-semibold tabular-nums text-muted;
-  [aria-selected="true"] > & {
-    @apply border-primary bg-primary text-primary-content;
-  }
-}
-/* The label above a section's heading. */
-@utility landing-eyebrow {
-  @apply text-sm font-semibold uppercase tracking-wider text-primary;
-}
-@utility landing-feature-icon {
-  @apply grid size-10 shrink-0 place-items-center rounded-field bg-primary/10 text-primary;
-}
-/* An answer, then its marks beside it; in a list too narrow for both, the marks go under an answer that is code. */
-@utility landing-answer {
-  @apply flex items-start gap-4 px-4 py-3;
-  & > :last-child {
-    @apply flex shrink-0 flex-col items-end gap-0.5 text-right;
-  }
-  @container (width < 32rem) {
-    &:has(pre) {
-      @apply flex-col gap-2;
-    }
-    &:has(pre) > :last-child {
-      @apply flex-row flex-wrap items-baseline gap-x-3 text-left;
-    }
-  }
-}
-/* A method example's variant: the change to its settings, the lines of its description the change brings, and the
-   answers whose marks change. */
-@utility landing-variant-change {
-  @apply inline-flex w-fit items-center gap-2 rounded-field bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary;
-  @variant motion-safe {
-    animation: landing-enter 0.4s ease-out both;
-  }
-}
-@utility landing-variant {
-  /* A description shows in full. */
-  & .collapsible {
-    @apply max-h-none;
-    mask-image: none;
-  }
+
+/* The lines each change adds to a summary (components/landing/new-lines.js), tinted. */
+@utility landing-new-lines {
   & pre [data-new] {
     @apply inline-block w-full;
   }
   & [data-new] {
     @apply -mx-1 rounded-field bg-primary/10 px-1;
-    @variant motion-safe {
-      animation: landing-enter 0.4s ease-out 0.2s both;
-    }
   }
   & [data-new] [data-new] {
     @apply bg-transparent;
   }
-  & > .changed {
-    @variant motion-safe {
-      animation: flash 1.2s ease-out 0.3s both;
-    }
-  }
 }
-@keyframes landing-enter {
-  from {
-    opacity: 0;
-    transform: translateY(0.25rem);
-  }
-}
-/* A dot for each variant of a method example, wide for the variant shown, filling while the slideshow plays. */
-@utility landing-variant-dot {
-  @apply relative h-2 w-2 cursor-pointer overflow-hidden rounded-full bg-base-300 transition-all hover:bg-base-content/30 aria-[current]:w-8;
-  &[aria-current]::after {
-    @apply absolute inset-0 origin-left bg-primary content-[''];
-  }
-  &[data-timing]::after {
-    animation: landing-timer var(--variant-ms) linear both;
-  }
-}
-@keyframes landing-timer {
-  from {
-    transform: scaleX(0);
-  }
-}
-/* The method examples' tabs scroll sideways on a phone. */
-@utility landing-method-tabs {
-  @apply max-w-full overflow-x-auto;
-  & label {
-    @apply whitespace-nowrap;
-  }
-}
+
 /* The question a student's drawer opens at, from a cell of the grid: tinted for a moment. */
 #student-detail > [autofocus] {
   @variant motion-safe {
@@ -1284,6 +1243,7 @@
     background-color: color-mix(in oklab, var(--color-primary) 12%, transparent);
   }
 }
+
 /* Read-only views of a form, like a published method's settings: disabled fields show their values as plain text
    rather than greyed-out controls, and stay disabled for assistive technology. */
 @utility read-only-fields {
@@ -1324,6 +1284,7 @@
     @apply p-0 text-base font-normal text-base-content shadow-none has-checked:bg-transparent;
   }
 }
+
 /* A dashed tile after a list of cards, making a new one. */
 @utility new-tile {
   @apply flex h-24 w-full cursor-pointer items-center justify-center gap-2 rounded-box border-[1.5px] border-dashed border-base-300 font-medium text-muted transition-colors hover:border-primary hover:text-base-content;

@@ -1,7 +1,7 @@
 {% extends "allauth/layouts/base.html" %}
 {% block body %}
 <main id="main" class="grid min-h-dvh content-center justify-items-center gap-6 px-4 py-10">
-  <a href="{% if user.is_authenticated %}{% url 'courses' %}{% else %}/{% endif %}" class="flex items-center gap-2.5 rounded-field text-lg font-semibold tracking-tight"><c-logo class="size-7" />GradeFlow</a>
+  <a {% if user.is_authenticated %}href="{% url 'courses' %}"{% else %}href="/" hx-boost="false"{% endif %} class="flex items-center gap-2.5 rounded-field text-lg font-semibold tracking-tight"><c-logo class="size-7" />GradeFlow</a>
   <div class="surface w-full max-w-100">
     <div class="grid gap-5 p-6 [&_.btn]:w-full">{% block content %}{% endblock %}</div>
     <nav class="panel-foot justify-center gap-x-6 text-sm text-muted empty:hidden" aria-label="Other ways in">{% block links %}{% endblock %}</nav>

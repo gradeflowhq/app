@@ -1,0 +1,36 @@
+{# What shows over the mockup: the method picker (marking/picker.html), the review before sending (exports/export.html), the select menus, the toasts, the dragged file and the pointer. #}
+<div class="landing-hero-backdrop" data-picker>
+  <div class="landing-hero-dialog max-w-md">
+    <c-dialog.head id="hero-picker" title="{{ hero.picker_title }}" />
+    <ul class="grid gap-0.5 border-t border-base-300 px-2 py-2">
+      {% for method in hero.step_choices %}
+      <li><button type="button" class="grid w-full gap-0.5 rounded-field px-2.5 py-2 text-left hover:bg-base-200 aria-current:bg-secondary/60" aria-current="{{ forloop.first|yesno:'true,false' }}" data-label="{{ method.label }}">
+        <span class="flex flex-wrap items-center gap-2 font-medium">{{ method.label }}{% if method.needs_model_endpoint %}<c-ai-service />{% endif %}</span>
+        <span class="text-sm text-muted">{{ method.summary }}</span>
+      </button></li>
+      {% endfor %}
+    </ul>
+    <div class="flex flex-wrap items-center justify-end gap-2 border-t border-base-300 px-4 py-3 sm:px-6">
+      <span class="btn btn-ghost">Cancel</span>
+      <span class="btn btn-primary" data-use-button>{% for method in hero.step_choices %}<span data-shown="{{ forloop.first|yesno:'1,0' }}" data-use-method="{{ method.label }}">Use {{ method.label }}</span>{% endfor %}</span>
+    </div>
+  </div>
+</div>
+<div class="landing-hero-backdrop" data-send-review>
+  <div class="landing-hero-dialog max-w-lg">
+    <c-dialog.head id="hero-send-review" title="Send to Canvas" />
+    <div class="grid gap-4 px-6 pt-1">
+      <p class="-mt-1 truncate text-sm text-muted">{{ content.assessment }} · {{ content.course }}</p>
+      <div class="surface divide-y divide-line overflow-hidden"><p class="flex items-center gap-3 px-4 py-3">{% icon "check-circle" "size-5 text-success" %}<span><span class="tabular-nums font-semibold">{{ hero.student_count }}</span> students matched in Canvas</span></p></div>
+    </div>
+    <c-dialog.footer>
+      <span class="btn">Cancel</span>
+      <span class="btn btn-primary" data-confirm-send><span class="loading loading-spinner loading-sm" data-shown="0"></span><span data-shown="1">Send {{ hero.student_count }} students' marks</span><span data-shown="0">Sending…</span></span>
+    </c-dialog.footer>
+  </div>
+</div>
+{% for stage in hero.editor_stages %}{% if stage.edit.choices %}<c-landing.menu name="{{ forloop.counter0 }}" :choices="stage.edit.choices" />{% endif %}{% endfor %}
+<c-landing.toast name="adjusted">Adjusted {{ hero.adjusted_count }} students.</c-landing.toast>
+<c-landing.toast name="sent">Sent {{ hero.student_count }} students' marks to “{{ content.assessment }}”.</c-landing.toast>
+<div class="landing-hero-file" data-dragged-file>{% icon "table-cells" "text-success" %}{{ content.file_name }}</div>
+<c-landing.pointer />

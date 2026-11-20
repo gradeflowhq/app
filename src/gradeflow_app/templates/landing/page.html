@@ -1,68 +1,52 @@
 {% extends "base.html" %}
+{% load static %}
+{% block extra_head %}<script type="module" src="{% static 'gradeflow/landing.js' %}"></script>{% endblock %}
 {% block body %}
 <c-topbar>
-  <c-slot name="nav"><div class="ml-6 flex gap-6 text-sm text-muted max-md:hidden" hx-boost="false">{% for id, name in sections.items %}<a class="hover:text-base-content" href="#{{ id }}">{{ name }}</a>{% endfor %}</div></c-slot>
   <c-slot name="actions">
-    <a href="{{ github_url }}" class="btn btn-ghost btn-square btn-sm max-sm:hidden" target="_blank" rel="noopener" hx-boost="false" aria-label="GradeFlow on GitHub" title="GradeFlow on GitHub"><c-github /></a>
-    <a href="{% url 'account_login' %}" class="btn btn-ghost btn-sm">Sign in</a>
-    <a href="{% url 'account_signup' %}" class="btn btn-primary btn-sm max-sm:hidden">Create an account</a>
+    <a href="{% url 'account_login' %}" class="btn btn-ghost">Sign in</a>
+    <a href="{% url 'account_signup' %}" class="btn btn-primary max-sm:hidden">Create an account</a>
   </c-slot>
 </c-topbar>
 <main id="main">
-<section class="relative isolate overflow-hidden px-4 pb-12 pt-14 sm:px-6 sm:pt-22">
-  {% include "landing/marks.html" %}
-  <div class="mx-auto grid max-w-5xl justify-items-center gap-6 text-center">
-    <a class="inline-flex items-center gap-2 rounded-full border border-base-300 bg-base-100 px-3.5 py-1.5 text-sm font-medium text-muted hover:text-base-content" href="{{ github_url }}" target="_blank" rel="noopener" hx-boost="false"><c-github class="size-4 text-base-content" />Open source on GitHub{% icon "arrow-right" "size-3.5" mini=True %}</a>
-    <h1 class="text-balance text-3xl font-semibold leading-none tracking-tight sm:text-5xl md:text-6xl lg:text-7xl">A mark scheme that marks the assessment for you.</h1>
-    <p class="max-w-2xl text-pretty text-lg text-muted sm:text-xl">Set it up once and every student is marked the same way. Review answers in groups, change the scheme any time, and send the marks to Canvas or download them as a spreadsheet.</p>
-    <div class="mt-2 flex w-full max-w-sm flex-col gap-3 sm:w-auto sm:max-w-none sm:flex-row"><a class="btn btn-primary btn-lg" href="{% url 'account_signup' %}">Create an account</a><a class="btn btn-lg" href="#methods" hx-boost="false">See how it works</a></div>
-  </div>
-  {% include "landing/workspace.html" %}
+<section class="relative isolate overflow-hidden bg-linear-to-t from-base-200 from-[22rem] to-base-100 to-[22rem] px-4 pb-12 pt-14 sm:px-6 sm:pb-16 sm:pt-20">
+  {{ demos.hero }}
 </section>
 
-<section id="methods" class="scroll-mt-14 px-4 py-24 sm:px-6 sm:py-32">
-  <div class="mx-auto mb-12 grid max-w-4xl justify-items-center gap-3.5 text-center sm:mb-16">
-    <p class="landing-eyebrow">Methods</p>
-    <h2 class="text-balance text-2xl font-semibold tracking-tight sm:text-4xl md:text-5xl">A method for every question.</h2>
-    <p class="max-w-2xl text-pretty text-lg text-muted">Use one, or combine several into your mark scheme.</p>
-  </div>
+<c-landing.section id="methods" icon="adjustments-horizontal" name="Methods" title="A method for every question." description="Use one, or combine several into your mark scheme.">
   <div class="mx-auto max-w-6xl">
-    {% include "landing/examples.html" %}
+    {{ demos.methods }}
     <p class="mx-auto mt-8 max-w-3xl text-balance text-center text-sm text-muted">Also {{ other_methods }}.</p>
   </div>
-</section>
+</c-landing.section>
 
-<section id="review" class="scroll-mt-14 border-y border-base-300 bg-base-200/50 px-4 py-24 sm:px-6 sm:py-32">
-  <div class="mx-auto mb-12 grid max-w-4xl justify-items-center gap-3.5 text-center sm:mb-16">
-    <p class="landing-eyebrow">Review</p>
-    <h2 class="text-balance text-2xl font-semibold tracking-tight sm:text-4xl md:text-5xl">Review every answer, once.</h2>
-    <p class="max-w-2xl text-pretty text-lg text-muted">Students who wrote the same thing share an answer group. Check it, mark it by example, or adjust it by hand.</p>
-  </div>
-  {% include "landing/answer_steps.html" %}
-</section>
+<c-landing.section id="groups" icon="rectangle-stack" name="Groups" title="Mark answers in groups." description="Students who wrote the same thing, or meant it, share a group. Adjust their marks and feedback at once.">
+  {{ demos.groups }}
+</c-landing.section>
 
-<section id="features" class="scroll-mt-14 px-4 py-24 sm:px-6 sm:py-32">
-  <div class="mx-auto mb-12 grid max-w-4xl justify-items-center gap-3.5 text-center sm:mb-16">
-    <p class="landing-eyebrow">Features</p>
-    <h2 class="text-balance text-2xl font-semibold tracking-tight sm:text-4xl md:text-5xl">From the assessment to the gradebook.</h2>
-  </div>
+<c-landing.section id="by-example" icon="hand-thumb-up" name="By example" title="Mark by example." description="Accept or reject an answer, and the mark scheme updates to match.">
+  {{ demos.by_example }}
+</c-landing.section>
+
+<c-landing.section id="features" icon="squares-2x2" name="Features" title="From the assessment to the gradebook.">
   <ul class="mx-auto grid max-w-6xl gap-4 sm:grid-cols-2 lg:grid-cols-3">
     {% for icon_name, title, text in features %}
-    <li class="surface flex gap-4 p-5 sm:p-6"><span class="landing-feature-icon">{% icon icon_name "size-5" %}</span><div class="grid content-start gap-1"><h3 class="font-semibold">{{ title }}</h3><p class="text-sm text-muted">{{ text }}</p></div></li>
+    <li class="surface flex gap-3.5 p-5"><span class="icon-tile">{% icon icon_name %}</span><div class="grid content-start gap-1"><h3 class="font-semibold">{{ title }}</h3><p class="text-sm text-muted">{{ text }}</p></div></li>
     {% endfor %}
   </ul>
-</section>
+</c-landing.section>
 
-<section class="px-4 pb-24 sm:px-6 sm:pb-32">
-  <div class="landing-glow mx-auto grid max-w-6xl justify-items-center gap-7 rounded-3xl border border-base-300 bg-base-100 px-6 py-18 text-center">
-    <h2 class="text-balance text-2xl font-semibold tracking-tight sm:text-4xl md:text-5xl">Mark your next assessment with GradeFlow.</h2>
+<section class="px-4 pb-12 sm:px-6 sm:pb-16">
+  <div class="surface mx-auto grid max-w-6xl justify-items-center gap-6 px-6 py-14 text-center">
+    <c-logo class="size-10" />
+    <h2 class="text-balance text-3xl font-semibold tracking-tight sm:text-[2.5rem]">Mark your next assessment with GradeFlow.</h2>
     <div class="flex w-full max-w-sm flex-col gap-3 sm:w-auto sm:max-w-none sm:flex-row"><a class="btn btn-primary btn-lg" href="{% url 'account_signup' %}">Create an account</a><a class="btn btn-lg" href="{{ github_url }}" target="_blank" rel="noopener" hx-boost="false"><c-github />View on GitHub</a></div>
   </div>
 </section>
 
 <footer class="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-3 px-4 pb-10 text-sm text-muted sm:px-6">
   <span class="flex items-center gap-2 font-semibold tracking-tight text-base-content"><c-logo class="size-5" />GradeFlow</span>
-  <nav class="flex flex-wrap gap-x-6 gap-y-2 sm:ml-auto" aria-label="Footer" hx-boost="false">{% for id, name in sections.items %}<a class="hover:text-base-content" href="#{{ id }}">{{ name }}</a>{% endfor %}<a class="hover:text-base-content" href="{{ github_url }}" target="_blank" rel="noopener">GitHub</a></nav>
+  <nav class="flex flex-wrap gap-x-4 gap-y-2 sm:ml-auto sm:gap-x-6" aria-label="Footer" hx-boost="false">{% for id, name in sections.items %}<a class="hover:text-base-content" href="#{{ id }}">{{ name }}</a>{% endfor %}<a class="hover:text-base-content" href="{{ github_url }}" target="_blank" rel="noopener">GitHub</a></nav>
 </footer>
 </main>
 {% endblock %}

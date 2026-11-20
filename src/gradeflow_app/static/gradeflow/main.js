@@ -1,4 +1,4 @@
-// The script on every page: the page-wide behaviours, then Alpine with every component.
+// The script on every page: the page-wide behaviours, then Alpine with the components.
 
 import Alpine from "../vendor/alpinejs-csp-3.17.4/module.esm.min.js";
 import * as allauth from "./behaviours/allauth.js";
@@ -27,7 +27,6 @@ import { collapsible } from "./components/collapsible.js";
 import { fileDrop } from "./components/file-drop.js";
 import { histogram } from "./components/histogram.js";
 import { importer } from "./components/import/importer.js";
-import { methodSlideshow, openAnswerGroup, scene } from "./components/landing-demos.js";
 import { markdownEditor } from "./components/markdown-editor.js";
 import { markingResizer } from "./components/marking-resizer.js";
 import { math } from "./components/math.js";
@@ -85,16 +84,13 @@ const components = {
   markingResizer,
   math,
   methodPicker,
-  methodSlideshow,
   modelServiceNotice,
   modelServicePanel,
-  openAnswerGroup,
   openOnLoad,
   orderedChoices,
   questionsCollapse,
   questionsToggle,
   recoveryKey,
-  scene,
   searchList,
   studentsGrid,
   tagInput,

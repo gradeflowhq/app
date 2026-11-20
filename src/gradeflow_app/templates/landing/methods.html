@@ -1,0 +1,43 @@
+{# The method demos, one for each method's tab. #}
+<div x-data="methodDemos" x-on:change="choose">
+  <div class="mb-5 flex items-center gap-2 border-b border-line">
+    <div class="tab-row landing-method-tabs min-w-0 flex-1" role="radiogroup" aria-label="Method">{% for method in methods %}<label class="tab-link cursor-pointer"><input type="radio" class="sr-only" name="example" value="{{ method.example_key }}"{% if forloop.first %} checked{% endif %}>{{ method.label }}</label>{% endfor %}</div>
+    <button type="button" class="btn btn-ghost btn-square btn-sm shrink-0 motion-reduce:hidden" x-on:click="togglePlaying" :aria-label="playing ? 'Pause' : 'Play'" aria-label="Pause"><span x-show="playing">{% icon "pause" %}</span><span x-show="!playing" x-cloak>{% icon "play" %}</span></button>
+  </div>
+  {% for method in methods %}
+  <div data-demo="method" data-example="{{ method.example_key }}"{% if not forloop.first %} hidden{% endif %}>
+    <div role="img" aria-label="A marking's settings changed one step at a time, its summary and its answers' marks changing with each.">
+      <div class="landing-mockup relative" inert aria-hidden="true" data-mockup>
+        <div class="landing-demo-height [--landing-demo-offset:24rem] grid gap-5 text-left max-md:grid-rows-[auto_minmax(0,1fr)] md:grid-cols-[minmax(0,1fr)_22rem] md:grid-rows-[minmax(0,1fr)]">
+          <section class="relative flex min-h-0 min-w-0 flex-col" aria-label="Answers">
+            {% with column=method.columns.0 %}
+            {% if method.is_question_group %}
+            {% with question_keys=column.question_keys student_count=column.student_count %}{% include "marking/combinations.html#header" %}{% endwith %}
+            {% else %}
+            {% with question=column.question groupings=column.groupings grouping=column.grouping grouping_options=column.grouping_options filters=column.filters filter="all" answer_groups=column.answer_groups hidden_count=0 %}{% include "results/answers.html#header" %}<div class="max-md:hidden">{% include "results/answers.html#list_head" %}</div>{% endwith %}
+            {% endif %}
+            {% endwith %}
+            <div class="workspace-cards">
+              {% for column in method.columns %}
+              {% if method.is_question_group %}
+              <ul class="surface relative divide-y divide-line overflow-clip" aria-label="Answers" data-shown="{{ forloop.first|yesno:'1,0' }}" data-answer-list>
+                {% for row in column.rows %}{% include "marking/combinations.html#row" %}{% endfor %}
+              </ul>
+              {% else %}
+              <ul class="answer-groups relative" aria-label="Answers" data-shown="{{ forloop.first|yesno:'1,0' }}" data-answer-list>
+                {% for answer_group in column.answer_groups %}{% with question=column.question open=False grouping=column.grouping draft=column.draft %}{% include "results/answer_group.html" %}{% endwith %}{% endfor %}
+              </ul>
+              {% endif %}
+              {% endfor %}
+            </div>
+          </section>
+          <aside class="flex min-h-0 min-w-0 flex-col max-md:order-first max-md:[&_.panel-foot,&_.panel-head]:hidden" aria-label="Marking">
+            <c-landing.editor><c-landing.summaries :summaries="method.summaries" /></c-landing.editor>
+          </aside>
+        </div>
+      </div>
+    </div>
+    <c-landing.chapters :chapters="method.chapters" />
+  </div>
+  {% endfor %}
+</div>

@@ -1,0 +1,31 @@
+{# The marking-by-example demo. #}
+{% with question=by_example.question %}
+<div class="mx-auto max-w-6xl" x-data="landingDemo" data-demo="by-example">
+  <div role="img" aria-label="Answer groups given full marks, partial marks and none as not allowed, their marks previewed and the marking's summary changing with each.">
+    <div class="landing-mockup relative" inert aria-hidden="true" data-mockup>
+      <div class="landing-demo-height [--landing-demo-offset:19rem] grid grid-rows-[minmax(0,1fr)] gap-5 text-left md:grid-cols-[minmax(0,1fr)_22rem]">
+        <section class="relative flex min-w-0 flex-col md:min-h-0" aria-label="Answers" data-decision-group-indexes="{{ by_example.decision_group_indexes|join:' ' }}" data-decisions="{{ by_example.decisions|join:' ' }}">
+          {% for column in by_example.columns %}
+          <div class="shrink-0" data-shown="{{ forloop.first|yesno:'1,0' }}" data-answers-header>
+            {% with groupings=column.groupings grouping=column.grouping grouping_options=column.grouping_options filters=column.filters filter="all" draft=column.draft preview_summary=column.preview_summary %}{% include "results/answers.html#header" %}{% endwith %}
+          </div>
+          {% endfor %}
+          {% with column=by_example.columns.0 %}{% with groupings=column.groupings grouping=column.grouping grouping_options=column.grouping_options filters=column.filters filter="all" answer_groups=column.answer_groups hidden_count=0 %}{% include "results/answers.html#list_head" %}{% endwith %}{% endwith %}
+          <div class="workspace-cards">
+            {% for column in by_example.columns %}
+            <ul class="answer-groups relative" aria-label="Answers" data-shown="{{ forloop.first|yesno:'1,0' }}" data-answer-list>
+              {% for answer_group, open in column.groups_with_open %}{% with grouping=column.grouping draft=column.draft can_mark_by_example=True decisions=column.decisions %}{% include "results/answer_group.html" %}{% endwith %}{% endfor %}
+            </ul>
+            {% endfor %}
+          </div>
+        </section>
+        <aside class="workspace-marking max-md:hidden" aria-label="Marking">
+          <c-landing.editor><c-landing.summaries :summaries="by_example.summaries" /></c-landing.editor>
+        </aside>
+      </div>
+      <c-landing.pointer />
+    </div>
+  </div>
+  <c-landing.chapters :chapters="by_example.chapters" />
+</div>
+{% endwith %}
