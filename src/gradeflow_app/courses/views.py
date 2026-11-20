@@ -110,7 +110,7 @@ def members(request: Request, member: Member) -> HttpResponse:
             _invite(request, member.course, form.cleaned_data["email"], form.cleaned_data["role"])
             notify_change(topic("members", member.course_id))
             form = InviteForm()
-        context = _members_context(member, form) | {"out_of_band": True}
+        context = _members_context(member, form) | {"out_of_band": True, "refreshes_count": True}
         return render(request, "courses/members.html#invite", context, status=200 if valid else 422)
     if is_fragment(request):
         return _members_partial(request, member)
@@ -130,7 +130,8 @@ def _members_context(member: Member, form: InviteForm) -> dict[str, object]:
 
 
 def _members_partial(request: Request, member: Member) -> HttpResponse:
-    return render(request, "courses/members.html#members", _members_context(member, InviteForm()))
+    context = _members_context(member, InviteForm()) | {"refreshes_count": True}
+    return render(request, "courses/members.html#members", context)
 
 
 def _invite(request: Request, course: Course, email: str, role: Role) -> None:

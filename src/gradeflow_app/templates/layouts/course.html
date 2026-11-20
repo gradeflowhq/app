@@ -5,7 +5,7 @@
   <c-topbar :course="course" tabs_label="Course">
     <c-slot name="tabs">
       <c-tab href="{% url 'course' course.pk %}" label="Assessments" icon="document-text" sections="course" :count="course.assessments.count" />
-      <c-tab href="{% url 'members' course.pk %}" label="Members" icon="user-group" sections="members" :count="course.members.count" />
+      <c-tab href="{% url 'members' course.pk %}" label="Members" icon="user-group" sections="members" :count="course.members.count" count_id="members-count" />
       <c-tab href="{% url 'course_methods' course.pk %}" label="Methods" icon="book-open" sections="course_methods method_page method_latest" />
       {% if member.can_edit %}<c-tab href="{% url 'canvas_settings' course.pk %}" label="Canvas" icon="link" sections="canvas_settings" />{% endif %}
       {% if member.is_owner %}<c-tab href="{% url 'course_settings' course.pk %}" label="Settings" icon="cog-6-tooth" sections="course_settings" />{% endif %}

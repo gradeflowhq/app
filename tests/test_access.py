@@ -161,6 +161,14 @@ def test_member_changes_refresh_the_members_page(client: Client, monkeypatch: py
     assert published_topics == [topic("members", course_id)] * 3
 
 
+def test_member_changes_refresh_the_members_count(client: Client) -> None:
+    assessment = create_assessment(client)
+    member_client(assessment, Role.VIEWER)
+    bo = Member.objects.get(role=Role.VIEWER).user_id
+    response = client.post(reverse("member_remove", args=[assessment.course_id, bo]), headers=HTMX_HEADERS)
+    assert '<span class="chip tabular-nums" id="members-count" hx-swap-oob="true">1</span>' in response.text
+
+
 def test_member_changes_say_what_changed(client: Client) -> None:
     assessment = create_assessment(client)
     course_id = assessment.course_id

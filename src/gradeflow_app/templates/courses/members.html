@@ -64,6 +64,7 @@
         </tbody>
       </table>
     </div>
+    {% if refreshes_count %}<c-chip id="members-count" class="tabular-nums" hx-swap-oob="true">{{ members|length }}</c-chip>{% endif %}
     {% endpartialdef %}
   </c-panel>
 </c-page>
