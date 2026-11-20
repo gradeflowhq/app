@@ -103,7 +103,12 @@ def _field_for(schema: Schema, label: str, help_text: str, defs: Mapping[str, Sc
     if kind == "string":
         made = _text_field(hints, kwargs)
         if property_schema.get("format") == "regex":
-            made.widget.attrs["class"] = "font-mono text-sm"
+            made.widget.attrs |= {
+                "class": "font-mono text-sm",
+                "spellcheck": "false",
+                "autocapitalize": "off",
+                "autocorrect": "off",
+            }
         if nullable and isinstance(made, forms.CharField):
             made.empty_value = None  # left empty, it is unset
         return made
