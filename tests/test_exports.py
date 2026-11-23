@@ -92,7 +92,7 @@ def test_editors_get_the_rows_to_send_and_the_sending_form(client: Client, canva
     assert "As the course (percentage)" in page
     assert 'data-mode="percent" data-rounding="0.5" data-feedback="true"' in page
     assert "Percentages, rounded to 0.5, with feedback" in page
-    assert 'data-dialog="preview" x-on:click="openPreview"' in page
+    assert 'data-dialog="preview" x-on:click="previewStudent(index)"' in page
     assert 'id="send-review"' in page
 
 
@@ -105,7 +105,7 @@ def test_viewers_see_how_marks_are_sent_but_not_the_rows_or_controls(
     assert "export-rows" not in page
     assert encrypted_id("S001") not in page
     assert "canvasExport" not in page
-    assert "openPreview" not in page
+    assert "previewStudent" not in page
     assert 'name="marks_mode"' not in page
     assert "assignment-picker" not in page
 
@@ -158,7 +158,7 @@ def test_a_send_is_recorded_with_its_assignment_and_count(
     response = client.post(url, {"assignment_name": "Midterm", "student_count": "9"})
     assert response.status_code == 200
     assert b"Midterm" in response.content
-    assert b'<td class="tabular-nums text-right">9</td>' in response.content
+    assert '<span class="tabular-nums">9</span> grades' in response.text
     sent = SentMarks.objects.get()
     assert (sent.assignment_name, sent.student_count, sent.sent_by) == ("Midterm", 9, user)
     activity = client.get(reverse("activity", args=[canvas_assessment.pk]), headers=HTMX_HEADERS).text

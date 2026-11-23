@@ -86,8 +86,8 @@ export const canvasClient = ({ baseUrl, token, proxyUrl }) => {
         enrollment_type: ["student"],
         include: IDENTIFIERS,
       }),
-    /** The comments on each student's submission, by user ID. */
-    comments: async (courseId, assignmentId) =>
+    /** Each student's score and the texts of the comments on their submission, by user ID. */
+    submissions: async (courseId, assignmentId) =>
       new Map(
         (
           await list(`/courses/${courseId}/assignments/${assignmentId}/submissions`, {
@@ -95,7 +95,10 @@ export const canvasClient = ({ baseUrl, token, proxyUrl }) => {
           })
         ).map((submission) => [
           submission.user_id,
-          new Set(submission.submission_comments.map(({ comment }) => comment)),
+          {
+            score: submission.score,
+            comments: new Set(submission.submission_comments.map(({ comment }) => comment)),
+          },
         ]),
       ),
     createAssignmentGroup: (courseId, group) => post(`/courses/${courseId}/assignment_groups`, group),
@@ -153,13 +156,21 @@ export const gradeFor = ({ marks, maxMarks }, { mode, rounding, pointsPossible }
   return mode === "percent" ? `${grade}%` : grade;
 };
 
-/** The grade Canvas shows for `postedGrade`: a percentage on a "percent" assignment, otherwise points out of
- * `pointsPossible`. Canvas reads a "%" grade as that share of the points and shows 2 decimal places. */
-export const displayedGrade = (postedGrade, { gradingType, pointsPossible }) => {
+const toTwoDecimals = (value) => Number(value.toFixed(2));
+
+/** The grade Canvas's gradebook shows for `postedGrade`: a percentage on a "percent" assignment, otherwise points,
+ * to 2 decimal places. Canvas reads a "%" grade as that share of `pointsPossible`. */
+export const gradebookGrade = (postedGrade, { gradingType, pointsPossible }) => {
   const points =
     typeof postedGrade === "string" ? (Number.parseFloat(postedGrade) / 100) * pointsPossible : postedGrade;
-  const toTwoDecimals = (value) => Number(value.toFixed(2));
   return gradingType === "percent"
     ? `${toTwoDecimals((points / pointsPossible) * 100)}%`
-    : `${toTwoDecimals(points)} / ${toTwoDecimals(pointsPossible)}`;
+    : String(toTwoDecimals(points));
+};
+
+/** The grade Canvas shows a student for `postedGrade`: as the gradebook does, out of `pointsPossible` on a points
+ * assignment. */
+export const displayedGrade = (postedGrade, { gradingType, pointsPossible }) => {
+  const grade = gradebookGrade(postedGrade, { gradingType, pointsPossible });
+  return gradingType === "percent" ? grade : `${grade} / ${toTwoDecimals(pointsPossible)}`;
 };

@@ -4,6 +4,7 @@ import { test } from "node:test";
 import {
   canvasClient,
   displayedGrade,
+  gradebookGrade,
   gradeFor,
   matchStudents,
 } from "../../src/gradeflow_app/static/gradeflow/lib/canvas-client.js";
@@ -105,18 +106,18 @@ test("list endpoints", async (t) => {
   );
 });
 
-test("comments are the texts on each student's submission, by user ID", async (t) => {
+test("submissions are each student's score and comment texts, by user ID", async (t) => {
   const calls = stubFetch(t, () =>
     jsonResponse([
-      { user_id: 1, submission_comments: [{ comment: "Q1 [1/1]" }, { comment: "See me." }] },
-      { user_id: 2, submission_comments: [] },
+      { user_id: 1, score: 7.5, submission_comments: [{ comment: "Q1 [1/1]" }, { comment: "See me." }] },
+      { user_id: 2, score: null, submission_comments: [] },
     ]),
   );
   assert.deepEqual(
-    await client().comments(5, 9),
+    await client().submissions(5, 9),
     new Map([
-      [1, new Set(["Q1 [1/1]", "See me."])],
-      [2, new Set()],
+      [1, { score: 7.5, comments: new Set(["Q1 [1/1]", "See me."]) }],
+      [2, { score: null, comments: new Set() }],
     ]),
   );
   const url = new URL(calls[0].url);
@@ -248,4 +249,9 @@ test("displayedGrade shows points on a points assignment and a percentage on a p
   const percent = { gradingType: "percent", pointsPossible: 40 };
   assert.equal(displayedGrade(30.3, percent), "75.75%");
   assert.equal(displayedGrade("76%", percent), "76%");
+});
+
+test("gradebookGrade shows points without the total, as Canvas's gradebook does", () => {
+  assert.equal(gradebookGrade("75.5%", { gradingType: "points", pointsPossible: 10 }), "7.55");
+  assert.equal(gradebookGrade(30.3, { gradingType: "percent", pointsPossible: 40 }), "75.75%");
 });
