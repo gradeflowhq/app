@@ -112,8 +112,9 @@ export const canvasClient = ({ baseUrl, token, proxyUrl }) => {
 
 const matchKey = (value) => normalizedId(value).replace(/\s+/g, " ");
 
-/** Rows matched to Canvas users by login ID, SIS ID, integration ID, email or name, and the rows that match nobody. A
- * value several users share matches none of them: a grade must never reach the wrong student. */
+/** Rows matched to Canvas users by login ID, SIS ID, integration ID, email or name; rows that match nobody; users
+ * several rows match, with those rows; and users no row matches. All but `unmatched` follow the users' order. A value
+ * several users share matches none of them: a grade must never reach the wrong student. */
 export const matchStudents = (rows, canvasUsers) => {
   const owners = new Map();
   for (const user of canvasUsers) {
@@ -121,14 +122,24 @@ export const matchStudents = (rows, canvasUsers) => {
       owners.set(key, owners.has(key) && owners.get(key) !== user ? null : user);
     }
   }
-  const matched = [];
+  const matches = [];
   const unmatched = [];
   for (const row of rows) {
     const user = owners.get(matchKey(row.studentId));
-    if (user) matched.push({ row, user });
+    if (user) matches.push({ row, user });
     else unmatched.push(row);
   }
-  return { matched, unmatched };
+  const matchesByUser = Map.groupBy(matches, ({ user }) => user);
+  const matched = [];
+  const conflicts = [];
+  const unmatchedUsers = [];
+  for (const user of canvasUsers) {
+    const userMatches = matchesByUser.get(user);
+    if (!userMatches) unmatchedUsers.push(user);
+    else if (userMatches.length === 1) matched.push(...userMatches);
+    else conflicts.push({ user, rows: userMatches.map(({ row }) => row) });
+  }
+  return { matched, unmatched, conflicts, unmatchedUsers };
 };
 
 /** The `posted_grade` for `marks` out of `maxMarks`, or null without marks. Mode "marks" scales them to

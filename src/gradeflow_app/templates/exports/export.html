@@ -85,12 +85,37 @@
           <template x-if="isMatched">
             <div class="grid gap-3">
               <div class="surface divide-y divide-line overflow-hidden">
-                <p class="flex items-center gap-3 px-4 py-3" x-show="matched.length">{% icon "check-circle" "size-5 text-success" %}<span><span class="tabular-nums font-semibold" x-text="matched.length"></span> <span x-text="matched.length === 1 ? 'student' : 'students'"></span> matched in Canvas</span></p>
-                <details class="group/missing" x-show="unmatched.length">
-                  <summary class="flex cursor-pointer list-none items-center gap-3 px-4 py-3 hover:bg-base-200/60">{% icon "exclamation-triangle" "size-5 text-warning" %}<span class="flex-1"><span class="tabular-nums font-semibold" x-text="unmatched.length"></span> not in this Canvas course</span>{% icon "chevron-down" "text-muted transition-transform group-open/missing:rotate-180" %}</summary>
-                  <p class="px-4 pb-2 text-sm text-muted">Matched on Canvas login ID, SIS ID, integration ID, email or name.</p><ul class="grid max-h-40 grid-cols-[repeat(auto-fill,minmax(7rem,1fr))] gap-x-3 gap-y-1 overflow-y-auto px-4 pb-3 font-mono text-sm text-muted"><template x-for="row in unmatched" :key="row.studentId"><li x-text="row.studentId"></li></template></ul>
+                <details class="group/matched" x-show="matched.length">
+                  <summary class="flex cursor-pointer list-none items-center gap-3 px-4 py-3 hover:bg-base-200/60">{% icon "check-circle" "size-5 text-success" %}<span class="flex-1"><span class="tabular-nums font-semibold" x-text="matched.length"></span> <span x-text="matched.length === 1 ? 'student' : 'students'"></span> matched in Canvas</span>{% icon "chevron-down" "text-muted transition-transform group-open/matched:rotate-180" %}</summary>
+                  <div class="max-h-72 overflow-y-auto pr-1 pb-2 pl-9">
+                    <table class="table table-sm table-pin-rows text-sm">
+                      <thead><tr><th>Canvas student</th><th>ID</th><th class="text-right">Grade</th></tr></thead>
+                      <tbody><template x-for="{ row, user } in matched" :key="user.id"><tr><td class="w-full max-w-0 truncate" x-text="user.sortable_name" :title="user.sortable_name"></td><td class="font-mono text-muted"><span class="block max-w-40 truncate" x-text="row.studentId" :title="row.studentId"></span></td><td class="text-right whitespace-nowrap tabular-nums" x-text="canvasGrade(row)"></td></tr></template></tbody>
+                    </table>
+                  </div>
                 </details>
                 <p class="flex items-center gap-3 px-4 py-3" x-show="unmarkedCount">{% icon "exclamation-triangle" "size-5 text-warning" %}<span><span class="tabular-nums font-semibold" x-text="unmarkedCount"></span> <span x-text="unmarkedCount === 1 ? 'answer still needs marking. It goes to Canvas as 0.' : 'answers still need marking. They go to Canvas as 0.'"></span></span></p>
+                <details class="group/conflicts" x-show="conflicts.length">
+                  <summary class="flex cursor-pointer list-none items-center gap-3 px-4 py-3 hover:bg-base-200/60">{% icon "exclamation-triangle" "size-5 text-warning" %}<span class="flex-1"><span class="tabular-nums font-semibold" x-text="conflicts.length"></span> <span x-text="conflicts.length === 1 ? 'Canvas student matches' : 'Canvas students match'"></span> several IDs</span>{% icon "chevron-down" "text-muted transition-transform group-open/conflicts:rotate-180" %}</summary>
+                  <div class="grid gap-2 pr-4 pb-3 pl-12 text-sm">
+                    <p class="text-muted">Their marks aren't sent.</p>
+                    <ul class="grid max-h-40 gap-1 overflow-y-auto"><template x-for="{ user, rows } in conflicts" :key="user.id"><li class="flex items-baseline gap-3"><span class="min-w-0 flex-1 truncate" x-text="user.sortable_name" :title="user.sortable_name"></span><span class="flex shrink-0 gap-3 font-mono text-muted"><template x-for="row in rows" :key="row.studentId"><span x-text="row.studentId"></span></template></span></li></template></ul>
+                  </div>
+                </details>
+                <details class="group/missing" x-show="unmatched.length">
+                  <summary class="flex cursor-pointer list-none items-center gap-3 px-4 py-3 hover:bg-base-200/60">{% icon "exclamation-triangle" "size-5 text-warning" %}<span class="flex-1"><span class="tabular-nums font-semibold" x-text="unmatched.length"></span> <span x-text="unmatched.length === 1 ? 'student' : 'students'"></span> not in this Canvas course</span>{% icon "chevron-down" "text-muted transition-transform group-open/missing:rotate-180" %}</summary>
+                  <div class="grid gap-2 pr-4 pb-3 pl-12 text-sm">
+                    <p class="text-muted">Their marks aren't sent. Matched on Canvas login ID, SIS ID, integration ID, email or name.</p>
+                    <ul class="grid max-h-40 grid-cols-[repeat(auto-fill,minmax(min(10rem,100%),1fr))] gap-x-4 gap-y-1 overflow-y-auto font-mono text-muted"><template x-for="row in unmatched" :key="row.studentId"><li class="truncate" x-text="row.studentId" :title="row.studentId"></li></template></ul>
+                  </div>
+                </details>
+                <details class="group/unmatched-users" x-show="unmatchedUsers.length">
+                  <summary class="flex cursor-pointer list-none items-center gap-3 px-4 py-3 hover:bg-base-200/60">{% icon "information-circle" "size-5 text-muted" %}<span class="flex-1"><span class="tabular-nums font-semibold" x-text="unmatchedUsers.length"></span> <span x-text="unmatchedUsers.length === 1 ? 'Canvas student' : 'Canvas students'"></span> not in this assessment</span>{% icon "chevron-down" "text-muted transition-transform group-open/unmatched-users:rotate-180" %}</summary>
+                  <div class="grid gap-2 pr-4 pb-3 pl-12 text-sm">
+                    <p class="text-muted">Their Canvas grades stay as they are.</p>
+                    <ul class="grid max-h-40 grid-cols-[repeat(auto-fill,minmax(min(10rem,100%),1fr))] gap-x-4 gap-y-1 overflow-y-auto"><template x-for="user in unmatchedUsers" :key="user.id"><li class="truncate" x-text="user.sortable_name" :title="user.sortable_name"></li></template></ul>
+                  </div>
+                </details>
               </div>
               <p class="text-sm text-muted" x-show="scaling" x-text="scaling"></p>
             </div>

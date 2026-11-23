@@ -24,6 +24,8 @@ export const canvasExport = () => {
     newName: "",
     matched: [],
     unmatched: [],
+    conflicts: [],
+    unmatchedUsers: [],
     reviewing: false,
     isMatched: false,
 
@@ -154,8 +156,20 @@ export const canvasExport = () => {
       if (this.sending) event.preventDefault();
     },
 
+    /** `row`'s `posted_grade` with the send settings, on an assignment worth `pointsPossible`. A new assignment is
+     * worth the row's max marks. */
+    postedGrade(row, pointsPossible) {
+      const { mode, rounding } = document.getElementById("send-settings").dataset;
+      return gradeFor(row, { mode, rounding: Number(rounding), pointsPossible: pointsPossible ?? row.maxMarks });
+    },
+
+    /** The grade sent for `row` to the chosen assignment, or to a new one. */
+    canvasGrade(row) {
+      return this.postedGrade(row, this.chosenAssignment?.pointsPossible) ?? "—";
+    },
+
     async send() {
-      const { mode, rounding, feedback } = document.getElementById("send-settings").dataset;
+      const { feedback } = document.getElementById("send-settings").dataset;
       await this.run(SENDING, async () => {
         await this.match(); // marks may have changed since they were checked
         const assignment = await this.targetAssignment();
@@ -166,11 +180,7 @@ export const canvasExport = () => {
           this.matched.map(({ row, user }) => [
             user.id,
             {
-              posted_grade: gradeFor(row, {
-                mode,
-                rounding: Number(rounding),
-                pointsPossible: assignment.pointsPossible ?? row.maxMarks,
-              }),
+              posted_grade: this.postedGrade(row, assignment.pointsPossible),
               ...(feedback === "true" && row.comment && !comments.get(user.id)?.has(text(row.comment))
                 ? { text_comment: row.comment }
                 : {}),

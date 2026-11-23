@@ -176,26 +176,12 @@ test("matchStudents matches identifiers case-insensitively", () => {
     { id: 3, name: "Cat Ng", login_id: "shared" },
     { id: 4, name: "Dan Ong", sis_user_id: "shared", login_id: "dan", email: "dan" },
   ];
-  const rows = ["s1000001", " u1000001 ", "ben@example.edu", "int-2", "shared", "DAN", "nobody", ""].map(
-    (studentId) => ({ studentId }),
-  );
+  const matchedUser = (studentId) => matchStudents([{ studentId }], users).matched[0]?.user.id;
 
-  const { matched, unmatched } = matchStudents(rows, users);
   assert.deepEqual(
-    matched.map(({ row, user }) => [row.studentId, user.id]),
-    [
-      ["s1000001", 1],
-      [" u1000001 ", 1],
-      ["ben@example.edu", 2],
-      ["int-2", 2],
-      ["DAN", 4],
-    ],
+    ["s1000001", " u1000001 ", "ben@example.edu", "int-2", "shared", "DAN", "nobody", ""].map(matchedUser),
+    [1, 1, 2, 2, undefined, 4, undefined, undefined],
   );
-  assert.deepEqual(
-    unmatched.map((row) => row.studentId),
-    ["shared", "nobody", ""],
-  );
-  assert.equal(matched[0].row, rows[0]);
 });
 
 test("matchStudents matches a name nobody else has", () => {
@@ -205,20 +191,31 @@ test("matchStudents matches a name nobody else has", () => {
     { id: 3, name: "John Lee", sortable_name: "Lee, John", login_id: "u3" },
     { id: 4, name: "u1", sortable_name: "u1", login_id: "u4" },
   ];
-  const rows = ["ann  tan", " Tan, Ann", "John Lee", "u1"].map((studentId) => ({ studentId }));
+  const matchedUser = (studentId) => matchStudents([{ studentId }], users).matched[0]?.user.id;
 
-  const { matched, unmatched } = matchStudents(rows, users);
+  assert.deepEqual(["ann  tan", " Tan, Ann", "John Lee", "u1"].map(matchedUser), [1, 1, undefined, undefined]);
+});
+
+test("matchStudents lists users several rows match, with their rows, and users no row matches, in Canvas order", () => {
+  const users = [
+    { id: 1, name: "Ann Tan", login_id: "u1", email: "ann@example.edu" },
+    { id: 2, name: "Ben Lim", login_id: "u2" },
+    { id: 3, name: "Cat Ng", login_id: "u3" },
+    { id: 4, name: "Dan Ong", login_id: "u4" },
+  ];
+  const rows = ["u3", "u1", "u2", "nobody", "Ann Tan"].map((studentId) => ({ studentId }));
+
+  const { matched, unmatched, conflicts, unmatchedUsers } = matchStudents(rows, users);
   assert.deepEqual(
     matched.map(({ row, user }) => [row.studentId, user.id]),
     [
-      ["ann  tan", 1],
-      [" Tan, Ann", 1],
+      ["u2", 2],
+      ["u3", 3],
     ],
   );
-  assert.deepEqual(
-    unmatched.map((row) => row.studentId),
-    ["John Lee", "u1"],
-  );
+  assert.deepEqual(unmatched, [rows[3]]);
+  assert.deepEqual(conflicts, [{ user: users[0], rows: [rows[1], rows[4]] }]);
+  assert.deepEqual(unmatchedUsers, [users[3]]);
 });
 
 test("gradeFor posts marks scaled to the assignment, or a percentage", () => {
