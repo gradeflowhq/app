@@ -41,8 +41,9 @@ export async function readTable(name, bytes) {
 export const isEmptyTable = ({ rows }) =>
   !Object.values(rows).some((sheetRows) => sheetRows.some((row) => !isBlankRow(row)));
 
-/** A spreadsheet under review, opened with its saved settings if it's reopened. */
-export function spreadsheetSource({ sheets, rows }, savedSettings = null) {
+/** A spreadsheet under review. A reopened file gets its saved settings; a replacement gets their columns, with its rows
+ * detected. */
+export function spreadsheetSource({ sheets, rows }, savedSettings = null, { isReplacement = false } = {}) {
   const source = {
     isZip: false,
     sheets,
@@ -159,6 +160,21 @@ export function spreadsheetSource({ sheets, rows }, savedSettings = null) {
       this.assignRoles({ studentId: student_id_column, answers: answer_columns, marks: marks_columns });
       return true;
     },
+    /** Applies the saved columns to a new file and detects its rows; false if the file lacks the student ID column or
+     * every answer column. */
+    restoreColumns({ header_row, student_id_column, answer_columns, marks_columns }) {
+      const hasIdColumn = (row) => (this.rows[row] ?? []).some((cell) => cellText(cell) === student_id_column);
+      const headerRow = hasIdColumn(header_row) ? header_row : detectHeaderRow(this.rows);
+      if (!hasIdColumn(headerRow)) return false;
+      const header = this.rows[headerRow].map(cellText);
+      const answers = answer_columns.filter((name) => header.includes(name));
+      if (!answers.length) return false;
+      Object.assign(this, { headerRow, header });
+      this.setRows(...detectStudentRows(this.rows, headerRow + 1, header.indexOf(student_id_column)));
+      const marks = Object.entries(marks_columns).filter(([answer]) => answers.includes(answer));
+      this.assignRoles({ studentId: student_id_column, answers, marks: Object.fromEntries(marks) });
+      return true;
+    },
     detect(headerRow = detectHeaderRow(this.rows)) {
       this.headerRow = headerRow;
       this.header = (this.rows[headerRow] ?? []).map(cellText);
@@ -224,6 +240,8 @@ export function spreadsheetSource({ sheets, rows }, savedSettings = null) {
       this.columns[Number(event.target.dataset.index)].marksFor = event.target.value;
     },
   };
-  if (!savedSettings || !source.restore(savedSettings)) source.detect();
+  const restored =
+    savedSettings && (isReplacement ? source.restoreColumns(savedSettings) : source.restore(savedSettings));
+  if (!restored) source.detect();
   return source;
 }

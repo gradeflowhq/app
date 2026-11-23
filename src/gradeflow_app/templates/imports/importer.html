@@ -10,12 +10,13 @@
       <c-slot name="status"><c-chip>Submissions</c-chip></c-slot>
       {% if import_settings %}<button class="btn btn-sm" x-on:click="reopenFile" :disabled="opening"><span class="loading loading-spinner loading-sm" x-show="opening" x-cloak></span>{% icon "table-cells" %}{% if latest_file.file_pattern %}Check students and files{% else %}Check columns{% endif %}</button>{% endif %}
       <button class="btn btn-sm" x-on:click="replacing = true" x-show="!replacing">{% icon "arrow-up-tray" %}Replace</button>
+      <button class="btn btn-sm" x-on:click="replacing = false" x-show="replacing" x-cloak>Cancel</button>
     </c-setting-row>
     {% endif %}
     <div class="{% if latest_file %}pb-4{% else %}py-4{% endif %}"{% if latest_file %} x-show="replacing" x-cloak{% endif %}><div x-show="!isReading">{% include "imports/drop.html" with title=latest_file|yesno:"Drop the new submissions file here,Drop the submissions file here" file_types="CSV, Excel or zip" accept=".csv,.txt,.xls,.xlsx,.xlsm,.xlsb,.zip" %}</div>{% include "imports/reading.html" %}<p class="mt-4 flex items-center justify-center gap-2 text-sm text-muted">{% icon "lock-closed" %}The file is encrypted on this computer. GradeFlow can read only its answers and marks.</p></div>
   </div>
 
-  <template x-if="source">
+  <template x-if="step !== 'choose'">
   <div class="grid gap-6 py-4">
     <div class="flex flex-wrap items-center gap-4">
       <span class="grid size-10 place-items-center rounded-field bg-secondary text-secondary-content">{% icon "document-check" %}</span>
@@ -29,7 +30,10 @@
           <select id="import-sheet" class="select select-sm w-44" x-on:change="source.pickSheet($event)"><template x-for="name in source.sheets" :key="name"><option :value="name" x-text="name" :selected="name === source.sheet"></option></template></select>
         </div>
       </template>
-      <button class="btn btn-ghost" x-on:click="restart" x-show="step === 'review'">Choose another file</button>
+      <div class="flex flex-wrap gap-2" x-show="step === 'review'">
+        {% if import_settings %}<button class="btn btn-ghost" x-on:click="source.detect()">{% icon "arrow-path" %}Detect again</button>{% endif %}
+        <button class="btn btn-ghost" x-on:click="restart">Choose another file</button>
+      </div>
     </div>
 
     <template x-if="isZip">{% include "imports/zip_files.html" %}</template>

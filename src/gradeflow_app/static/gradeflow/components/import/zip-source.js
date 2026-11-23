@@ -17,11 +17,13 @@ import {
 const MAX_EXAMPLE_PATHS = 4;
 const MAX_UNMATCHED_SHOWN = 20;
 
-/** A zip under review, opened with its saved settings if it's reopened; `questionKeys` are the questions set up. */
+/** A zip under review, opened with the saved settings of the file it reopens or replaces; `questionKeys` are the
+ * questions set up. */
 export function zipSource({ texts, skipped }, savedSettings, questionKeys) {
   // Kept out of Alpine's proxies: the zip's thousands of files.
   const paths = [...texts.keys()];
   const examplePaths = samplePaths(paths).slice(0, MAX_EXAMPLE_PATHS);
+  const savedQuestions = savedSettings?.file_questions ?? {};
 
   const source = {
     isZip: true,
@@ -149,8 +151,12 @@ export function zipSource({ texts, skipped }, savedSettings, questionKeys) {
         ? `${counted(this.noQuestionCount, "file")} with no question`
         : counted(this.found.fileCount, "file");
     },
+    /** Whether a file the saved settings don't name has no question, or a path doesn't fit the pattern. */
     get needsReview() {
-      return this.noQuestionRows.length > 0 || this.found.unmatchedPaths.length > 0;
+      return (
+        this.noQuestionRows.some((row) => !Object.hasOwn(savedQuestions, row.name)) ||
+        this.found.unmatchedPaths.length > 0
+      );
     },
     /** Each student's answers joined from their files, the ID first. */
     answersTable() {
@@ -166,6 +172,10 @@ export function zipSource({ texts, skipped }, savedSettings, questionKeys) {
       const { fileQuestions, ...found } = findSubmissions(pattern, paths, savedQuestions);
       this.found = Object.freeze(found);
       Object.assign(this, { pattern, fileQuestions, isEditingPattern: false, patternError: "" });
+    },
+    /** Detects the pattern and each file's question, ignoring the saved settings. */
+    detect() {
+      this.applyPattern(suggestPattern(paths), {});
     },
     /** Makes token `index` of an example the student; the file starts where it did if that's after it. */
     setStudentToken(exampleIndex, index) {
@@ -199,6 +209,7 @@ export function zipSource({ texts, skipped }, savedSettings, questionKeys) {
       this.fileQuestions = { ...this.fileQuestions, [event.target.dataset.name]: event.target.value };
     },
   };
-  source.applyPattern(savedSettings?.file_pattern || suggestPattern(paths), savedSettings?.file_questions ?? {});
+  source.applyPattern(savedSettings?.file_pattern || suggestPattern(paths), savedQuestions);
+  if (!source.ids.length) source.applyPattern(suggestPattern(paths), savedQuestions);
   return source;
 }

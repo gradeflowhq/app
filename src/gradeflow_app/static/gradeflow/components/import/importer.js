@@ -159,7 +159,8 @@ export const importer = () => {
     },
 
     fileChosen(event) {
-      const file = event.target.files[0];
+      const [file] = event.target.files;
+      event.target.value = "";
       if (file) this.read(file);
     },
     async read(file) {
@@ -193,9 +194,17 @@ export const importer = () => {
           this.error = "That zip has no text files.";
           return;
         }
-        this.open(file.name, contents);
+        this.open(file.name, contents, savedSettings, { isReplacement: true });
         fileContents = { bytes };
         reopenedSnapshot = null;
+        if (savedSettings?.id_mapping) {
+          const keys = await this.keys();
+          if (keys)
+            await this.reopenIdMapping(keys).catch(() => {
+              this.error = "The ID mapping file couldn't be opened. Add it again.";
+            });
+        }
+        this.step = "review";
       } catch {
         this.error = "That file couldn't be read. Choose a CSV, Excel or zip file.";
       } finally {
@@ -223,12 +232,8 @@ export const importer = () => {
           savedSettings,
         );
         fileContents = { encrypted };
-        if (savedSettings.id_mapping)
-          await this.idMapping.reopen(
-            await this.fetchBytes(this.$root.dataset.idMappingUrl),
-            keys,
-            savedSettings.id_mapping,
-          );
+        if (savedSettings.id_mapping) await this.reopenIdMapping(keys);
+        this.step = "review";
         this.isReviewOpen = true;
         reopenedSnapshot = this.choicesSnapshot;
       } catch {
@@ -237,19 +242,27 @@ export const importer = () => {
         this.opening = false;
       }
     },
+    /** Opens the saved ID mapping file from the server's encrypted copy. */
+    async reopenIdMapping(keys) {
+      await this.idMapping.reopen(
+        await this.fetchBytes(this.$root.dataset.idMappingUrl),
+        keys,
+        savedSettings.id_mapping,
+      );
+    },
     async fetchBytes(url) {
       const response = await request(url);
       if (!response.ok) throw new Error(response.statusText);
       return response.bytes();
     },
-    open(name, contents, settings = null) {
+    /** Opens a file for review with the saved settings of the file it reopens or replaces. */
+    open(name, contents, settings = null, { isReplacement = false } = {}) {
       this.fileName = name;
       this.idMapping.remove();
       this.source = contents.zip
         ? zipSource(contents.zip, settings, this.questionKeys)
-        : spreadsheetSource(contents.table, settings);
+        : spreadsheetSource(contents.table, settings, { isReplacement });
       this.isReviewOpen = this.source.needsReview;
-      this.step = "review";
     },
     restart() {
       fileContents = null;
