@@ -160,29 +160,19 @@ export function spreadsheetSource({ sheets, rows }, savedSettings = null, { isRe
       this.assignRoles({ studentId: student_id_column, answers: answer_columns, marks: marks_columns });
       return true;
     },
-    /** Applies the saved columns to a new file, and detects its rows and the answer columns the saved ones don't name,
-     * with their marks columns; false if the file lacks the student ID column or every saved answer column. */
+    /** Applies the saved columns to a new file and detects its rows; false if the file lacks the student ID column or
+     * every answer column. */
     restoreColumns({ header_row, student_id_column, answer_columns, marks_columns }) {
       const hasIdColumn = (row) => (this.rows[row] ?? []).some((cell) => cellText(cell) === student_id_column);
       const headerRow = hasIdColumn(header_row) ? header_row : detectHeaderRow(this.rows);
       if (!hasIdColumn(headerRow)) return false;
       const header = this.rows[headerRow].map(cellText);
-      const savedAnswers = answer_columns.filter((name) => header.includes(name));
-      if (!savedAnswers.length) return false;
+      const answers = answer_columns.filter((name) => header.includes(name));
+      if (!answers.length) return false;
       Object.assign(this, { headerRow, header });
       this.setRows(...detectStudentRows(this.rows, headerRow + 1, header.indexOf(student_id_column)));
-      const savedNames = new Set([student_id_column, ...answer_columns, ...Object.values(marks_columns)]);
-      const detected = detectColumns(header, this.rowsInRange);
-      const newAnswers = detected.answers.filter((name) => !savedNames.has(name));
-      const marks = [
-        ...Object.entries(marks_columns).filter(([answer]) => savedAnswers.includes(answer)),
-        ...Object.entries(detected.marks).filter(([answer]) => newAnswers.includes(answer)),
-      ];
-      this.assignRoles({
-        studentId: student_id_column,
-        answers: [...savedAnswers, ...newAnswers],
-        marks: Object.fromEntries(marks),
-      });
+      const marks = Object.entries(marks_columns).filter(([answer]) => answers.includes(answer));
+      this.assignRoles({ studentId: student_id_column, answers, marks: Object.fromEntries(marks) });
       return true;
     },
     detect(headerRow = detectHeaderRow(this.rows)) {
