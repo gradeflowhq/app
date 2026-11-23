@@ -6,7 +6,7 @@ import { normalizedId } from "./cells.js";
 const PAGE_SIZE = 100;
 const TIMEOUT_MS = 60_000;
 const IDENTIFIERS = ["login_id", "sis_user_id", "integration_id", "email"];
-const MATCHED_FIELDS = [...IDENTIFIERS, "name", "sortable_name"];
+const MATCH_FIELDS = [...IDENTIFIERS, "name", "sortable_name"];
 
 /** Canvas's array parameters are written `key[]=a&key[]=b`. */
 const queryString = (params) =>
@@ -16,9 +16,9 @@ const queryString = (params) =>
     ),
   ).toString();
 
-/** The URL of the Link header's `rel` page, or null. */
-const linkedPage = (link, rel) => {
-  const url = link?.match(new RegExp(`<([^>]*)>;\\s*rel="${rel}"`))?.[1];
+/** The URL of the Link header's `rel` link, or null. */
+const linkUrl = (linkHeader, rel) => {
+  const url = linkHeader?.match(new RegExp(`<([^>]*)>;\\s*rel="${rel}"`))?.[1];
   return url ? new URL(url) : null;
 };
 
@@ -56,31 +56,30 @@ export const canvasClient = ({ baseUrl, token, proxyUrl }) => {
       })
     ).json();
 
-  /** Every page of `path`. Pages come at once when their number is known: from `count`, the number of items to
-   * expect, with one page more for a full last page, or from the first page's `last` link. Otherwise each page's
+  /** Every item of `path`. With `expectedCount` or a `last` link, the pages are fetched in parallel; otherwise each
    * `next` link is followed. */
-  const list = async (path, params = {}, count) => {
+  const list = async (path, params = {}, expectedCount) => {
     const pageUrl = (page) =>
       `${api}${path}?${queryString({ ...params, per_page: PAGE_SIZE, ...(page > 1 && { page }) })}`;
     const fetchPage = async (page) => (await request(pageUrl(page))).json();
     const fetchPages = (from, to) => Promise.all(Array.from({ length: to - from + 1 }, (_, i) => fetchPage(from + i)));
-    if (count != null) {
-      const pages = await fetchPages(1, Math.floor(count / PAGE_SIZE) + 1);
-      // A full last page may have more after it, such as students who joined since the count.
+    if (expectedCount != null) {
+      const pages = await fetchPages(1, Math.floor(expectedCount / PAGE_SIZE) + 1);
+      // A full last page may not be the last.
       while (pages.at(-1).length === PAGE_SIZE) pages.push(await fetchPage(pages.length + 1));
       return pages.flat();
     }
-    const first = await request(pageUrl(1));
-    const items = await first.json();
-    const lastPage = Number(linkedPage(first.headers.get("Link"), "last")?.searchParams.get("page"));
+    const firstResponse = await request(pageUrl(1));
+    const items = await firstResponse.json();
+    const lastPage = Number(linkUrl(firstResponse.headers.get("Link"), "last")?.searchParams.get("page"));
     if (lastPage > 1) return items.concat(...(await fetchPages(2, lastPage)));
-    let response = first;
+    let response = firstResponse;
     let pageItems = items;
     for (let page = 2; ; page++) {
-      const next = linkedPage(response.headers.get("Link"), "next");
+      const next = linkUrl(response.headers.get("Link"), "next");
       // A proxy that doesn't expose the Link header hides the next page; a full page means there may be one.
-      const hiddenNext = !response.headers.has("Link") && pageItems.length === PAGE_SIZE;
-      if (!next && !hiddenNext) return items;
+      const mayHaveHiddenNext = !response.headers.has("Link") && pageItems.length === PAGE_SIZE;
+      if (!next && !mayHaveHiddenNext) return items;
       response = await request(next ? next.pathname + next.search : pageUrl(page));
       pageItems = await response.json();
       items.push(...pageItems);
@@ -89,18 +88,12 @@ export const canvasClient = ({ baseUrl, token, proxyUrl }) => {
 
   return {
     courses: () => list("/courses", { include: ["term", "total_students"] }),
-    course: (courseId) => get(`/courses/${courseId}`),
+    course: (courseId) => get(`/courses/${courseId}?${queryString({ include: ["total_students"] })}`),
     /** The course's assignment groups in Canvas's order, each with its assignments. */
     assignmentGroups: (courseId) => list(`/courses/${courseId}/assignment_groups`, { include: ["assignments"] }),
-    /** The course's students. Canvas doesn't say how many pages they fill, so the course's count of them does. */
-    students: async (courseId) => {
-      const course = await get(`/courses/${courseId}?${queryString({ include: ["total_students"] })}`);
-      return list(
-        `/courses/${courseId}/users`,
-        { enrollment_type: ["student"], include: IDENTIFIERS },
-        course.total_students,
-      );
-    },
+    /** The course's students. Their list has no `last` link; `expectedCount` is the course's `total_students`. */
+    students: (courseId, expectedCount) =>
+      list(`/courses/${courseId}/users`, { enrollment_type: ["student"], include: IDENTIFIERS }, expectedCount),
     /** Each student's score and the texts of the comments on their submission, by user ID. */
     submissions: async (courseId, assignmentId) =>
       new Map(
@@ -143,34 +136,26 @@ export const canvasClient = ({ baseUrl, token, proxyUrl }) => {
 
 const matchKey = (value) => normalizedId(value).replace(/\s+/g, " ");
 
-/** Rows matched to Canvas users by login ID, SIS ID, integration ID, email or name; rows that match nobody; users
- * several rows match, with those rows; and users no row matches. All but `unmatched` follow the users' order. A value
- * several users share matches none of them: a grade must never reach the wrong student. */
+/** Rows matched to Canvas users by login ID, SIS ID, integration ID, email or name. A value several users share
+ * matches none of them. A user several rows match is a duplicate, and gets none of their marks. */
 export const matchStudents = (rows, canvasUsers) => {
-  const owners = new Map();
+  const userByKey = new Map();
   for (const user of canvasUsers) {
-    for (const key of MATCHED_FIELDS.map((field) => matchKey(user[field])).filter(Boolean)) {
-      owners.set(key, owners.has(key) && owners.get(key) !== user ? null : user);
+    for (const key of MATCH_FIELDS.map((field) => matchKey(user[field])).filter(Boolean)) {
+      userByKey.set(key, userByKey.has(key) && userByKey.get(key) !== user ? null : user);
     }
   }
+  const rowsByUser = Map.groupBy(rows, (row) => userByKey.get(matchKey(row.studentId)) ?? null);
   const matches = [];
-  const unmatched = [];
-  for (const row of rows) {
-    const user = owners.get(matchKey(row.studentId));
-    if (user) matches.push({ row, user });
-    else unmatched.push(row);
-  }
-  const matchesByUser = Map.groupBy(matches, ({ user }) => user);
-  const matched = [];
-  const conflicts = [];
+  const duplicates = [];
   const unmatchedUsers = [];
   for (const user of canvasUsers) {
-    const userMatches = matchesByUser.get(user);
-    if (!userMatches) unmatchedUsers.push(user);
-    else if (userMatches.length === 1) matched.push(...userMatches);
-    else conflicts.push({ user, rows: userMatches.map(({ row }) => row) });
+    const userRows = rowsByUser.get(user);
+    if (!userRows) unmatchedUsers.push(user);
+    else if (userRows.length === 1) matches.push({ row: userRows[0], user });
+    else duplicates.push({ user, rows: userRows });
   }
-  return { matched, unmatched, conflicts, unmatchedUsers };
+  return { matches, unmatchedRows: rowsByUser.get(null) ?? [], duplicates, unmatchedUsers };
 };
 
 /** The `posted_grade` for `marks` out of `maxMarks`, or null without marks. Mode "marks" scales them to
@@ -196,9 +181,9 @@ export const gradebookGrade = (postedGrade, { gradingType, pointsPossible }) => 
     : String(toTwoDecimals(points));
 };
 
-/** The grade Canvas shows a student for `postedGrade`: as the gradebook does, out of `pointsPossible` on a points
+/** The grade a student sees in Canvas for `postedGrade`: the gradebook's, out of `pointsPossible` on a points
  * assignment. */
-export const displayedGrade = (postedGrade, { gradingType, pointsPossible }) => {
+export const studentViewGrade = (postedGrade, { gradingType, pointsPossible }) => {
   const grade = gradebookGrade(postedGrade, { gradingType, pointsPossible });
   return gradingType === "percent" ? grade : `${grade} / ${toTwoDecimals(pointsPossible)}`;
 };

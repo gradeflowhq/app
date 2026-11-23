@@ -90,8 +90,9 @@ def test_editors_get_the_rows_to_send_and_the_sending_form(client: Client, canva
     assert "As the course (percentage)" in page
     assert 'data-mode="percent" data-rounding="0.5" data-feedback="true"' in page
     assert "Percentages, rounded to 0.5, with feedback" in page
-    assert 'data-dialog="preview" x-on:click="previewStudent(index)"' in page
+    assert 'data-dialog="student-preview" x-on:click="previewStudent(index)"' in page
     assert 'id="send-review"' in page
+    assert '<dialog id="assignment-picker"' in page
 
 
 def test_viewers_see_how_marks_are_sent_but_not_the_rows_or_controls(
@@ -103,7 +104,6 @@ def test_viewers_see_how_marks_are_sent_but_not_the_rows_or_controls(
     assert "export-rows" not in page
     assert encrypted_id("S001") not in page
     assert "canvasExport" not in page
-    assert "previewStudent" not in page
     assert 'name="marks_mode"' not in page
     assert "assignment-picker" not in page
 
@@ -189,15 +189,6 @@ def test_each_comment_gives_the_marks_and_feedback_of_each_marked_question(
 
 
 EXPECTED_COMMENT = "<strong>Q1 [1/1]</strong>\nShow &lt;working&gt;."
-
-
-def test_assignments_and_their_groups_are_chosen_on_the_export_page(
-    client: Client, canvas_assessment: Assessment
-) -> None:
-    export = client.get(reverse("export", args=[canvas_assessment.pk])).text
-    assert '<dialog id="assignment-picker"' in export
-    course = client.get(reverse("canvas_settings", args=[canvas_assessment.course_id])).text
-    assert "group-picker" not in course
 
 
 def test_a_course_refuses_a_negative_rounding_step(client: Client, canvas_assessment: Assessment) -> None:

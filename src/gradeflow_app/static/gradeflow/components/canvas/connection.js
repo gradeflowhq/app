@@ -81,19 +81,19 @@ export const connectionMixin = () => ({
     await deleteSecret(SECRET);
     this.canvasConnection = null;
   },
-  /** Runs `work` busy with `label`; null, showing why, if it fails. A refused token disconnects. `status` holds the
-   * label and the error: the component, unless a part of it, such as a dialog, has its own. */
-  async run(label, work, status = this) {
-    status.busyLabel = label;
-    status.error = "";
+  /** Runs `work` busy with `label`; null, showing why, if it fails. A refused token disconnects. `requestState` holds
+   * the label and the error; the component's own by default. */
+  async run(label, work, requestState = this) {
+    requestState.busyLabel = label;
+    requestState.error = "";
     try {
       return await work();
     } catch (error) {
       if (error.status === 401 && this.canvasConnection && !this.checking) this.disconnect();
-      status.error = errorMessage(error, this.canvasHost);
+      requestState.error = errorMessage(error, this.canvasHost);
       return null;
     } finally {
-      status.busyLabel = "";
+      requestState.busyLabel = "";
     }
   },
 });

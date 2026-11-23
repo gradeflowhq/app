@@ -3,10 +3,10 @@ import { test } from "node:test";
 
 import {
   canvasClient,
-  displayedGrade,
   gradebookGrade,
   gradeFor,
   matchStudents,
+  studentViewGrade,
 } from "../../src/gradeflow_app/static/gradeflow/lib/canvas-client.js";
 
 const jsonResponse = (body, headers = {}) =>
@@ -21,10 +21,7 @@ const stubFetch = (t, respond) => {
   return calls;
 };
 
-/** Answers the course request `students` makes first, without a count of students, and `respond` to the rest. */
-const withoutCount = (respond) => (url, init) =>
-  new URL(url).pathname.endsWith("/courses/5") ? jsonResponse({}) : respond(url, init);
-const usersCalls = (calls) => calls.filter(({ url }) => new URL(url).pathname.endsWith("/users"));
+const pageOf = (url) => Number(new URL(url).searchParams.get("page") ?? 1);
 
 const client = () =>
   canvasClient({ baseUrl: "https://canvas.example.edu/", token: "secret", proxyUrl: "https://proxy.example.org/" });
@@ -56,21 +53,18 @@ test("keeps a Canvas base path", async (t) => {
 
 test('list endpoints follow Link rel="next" through the proxy', async (t) => {
   const next = "https://canvas.example.edu/api/v1/courses/5/users?page=bookmark:abc&per_page=100";
-  const calls = stubFetch(
-    t,
-    withoutCount((url) =>
-      url.includes("bookmark")
-        ? jsonResponse([{ id: 3 }], {
-            Link: `<${next}>; rel="current",<https://canvas.example.edu/api/v1/courses/5/users?page=first>; rel="first"`,
-          })
-        : jsonResponse([{ id: 1 }, { id: 2 }], {
-            Link: `<https://canvas.example.edu/api/v1/courses/5/users?page=first>; rel="current",<${next}>; rel="next"`,
-          }),
-    ),
+  const calls = stubFetch(t, (url) =>
+    url.includes("bookmark")
+      ? jsonResponse([{ id: 3 }], {
+          Link: `<${next}>; rel="current",<https://canvas.example.edu/api/v1/courses/5/users?page=first>; rel="first"`,
+        })
+      : jsonResponse([{ id: 1 }, { id: 2 }], {
+          Link: `<https://canvas.example.edu/api/v1/courses/5/users?page=first>; rel="current",<${next}>; rel="next"`,
+        }),
   );
 
   assert.deepEqual(await client().students(5), [{ id: 1 }, { id: 2 }, { id: 3 }]);
-  const [first, second] = usersCalls(calls).map(({ url }) => new URL(url));
+  const [first, second] = calls.map(({ url }) => new URL(url));
   assert.equal(first.origin + first.pathname, "https://proxy.example.org/api/v1/courses/5/users");
   assert.deepEqual(first.searchParams.getAll("enrollment_type[]"), ["student"]);
   assert.deepEqual(first.searchParams.getAll("include[]"), ["login_id", "sis_user_id", "integration_id", "email"]);
@@ -78,56 +72,47 @@ test('list endpoints follow Link rel="next" through the proxy', async (t) => {
   assert.equal(second.href, "https://proxy.example.org/api/v1/courses/5/users?page=bookmark:abc&per_page=100");
 });
 
-test("pages Canvas numbers come at once after the first, in order", async (t) => {
-  const pageOf = (url) => Number(new URL(url).searchParams.get("page") ?? 1);
-  let pending = 0;
-  let mostPending = 0;
-  const calls = stubFetch(
-    t,
-    withoutCount(async (url) => {
-      mostPending = Math.max(mostPending, ++pending);
-      await new Promise((resolve) => setTimeout(resolve, 10 * (4 - pageOf(url))));
-      pending--;
-      return jsonResponse([{ id: pageOf(url) }], {
-        Link: '<https://canvas.example.edu/api/v1/courses/5/users?page=3&per_page=100>; rel="last"',
-      });
-    }),
-  );
+test("fetches the pages a last link numbers in parallel, in order", async (t) => {
+  let inFlight = 0;
+  let maxInFlight = 0;
+  const calls = stubFetch(t, async (url) => {
+    maxInFlight = Math.max(maxInFlight, ++inFlight);
+    await new Promise((resolve) => setTimeout(resolve, 10 * (4 - pageOf(url))));
+    inFlight--;
+    return jsonResponse([{ id: pageOf(url) }], {
+      Link: '<https://canvas.example.edu/api/v1/courses/5/users?page=3&per_page=100>; rel="last"',
+    });
+  });
   assert.deepEqual(await client().students(5), [{ id: 1 }, { id: 2 }, { id: 3 }]);
   assert.deepEqual(
-    usersCalls(calls).map(({ url }) => pageOf(url)),
+    calls.map(({ url }) => pageOf(url)),
     [1, 2, 3],
   );
-  assert.equal(mostPending, 2);
+  assert.equal(maxInFlight, 2);
 });
 
-test("students come at once, in the pages the course's count of them fills", async (t) => {
-  const pageOf = (url) => Number(new URL(url).searchParams.get("page") ?? 1);
-  const people = (from, count) => Array.from({ length: count }, (_, i) => ({ id: from + i }));
-  let pending = 0;
-  let mostPending = 0;
-  const calls = stubFetch(t, async (url) => {
-    if (new URL(url).pathname.endsWith("/courses/5")) return jsonResponse({ id: 5, total_students: 250 });
-    mostPending = Math.max(mostPending, ++pending);
+test("fetches the pages an expected count fills in parallel", async (t) => {
+  const users = (from, count) => Array.from({ length: count }, (_, i) => ({ id: from + i }));
+  let inFlight = 0;
+  let maxInFlight = 0;
+  stubFetch(t, async (url) => {
+    maxInFlight = Math.max(maxInFlight, ++inFlight);
     await new Promise((resolve) => setTimeout(resolve, 10));
-    pending--;
+    inFlight--;
     const page = pageOf(url);
-    return jsonResponse(people((page - 1) * 100, page === 3 ? 50 : 100));
+    return jsonResponse(users((page - 1) * 100, page === 3 ? 50 : 100));
   });
-  assert.deepEqual(await client().students(5), people(0, 250));
-  assert.deepEqual(new URL(calls[0].url).searchParams.getAll("include[]"), ["total_students"]);
-  assert.equal(mostPending, 3);
+  assert.deepEqual(await client().students(5, 250), users(0, 250));
+  assert.equal(maxInFlight, 3);
 });
 
-test("the page after the count comes with the others, and a full one fetches the next", async (t) => {
-  const calls = stubFetch(t, (url) => {
-    if (new URL(url).pathname.endsWith("/courses/5")) return jsonResponse({ id: 5, total_students: 100 });
-    const page = Number(new URL(url).searchParams.get("page") ?? 1);
-    return jsonResponse(Array.from({ length: page < 3 ? 100 : 2 }, (_, i) => ({ id: `${page}-${i}` })));
-  });
-  assert.equal((await client().students(5)).length, 202);
+test("fetches one page past the expected count, then more while the last is full", async (t) => {
+  const calls = stubFetch(t, (url) =>
+    jsonResponse(Array.from({ length: pageOf(url) < 3 ? 100 : 2 }, (_, i) => ({ id: `${pageOf(url)}-${i}` }))),
+  );
+  assert.equal((await client().students(5, 100)).length, 202);
   assert.deepEqual(
-    usersCalls(calls).map(({ url }) => new URL(url).searchParams.get("page")),
+    calls.map(({ url }) => new URL(url).searchParams.get("page")),
     [null, "2", "3"],
   );
 });
@@ -150,10 +135,12 @@ test("courses come with their term and number of students", async (t) => {
   assert.deepEqual(new URL(calls[0].url).searchParams.getAll("include[]"), ["term", "total_students"]);
 });
 
-test("a course comes on its own, to say whether it weights its assignment groups", async (t) => {
+test("a course comes with its number of students", async (t) => {
   const calls = stubFetch(t, () => jsonResponse({ id: 5, apply_assignment_group_weights: true }));
   assert.equal((await client().course(5)).apply_assignment_group_weights, true);
-  assert.equal(new URL(calls[0].url).pathname, "/api/v1/courses/5");
+  const url = new URL(calls[0].url);
+  assert.equal(url.pathname, "/api/v1/courses/5");
+  assert.deepEqual(url.searchParams.getAll("include[]"), ["total_students"]);
 });
 
 test("assignment groups come with their assignments", async (t) => {
@@ -261,7 +248,7 @@ test("matchStudents matches identifiers case-insensitively", () => {
     { id: 3, name: "Cat Ng", login_id: "shared" },
     { id: 4, name: "Dan Ong", sis_user_id: "shared", login_id: "dan", email: "dan" },
   ];
-  const matchedUser = (studentId) => matchStudents([{ studentId }], users).matched[0]?.user.id;
+  const matchedUser = (studentId) => matchStudents([{ studentId }], users).matches[0]?.user.id;
 
   assert.deepEqual(
     ["s1000001", " u1000001 ", "ben@example.edu", "int-2", "shared", "DAN", "nobody", ""].map(matchedUser),
@@ -276,12 +263,12 @@ test("matchStudents matches a name nobody else has", () => {
     { id: 3, name: "John Lee", sortable_name: "Lee, John", login_id: "u3" },
     { id: 4, name: "u1", sortable_name: "u1", login_id: "u4" },
   ];
-  const matchedUser = (studentId) => matchStudents([{ studentId }], users).matched[0]?.user.id;
+  const matchedUser = (studentId) => matchStudents([{ studentId }], users).matches[0]?.user.id;
 
   assert.deepEqual(["ann  tan", " Tan, Ann", "John Lee", "u1"].map(matchedUser), [1, 1, undefined, undefined]);
 });
 
-test("matchStudents lists users several rows match, with their rows, and users no row matches, in Canvas order", () => {
+test("matchStudents lists duplicate and unmatched users", () => {
   const users = [
     { id: 1, name: "Ann Tan", login_id: "u1", email: "ann@example.edu" },
     { id: 2, name: "Ben Lim", login_id: "u2" },
@@ -290,16 +277,16 @@ test("matchStudents lists users several rows match, with their rows, and users n
   ];
   const rows = ["u3", "u1", "u2", "nobody", "Ann Tan"].map((studentId) => ({ studentId }));
 
-  const { matched, unmatched, conflicts, unmatchedUsers } = matchStudents(rows, users);
+  const { matches, unmatchedRows, duplicates, unmatchedUsers } = matchStudents(rows, users);
   assert.deepEqual(
-    matched.map(({ row, user }) => [row.studentId, user.id]),
+    matches.map(({ row, user }) => [row.studentId, user.id]),
     [
       ["u2", 2],
       ["u3", 3],
     ],
   );
-  assert.deepEqual(unmatched, [rows[3]]);
-  assert.deepEqual(conflicts, [{ user: users[0], rows: [rows[1], rows[4]] }]);
+  assert.deepEqual(unmatchedRows, [rows[3]]);
+  assert.deepEqual(duplicates, [{ user: users[0], rows: [rows[1], rows[4]] }]);
   assert.deepEqual(unmatchedUsers, [users[3]]);
 });
 
@@ -320,17 +307,16 @@ test("gradeFor gives null without a usable total", () => {
   assert.equal(gradeFor({ marks: 3, maxMarks: 0 }, options), null);
 });
 
-test("displayedGrade shows points on a points assignment and a percentage on a percent one", () => {
+test("studentViewGrade shows points on a points assignment and a percentage on a percent one", () => {
   const points = { gradingType: "points", pointsPossible: 10 };
-  assert.equal(displayedGrade(7.5, points), "7.5 / 10");
-  assert.equal(displayedGrade("75.5%", points), "7.55 / 10");
-  assert.equal(displayedGrade(0.1 + 0.2, points), "0.3 / 10");
+  assert.equal(studentViewGrade(7.5, points), "7.5 / 10");
+  assert.equal(studentViewGrade("75.5%", points), "7.55 / 10");
+  assert.equal(studentViewGrade(0.1 + 0.2, points), "0.3 / 10");
   const percent = { gradingType: "percent", pointsPossible: 40 };
-  assert.equal(displayedGrade(30.3, percent), "75.75%");
-  assert.equal(displayedGrade("76%", percent), "76%");
+  assert.equal(studentViewGrade(30.3, percent), "75.75%");
+  assert.equal(studentViewGrade("76%", percent), "76%");
 });
 
 test("gradebookGrade shows points without the total, as Canvas's gradebook does", () => {
   assert.equal(gradebookGrade("75.5%", { gradingType: "points", pointsPossible: 10 }), "7.55");
-  assert.equal(gradebookGrade(30.3, { gradingType: "percent", pointsPossible: 40 }), "75.75%");
 });

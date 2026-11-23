@@ -26,9 +26,10 @@ export const canvasCourse = () =>
 
     /** The chosen course; the saved one's name shows while the list loads. */
     get chosenCourse() {
-      const { course, courseName } = this.config;
-      const saved = this.courseId && this.courseId === course ? { id: course, name: courseName, detail: "" } : null;
-      return this.courses.find(({ id }) => id === this.courseId) ?? saved;
+      const { course: savedId, courseName: savedName } = this.config;
+      const savedCourse =
+        this.courseId && this.courseId === savedId ? { id: savedId, name: savedName, detail: "" } : null;
+      return this.courses.find(({ id }) => id === this.courseId) ?? savedCourse;
     },
     get shownCourses() {
       return this.courses.filter(({ name, detail }) => matches(`${name} ${detail}`.toLowerCase(), this.courseQuery));

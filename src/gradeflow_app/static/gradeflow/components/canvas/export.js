@@ -1,24 +1,22 @@
-// An assessment's Export page: its students matched to the Canvas course's, with the grade Canvas has for each and
-// the grade sending gives, and sending the grades that change to the chosen assignment. #send-settings holds
-// the send settings and #export-rows-data the marks; the server re-renders both, and each runs its `x-init` when
-// swapped in.
+// The Export page: the assessment's students matched to the Canvas course's, each with their grade in Canvas and the
+// grade to send. The server re-renders #send-settings and #export-rows-data; each runs its `x-init` when swapped in.
 
 import { decryptId } from "../../lib/assessment-crypto.js";
-import { displayedGrade, gradebookGrade, gradeFor, matchStudents } from "../../lib/canvas-client.js";
+import { gradebookGrade, gradeFor, matchStudents, studentViewGrade } from "../../lib/canvas-client.js";
 import { counted, matches, naturalOrder } from "../../lib/words.js";
 import { assessmentKeysFor, missingCourseKeyMessage } from "../../services/course-keys.js";
 import { openDialog } from "../../services/dialogs.js";
+import { readJson } from "../../services/page-data.js";
 import { showToast } from "../../services/toasts.js";
 import { assignmentPickerMixin, marksLabel } from "./assignment-picker.js";
 import { connectionMixin, mergeMixins, readConfig } from "./connection.js";
 
 const POLL_MS = 2000;
 const POLL_LIMIT_MS = 5 * 60_000;
-const SENDING = "Sending marks…";
 
 const FILTERS = [
   { key: "all", label: "All", test: () => true },
-  { key: "changed", label: "To send", test: (student) => student.status === "changed" },
+  { key: "to_send", label: "To send", test: (student) => student.status === "to_send" },
   { key: "needs_marking", label: "Needs marking", test: (student) => student.row.unmarkedCount > 0 },
   { key: "not_in_canvas", label: "Not in Canvas", test: (student) => student.status === "not_in_canvas" },
   { key: "duplicate_id", label: "Duplicate ID", test: (student) => student.status === "duplicate_id" },
@@ -28,31 +26,22 @@ const FILTERS = [
 const commentText = (html) => new DOMParser().parseFromString(html, "text/html").body.textContent;
 
 export const canvasExport = () => {
-  let canvasUsers = []; // the Canvas course's students
+  let canvasStudents = [];
   let cachedStudents = null; // the last `students`, with what they depended on
 
   return mergeMixins(connectionMixin(), assignmentPickerMixin(), {
-    settings: {},
+    sendSettings: {},
     rows: [], // the marks to send, their student IDs decrypted, in order of student ID
-    matched: [],
-    unmatched: [],
-    conflicts: [],
+    matches: [],
+    unmatchedRows: [],
+    duplicates: [],
     unmatchedUsers: [],
     isMatched: false,
     submissions: null, // the chosen assignment's, by user ID; null until they load
-    filter: "all",
-    query: "",
-    reviewing: false,
-    gradeUpdateStatus: { busyLabel: "", error: "" },
-    preview: {
-      rows: [],
-      index: 0,
-      studentId: "",
-      grade: "",
-      gradeFlowMarks: "",
-      needsMarking: "",
-      commentPlaceholder: "",
-    },
+    chosenFilter: "all",
+    studentQuery: "",
+    sendRequestState: { busyLabel: "", error: "" },
+    preview: { students: [], index: 0 },
 
     async init() {
       this.config = readConfig(this.$el);
@@ -72,10 +61,12 @@ export const canvasExport = () => {
     },
     /** The chosen assignment's group and marks, and whether totals are scaled to its points. */
     get assignmentDetail() {
-      const pointsPossible = this.chosenAssignment?.pointsPossible;
+      const assignment = this.chosenAssignment;
+      const pointsPossible = assignment?.pointsPossible;
+      const group = this.groups.find((candidate) => candidate.assignments.includes(assignment));
       const scaled =
-        this.settings.mode === "marks" && pointsPossible && this.maxMarks && pointsPossible !== this.maxMarks;
-      return [this.chosenGroup?.name, marksLabel(pointsPossible), scaled && `scaled from ${this.maxMarks}`]
+        this.sendSettings.mode === "marks" && pointsPossible && this.maxMarks && pointsPossible !== this.maxMarks;
+      return [group?.name, marksLabel(pointsPossible), scaled && `scaled from ${this.maxMarks}`]
         .filter(Boolean)
         .join(" · ");
     },
@@ -83,27 +74,25 @@ export const canvasExport = () => {
       return this.isBusy && !this.groups.length;
     },
 
-    readSettings() {
-      this.settings = { ...document.getElementById("send-settings").dataset };
+    readSendSettings() {
+      const { mode, rounding, feedback } = document.getElementById("send-settings").dataset;
+      this.sendSettings = { mode, rounding: Number(rounding), feedback: feedback === "true" };
     },
 
-    /** Decrypts the marks' student IDs, so the students show while Canvas loads. Loads the Canvas course's students
-     * and assignments, choosing the one named after the assessment when none is saved, and its submissions. */
+    /** Decrypts the rows and loads the Canvas students, the assignments and the chosen assignment's submissions.
+     * Without a saved assignment, chooses the one named after the assessment. */
     load() {
       return this.run("Loading the Canvas course…", async () => {
-        const { assignmentId } = this;
-        const savedSubmissions = assignmentId ? this.client.submissions(this.courseId, assignmentId) : null;
-        savedSubmissions?.catch(() => {}); // left unawaited if Canvas no longer has the saved assignment
-        [canvasUsers] = await Promise.all([
-          this.client.students(this.courseId),
-          this.loadGroups().then(async () => {
-            if (this.chosenAssignment) {
-              const submissions = await savedSubmissions;
-              if (this.assignmentId === assignmentId) this.submissions = submissions;
-              return;
-            }
-            this.assignmentId = this.assignments.find(({ name }) => name === this.config.name)?.id ?? "";
-            await this.loadSubmissions();
+        const savedId = this.assignmentId;
+        const savedSubmissionsRequest = savedId ? this.client.submissions(this.courseId, savedId) : null;
+        savedSubmissionsRequest?.catch(() => {}); // left unawaited if Canvas no longer has the saved assignment
+        const course = this.client.course(this.courseId);
+        [canvasStudents] = await Promise.all([
+          course.then(({ total_students }) => this.client.students(this.courseId, total_students)),
+          this.loadGroups(course).then(() => {
+            if (!this.chosenAssignment)
+              this.assignmentId = this.assignments.find(({ name }) => name === this.config.name)?.id ?? "";
+            return this.loadSubmissions(this.assignmentId === savedId ? savedSubmissionsRequest : null);
           }),
           this.decryptRows().then((rows) => {
             this.rows = rows;
@@ -113,18 +102,18 @@ export const canvasExport = () => {
         return true;
       });
     },
-    /** The chosen assignment's submissions; none without one. The previous assignment's stay until they load. */
-    async loadSubmissions() {
+    /** The chosen assignment's submissions, from `request` if it's already been made; none without an assignment.
+     * The previous assignment's stay until they load. */
+    async loadSubmissions(request) {
       const id = this.assignmentId;
-      const submissions = id ? await this.client.submissions(this.courseId, id) : new Map();
+      const submissions = id ? await (request ?? this.client.submissions(this.courseId, id)) : new Map();
       if (this.assignmentId === id) this.submissions = submissions;
     },
-    choseAssignment() {
-      this.saveAssignment();
-      this.run("Loading grades…", () => this.loadSubmissions());
-    },
-    saveAssignment() {
+    /** Saves the assignment `id` as the chosen one and loads its submissions. */
+    changeAssignment(id) {
+      this.assignmentId = id;
       this.$nextTick(() => document.getElementById("send-settings-form").dispatchEvent(new Event("change")));
+      this.run("Loading grades…", () => this.loadSubmissions());
     },
 
     /** The marks as the server last rendered them, their student IDs decrypted, in order of student ID. */
@@ -133,17 +122,18 @@ export const canvasExport = () => {
       const keys = await assessmentKeysFor(assessmentElement);
       if (!keys) throw new Error(missingCourseKeyMessage(assessmentElement));
       const rows = await Promise.all(
-        JSON.parse(document.getElementById("export-rows-data").textContent).map(async (row) => ({
+        readJson("export-rows-data").map(async (row) => ({
           ...row,
           studentId: await decryptId(row.studentId, keys),
           commentText: commentText(row.comment),
+          marksText: studentViewGrade(row.marks, { gradingType: "points", pointsPossible: row.maxMarks }),
+          needsMarkingLabel: `${counted(row.unmarkedCount, "needs", "need")} marking`,
         })),
       );
       return rows.sort((a, b) => naturalOrder(a.studentId, b.studentId));
     },
-    /** Matches the rows to the Canvas course's students. */
     match() {
-      Object.assign(this, matchStudents(this.rows, canvasUsers), { isMatched: true });
+      Object.assign(this, matchStudents(this.rows, canvasStudents), { isMatched: true });
     },
     /** Once the students are matched and the chosen assignment's submissions have loaded. */
     get isCanvasLoaded() {
@@ -159,89 +149,62 @@ export const canvasExport = () => {
       });
     },
 
-    /** The chosen assignment's grading type and points. Without an assignment, or points on it, the points are
-     * `row`'s max marks. */
-    assignmentGrading(row) {
+    /** The chosen assignment's grading type and points. Without an assignment, or points on it, the points are the
+     * max marks. */
+    get grading() {
       const { gradingType = "points", pointsPossible } = this.chosenAssignment ?? {};
-      return { gradingType, pointsPossible: pointsPossible ?? row.maxMarks };
+      return { gradingType, pointsPossible: pointsPossible ?? this.maxMarks };
     },
     /** `row`'s `posted_grade` on the chosen assignment, with the send settings. */
     postedGrade(row) {
-      const { mode, rounding } = this.settings;
-      return gradeFor(row, {
-        mode,
-        rounding: Number(rounding),
-        pointsPossible: this.assignmentGrading(row).pointsPossible,
-      });
-    },
-    /** The grade Canvas shows for `row` on the chosen assignment. */
-    canvasGrade(row) {
-      const grade = this.postedGrade(row);
-      return grade === null ? "—" : displayedGrade(grade, this.assignmentGrading(row));
+      return gradeFor(row, { ...this.sendSettings, pointsPossible: this.grading.pointsPossible });
     },
 
     /** Every row's student, in order of student ID, and what sending does for them: "loading" until Canvas has
-     * loaded. A matched student's `currentGrade` and `sentGrade` are their grade in Canvas's gradebook now and once
-     * sent. They're listed again only once what they depend on changes, so each row keeps its object between reads. */
+     * loaded. A matched student's `currentGrade` and `gradeToSend` are their grade in Canvas's gradebook now and once
+     * sent. Listed again only when what they depend on changes. */
     get students() {
-      const { rows, isCanvasLoaded, matched, unmatched, conflicts, submissions, settings, chosenAssignment } = this;
+      const { rows, matches, submissions, sendSettings, chosenAssignment } = this;
       const { id, pointsPossible, gradingType } = chosenAssignment ?? {};
-      const dependencies = [
-        rows,
-        isCanvasLoaded,
-        matched,
-        unmatched,
-        conflicts,
-        submissions,
-        settings,
-        id,
-        pointsPossible,
-        gradingType,
-      ];
+      const dependencies = [rows, matches, submissions, sendSettings, id, pointsPossible, gradingType];
       if (cachedStudents?.dependencies.every((dependency, i) => dependency === dependencies[i]))
         return cachedStudents.students;
       cachedStudents = { dependencies, students: this.listStudents() };
       return cachedStudents.students;
     },
     listStudents() {
-      const inGradebook = (grade, row) => (grade == null ? null : gradebookGrade(grade, this.assignmentGrading(row)));
-      const student = (row, user, status) => ({
-        row,
-        status,
-        name: user?.sortable_name ?? "",
-        marks: displayedGrade(row.marks, { gradingType: "points", pointsPossible: row.maxMarks }),
-      });
+      const { grading } = this;
+      const gradebookGradeOf = (grade) => (grade == null ? null : gradebookGrade(grade, grading));
+      const student = (row, user, status) => ({ row, status, name: user?.sortable_name ?? "" });
       const matchedStudent = ({ row, user }) => {
-        if (!this.chosenAssignment) return { ...student(row, user, "unchanged"), sentGrade: "—" };
+        if (!this.chosenAssignment) return { ...student(row, user, "up_to_date"), gradeToSend: "—" };
         const submission = this.submissions.get(user.id);
-        const sentGrade = inGradebook(this.postedGrade(row), row);
-        const currentGrade = inGradebook(submission?.score, row);
+        const gradeToSend = gradebookGradeOf(this.postedGrade(row));
+        const currentGrade = gradebookGradeOf(submission?.score);
         const addsComment =
-          this.settings.feedback === "true" && Boolean(row.comment) && !submission?.comments.has(row.commentText);
-        const isGradeChanged = currentGrade !== null && sentGrade !== currentGrade;
-        const status = sentGrade !== currentGrade || addsComment ? "changed" : "unchanged";
+          this.sendSettings.feedback && Boolean(row.comment) && !submission?.comments.has(row.commentText);
+        const status = gradeToSend !== currentGrade || addsComment ? "to_send" : "up_to_date";
         return {
           ...student(row, user, status),
           user,
           currentGrade,
-          sentGrade: sentGrade ?? "—",
-          isGradeChanged,
+          gradeToSend: gradeToSend ?? "—",
+          isGradeChanged: currentGrade !== null && gradeToSend !== currentGrade,
           addsComment,
         };
       };
       if (!this.isCanvasLoaded) return this.rows.map((row) => student(row, null, "loading"));
-      const byId = new Map(
+      const studentsById = new Map(
         [
-          ...this.unmatched.map((row) => student(row, null, "not_in_canvas")),
-          ...this.conflicts.flatMap(({ user, rows }) => rows.map((row) => student(row, user, "duplicate_id"))),
-          ...this.matched.map(matchedStudent),
-        ].map((listedStudent) => [listedStudent.row.studentId, listedStudent]),
+          ...this.unmatchedRows.map((row) => student(row, null, "not_in_canvas")),
+          ...this.duplicates.flatMap(({ user, rows }) => rows.map((row) => student(row, user, "duplicate_id"))),
+          ...this.matches.map(matchedStudent),
+        ].map((entry) => [entry.row.studentId, entry]),
       );
-      // A student that refreshed marks add shows as loading until they're matched.
-      return this.rows.map((row) => byId.get(row.studentId) ?? student(row, null, "loading"));
+      return this.rows.map((row) => studentsById.get(row.studentId));
     },
-    get changes() {
-      return this.students.filter((student) => student.status === "changed");
+    get studentsToSend() {
+      return this.students.filter((student) => student.status === "to_send");
     },
     /** The filters with any students, and how many each has. */
     get filters() {
@@ -253,107 +216,105 @@ export const canvasExport = () => {
     },
     /** The chosen filter, or All once it has no students. */
     get activeFilter() {
-      return this.filters.some(({ key }) => key === this.filter) ? this.filter : "all";
+      return this.filters.some(({ key }) => key === this.chosenFilter) ? this.chosenFilter : "all";
     },
     set activeFilter(key) {
-      this.filter = key;
+      this.chosenFilter = key;
     },
     get shownStudents() {
       const { test } = FILTERS.find(({ key }) => key === this.activeFilter) ?? FILTERS[0];
       return this.students.filter(
-        (student) => test(student) && matches(`${student.row.studentId} ${student.name}`.toLowerCase(), this.query),
+        (student) =>
+          test(student) && matches(`${student.row.studentId} ${student.name}`.toLowerCase(), this.studentQuery),
       );
     },
     get shownCanvasUsers() {
-      return this.unmatchedUsers.filter((user) => matches(user.sortable_name.toLowerCase(), this.query));
+      return this.unmatchedUsers.filter((user) => matches(user.sortable_name.toLowerCase(), this.studentQuery));
     },
-    get matchedNote() {
-      return `${this.matched.length} of ${this.rows.length} matched in Canvas`;
-    },
-    get upToDate() {
-      return Boolean(this.isCanvasLoaded && this.chosenAssignment && this.matched.length && !this.changes.length);
-    },
-
-    get canSend() {
+    get isUpToDate() {
       return Boolean(
-        this.connected &&
-          this.chosenAssignment &&
-          this.changes.length &&
-          !this.isBusy &&
-          !this.gradeUpdateStatus.busyLabel,
+        this.isCanvasLoaded && this.chosenAssignment && this.matches.length && !this.studentsToSend.length,
       );
     },
-    get sending() {
-      return this.busyLabel === SENDING;
+
+    get isSending() {
+      return Boolean(this.sendRequestState.busyLabel);
+    },
+    get canSend() {
+      return Boolean(
+        this.connected && this.chosenAssignment && this.studentsToSend.length && !this.isBusy && !this.isSending,
+      );
     },
     get sendLabel() {
-      if (this.gradeUpdateStatus.busyLabel) return "Updating in Canvas…";
-      if (!this.isCanvasLoaded || !this.matched.length) return "Send to Canvas";
+      if (!this.isCanvasLoaded || !this.matches.length) return "Send to Canvas";
       if (!this.chosenAssignment) return "Choose an assignment";
-      const count = this.changes.length;
+      const count = this.studentsToSend.length;
       return count ? `Send ${counted(count, "grade")}` : "Up to date";
     },
-    get reviewTarget() {
+    get reviewSubtitle() {
       return `${this.chosenAssignment?.name} · ${this.config.courseName}`;
     },
-    /** How many answers still need marking among the grades sent. */
+    /** How many answers still need marking among the grades to send. */
     get unmarkedCount() {
-      return this.changes.reduce((count, { row }) => count + row.unmarkedCount, 0);
+      return this.studentsToSend.reduce((count, { row }) => count + row.unmarkedCount, 0);
     },
     get notSentCount() {
-      return this.rows.length - this.matched.length;
+      return this.rows.length - this.matches.length;
     },
-    get sameCount() {
-      return this.matched.length - this.changes.length;
+    get upToDateCount() {
+      return this.matches.length - this.studentsToSend.length;
     },
 
-    /** Shows the `index`th shown student in the preview, which its row's `data-dialog` opens. */
+    /** Previews the `index`th shown student; their row's `data-dialog` opens the preview. */
     previewStudent(index) {
-      this.preview.rows = this.shownStudents.map(({ row }) => row);
+      this.preview.students = this.shownStudents;
       this.showPreview(index);
     },
-    /** Shows the `index`th row's grade and comment as Canvas would; an index past either end does nothing. */
+    /** Shows the `index`th previewed student's comment as Canvas would; an index past either end does nothing. */
     showPreview(index) {
-      const row = this.preview.rows[index];
-      if (!row) return;
-      const grade = this.canvasGrade(row);
-      const gradeFlowMarks = displayedGrade(row.marks, { gradingType: "points", pointsPossible: row.maxMarks });
-      const sendsFeedback = this.settings.feedback === "true";
-      this.$refs.previewComment.innerHTML = sendsFeedback ? row.comment : "";
+      const student = this.preview.students[index];
+      if (!student) return;
+      this.preview.index = index;
+      this.$refs.previewComment.innerHTML = this.sendSettings.feedback ? student.row.comment : "";
       this.$refs.previewComment.scrollTop = 0;
-      Object.assign(this.preview, {
-        index,
+    },
+    /** The previewed student's ID, their grade as they see it in Canvas, GradeFlow's marks when they differ, and
+     * notes on what's missing. */
+    get previewDetails() {
+      const row = this.preview.students[this.preview.index]?.row;
+      if (!row) return { studentId: "", grade: "", marks: "", needsMarkingLabel: "", commentNote: "" };
+      const postedGrade = this.postedGrade(row);
+      const grade = postedGrade === null ? "—" : studentViewGrade(postedGrade, this.grading);
+      return {
         studentId: row.studentId,
         grade,
-        gradeFlowMarks: grade === gradeFlowMarks ? "" : gradeFlowMarks,
-        needsMarking: row.unmarkedCount ? `${counted(row.unmarkedCount, "answer needs", "answers need")} marking` : "",
-        commentPlaceholder: !sendsFeedback ? "Feedback isn't sent." : row.comment ? "" : "Nothing marked yet.",
-      });
+        marks: grade === row.marksText ? "" : row.marksText,
+        needsMarkingLabel: row.unmarkedCount
+          ? `${counted(row.unmarkedCount, "answer needs", "answers need")} marking`
+          : "",
+        commentNote: !this.sendSettings.feedback ? "Feedback isn't sent." : row.comment ? "" : "Nothing marked yet.",
+      };
     },
     /** The assignment's name as students see it: the chosen one's, or else the assessment's. */
     get previewAssignmentName() {
       return this.chosenAssignment?.name ?? this.config.name;
     },
-    get previewPosition() {
-      return `${this.preview.index + 1} of ${this.preview.rows.length}`;
-    },
 
-    review() {
-      Object.assign(this, { reviewing: true, error: "" });
+    openReview() {
+      this.sendRequestState.error = "";
       openDialog(document.getElementById("send-review"));
     },
-    closeReview() {
-      Object.assign(this, { reviewing: false, error: "" });
-    },
     preventCloseWhileSending(event) {
-      if (this.sending) event.preventDefault();
+      if (this.isSending) event.preventDefault();
     },
 
+    /** Sends the grades to send. Canvas updates them in a background job; the page stays usable but can't be left
+     * until the job ends. */
     async send() {
-      const { changes } = this;
+      const { studentsToSend } = this;
       const assignment = this.chosenAssignment;
       const gradeData = Object.fromEntries(
-        changes.map(({ row, user, addsComment }) => [
+        studentsToSend.map(({ row, user, addsComment }) => [
           user.id,
           {
             posted_grade: this.postedGrade(row),
@@ -361,41 +322,38 @@ export const canvasExport = () => {
           },
         ]),
       );
-      let progress = await this.run(SENDING, () => this.client.updateGrades(this.courseId, assignment.id, gradeData));
-      if (!progress) return;
-      document.getElementById("send-review").close();
-      // Canvas updates the grades in a background job. The page stays usable but can't be left until the job ends.
-      const grades = counted(changes.length, "grade");
+      const gradesLabel = counted(studentsToSend.length, "grade");
       await this.run(
-        `Canvas is updating ${grades}…`,
+        `Canvas is updating ${gradesLabel}…`,
         async () => {
-          const pollUntil = Date.now() + POLL_LIMIT_MS;
+          let progress = await this.client.updateGrades(this.courseId, assignment.id, gradeData);
+          document.getElementById("send-review").close();
+          const pollDeadline = Date.now() + POLL_LIMIT_MS;
           while (progress.workflow_state === "queued" || progress.workflow_state === "running") {
-            if (Date.now() > pollUntil)
+            if (Date.now() > pollDeadline)
               throw new Error("Canvas is still updating the grades. Check the assignment in Canvas.");
             await new Promise((resolve) => setTimeout(resolve, POLL_MS));
             progress = await this.client.progress(progress.id);
           }
           if (progress.workflow_state !== "completed")
             throw new Error(progress.message || "Canvas couldn't update the grades.");
-          showToast(`Sent ${grades} to “${assignment.name}”.`, "success");
+          showToast(`Sent ${gradesLabel} to “${assignment.name}”.`, "success");
           await htmx.ajax("POST", this.config.sentUrl, {
             source: this.$root,
             target: "#sent-marks",
             swap: "outerHTML",
-            values: { assignment_name: assignment.name, student_count: changes.length },
+            values: { assignment_name: assignment.name, student_count: studentsToSend.length },
           });
-          const submissions = await this.client.submissions(this.courseId, assignment.id);
-          if (this.assignmentId === assignment.id) this.submissions = submissions;
+          await this.loadSubmissions();
         },
-        this.gradeUpdateStatus,
+        this.sendRequestState,
       );
     },
-    warnOnUnload(event) {
-      if (this.gradeUpdateStatus.busyLabel) event.preventDefault();
+    preventUnloadWhileUpdating(event) {
+      if (this.isSending) event.preventDefault();
     },
     preventNavigationWhileUpdating(event) {
-      if (!this.gradeUpdateStatus.busyLabel || event.detail.ctx.request.headers["HX-Request-Type"] !== "full") return;
+      if (!this.isSending || event.detail.ctx.request.headers["HX-Request-Type"] !== "full") return;
       event.preventDefault();
       showToast("Stay on this page until Canvas has updated the grades.", "info");
     },

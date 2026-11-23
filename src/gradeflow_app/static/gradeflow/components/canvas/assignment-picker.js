@@ -1,12 +1,19 @@
 // Choosing the Canvas course's assignment in the dialog #assignment-picker (exports/assignment_picker.html): a card
-// per assignment group with its assignments. Groups and assignments are created, edited and deleted in Canvas at once.
-// The component it's mixed into has `courseId`, `maxMarks`, `config.name` and `choseAssignment()`, called once
-// `assignmentId` changes.
+// per assignment group with its assignments. Groups and assignments are created, edited and deleted in Canvas straight
+// away. The component it's mixed into has `courseId`, `maxMarks`, `config.name` and `changeAssignment(id)`.
 
 import { counted, matches } from "../../lib/words.js";
 import { openDialog } from "../../services/dialogs.js";
 
-const EMPTY_FORM = Object.freeze({ kind: "", id: "", groupId: "", name: "", points: "", weight: "" });
+const EMPTY_FORM = Object.freeze({
+  kind: "",
+  id: "",
+  groupId: "",
+  name: "",
+  points: "",
+  weight: "",
+  moveAssignmentsTo: "",
+});
 
 const describeAssignment = (assignment) => ({
   id: String(assignment.id),
@@ -14,7 +21,7 @@ const describeAssignment = (assignment) => ({
   pointsPossible: assignment.points_possible,
   gradingType: assignment.grading_type,
   published: assignment.published,
-  graded: assignment.graded_submissions_exist,
+  hasGrades: assignment.graded_submissions_exist,
   url: assignment.html_url,
 });
 
@@ -33,14 +40,13 @@ export const assignmentPickerMixin = () => ({
   groups: [],
   appliesGroupWeights: false,
   assignmentQuery: "",
-  selectedAssignmentId: "",
-  /** The busy label and error of the picker's Canvas requests, apart from the page's. */
-  pickerStatus: { busyLabel: "", error: "" },
-  /** The open form, for an assignment or a group (`kind`). A new one has no `id`; a new assignment goes in the group
-   * `groupId`. */
+  pendingAssignmentId: "",
+  /** The busy label and error of the picker's Canvas requests. */
+  pickerRequestState: { busyLabel: "", error: "" },
+  /** The open form, by `kind`: an "assignment" or a "group", new without an `id`, or "delete-group". A new assignment
+   * goes in the group `groupId`. A deleted group's assignments move to the group `moveAssignmentsTo`, or without one
+   * are deleted with it. */
   form: { ...EMPTY_FORM },
-  /** The group asked to be deleted, and the group its assignments move to; none deletes them with it. */
-  groupToDelete: { id: "", moveAssignmentsTo: "" },
 
   get assignments() {
     return this.groups.flatMap((group) => group.assignments);
@@ -48,14 +54,11 @@ export const assignmentPickerMixin = () => ({
   get chosenAssignment() {
     return this.assignments.find((assignment) => assignment.id === this.assignmentId);
   },
-  get chosenGroup() {
-    return this.groups.find((group) => group.assignments.includes(this.chosenAssignment));
-  },
   get isPickerBusy() {
-    return Boolean(this.pickerStatus.busyLabel);
+    return Boolean(this.pickerRequestState.busyLabel);
   },
-  get selectedAssignment() {
-    return this.assignments.find((assignment) => assignment.id === this.selectedAssignmentId);
+  get pendingAssignment() {
+    return this.assignments.find((assignment) => assignment.id === this.pendingAssignmentId);
   },
   /** The groups the search finds. A group whose name matches keeps all its assignments. */
   get shownGroups() {
@@ -69,27 +72,27 @@ export const assignmentPickerMixin = () => ({
       return {
         ...group,
         weightLabel: this.appliesGroupWeights ? `${group.weight}%` : "",
-        countLabel: counted(group.assignments.length, "assignment"),
-        editing: form.kind === "group" && form.id === group.id,
-        confirmingDelete: this.groupToDelete.id === group.id,
-        addingAssignment: form.kind === "assignment" && !form.id && form.groupId === group.id,
+        assignmentCountLabel: counted(group.assignments.length, "assignment"),
+        isEditing: form.kind === "group" && form.id === group.id,
+        isConfirmingDelete: form.kind === "delete-group" && form.id === group.id,
+        isAddingAssignment: form.kind === "assignment" && !form.id && form.groupId === group.id,
         otherGroups: this.groups.filter((other) => other.id !== group.id),
         assignments: assignments.map((assignment) => ({
           ...assignment,
-          editing: form.kind === "assignment" && form.id === assignment.id,
+          isEditing: form.kind === "assignment" && form.id === assignment.id,
           marksLabel: marksLabel(assignment.pointsPossible),
         })),
       };
     });
   },
 
-  /** The course's groups and their assignments; call inside a `run`. */
-  async loadGroups() {
-    const [course, groups] = await Promise.all([
-      this.client.course(this.courseId),
+  /** The course's groups and their assignments, with `course`, the Canvas course's request; call inside a `run`. */
+  async loadGroups(course) {
+    const [{ apply_assignment_group_weights }, groups] = await Promise.all([
+      course,
       this.client.assignmentGroups(this.courseId),
     ]);
-    this.appliesGroupWeights = course.apply_assignment_group_weights;
+    this.appliesGroupWeights = apply_assignment_group_weights;
     this.groups = groups.map(describeGroup);
   },
   groupById(id) {
@@ -104,18 +107,17 @@ export const assignmentPickerMixin = () => ({
   },
 
   openAssignmentPicker() {
-    Object.assign(this, { assignmentQuery: "", selectedAssignmentId: this.assignmentId });
-    this.pickerStatus.error = "";
-    this.closeForms();
+    Object.assign(this, { assignmentQuery: "", pendingAssignmentId: this.assignmentId });
+    this.pickerRequestState.error = "";
+    this.closeForm();
     openDialog(document.getElementById("assignment-picker"));
   },
-  useSelectedAssignment() {
-    this.assignmentId = this.selectedAssignmentId;
+  usePendingAssignment() {
     document.getElementById("assignment-picker").close();
-    this.choseAssignment();
+    this.changeAssignment(this.pendingAssignmentId);
   },
 
-  newAssignment(group) {
+  openNewAssignmentForm(group) {
     this.form = { ...EMPTY_FORM, kind: "assignment", groupId: group.id, name: this.config.name, points: this.maxMarks };
   },
   editAssignment(assignment) {
@@ -127,19 +129,17 @@ export const assignmentPickerMixin = () => ({
       points: assignment.pointsPossible,
     };
   },
-  newGroup() {
+  openNewGroupForm() {
     this.form = { ...EMPTY_FORM, kind: "group", weight: 0 };
   },
   editGroup(group) {
     this.form = { ...EMPTY_FORM, kind: "group", id: group.id, name: group.name, weight: group.weight };
   },
   askToDeleteGroup(group) {
-    this.closeForms();
-    this.groupToDelete = { id: group.id, moveAssignmentsTo: this.groups.find((other) => other.id !== group.id).id };
+    this.form = { ...EMPTY_FORM, kind: "delete-group", id: group.id, moveAssignmentsTo: group.otherGroups[0].id };
   },
-  closeForms() {
+  closeForm() {
     this.form = { ...EMPTY_FORM };
-    this.groupToDelete = { id: "", moveAssignmentsTo: "" };
   },
   /** Focuses the form's first field, with the form in view. */
   focusForm(field) {
@@ -147,89 +147,80 @@ export const assignmentPickerMixin = () => ({
     field.closest("li, section").scrollIntoView({ block: "nearest" });
   },
 
-  /** Saves the open form in Canvas. */
   async saveForm() {
     const { kind, id, groupId, points, weight } = this.form;
     const name = this.form.name.trim();
-    const saved = await this.run(
+    await this.run(
       "Saving in Canvas…",
       async () => {
         if (kind === "group") {
           const group = { name, ...(this.appliesGroupWeights && { group_weight: weight }) };
           if (id) {
-            const updated = await this.client.updateAssignmentGroup(this.courseId, id, group);
-            Object.assign(this.groupById(id), { name: updated.name, weight: updated.group_weight });
+            const updatedGroup = await this.client.updateAssignmentGroup(this.courseId, id, group);
+            Object.assign(this.groupById(id), { name: updatedGroup.name, weight: updatedGroup.group_weight });
           } else {
             this.groups.push(describeGroup(await this.client.createAssignmentGroup(this.courseId, group)));
           }
-          return true;
-        }
-        const assignment = { name, points_possible: points };
-        if (id) {
-          const updated = await this.client.updateAssignment(this.courseId, id, assignment);
+        } else if (id) {
+          const updatedAssignment = await this.client.updateAssignment(this.courseId, id, {
+            name,
+            points_possible: points,
+          });
           Object.assign(
-            this.assignments.find((candidate) => candidate.id === id),
-            describeAssignment(updated),
+            this.assignments.find((assignment) => assignment.id === id),
+            describeAssignment(updatedAssignment),
           );
         } else {
-          const created = describeAssignment(
-            await this.client.createAssignment(this.courseId, { ...assignment, assignment_group_id: groupId }),
+          const createdAssignment = describeAssignment(
+            await this.client.createAssignment(this.courseId, {
+              name,
+              points_possible: points,
+              assignment_group_id: groupId,
+            }),
           );
-          this.groupById(groupId).assignments.push(created);
-          this.selectedAssignmentId = created.id;
+          this.groupById(groupId).assignments.push(createdAssignment);
+          this.pendingAssignmentId = createdAssignment.id;
         }
-        return true;
+        this.closeForm();
       },
-      this.pickerStatus,
+      this.pickerRequestState,
     );
-    if (saved) this.closeForms();
   },
 
-  async moveAssignment(assignment, group) {
+  async moveAssignment(assignment, destinationGroup) {
     await this.run(
       "Moving in Canvas…",
       async () => {
-        await this.client.updateAssignment(this.courseId, assignment.id, { assignment_group_id: group.id });
-        this.groupById(group.id).assignments.push(this.removeAssignment(assignment.id));
+        await this.client.updateAssignment(this.courseId, assignment.id, { assignment_group_id: destinationGroup.id });
+        destinationGroup.assignments.push(this.removeAssignment(assignment.id));
       },
-      this.pickerStatus,
+      this.pickerRequestState,
     );
   },
   async deleteAssignment(assignment) {
-    const deleted = await this.run(
+    await this.run(
       "Deleting in Canvas…",
       async () => {
         await this.client.deleteAssignment(this.courseId, assignment.id);
         this.removeAssignment(assignment.id);
-        return true;
+        if (this.assignmentId && !this.chosenAssignment) this.changeAssignment("");
       },
-      this.pickerStatus,
+      this.pickerRequestState,
     );
-    if (deleted) this.clearChosenAssignmentIfDeleted();
   },
   async deleteGroup() {
-    const group = this.groupById(this.groupToDelete.id);
-    const target = group.assignments.length ? this.groupById(this.groupToDelete.moveAssignmentsTo) : null;
-    const deleted = await this.run(
+    const group = this.groupById(this.form.id);
+    const destinationGroup = this.groupById(this.form.moveAssignmentsTo);
+    await this.run(
       "Deleting in Canvas…",
       async () => {
-        await this.client.deleteAssignmentGroup(this.courseId, group.id, target?.id);
-        target?.assignments.push(...group.assignments);
+        await this.client.deleteAssignmentGroup(this.courseId, group.id, destinationGroup?.id);
+        destinationGroup?.assignments.push(...group.assignments);
         this.groups.splice(this.groups.indexOf(group), 1);
-        return true;
+        this.closeForm();
+        if (this.assignmentId && !this.chosenAssignment) this.changeAssignment("");
       },
-      this.pickerStatus,
+      this.pickerRequestState,
     );
-    if (deleted) {
-      this.closeForms();
-      this.clearChosenAssignmentIfDeleted();
-    }
-  },
-  /** Clears the saved choice once its assignment is deleted. */
-  clearChosenAssignmentIfDeleted() {
-    if (this.assignmentId && !this.chosenAssignment) {
-      this.assignmentId = "";
-      this.choseAssignment();
-    }
   },
 });

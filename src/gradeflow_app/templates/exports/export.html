@@ -3,7 +3,7 @@
 {% block content %}
 {% with assessment=access.assessment course=access.course %}
 {% partialdef send_settings %}
-<span id="send-settings" x-init="readSettings" class="flex min-w-0 flex-1 flex-wrap items-center gap-2 font-semibold" data-mode="{{ sending.mode }}" data-rounding="{{ sending.rounding|default_if_none:'' }}" data-feedback="{{ sending.include_feedback|yesno:'true,false' }}">{{ sending.summary }}{% if sending.override_count %}<c-chip tone="primary" title="Differs from the course">Custom</c-chip>{% endif %}</span>
+<span id="send-settings" x-init="readSendSettings" class="flex min-w-0 flex-1 flex-wrap items-center gap-2 font-semibold" data-mode="{{ sending.mode }}" data-rounding="{{ sending.rounding|default_if_none:'' }}" data-feedback="{{ sending.include_feedback|yesno:'true,false' }}">{{ sending.summary }}{% if sending.override_count %}<c-chip tone="primary" title="Differs from the course">Custom</c-chip>{% endif %}</span>
 {% endpartialdef %}
 <c-page title="Export">
   {% if not student_count %}
@@ -18,7 +18,7 @@
       </c-panel>
       {% else %}
       {% firstof course_canvas.canvas_course_name course_canvas.canvas_course as canvas_course_name %}
-      <div class="contents"{% if access.can_edit %} x-data="canvasExport" data-config="{{ config }}" x-on:beforeunload.window="warnOnUnload" x-on:htmx:before:request.document="preventNavigationWhileUpdating"{% endif %}>
+      <div class="contents"{% if access.can_edit %} x-data="canvasExport" data-config="{{ config }}" x-on:beforeunload.window="preventUnloadWhileUpdating" x-on:htmx:before:request.document="preventNavigationWhileUpdating"{% endif %}>
       <c-panel icon="paper-airplane" title="Canvas" body_class="setting-rows">
         {% if access.can_edit %}<c-slot name="actions"><span class="flex items-center gap-2" x-show="connected" x-cloak><a class="muted-link text-xs" href="{% url 'canvas_settings' course.pk %}" x-text="canvasHost"></a><c-chip icon="check" tone="success">Connected</c-chip></span></c-slot>{% endif %}
         <div class="setting-summary-row">
@@ -56,7 +56,7 @@
             {% for field in form.visible_fields %}{{ field.as_field_group }}{% endfor %}
           </form>
         </details>
-        <div class="py-3.5" x-show="connected && error && !reviewing" x-cloak><c-alert><span x-text="error"></span></c-alert></div>
+        <div class="py-3.5" x-show="connected && error" x-cloak><c-alert><span x-text="error"></span></c-alert></div>
         {% else %}
         <div class="setting-summary-row"><span class="setting-summary-label">{% icon "adjustments-horizontal" %}How marks are sent</span>{% partial send_settings %}</div>
         <c-slot name="footer"><p class="ml-auto text-sm text-muted">Editors send the marks.</p></c-slot>
@@ -64,33 +64,33 @@
       </c-panel>
       {% if access.can_edit %}
       <c-panel icon="users" title="Students" body_class="" x-show="connected" x-cloak>
-        <c-slot name="actions"><span class="text-xs text-muted" x-show="isCanvasLoaded" x-text="matchedNote"></span><span class="flex items-center gap-2 text-xs text-muted" role="status" x-show="!isCanvasLoaded && !error"><span class="loading loading-spinner loading-xs"></span>Loading Canvas students and grades…</span></c-slot>
-        <div class="border-b border-line p-4" x-show="isCanvasLoaded && !matched.length && !conflicts.length"><c-alert warning role="">None of these students are in {{ canvas_course_name }}.<c-slot name="action"><a class="btn btn-sm" href="{% url 'canvas_settings' course.pk %}">Change course</a></c-slot></c-alert></div>
+        <c-slot name="actions"><span class="text-xs text-muted" x-show="isCanvasLoaded" x-text="matches.length + ' of ' + rows.length + ' matched in Canvas'"></span><span class="flex items-center gap-2 text-xs text-muted" role="status" x-show="!isCanvasLoaded && !error"><span class="loading loading-spinner loading-xs"></span>Loading Canvas students and grades…</span></c-slot>
+        <div class="border-b border-line p-4" x-show="isCanvasLoaded && !matches.length && !duplicates.length"><c-alert warning role="">None of these students are in {{ canvas_course_name }}.<c-slot name="action"><a class="btn btn-sm" href="{% url 'canvas_settings' course.pk %}">Change course</a></c-slot></c-alert></div>
         <div :aria-busy="isCanvasLoaded && isBusy" x-show="rows.length">
           <div class="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line bg-base-200/50 px-4 py-2.5">
             <div class="segmented max-w-full overflow-x-auto" role="radiogroup" aria-label="Show">
               <template x-for="option in filters" :key="option.key">
-                <label class="segment"><input type="radio" name="show" class="sr-only" :value="option.key" x-model="activeFilter"><span x-text="option.label"></span><span class="tabular-nums text-subtle" x-text="option.count"></span></label>
+                <label class="segment"><input type="radio" name="filter" class="sr-only" :value="option.key" x-model="activeFilter"><span x-text="option.label"></span><span class="tabular-nums text-subtle" x-text="option.count"></span></label>
               </template>
             </div>
-            <c-search label="Search ID or name" class="input-sm ml-auto w-56 max-w-full" x-model="query" />
+            <c-search label="Search ID or name" class="input-sm ml-auto w-56 max-w-full" x-model="studentQuery" />
           </div>
           <div class="max-h-[28rem] overflow-y-auto">
             <table class="table table-pin-rows">
               <thead><tr><th>Student</th><th class="text-right max-sm:hidden">Marks</th><th class="text-right">Canvas grade</th><th>Status</th></tr></thead>
               <tbody x-show="activeFilter !== 'only_in_canvas'">
                 <template x-for="(student, index) in shownStudents" :key="student.row.studentId">
-                  <tr data-dialog="preview" x-on:click="previewStudent(index)">
+                  <tr data-dialog="student-preview" x-on:click="previewStudent(index)">
                     <td class="w-full max-w-0"><span class="flex min-w-0 items-baseline gap-3"><button type="button" class="shrink-0 font-mono" x-text="student.row.studentId"></button><span class="truncate text-sm text-muted max-sm:hidden" x-text="student.name"></span></span></td>
-                    <td class="whitespace-nowrap text-right tabular-nums max-sm:hidden" x-text="student.marks"></td>
+                    <td class="whitespace-nowrap text-right tabular-nums max-sm:hidden" x-text="student.row.marksText"></td>
                     <td class="whitespace-nowrap text-right tabular-nums">
                       <span class="skeleton inline-block h-4 w-12 align-middle" x-show="student.status === 'loading' && !error"></span>
                       <span class="text-muted" x-show="student.status === 'not_in_canvas' || student.status === 'duplicate_id'">—</span>
-                      <span class="inline-flex items-center gap-1.5" x-show="student.status === 'changed' || student.status === 'unchanged'">
+                      <span class="inline-flex items-center gap-1.5" x-show="student.status === 'to_send' || student.status === 'up_to_date'">
                         <span class="text-subtle" title="New comment" x-show="student.addsComment">{% icon "chat-bubble-left" "size-3.5" %}</span>
                         <s class="text-subtle" x-show="student.isGradeChanged" x-text="student.currentGrade"></s>
                         <span class="text-subtle" x-show="student.isGradeChanged">{% icon "arrow-right" "size-3" %}</span>
-                        <span :class="student.status === 'changed' ? 'font-semibold' : 'text-muted'" x-text="student.sentGrade"></span>
+                        <span :class="student.status === 'to_send' ? 'font-semibold' : 'text-muted'" x-text="student.gradeToSend"></span>
                       </span>
                     </td>
                     <td>
@@ -98,8 +98,8 @@
                         <span class="skeleton h-5.5 w-16 rounded-full" x-show="student.status === 'loading' && !error"></span>
                         <c-chip tone="warning" icon="exclamation-triangle" x-show="student.status === 'not_in_canvas'">Not in Canvas</c-chip>
                         <c-chip tone="warning" icon="exclamation-triangle" title="Several IDs match this Canvas student" x-show="student.status === 'duplicate_id'">Duplicate ID</c-chip>
-                        <c-chip tone="primary" x-show="student.status === 'changed'">To send</c-chip>
-                        <c-chip tone="warning" x-show="student.row.unmarkedCount"><span x-text="student.row.unmarkedCount"></span> to mark</c-chip>
+                        <c-chip tone="primary" x-show="student.status === 'to_send'">To send</c-chip>
+                        <c-chip tone="warning" x-show="student.row.unmarkedCount"><span x-text="student.row.needsMarkingLabel"></span></c-chip>
                       </span>
                     </td>
                   </tr>
@@ -115,49 +115,49 @@
           </div>
         </div>
         <c-slot name="footer">
-          <span class="flex items-center gap-2 text-sm text-muted" x-show="isCanvasLoaded && isBusy && !reviewing" x-cloak><span class="loading loading-spinner loading-sm"></span><span x-text="busyLabel"></span></span>
-          <span class="flex items-center gap-2 text-sm text-muted" x-show="gradeUpdateStatus.busyLabel" x-cloak><span class="loading loading-spinner loading-sm"></span><span x-text="gradeUpdateStatus.busyLabel"></span></span>
-          <span class="text-sm text-error" x-show="gradeUpdateStatus.error" x-text="gradeUpdateStatus.error" x-cloak></span>
-          <button type="button" class="btn btn-primary ml-auto" x-on:click="review" :disabled="!canSend"><span x-show="!upToDate">{% icon "paper-airplane" %}</span><span x-show="upToDate" x-cloak>{% icon "check" %}</span><span x-text="sendLabel">Send to Canvas</span></button>
+          <span class="flex items-center gap-2 text-sm text-muted" x-show="isCanvasLoaded && isBusy" x-cloak><span class="loading loading-spinner loading-sm"></span><span x-text="busyLabel"></span></span>
+          <span class="flex items-center gap-2 text-sm text-muted" x-show="isSending" x-cloak><span class="loading loading-spinner loading-sm"></span><span x-text="sendRequestState.busyLabel"></span></span>
+          <span class="text-sm text-error" x-show="sendRequestState.error" x-text="sendRequestState.error" x-cloak></span>
+          <button type="button" class="btn btn-primary ml-auto" x-on:click="openReview" :disabled="!canSend"><span x-show="!isUpToDate">{% icon "paper-airplane" %}</span><span x-show="isUpToDate" x-cloak>{% icon "check" %}</span><span x-text="sendLabel">Send to Canvas</span></button>
         </c-slot>
       </c-panel>
       {% partialdef canvas_rows inline %}<div id="export-rows" x-init="rematch" hx-get="{% url 'export_rows' access.assessment.pk %}" hx-trigger="{% listen 'marks' access.assessment.pk %}" hx-swap="outerHTML">{{ canvas_rows|json_script:"export-rows-data" }}</div>{% endpartialdef %}
-      <c-dialog id="preview" title="Preview in Canvas" box_class="flex h-[32rem] max-h-[80vh] max-w-lg flex-col" x-on:keydown.arrow-left="showPreview(preview.index - 1)" x-on:keydown.arrow-right="showPreview(preview.index + 1)">
+      <c-dialog id="student-preview" title="Preview in Canvas" box_class="flex h-[32rem] max-h-[80vh] max-w-lg flex-col" x-on:keydown.arrow-left="showPreview(preview.index - 1)" x-on:keydown.arrow-right="showPreview(preview.index + 1)">
         <div class="flex min-h-0 flex-1 flex-col gap-4 px-6 pb-6 pt-1">
           <div class="flex items-center gap-3">
-            <span class="font-mono font-medium tabular-nums" x-text="preview.studentId"></span>
-            <span class="ml-auto text-sm tabular-nums text-muted" aria-live="polite" x-text="previewPosition"></span>
+            <span class="font-mono font-medium tabular-nums" x-text="previewDetails.studentId"></span>
+            <span class="ml-auto text-sm tabular-nums text-muted" aria-live="polite" x-text="(preview.index + 1) + ' of ' + preview.students.length"></span>
             <div class="join">
               <button type="button" class="btn btn-square btn-sm join-item" x-on:click="showPreview(preview.index - 1)" :disabled="preview.index === 0" aria-label="Previous student" aria-keyshortcuts="ArrowLeft">{% icon "chevron-left" %}</button>
-              <button type="button" class="btn btn-square btn-sm join-item" x-on:click="showPreview(preview.index + 1)" :disabled="preview.index === preview.rows.length - 1" aria-label="Next student" aria-keyshortcuts="ArrowRight">{% icon "chevron-right" %}</button>
+              <button type="button" class="btn btn-square btn-sm join-item" x-on:click="showPreview(preview.index + 1)" :disabled="preview.index === preview.students.length - 1" aria-label="Next student" aria-keyshortcuts="ArrowRight">{% icon "chevron-right" %}</button>
             </div>
           </div>
           <div class="surface flex min-h-0 flex-1 flex-col divide-y divide-line overflow-hidden">
             <div class="flex items-baseline gap-4 px-4 py-3.5">
               <div class="grid min-w-0 flex-1 gap-1">
                 <p class="truncate font-semibold" x-text="previewAssignmentName"></p>
-                <p class="flex flex-wrap items-center gap-2 text-sm text-muted" x-show="preview.gradeFlowMarks || preview.needsMarking"><span x-show="preview.gradeFlowMarks"><span class="tabular-nums" x-text="preview.gradeFlowMarks"></span> in GradeFlow</span><c-chip tone="warning" icon="exclamation-triangle" x-show="preview.needsMarking"><span x-text="preview.needsMarking"></span></c-chip></p>
+                <p class="flex flex-wrap items-center gap-2 text-sm text-muted" x-show="previewDetails.marks || previewDetails.needsMarkingLabel"><span x-show="previewDetails.marks"><span class="tabular-nums" x-text="previewDetails.marks"></span> in GradeFlow</span><c-chip tone="warning" icon="exclamation-triangle" x-show="previewDetails.needsMarkingLabel"><span x-text="previewDetails.needsMarkingLabel"></span></c-chip></p>
               </div>
-              <p class="text-lg font-semibold tabular-nums" x-text="preview.grade"></p>
+              <p class="text-lg font-semibold tabular-nums" x-text="previewDetails.grade"></p>
             </div>
-            <div class="min-h-0 flex-1 overflow-y-auto whitespace-pre-wrap wrap-break-word px-4 py-3.5 text-sm" x-ref="previewComment" x-show="!preview.commentPlaceholder"></div>
-            <p class="flex flex-1 items-center justify-center gap-2 px-4 py-3.5 text-sm text-muted" x-show="preview.commentPlaceholder">{% icon "chat-bubble-left" %}<span x-text="preview.commentPlaceholder"></span></p>
+            <div class="min-h-0 flex-1 overflow-y-auto whitespace-pre-wrap wrap-break-word px-4 py-3.5 text-sm" x-ref="previewComment" x-show="!previewDetails.commentNote"></div>
+            <p class="flex flex-1 items-center justify-center gap-2 px-4 py-3.5 text-sm text-muted" x-show="previewDetails.commentNote">{% icon "chat-bubble-left" %}<span x-text="previewDetails.commentNote"></span></p>
           </div>
         </div>
       </c-dialog>
-      <c-dialog id="send-review" title="Send to Canvas" x-on:close="closeReview" x-on:cancel="preventCloseWhileSending">
+      <c-dialog id="send-review" title="Send to Canvas" x-on:cancel="preventCloseWhileSending">
         <div class="grid gap-4 px-6 pt-1">
-          <p class="-mt-1 truncate text-sm text-muted" x-text="reviewTarget"></p>
-          <c-alert x-show="error" x-cloak><span x-text="error"></span></c-alert>
+          <p class="-mt-1 truncate text-sm text-muted" x-text="reviewSubtitle"></p>
+          <c-alert x-show="sendRequestState.error" x-cloak><span x-text="sendRequestState.error"></span></c-alert>
           <div class="surface divide-y divide-line overflow-hidden">
-            <p class="flex items-center gap-3 px-4 py-3">{% icon "check-circle" "size-5 text-success" %}<span><span class="font-semibold tabular-nums" x-text="changes.length"></span> to send<span x-show="sameCount">, <span class="font-semibold tabular-nums" x-text="sameCount"></span> already up to date</span></span></p>
+            <p class="flex items-center gap-3 px-4 py-3">{% icon "check-circle" "size-5 text-success" %}<span><span class="font-semibold tabular-nums" x-text="studentsToSend.length"></span> to send<span x-show="upToDateCount">, <span class="font-semibold tabular-nums" x-text="upToDateCount"></span> already up to date</span></span></p>
             <p class="flex items-center gap-3 px-4 py-3" x-show="unmarkedCount">{% icon "exclamation-triangle" "size-5 text-warning" %}<span><span class="font-semibold tabular-nums" x-text="unmarkedCount"></span> <span x-text="unmarkedCount === 1 ? 'answer still needs marking. It counts as 0.' : 'answers still need marking. They count as 0.'"></span></span></p>
-            <p class="flex items-center gap-3 px-4 py-3" x-show="notSentCount">{% icon "exclamation-triangle" "size-5 text-warning" %}<span><span class="font-semibold tabular-nums" x-text="notSentCount"></span> <span x-text="notSentCount === 1 ? 'student isn’t sent: not in this Canvas course, or a duplicate ID.' : 'students aren’t sent: not in this Canvas course, or a duplicate ID.'"></span></span></p>
+            <p class="flex items-center gap-3 px-4 py-3" x-show="notSentCount">{% icon "exclamation-triangle" "size-5 text-warning" %}<span><span class="font-semibold tabular-nums" x-text="notSentCount"></span> <span x-text="notSentCount === 1 ? 'student isn’t in this Canvas course or has a duplicate ID.' : 'students aren’t in this Canvas course or have a duplicate ID.'"></span></span></p>
           </div>
         </div>
         <c-dialog.footer>
-          <button type="button" class="btn" data-close :disabled="sending">Cancel</button>
-          <button type="button" class="btn btn-primary" x-on:click="send" :disabled="!canSend" :data-spinner="sending"><span x-text="sendLabel"></span></button>
+          <button type="button" class="btn" data-close :disabled="isSending">Cancel</button>
+          <button type="button" class="btn btn-primary" x-on:click="send" :disabled="!canSend" :data-spinner="isSending"><span x-text="sendLabel"></span></button>
         </c-dialog.footer>
       </c-dialog>
       {% endif %}

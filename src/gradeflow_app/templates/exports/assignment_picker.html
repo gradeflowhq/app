@@ -9,24 +9,24 @@
 <label class="input input-sm w-24 shrink-0" x-show="appliesGroupWeights"><span class="sr-only">Weight</span><input type="number" min="0" step="any" class="text-right tabular-nums" x-model.number="form.weight" :required="appliesGroupWeights"><span class="text-muted">%</span></label>
 {% endpartialdef %}
 {% partialdef form_buttons %}
-<button type="button" class="btn btn-ghost btn-sm" x-on:click="closeForms">Cancel</button>
+<button type="button" class="btn btn-ghost btn-sm" x-on:click="closeForm">Cancel</button>
 <button class="btn btn-primary btn-sm" :disabled="isPickerBusy">{{ label }}</button>
 {% endpartialdef %}
 <c-dialog id="assignment-picker" title="Assignment" box_class="flex h-[44rem] max-h-[85vh] max-w-2xl flex-col">
   <div class="flex items-center gap-2 border-b border-line px-6 pb-4 pt-1">
     <c-search class="min-w-0 flex-1" label="Search assignments" x-model="assignmentQuery" />
-    <button type="button" class="btn" x-on:click="newGroup" :disabled="isPickerBusy">{% icon "plus" %}New group</button>
+    <button type="button" class="btn" x-on:click="openNewGroupForm" :disabled="isPickerBusy">{% icon "plus" %}New group</button>
   </div>
   <div class="grid min-h-0 flex-1 content-start gap-3 overflow-y-auto bg-base-200 px-6 py-4">
-    <c-alert x-show="pickerStatus.error" x-cloak><span x-text="pickerStatus.error"></span></c-alert>
+    <c-alert x-show="pickerRequestState.error" x-cloak><span x-text="pickerRequestState.error"></span></c-alert>
     <template x-for="group in shownGroups" :key="group.id">
       <section class="surface" :aria-label="group.name">
-        <template x-if="!group.editing && !group.confirmingDelete">
+        <template x-if="!group.isEditing && !group.isConfirmingDelete">
           <header class="flex h-12 items-center gap-2 border-b border-line pr-2 pl-4">
             <h3 class="min-w-0 truncate font-semibold" x-text="group.name"></h3>
             <c-chip x-show="group.weightLabel"><span x-text="group.weightLabel"></span></c-chip>
-            <span class="shrink-0 text-sm text-muted max-sm:hidden" x-text="group.countLabel"></span>
-            <button type="button" class="btn btn-ghost btn-square btn-sm ml-auto text-primary" x-on:click="newAssignment(group)" :disabled="isPickerBusy" :aria-label="'New assignment in ' + group.name" :title="'New assignment in ' + group.name">{% icon "plus" %}</button>
+            <span class="shrink-0 text-sm text-muted max-sm:hidden" x-text="group.assignmentCountLabel"></span>
+            <button type="button" class="btn btn-ghost btn-square btn-sm ml-auto text-primary" x-on:click="openNewAssignmentForm(group)" :disabled="isPickerBusy" :aria-label="'New assignment in ' + group.name" :title="'New assignment in ' + group.name">{% icon "plus" %}</button>
             <button type="button" class="btn btn-ghost btn-square btn-sm" :popovertarget="'group-menu-' + group.id" :style="'anchor-name: --group-menu-' + group.id" :aria-label="'Actions for ' + group.name">{% icon "ellipsis-horizontal" "size-5" %}</button>
             <div popover :id="'group-menu-' + group.id" :style="'position-anchor: --group-menu-' + group.id" class="dropdown dropdown-end mt-1 w-52 [position-try-fallbacks:flip-block] rounded-box border border-base-300 bg-base-100 shadow-lg">
               <ul class="menu w-full p-1">
@@ -36,53 +36,53 @@
             </div>
           </header>
         </template>
-        <template x-if="group.editing">
+        <template x-if="group.isEditing">
           <form class="flex flex-wrap items-center gap-2 border-b border-line px-3 py-2.5" x-on:submit.prevent="saveForm">
             {% partial name_field %}{% partial weight_field %}
             <div class="ml-auto flex gap-2">{% with label="Save" %}{% partial form_buttons %}{% endwith %}</div>
           </form>
         </template>
-        <template x-if="group.confirmingDelete">
+        <template x-if="group.isConfirmingDelete">
           <div class="grid gap-3 rounded-box bg-error/5 px-4 py-3">
             <p class="flex items-center gap-2 font-semibold">{% icon "trash" "text-error" %}<span x-text="'Delete the group “' + group.name + '” in Canvas?'"></span></p>
             <div class="flex flex-wrap items-center gap-2">
               <template x-if="group.assignments.length">
-                <select class="select select-sm w-auto" aria-label="Its assignments" x-model="groupToDelete.moveAssignmentsTo">
-                  <template x-for="other in group.otherGroups" :key="other.id"><option :value="other.id" x-text="'Move its assignments to ' + other.name"></option></template>
+                <select class="select select-sm w-auto" aria-label="Assignments in this group" x-model="form.moveAssignmentsTo">
+                  <template x-for="otherGroup in group.otherGroups" :key="otherGroup.id"><option :value="otherGroup.id" x-text="'Move its assignments to ' + otherGroup.name"></option></template>
                   <option value="">Delete its assignments and their grades</option>
                 </select>
               </template>
               <div class="ml-auto flex gap-2">
-                <button type="button" class="btn btn-ghost btn-sm" x-on:click="closeForms">Cancel</button>
+                <button type="button" class="btn btn-ghost btn-sm" x-on:click="closeForm">Cancel</button>
                 <button type="button" class="btn btn-outline btn-error btn-sm" x-on:click="deleteGroup" :disabled="isPickerBusy">Delete group</button>
               </div>
             </div>
           </div>
         </template>
         <ul class="grid gap-0.5 p-1" role="radiogroup" :aria-label="group.name">
-          <template x-for="item in group.assignments" :key="item.id">
+          <template x-for="assignment in group.assignments" :key="assignment.id">
             <li>
-              <template x-if="!item.editing">
+              <template x-if="!assignment.isEditing">
                 <div class="flex h-11 items-center gap-3 rounded-field pr-1.5 pl-3 hover:bg-base-200/60 has-checked:active-ring has-checked:bg-secondary/40">
                   <label class="flex min-w-0 flex-1 cursor-pointer items-center gap-3 self-stretch">
-                    <input type="radio" name="assignment" class="radio radio-primary radio-sm" :value="item.id" x-model="selectedAssignmentId">
-                    <span class="min-w-0 flex-1 truncate font-medium" x-text="item.name"></span>
-                    <c-chip class="max-sm:hidden" x-show="!item.published">Unpublished</c-chip>
-                    <span class="shrink-0 text-right text-sm tabular-nums text-muted sm:w-20" x-text="item.marksLabel"></span>
+                    <input type="radio" name="assignment" class="radio radio-primary radio-sm" :value="assignment.id" x-model="pendingAssignmentId">
+                    <span class="min-w-0 flex-1 truncate font-medium" x-text="assignment.name"></span>
+                    <c-chip class="max-sm:hidden" x-show="!assignment.published">Unpublished</c-chip>
+                    <span class="shrink-0 text-right text-sm tabular-nums text-muted sm:w-20" x-text="assignment.marksLabel"></span>
                   </label>
-                  <button type="button" class="btn btn-ghost btn-square btn-sm" :popovertarget="'assignment-menu-' + item.id" :style="'anchor-name: --assignment-menu-' + item.id" :aria-label="'Actions for ' + item.name">{% icon "ellipsis-horizontal" "size-5" %}</button>
-                  <div popover :id="'assignment-menu-' + item.id" :style="'position-anchor: --assignment-menu-' + item.id" class="dropdown dropdown-end mt-1 max-h-[min(28rem,70dvh)] w-56 overflow-y-auto [position-try-fallbacks:flip-block] rounded-box border border-base-300 bg-base-100 shadow-lg">
+                  <button type="button" class="btn btn-ghost btn-square btn-sm" :popovertarget="'assignment-menu-' + assignment.id" :style="'anchor-name: --assignment-menu-' + assignment.id" :aria-label="'Actions for ' + assignment.name">{% icon "ellipsis-horizontal" "size-5" %}</button>
+                  <div popover :id="'assignment-menu-' + assignment.id" :style="'position-anchor: --assignment-menu-' + assignment.id" class="dropdown dropdown-end mt-1 max-h-[min(28rem,70dvh)] w-56 overflow-y-auto [position-try-fallbacks:flip-block] rounded-box border border-base-300 bg-base-100 shadow-lg">
                     <ul class="menu w-full p-1">
-                      <li><button type="button" x-on:click="editAssignment(item)">{% icon "pencil" %}Edit</button></li>
-                      <li><a :href="item.url" target="_blank" rel="noopener">{% icon "arrow-top-right-on-square" %}Open in Canvas</a></li>
+                      <li><button type="button" x-on:click="editAssignment(assignment)">{% icon "pencil" %}Edit</button></li>
+                      <li><a :href="assignment.url" target="_blank" rel="noopener">{% icon "arrow-top-right-on-square" %}Open in Canvas</a></li>
                       <template x-if="group.otherGroups.length"><li class="menu-title">Move to</li></template>
-                      <template x-for="other in group.otherGroups" :key="other.id"><li><button type="button" x-on:click="moveAssignment(item, other)">{% icon "folder" %}<span class="truncate" x-text="other.name"></span></button></li></template>
-                      <li class="mt-1 border-t border-line pt-1"><button type="button" class="text-error" :data-confirm="'Delete “' + item.name + '” in Canvas?'" :data-confirm-detail="item.graded ? 'Its grades in Canvas go with it.' : ''" x-on:click="deleteAssignment(item)">{% icon "trash" %}Delete</button></li>
+                      <template x-for="otherGroup in group.otherGroups" :key="otherGroup.id"><li><button type="button" x-on:click="moveAssignment(assignment, otherGroup)">{% icon "folder" %}<span class="truncate" x-text="otherGroup.name"></span></button></li></template>
+                      <li class="mt-1 border-t border-line pt-1"><button type="button" class="text-error" :data-confirm="'Delete “' + assignment.name + '” in Canvas?'" :data-confirm-detail="assignment.hasGrades ? 'Its grades in Canvas are deleted too.' : ''" x-on:click="deleteAssignment(assignment)">{% icon "trash" %}Delete</button></li>
                     </ul>
                   </div>
                 </div>
               </template>
-              <template x-if="item.editing">
+              <template x-if="assignment.isEditing">
                 <form class="flex flex-wrap items-center gap-2 rounded-field px-2 py-1.5" x-on:submit.prevent="saveForm">
                   {% partial name_field %}{% partial points_field %}
                   {% with label="Save" %}{% partial form_buttons %}{% endwith %}
@@ -90,13 +90,13 @@
               </template>
             </li>
           </template>
-          <template x-if="group.addingAssignment">
+          <template x-if="group.isAddingAssignment">
             <li><form class="flex flex-wrap items-center gap-2 border-t border-line px-2 pb-1.5 pt-2" x-on:submit.prevent="saveForm">
               {% partial name_field %}{% partial points_field %}
               {% with label="Create" %}{% partial form_buttons %}{% endwith %}
             </form></li>
           </template>
-          <li class="px-3 py-2.5 text-sm text-muted" x-show="!group.assignments.length && !group.addingAssignment">No assignments</li>
+          <li class="px-3 py-2.5 text-sm text-muted" x-show="!group.assignments.length && !group.isAddingAssignment">No assignments</li>
         </ul>
       </section>
     </template>
@@ -111,8 +111,8 @@
     <p class="py-8 text-center text-sm text-muted" x-show="assignmentQuery && !shownGroups.length">No assignments match.</p>
   </div>
   <c-dialog.footer>
-    <p class="mr-auto flex min-w-0 items-center gap-2 self-center text-sm text-muted" x-show="isPickerBusy"><span class="loading loading-spinner loading-sm"></span><span class="truncate" x-text="pickerStatus.busyLabel"></span></p>
+    <p class="mr-auto flex min-w-0 items-center gap-2 self-center text-sm text-muted" x-show="isPickerBusy"><span class="loading loading-spinner loading-sm"></span><span class="truncate" x-text="pickerRequestState.busyLabel"></span></p>
     <button type="button" class="btn" data-close>Cancel</button>
-    <button type="button" class="btn btn-primary" x-on:click="useSelectedAssignment" :disabled="!selectedAssignment || isPickerBusy"><span class="max-w-64 truncate" x-text="selectedAssignment ? 'Use “' + selectedAssignment.name + '”' : 'Choose an assignment'"></span></button>
+    <button type="button" class="btn btn-primary" x-on:click="usePendingAssignment" :disabled="!pendingAssignment || isPickerBusy"><span class="max-w-64 truncate" x-text="pendingAssignment ? 'Use “' + pendingAssignment.name + '”' : 'Choose an assignment'"></span></button>
   </c-dialog.footer>
 </c-dialog>
