@@ -18,7 +18,7 @@
       </c-panel>
       {% else %}
       {% firstof course_canvas.canvas_course_name course_canvas.canvas_course as canvas_course_name %}
-      <div class="contents"{% if access.can_edit %} x-data="canvasExport" data-config="{{ config }}"{% endif %}>
+      <div class="contents"{% if access.can_edit %} x-data="canvasExport" data-config="{{ config }}" x-on:beforeunload.window="warnOnUnload" x-on:htmx:before:request.document="preventNavigationWhileUpdating"{% endif %}>
       <c-panel icon="paper-airplane" title="Canvas" body_class="setting-rows">
         {% if access.can_edit %}<c-slot name="actions"><span class="flex items-center gap-2" x-show="connected" x-cloak><a class="muted-link text-xs" href="{% url 'canvas_settings' course.pk %}" x-text="canvasHost"></a><c-chip icon="check" tone="success">Connected</c-chip></span></c-slot>{% endif %}
         <div class="setting-summary-row">
@@ -116,6 +116,8 @@
         </div>
         <c-slot name="footer">
           <span class="flex items-center gap-2 text-sm text-muted" x-show="isCanvasLoaded && isBusy && !reviewing" x-cloak><span class="loading loading-spinner loading-sm"></span><span x-text="busyLabel"></span></span>
+          <span class="flex items-center gap-2 text-sm text-muted" x-show="gradeUpdateStatus.busyLabel" x-cloak><span class="loading loading-spinner loading-sm"></span><span x-text="gradeUpdateStatus.busyLabel"></span></span>
+          <span class="text-sm text-error" x-show="gradeUpdateStatus.error" x-text="gradeUpdateStatus.error" x-cloak></span>
           <button type="button" class="btn btn-primary ml-auto" x-on:click="review" :disabled="!canSend"><span x-show="!upToDate">{% icon "paper-airplane" %}</span><span x-show="upToDate" x-cloak>{% icon "check" %}</span><span x-text="sendLabel">Send to Canvas</span></button>
         </c-slot>
       </c-panel>

@@ -43,6 +43,7 @@ export const canvasExport = () => {
     filter: "all",
     query: "",
     reviewing: false,
+    gradeUpdateStatus: { busyLabel: "", error: "" },
     preview: {
       rows: [],
       index: 0,
@@ -274,13 +275,20 @@ export const canvasExport = () => {
     },
 
     get canSend() {
-      return Boolean(this.connected && this.chosenAssignment && this.changes.length && !this.isBusy);
+      return Boolean(
+        this.connected &&
+          this.chosenAssignment &&
+          this.changes.length &&
+          !this.isBusy &&
+          !this.gradeUpdateStatus.busyLabel,
+      );
     },
     get sending() {
       return this.busyLabel === SENDING;
     },
     get sendLabel() {
       if (this.sending) return "Sending…";
+      if (this.gradeUpdateStatus.busyLabel) return "Updating in Canvas…";
       if (!this.isCanvasLoaded || !this.matched.length) return "Send to Canvas";
       if (!this.chosenAssignment) return "Choose an assignment";
       const count = this.changes.length;
@@ -344,37 +352,53 @@ export const canvasExport = () => {
 
     async send() {
       const { changes } = this;
-      await this.run(SENDING, async () => {
-        const assignment = this.chosenAssignment;
-        const gradeData = Object.fromEntries(
-          changes.map(({ row, user, addsComment }) => [
-            user.id,
-            {
-              posted_grade: this.postedGrade(row),
-              ...(addsComment && { text_comment: row.comment }),
-            },
-          ]),
-        );
-        let progress = await this.client.updateGrades(this.courseId, assignment.id, gradeData);
-        const pollUntil = Date.now() + POLL_LIMIT_MS;
-        while (progress.workflow_state === "queued" || progress.workflow_state === "running") {
-          if (Date.now() > pollUntil)
-            throw new Error("Canvas is still updating the grades. Check the assignment in Canvas.");
-          await new Promise((resolve) => setTimeout(resolve, POLL_MS));
-          progress = await this.client.progress(progress.id);
-        }
-        if (progress.workflow_state !== "completed")
-          throw new Error(progress.message || "Canvas couldn't update the grades.");
-        document.getElementById("send-review").close();
-        showToast(`Sent ${counted(changes.length, "grade")} to “${assignment.name}”.`, "success");
-        await htmx.ajax("POST", this.config.sentUrl, {
-          source: this.$root,
-          target: "#sent-marks",
-          swap: "outerHTML",
-          values: { assignment_name: assignment.name, student_count: changes.length },
-        });
-        this.submissions = await this.client.submissions(this.courseId, assignment.id);
-      });
+      const assignment = this.chosenAssignment;
+      const gradeData = Object.fromEntries(
+        changes.map(({ row, user, addsComment }) => [
+          user.id,
+          {
+            posted_grade: this.postedGrade(row),
+            ...(addsComment && { text_comment: row.comment }),
+          },
+        ]),
+      );
+      let progress = await this.run(SENDING, () => this.client.updateGrades(this.courseId, assignment.id, gradeData));
+      if (!progress) return;
+      document.getElementById("send-review").close();
+      // Canvas updates the grades in a background job. The page stays usable but can't be left until the job ends.
+      const grades = counted(changes.length, "grade");
+      await this.run(
+        `Canvas is updating ${grades}…`,
+        async () => {
+          const pollUntil = Date.now() + POLL_LIMIT_MS;
+          while (progress.workflow_state === "queued" || progress.workflow_state === "running") {
+            if (Date.now() > pollUntil)
+              throw new Error("Canvas is still updating the grades. Check the assignment in Canvas.");
+            await new Promise((resolve) => setTimeout(resolve, POLL_MS));
+            progress = await this.client.progress(progress.id);
+          }
+          if (progress.workflow_state !== "completed")
+            throw new Error(progress.message || "Canvas couldn't update the grades.");
+          showToast(`Sent ${grades} to “${assignment.name}”.`, "success");
+          await htmx.ajax("POST", this.config.sentUrl, {
+            source: this.$root,
+            target: "#sent-marks",
+            swap: "outerHTML",
+            values: { assignment_name: assignment.name, student_count: changes.length },
+          });
+          const submissions = await this.client.submissions(this.courseId, assignment.id);
+          if (this.assignmentId === assignment.id) this.submissions = submissions;
+        },
+        this.gradeUpdateStatus,
+      );
+    },
+    warnOnUnload(event) {
+      if (this.gradeUpdateStatus.busyLabel) event.preventDefault();
+    },
+    preventNavigationWhileUpdating(event) {
+      if (!this.gradeUpdateStatus.busyLabel || event.detail.ctx.request.headers["HX-Request-Type"] !== "full") return;
+      event.preventDefault();
+      showToast("Stay on this page until Canvas has updated the grades.", "info");
     },
   });
 };
