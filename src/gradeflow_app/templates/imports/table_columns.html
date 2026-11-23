@@ -25,7 +25,7 @@
             <td class="font-medium" x-text="column.name"></td>
             <td class="max-w-72 truncate text-muted max-sm:hidden" x-text="column.sampleValues"></td>
             <td>
-              <select class="select select-sm w-full" :data-index="column.index" x-on:change="source.setRole($event)" :aria-label="'Use of ' + column.name">
+              <select class="select select-sm w-full min-w-max" :data-index="column.index" x-on:change="source.setRole($event)" :aria-label="'Use of ' + column.name">
                 <template x-for="role in source.roles" :key="role[0]"><option :value="role[0]" x-text="role[1]" :selected="role[0] === column.role"></option></template>
               </select>
             </td>

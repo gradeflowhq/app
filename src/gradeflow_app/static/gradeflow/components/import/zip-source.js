@@ -39,7 +39,7 @@ export function zipSource({ texts, skipped }, savedSettings, questionKeys) {
 
     /** The files table's rows: common files first, then by name. */
     get fileRows() {
-      const { counts, names, submissions } = this.found;
+      const { counts, names, submissions, noQuestionNames } = this.found;
       return names.map((name) => {
         const isCommonName = isCommon(counts.get(name), submissions.size);
         return {
@@ -47,6 +47,7 @@ export function zipSource({ texts, skipped }, savedSettings, questionKeys) {
           question: this.fileQuestions[name],
           studentCount: counts.get(name),
           isCommon: isCommonName,
+          hadNoQuestion: !isCommonName && noQuestionNames.has(name) && !Object.hasOwn(savedQuestions, name),
           isFolder: name.endsWith("/"),
         };
       });
@@ -54,12 +55,13 @@ export function zipSource({ texts, skipped }, savedSettings, questionKeys) {
     get commonFileRows() {
       return this.fileRows.filter((row) => row.isCommon);
     },
-    /** Files with no question when the pattern was applied; they stay listed apart once given one. */
+    /** Files with no question when the pattern was applied, other than common ones and those the saved settings
+     * name; they stay listed apart once given one. */
     get noQuestionRows() {
-      return this.fileRows.filter((row) => this.found.noQuestionNames.has(row.name));
+      return this.fileRows.filter((row) => row.hadNoQuestion);
     },
     get otherFileRows() {
-      return this.fileRows.filter((row) => !row.isCommon && !this.found.noQuestionNames.has(row.name));
+      return this.fileRows.filter((row) => !row.isCommon && !row.hadNoQuestion);
     },
     get noQuestionCount() {
       return this.noQuestionRows.filter((row) => !row.question).length;
@@ -151,12 +153,9 @@ export function zipSource({ texts, skipped }, savedSettings, questionKeys) {
         ? `${counted(this.noQuestionCount, "file")} with no question`
         : counted(this.found.fileCount, "file");
     },
-    /** Whether a file the saved settings don't name has no question, or a path doesn't fit the pattern. */
+    /** Whether a file has no question yet, or a path doesn't fit the pattern. */
     get needsReview() {
-      return (
-        this.noQuestionRows.some((row) => !Object.hasOwn(savedQuestions, row.name)) ||
-        this.found.unmatchedPaths.length > 0
-      );
+      return this.noQuestionRows.length > 0 || this.found.unmatchedPaths.length > 0;
     },
     /** Each student's answers joined from their files, the ID first. */
     answersTable() {
