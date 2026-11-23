@@ -29,25 +29,21 @@
         {% if access.can_edit %}
         <div class="setting-summary-row">
           <span class="setting-summary-label">{% icon "document-text" %}Assignment</span>
-          <span class="skeleton h-8 w-48" x-show="!loaded || (connected && !assignment.card.id && isLoadingAssignments)"></span>
+          <span class="flex flex-1 items-center gap-2 text-sm text-muted" x-show="!loaded || (connected && isLoadingAssignments)"><span class="loading loading-spinner loading-sm"></span>Loading…</span>
           <template x-if="loaded && !connected">
             <div class="flex min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-2">
               <p class="min-w-0 flex-1 text-sm" :class="error ? 'text-error' : 'text-muted'" x-text="error || 'Connect to Canvas to choose'"></p>
               <a class="btn btn-sm" href="{% url 'integrations' %}">Connect</a>
             </div>
           </template>
-          <template x-if="connected">
+          <template x-if="connected && !isLoadingAssignments">
             <div class="flex min-w-0 flex-1 items-center gap-4">
-              <div class="min-w-0 flex-1" x-show="assignment.card.id"><p class="flex items-center gap-2 font-semibold"><span class="truncate" x-text="assignment.card.name"></span><c-chip tone="primary" x-show="creating">New</c-chip></p><p class="truncate text-sm text-muted" x-show="assignmentDetail" x-text="assignmentDetail"></p></div>
-              <span class="flex-1 text-muted" x-show="!assignment.card.id && !isLoadingAssignments">None chosen</span>
-              <button type="button" class="btn btn-sm" x-on:click="assignment.open()" x-text="assignment.card.id ? 'Change' : 'Choose'"></button>
+              <template x-if="chosenAssignment"><div class="min-w-0 flex-1"><p class="truncate font-semibold" x-text="chosenAssignment.name"></p><p class="truncate text-sm text-muted" x-text="assignmentDetail"></p></div></template>
+              <span class="flex-1 text-muted" x-show="!chosenAssignment">None chosen</span>
+              <button type="button" class="btn btn-sm" x-on:click="openAssignmentPicker" x-text="chosenAssignment ? 'Change' : 'Choose'"></button>
             </div>
           </template>
-          {% include "exports/picker_dialog.html" with key="assignment" label="Assignment" search="Search assignments" empty="No assignments match." none="This course has no assignments yet." create="New assignment" %}
-        </div>
-        <div class="grid gap-4 py-4 sm:grid-cols-2 sm:pl-44" x-show="creating && namingAssignment" x-cloak>
-          <div class="grid content-start gap-1.5"><label class="font-medium" for="canvas-new-name">Name</label><input id="canvas-new-name" class="input w-full" x-model="newName"></div>
-          {% include "exports/picker.html" with key="group" label="Assignment group" choose="Choose an assignment group" search="Search assignment groups" empty="No assignment groups match." none="This course has no assignment groups yet." create="New assignment group" panel="exports/new_group.html" %}
+          {% include "exports/assignment_picker.html" %}
         </div>
         <details class="group/send py-3.5"{% if form.errors %} open{% endif %}>
           <summary class="setting-summary-row cursor-pointer list-none py-0">
@@ -55,8 +51,8 @@
             {% partial send_settings %}
             <span class="btn btn-sm">Change{% icon "chevron-down" "transition-transform group-open/send:rotate-180" %}</span>
           </summary>
-          <form class="mt-4 grid gap-4 sm:grid-cols-3 sm:pl-44" x-ref="sendSettings" hx-post="{% url 'export_sending' assessment.pk %}" hx-trigger="change" hx-target="#send-settings" hx-swap="outerHTML">
-            <input type="hidden" name="{{ form.canvas_assignment.html_name }}" value="{{ form.canvas_assignment.value }}" :value="savedAssignment">
+          <form id="send-settings-form" class="mt-4 grid gap-4 sm:grid-cols-3 sm:pl-44" hx-post="{% url 'export_sending' assessment.pk %}" hx-trigger="change" hx-target="#send-settings" hx-swap="outerHTML">
+            <input type="hidden" name="{{ form.canvas_assignment.html_name }}" value="{{ form.canvas_assignment.value }}" :value="assignmentId">
             {% for field in form.visible_fields %}{{ field.as_field_group }}{% endfor %}
           </form>
         </details>

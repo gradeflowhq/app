@@ -30,8 +30,6 @@ def _canvas_config(course: CourseCanvas, **assessment_fields: object) -> str:
             "proxy": settings.GRADEFLOW_CORS_PROXY_URL,
             "course": course.canvas_course,
             "courseName": course.canvas_course_name,
-            "assignmentGroup": course.canvas_assignment_group,
-            "assignmentGroupName": course.canvas_assignment_group_name,
             **assessment_fields,
         }
     )

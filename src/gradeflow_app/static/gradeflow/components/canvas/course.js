@@ -1,9 +1,8 @@
-// An assessment's Canvas page: the Canvas course marks go to, and the group new assignments go in.
+// A course's Canvas page: the Canvas course its marks go to, chosen in the dialog #course-picker.
 
-import { counted } from "../../lib/words.js";
-import { assignmentGroupsMixin } from "./assignment-groups.js";
+import { counted, matches } from "../../lib/words.js";
+import { openDialog } from "../../services/dialogs.js";
 import { connectionMixin, mergeMixins, readConfig } from "./connection.js";
-import { listPicker, pickerItem } from "./list-picker.js";
 
 // A course with its code, term and size under its name. Newest first, by its term's start, else its own, as many
 // terms have none.
@@ -11,41 +10,50 @@ const describeCourse = (course) => {
   const students = course.total_students;
   const detail = [course.course_code, course.term?.name, students != null && counted(students, "student")];
   return {
-    ...pickerItem(course.id, course.name, detail.filter(Boolean).join(" · ")),
+    id: String(course.id),
+    name: course.name,
+    detail: detail.filter(Boolean).join(" · "),
     started: course.term?.start_at ?? course.start_at ?? course.created_at ?? "",
   };
 };
 const newestFirst = (a, b) => b.started.localeCompare(a.started) || a.name.localeCompare(b.name);
 
 export const canvasCourse = () =>
-  mergeMixins(connectionMixin(), assignmentGroupsMixin(), {
-    course: listPicker("course"),
+  mergeMixins(connectionMixin(), {
+    courseId: "",
+    courses: [],
+    courseQuery: "",
 
-    get courseId() {
-      return this.course.id;
+    /** The chosen course; the saved one's name shows while the list loads. */
+    get chosenCourse() {
+      const { course, courseName } = this.config;
+      const saved = this.courseId && this.courseId === course ? { id: course, name: courseName, detail: "" } : null;
+      return this.courses.find(({ id }) => id === this.courseId) ?? saved;
+    },
+    get shownCourses() {
+      return this.courses.filter(({ name, detail }) => matches(`${name} ${detail}`.toLowerCase(), this.courseQuery));
     },
 
     async init() {
       this.config = readConfig(this.$el);
-      const { course, courseName, assignmentGroup, assignmentGroupName } = this.config;
-      this.course.id = course;
-      this.group.id = assignmentGroup;
-      // The saved choices show while their lists load.
-      this.course.placeholder = () => (course && this.course.id === course ? pickerItem(course, courseName) : null);
-      this.group.placeholder = () =>
-        assignmentGroup && this.group.id === assignmentGroup ? pickerItem(assignmentGroup, assignmentGroupName) : null;
-      this.course.onChoose = () => {
-        this.group.id = "";
-        this.run("Loading assignment groups…", () => this.loadGroups());
-      };
+      this.courseId = this.config.course;
       await this.loadConnection();
       if (this.canvasConnection) this.load();
     },
     load() {
       return this.run("Loading courses…", async () => {
-        this.course.items = (await this.client.courses()).map(describeCourse).sort(newestFirst);
-        if (this.course.id) await this.loadGroups(this.config.assignmentGroup);
+        this.courses = (await this.client.courses()).map(describeCourse).sort(newestFirst);
         return true;
       });
+    },
+    openCoursePicker() {
+      this.courseQuery = "";
+      const dialog = document.getElementById("course-picker");
+      openDialog(dialog);
+      dialog.querySelector("[aria-selected=true]")?.scrollIntoView({ block: "nearest" });
+    },
+    chooseCourse(course) {
+      this.courseId = course.id;
+      document.getElementById("course-picker").close();
     },
   });

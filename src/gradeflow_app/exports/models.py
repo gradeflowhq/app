@@ -18,9 +18,6 @@ class CourseCanvas(models.Model):
     course = models.OneToOneField(Course, primary_key=True, on_delete=models.CASCADE, related_name="canvas")
     canvas_course = models.CharField(max_length=50, blank=True)
     canvas_course_name = models.CharField(max_length=255, blank=True)
-    canvas_assignment_group = models.CharField(max_length=50, blank=True)
-    """The Canvas assignment group new assignments go in; "new" makes one called GradeFlow."""
-    canvas_assignment_group_name = models.CharField(max_length=255, blank=True)
     marks_mode = models.CharField(max_length=10, choices=MarksMode, default=MarksMode.MARKS)
     rounding = models.FloatField(null=True, blank=True)
     """Round marks sent to Canvas to the nearest multiple of this, if set."""

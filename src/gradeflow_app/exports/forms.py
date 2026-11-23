@@ -28,8 +28,6 @@ class CourseCanvasForm(forms.ModelForm[CourseCanvas]):
         fields = (
             "canvas_course",
             "canvas_course_name",
-            "canvas_assignment_group",
-            "canvas_assignment_group_name",
             "marks_mode",
             "rounding",
             "include_feedback",

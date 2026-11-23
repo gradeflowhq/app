@@ -50,12 +50,11 @@ export const canvasClient = ({ baseUrl, token, proxyUrl }) => {
 
   const get = async (path) => (await request(`${api}${path}`)).json();
 
-  const post = async (path, body) =>
+  const requestJson = async (method, path, body) =>
     (
       await request(`${api}${path}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        method,
+        ...(body && { headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }),
       })
     ).json();
 
@@ -79,8 +78,8 @@ export const canvasClient = ({ baseUrl, token, proxyUrl }) => {
   return {
     courses: () => list("/courses", { include: ["term", "total_students"] }),
     course: (courseId) => get(`/courses/${courseId}`),
-    assignments: (courseId) => list(`/courses/${courseId}/assignments`, { order_by: "name" }),
-    assignmentGroups: (courseId) => list(`/courses/${courseId}/assignment_groups`),
+    /** The course's assignment groups in Canvas's order, each with its assignments. */
+    assignmentGroups: (courseId) => list(`/courses/${courseId}/assignment_groups`, { include: ["assignments"] }),
     students: (courseId) =>
       list(`/courses/${courseId}/users`, {
         enrollment_type: ["student"],
@@ -101,14 +100,27 @@ export const canvasClient = ({ baseUrl, token, proxyUrl }) => {
           },
         ]),
       ),
-    createAssignmentGroup: (courseId, group) => post(`/courses/${courseId}/assignment_groups`, group),
+    createAssignmentGroup: (courseId, group) => requestJson("POST", `/courses/${courseId}/assignment_groups`, group),
+    updateAssignmentGroup: (courseId, groupId, group) =>
+      requestJson("PUT", `/courses/${courseId}/assignment_groups/${groupId}`, group),
+    /** Deletes the group with its assignments, or moves them to the group `moveAssignmentsTo` first. */
+    deleteAssignmentGroup: (courseId, groupId, moveAssignmentsTo) => {
+      const query = moveAssignmentsTo ? `?${queryString({ move_assignments_to: moveAssignmentsTo })}` : "";
+      return requestJson("DELETE", `/courses/${courseId}/assignment_groups/${groupId}${query}`);
+    },
     createAssignment: (courseId, assignment) =>
-      post(`/courses/${courseId}/assignments`, {
+      requestJson("POST", `/courses/${courseId}/assignments`, {
         assignment: { submission_types: ["none"], grading_type: "points", published: true, ...assignment },
       }),
+    updateAssignment: (courseId, assignmentId, assignment) =>
+      requestJson("PUT", `/courses/${courseId}/assignments/${assignmentId}`, { assignment }),
+    deleteAssignment: (courseId, assignmentId) =>
+      requestJson("DELETE", `/courses/${courseId}/assignments/${assignmentId}`),
     /** Resolves to a Progress; poll it with `progress(id)`. */
     updateGrades: (courseId, assignmentId, gradeData) =>
-      post(`/courses/${courseId}/assignments/${assignmentId}/submissions/update_grades`, { grade_data: gradeData }),
+      requestJson("POST", `/courses/${courseId}/assignments/${assignmentId}/submissions/update_grades`, {
+        grade_data: gradeData,
+      }),
     progress: (id) => get(`/progress/${id}`),
   };
 };

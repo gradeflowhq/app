@@ -1,14 +1,6 @@
 {% extends "layouts/course.html" %}
 {% block page_title %}Canvas · {% endblock %}
 {% block page %}
-{% partialdef choice %}
-{# The `key` picker's row: what it has chosen, and a button that opens it. #}
-<div class="setting-summary-row"{% if shown %} x-show="{{ shown }}"{% endif %}>
-  <span class="setting-summary-label">{% icon icon %}{{ label }}</span>
-  <div class="min-w-0 flex-1" x-show="{{ key }}.card.id"><p class="truncate font-semibold" x-text="{{ key }}.card.name"></p><p class="truncate text-sm text-muted" x-show="{{ key }}.card.detail" x-text="{{ key }}.card.detail"></p></div>
-  <button type="button" class="btn btn-sm" x-on:click="{{ key }}.open()" x-text="{{ key }}.card.id ? 'Change' : '{{ choose }}'">Change</button>
-</div>
-{% endpartialdef %}
 <c-page title="Canvas">
   {% if not canvas_available %}
   <c-empty-state class="surface" icon="link" title="Canvas isn't set up on this server">Each assessment's marks can still be downloaded from its Export page.</c-empty-state>
@@ -19,16 +11,29 @@
     </c-panel>
     <c-panel icon="link" title="Canvas course" body_class="setting-rows" x-show="connected" x-cloak>
       <c-slot name="actions"><c-chip icon="check" tone="success"><span x-text="canvasHost"></span></c-chip></c-slot>
-      {% include "exports/canvas.html#choice" with key="course" icon="academic-cap" label="Course" choose="Choose a course" %}
-      {% include "exports/canvas.html#choice" with key="group" icon="rectangle-stack" label="Assignment group" choose="Choose an assignment group" shown="course.id" %}
+      <div class="setting-summary-row">
+        <span class="setting-summary-label">{% icon "academic-cap" %}Course</span>
+        <template x-if="chosenCourse"><div class="min-w-0 flex-1"><p class="truncate font-semibold" x-text="chosenCourse.name"></p><p class="truncate text-sm text-muted" x-show="chosenCourse.detail" x-text="chosenCourse.detail"></p></div></template>
+        <button type="button" class="btn btn-sm ml-auto" x-on:click="openCoursePicker" x-text="chosenCourse ? 'Change' : 'Choose a course'">Change</button>
+      </div>
       <c-alert class="my-4" x-show="error" x-cloak><span x-text="error"></span></c-alert>
-      {% include "exports/picker_dialog.html" with key="course" label="Canvas course" search="Search your courses" empty="No courses match." none="You have no Canvas courses." %}
-      {% include "exports/picker_dialog.html" with key="group" label="Assignment group" search="Search assignment groups" empty="No assignment groups match." none="This course has no assignment groups yet." create="New assignment group" panel="exports/new_group.html" %}
+      <c-dialog id="course-picker" title="Canvas course" box_class="flex max-h-[80vh] max-w-lg flex-col">
+        <div class="px-6 pb-3 pt-1"><c-search class="w-full" label="Search your courses" x-model="courseQuery" /></div>
+        <ul class="grid min-h-0 flex-1 content-start gap-0.5 overflow-y-auto border-t border-base-300 p-2" role="listbox" aria-labelledby="course-picker-title">
+          <template x-for="course in shownCourses" :key="course.id">
+            <li><button type="button" role="option" class="flex w-full items-center gap-3 rounded-field px-3 py-2 text-left hover:bg-base-200 aria-selected:bg-base-200" :aria-selected="course.id === courseId" x-on:click="chooseCourse(course)">
+              <span class="initial-badge size-8 text-sm" aria-hidden="true" x-text="course.name.charAt(0)"></span>
+              <span class="min-w-0 flex-1"><span class="block truncate font-medium" x-text="course.name"></span><span class="block truncate text-sm text-muted" x-show="course.detail" x-text="course.detail"></span></span>
+            </button></li>
+          </template>
+          <li class="px-3 py-6 text-center text-sm text-muted" x-show="courses.length && !shownCourses.length">No courses match.</li>
+          <li class="px-3 py-6 text-center text-sm text-muted" x-show="!courses.length && !isBusy && !error">You have no Canvas courses.</li>
+          <li class="flex items-center justify-center gap-2 px-3 py-6 text-sm text-muted" x-show="isBusy && !courses.length"><span class="loading loading-spinner loading-sm"></span>Loading…</li>
+        </ul>
+      </c-dialog>
       <form id="canvas-course" method="post" class="grid gap-5 py-4">{% csrf_token %}
-        <input type="hidden" name="canvas_course" value="{{ form.instance.canvas_course }}" :value="course.id">
-        <input type="hidden" name="canvas_course_name" value="{{ form.instance.canvas_course_name }}" :value="course.card.name">
-        <input type="hidden" name="canvas_assignment_group" value="{{ form.instance.canvas_assignment_group }}" :value="group.id">
-        <input type="hidden" name="canvas_assignment_group_name" value="{{ form.instance.canvas_assignment_group_name }}" :value="group.card.name">
+        <input type="hidden" name="canvas_course" value="{{ form.instance.canvas_course }}" :value="courseId">
+        <input type="hidden" name="canvas_course_name" value="{{ form.instance.canvas_course_name }}" :value="chosenCourse ? chosenCourse.name : ''">
         <div>
           <p class="font-medium">How marks are sent</p>
           <p class="text-sm text-muted">Each assessment can change these on its Export page.</p>

@@ -1,5 +1,5 @@
 // An assessment's Export page: its students matched to the Canvas course's, with the grade Canvas has for each and
-// the grade sending gives, and sending the grades that change to an assignment, existing or new. #send-settings holds
+// the grade sending gives, and sending the grades that change to the chosen assignment. #send-settings holds
 // the send settings and #export-rows-data the marks; the server re-renders both, and each runs its `x-init` when
 // swapped in.
 
@@ -9,9 +9,8 @@ import { counted, matches, naturalOrder } from "../../lib/words.js";
 import { assessmentKeysFor, missingCourseKeyMessage } from "../../services/course-keys.js";
 import { openDialog } from "../../services/dialogs.js";
 import { showToast } from "../../services/toasts.js";
-import { assignmentGroupsMixin } from "./assignment-groups.js";
+import { assignmentPickerMixin, marksLabel } from "./assignment-picker.js";
 import { connectionMixin, mergeMixins, readConfig } from "./connection.js";
-import { listPicker, pickerItem } from "./list-picker.js";
 
 const POLL_MS = 2000;
 const POLL_LIMIT_MS = 5 * 60_000;
@@ -35,10 +34,7 @@ const commentText = (html) => new DOMParser().parseFromString(html, "text/html")
 export const canvasExport = () => {
   let canvasUsers = []; // the Canvas course's students
 
-  return mergeMixins(connectionMixin(), assignmentGroupsMixin(), {
-    assignment: listPicker("assignment"),
-    newName: "",
-    namingAssignment: false,
+  return mergeMixins(connectionMixin(), assignmentPickerMixin(), {
     settings: {},
     maxMarks: 0,
     rowCount: 0,
@@ -63,13 +59,8 @@ export const canvasExport = () => {
 
     async init() {
       this.config = readConfig(this.$el);
-      this.newName = this.config.name;
+      this.assignmentId = this.config.assignment;
       this.maxMarks = readRows()[0]?.maxMarks ?? 0;
-      Object.assign(this.assignment, {
-        id: this.config.assignment,
-        placeholder: () => this.newAssignmentCard,
-        onChoose: () => this.choseAssignment(),
-      });
       await this.loadConnection();
       if (this.canvasConnection) this.load();
     },
@@ -80,87 +71,51 @@ export const canvasExport = () => {
     get courseUrl() {
       return this.canvasConnection ? `${this.canvasConnection.baseUrl}/courses/${this.courseId}` : null;
     },
-    get creating() {
-      return this.assignment.id === "new";
-    },
-    /** The assignment as it's saved: none until a new one is made in Canvas. */
-    get savedAssignment() {
-      return this.creating ? "" : this.assignment.id;
-    },
-    /** The card of the assignment to be made. */
-    get newAssignmentCard() {
-      if (!this.creating) return null;
-      const group = this.group.card.name;
-      const detail = [group && `In ${group}`, this.maxMarks && counted(this.maxMarks, "mark")].filter(Boolean);
-      return { ...pickerItem("new", this.newName.trim() || "New assignment", detail.join(" · ")), initial: "+" };
-    },
-    get chosenAssignment() {
-      return this.assignment.items.find((assignment) => assignment.id === this.assignment.id);
-    },
-    /** The assignment's detail, and whether totals are scaled to its points. */
+    /** The chosen assignment's group and marks, and whether totals are scaled to its points. */
     get assignmentDetail() {
-      const { detail } = this.assignment.card;
       const pointsPossible = this.chosenAssignment?.pointsPossible;
       const scaled =
         this.settings.mode === "marks" && pointsPossible && this.maxMarks && pointsPossible !== this.maxMarks;
-      return scaled ? `${detail} · scaled from ${this.maxMarks}` : detail;
+      return [this.chosenGroup?.name, marksLabel(pointsPossible), scaled && `scaled from ${this.maxMarks}`]
+        .filter(Boolean)
+        .join(" · ");
     },
     get isLoadingAssignments() {
-      return this.isBusy && !this.assignment.items.length;
+      return this.isBusy && !this.groups.length;
     },
 
     readSettings() {
       this.settings = { ...document.getElementById("send-settings").dataset };
     },
 
-    /** Loads the course's students and assignments, choosing the one named after the assessment, or a new one, when
-     * none is saved, and the chosen assignment's submissions. */
+    /** Loads the course's students and assignments, choosing the one named after the assessment when none is saved,
+     * and the chosen assignment's submissions. */
     load() {
       return this.run("Loading the Canvas course…", async () => {
         [canvasUsers] = await Promise.all([
           this.client.students(this.courseId),
-          Promise.all([this.client.assignments(this.courseId), this.loadGroups(this.config.assignmentGroup)]).then(
-            ([assignments]) => {
-              const groupName = (id) => this.group.items.find((group) => group.id === String(id))?.name;
-              this.assignment.items = assignments.map((assignment) => {
-                const points = assignment.points_possible != null && counted(assignment.points_possible, "mark");
-                const detail = [groupName(assignment.assignment_group_id), points].filter(Boolean).join(" · ");
-                return {
-                  ...pickerItem(assignment.id, assignment.name, detail),
-                  pointsPossible: assignment.points_possible,
-                  gradingType: assignment.grading_type,
-                };
-              });
-              if (!this.chosenAssignment)
-                this.assignment.id = this.assignment.items.find(({ name }) => name === this.config.name)?.id ?? "new";
-              return this.loadSubmissions();
-            },
-          ),
+          this.loadGroups().then(() => {
+            if (!this.chosenAssignment)
+              this.assignmentId = this.assignments.find(({ name }) => name === this.config.name)?.id ?? "";
+            return this.loadSubmissions();
+          }),
         ]);
         await this.match();
         return true;
       });
     },
-    /** The chosen assignment's submissions; none for a new one. The previous assignment's stay until they load. */
+    /** The chosen assignment's submissions; none without one. The previous assignment's stay until they load. */
     async loadSubmissions() {
-      const { id } = this.assignment;
-      const submissions = this.creating ? new Map() : await this.client.submissions(this.courseId, id);
-      if (this.assignment.id === id) this.submissions = submissions;
+      const id = this.assignmentId;
+      const submissions = id ? await this.client.submissions(this.courseId, id) : new Map();
+      if (this.assignmentId === id) this.submissions = submissions;
     },
     choseAssignment() {
-      this.namingAssignment = false;
       this.saveAssignment();
       this.run("Loading grades…", () => this.loadSubmissions());
     },
-    newAssignment() {
-      this.assignment.id = "new";
-      this.namingAssignment = true;
-      this.assignment.close();
-      this.saveAssignment();
-      this.loadSubmissions();
-    },
     saveAssignment() {
-      this.$nextTick(() => this.$refs.sendSettings.dispatchEvent(new Event("change")));
+      this.$nextTick(() => document.getElementById("send-settings-form").dispatchEvent(new Event("change")));
     },
 
     /** Matches the marks as they are now to the Canvas course's students. */
@@ -191,8 +146,8 @@ export const canvasExport = () => {
       if (this.isMatched) this.run("Matching students…", () => this.match());
     },
 
-    /** The chosen assignment's grading type and points. A new assignment, or one without points, is worth `row`'s
-     * max marks. */
+    /** The chosen assignment's grading type and points. Without an assignment, or points on it, the points are
+     * `row`'s max marks. */
     assignmentGrading(row) {
       const { gradingType = "points", pointsPossible } = this.chosenAssignment ?? {};
       return { gradingType, pointsPossible: pointsPossible ?? row.maxMarks };
@@ -224,6 +179,7 @@ export const canvasExport = () => {
         marks: displayedGrade(row.marks, { gradingType: "points", pointsPossible: row.maxMarks }),
       });
       const matchedStudent = ({ row, user }) => {
+        if (!this.chosenAssignment) return { ...student(row, user, "unchanged"), sentGrade: "—" };
         const submission = this.submissions.get(user.id);
         const sentGrade = inGradebook(this.postedGrade(row), row);
         const currentGrade = inGradebook(submission?.score, row);
@@ -282,11 +238,11 @@ export const canvasExport = () => {
       return `${this.matched.length} of ${this.rowCount} matched in Canvas`;
     },
     get upToDate() {
-      return Boolean(this.isStudentListReady && this.matched.length && !this.changes.length);
+      return Boolean(this.isStudentListReady && this.chosenAssignment && this.matched.length && !this.changes.length);
     },
 
     get canSend() {
-      return Boolean(this.connected && this.changes.length && !this.isBusy && (!this.creating || this.newName.trim()));
+      return Boolean(this.connected && this.chosenAssignment && this.changes.length && !this.isBusy);
     },
     get sending() {
       return this.busyLabel === SENDING;
@@ -294,12 +250,12 @@ export const canvasExport = () => {
     get sendLabel() {
       if (this.sending) return "Sending…";
       if (!this.isStudentListReady || !this.matched.length) return "Send to Canvas";
+      if (!this.chosenAssignment) return "Choose an assignment";
       const count = this.changes.length;
-      if (this.creating) return `Create and send ${counted(count, "grade")}`;
       return count ? `Send ${counted(count, "grade")}` : "Up to date";
     },
     get reviewTarget() {
-      return `${this.assignment.card.name} · ${this.config.courseName}`;
+      return `${this.chosenAssignment?.name} · ${this.config.courseName}`;
     },
     /** How many answers still need marking among the grades sent. */
     get unmarkedCount() {
@@ -335,9 +291,9 @@ export const canvasExport = () => {
         commentPlaceholder: !sendsFeedback ? "Feedback isn't sent." : row.comment ? "" : "Nothing marked yet.",
       });
     },
-    /** The assignment's name as students see it: the chosen one's, or the assessment's for a new one. */
+    /** The assignment's name as students see it: the chosen one's, or else the assessment's. */
     get previewAssignmentName() {
-      return this.assignment.card.name || this.config.name;
+      return this.chosenAssignment?.name ?? this.config.name;
     },
     get previewPosition() {
       return `${this.preview.index + 1} of ${this.preview.rows.length}`;
@@ -357,7 +313,7 @@ export const canvasExport = () => {
     async send() {
       const { changes } = this;
       await this.run(SENDING, async () => {
-        const assignment = await this.targetAssignment();
+        const assignment = this.chosenAssignment;
         const gradeData = Object.fromEntries(
           changes.map(({ row, user, addsComment }) => [
             user.id,
@@ -387,26 +343,6 @@ export const canvasExport = () => {
         });
         this.submissions = await this.client.submissions(this.courseId, assignment.id);
       });
-    },
-
-    /** The chosen assignment, saved as the assessment's; a new one is made in Canvas first. */
-    async targetAssignment() {
-      if (this.creating) {
-        const created = await this.client.createAssignment(this.courseId, {
-          name: this.newName.trim(),
-          points_possible: this.maxMarks,
-          assignment_group_id: this.group.id,
-        });
-        this.assignment.items.push({
-          ...pickerItem(created.id, created.name),
-          pointsPossible: created.points_possible,
-          gradingType: created.grading_type,
-        });
-        this.assignment.id = String(created.id);
-        this.namingAssignment = false;
-      }
-      this.saveAssignment();
-      return this.chosenAssignment;
     },
   });
 };

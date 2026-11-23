@@ -11,7 +11,7 @@ from gradeflow_app.courses.models import Role
 from gradeflow_app.exports.models import AssessmentCanvas, CourseCanvas, SentMarks
 from gradeflow_app.results.models import Adjustment
 from gradeflow_app.ui.middleware import MESSAGES_HEADER
-from tests.conftest import HTMX_HEADERS, between, create_assessment, encrypted_id, member_client, upload
+from tests.conftest import HTMX_HEADERS, create_assessment, encrypted_id, member_client, upload
 
 pytestmark = pytest.mark.django_db
 
@@ -28,8 +28,6 @@ def canvas_assessment(client: Client, assessment: Assessment, settings: Settings
         {
             "canvas_course": "101",
             "canvas_course_name": "BIO1010 (2026 S2)",
-            "canvas_assignment_group": "7",
-            "canvas_assignment_group_name": "Exams",
             "marks_mode": "percent",
             "rounding": "0.5",
             "include_feedback": "on",
@@ -144,7 +142,6 @@ def test_overriding_how_marks_are_sent_answers_with_the_summary(client: Client, 
         "marks",
         False,
     )
-    assert CourseCanvas.objects.get(course=canvas_assessment.course).canvas_assignment_group == "7"
 
     refused = client.post(url, {"rounding": "-1"}, headers=HTMX_HEADERS)
     assert refused.status_code == 422
@@ -194,13 +191,13 @@ def test_each_comment_gives_the_marks_and_feedback_of_each_marked_question(
 EXPECTED_COMMENT = "<strong>Q1 [1/1]</strong>\nShow &lt;working&gt;."
 
 
-@pytest.mark.parametrize("page", ["canvas_settings", "export"])
-def test_only_the_group_picker_names_a_new_group(client: Client, canvas_assessment: Assessment, page: str) -> None:
-    pk = canvas_assessment.course_id if page == "canvas_settings" else canvas_assessment.pk
-    rendered = client.get(reverse(page, args=[pk])).text
-    group_picker = between(rendered, '<dialog id="group-picker"', "</dialog>")
-    assert 'id="new-group-name"' in group_picker
-    assert rendered.count('id="new-group-name"') == 1
+def test_assignments_and_their_groups_are_chosen_on_the_export_page(
+    client: Client, canvas_assessment: Assessment
+) -> None:
+    export = client.get(reverse("export", args=[canvas_assessment.pk])).text
+    assert '<dialog id="assignment-picker"' in export
+    course = client.get(reverse("canvas_settings", args=[canvas_assessment.course_id])).text
+    assert "group-picker" not in course
 
 
 def test_a_course_refuses_a_negative_rounding_step(client: Client, canvas_assessment: Assessment) -> None:

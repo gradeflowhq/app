@@ -94,16 +94,12 @@ test("a course comes on its own, to say whether it weights its assignment groups
   assert.equal(new URL(calls[0].url).pathname, "/api/v1/courses/5");
 });
 
-test("list endpoints", async (t) => {
+test("assignment groups come with their assignments", async (t) => {
   const calls = stubFetch(t, () => jsonResponse([]));
-  const canvas = client();
-  await canvas.courses();
-  await canvas.assignments(5);
-  await canvas.assignmentGroups(5);
-  assert.deepEqual(
-    calls.map(({ url }) => new URL(url).pathname),
-    ["/api/v1/courses", "/api/v1/courses/5/assignments", "/api/v1/courses/5/assignment_groups"],
-  );
+  await client().assignmentGroups(5);
+  const url = new URL(calls[0].url);
+  assert.equal(url.pathname, "/api/v1/courses/5/assignment_groups");
+  assert.deepEqual(url.searchParams.getAll("include[]"), ["assignments"]);
 });
 
 test("submissions are each student's score and comment texts, by user ID", async (t) => {
@@ -158,6 +154,27 @@ test("writes post JSON", async (t) => {
     ],
   );
   assert.equal(calls[0].headers["Content-Type"], "application/json");
+});
+
+test("groups and assignments are changed with PUT and deleted with DELETE", async (t) => {
+  const calls = stubFetch(t, () => jsonResponse({ id: 9 }));
+  const canvas = client();
+  await canvas.updateAssignmentGroup(5, 7, { name: "Exams", group_weight: 50 });
+  await canvas.deleteAssignmentGroup(5, 7, 8);
+  await canvas.deleteAssignmentGroup(5, 7);
+  await canvas.updateAssignment(5, 11, { name: "Midterm", points_possible: 40 });
+  await canvas.deleteAssignment(5, 11);
+
+  assert.deepEqual(
+    calls.map(({ method, url, body }) => [method, new URL(url).pathname + new URL(url).search, body]),
+    [
+      ["PUT", "/api/v1/courses/5/assignment_groups/7", { name: "Exams", group_weight: 50 }],
+      ["DELETE", "/api/v1/courses/5/assignment_groups/7?move_assignments_to=8", undefined],
+      ["DELETE", "/api/v1/courses/5/assignment_groups/7", undefined],
+      ["PUT", "/api/v1/courses/5/assignments/11", { assignment: { name: "Midterm", points_possible: 40 } }],
+      ["DELETE", "/api/v1/courses/5/assignments/11", undefined],
+    ],
+  );
 });
 
 test("Canvas errors reject with Canvas's message and the status", async (t) => {
