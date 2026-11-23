@@ -13,6 +13,7 @@ import { connectionMixin, mergeMixins, readConfig } from "./connection.js";
 
 const POLL_MS = 2000;
 const POLL_LIMIT_MS = 5 * 60_000;
+const STAY_WHILE_UPDATING = "Stay on this page until Canvas has updated the grades.";
 
 const FILTERS = [
   { key: "all", label: "All", test: () => true },
@@ -38,6 +39,7 @@ export const canvasExport = () => {
     unmatchedUsers: [],
     isMatched: false,
     submissions: null, // the chosen assignment's, by user ID; null until they load
+    submissionsAssignmentId: null,
     chosenFilter: "all",
     studentQuery: "",
     sendRequestState: { busyLabel: "", error: "" },
@@ -103,11 +105,16 @@ export const canvasExport = () => {
       });
     },
     /** The chosen assignment's submissions, from `request` if it's already been made; none without an assignment.
-     * The previous assignment's stay until they load. */
+     * The previous assignment's stay until they load, and are cleared if they can't. */
     async loadSubmissions(request) {
       const id = this.assignmentId;
-      const submissions = id ? await (request ?? this.client.submissions(this.courseId, id)) : new Map();
-      if (this.assignmentId === id) this.submissions = submissions;
+      try {
+        const submissions = id ? await (request ?? this.client.submissions(this.courseId, id)) : new Map();
+        if (this.assignmentId === id) Object.assign(this, { submissions, submissionsAssignmentId: id });
+      } catch (error) {
+        if (this.assignmentId === id) this.submissions = null;
+        throw error;
+      }
     },
     /** Saves the assignment `id` as the chosen one and loads its submissions. */
     changeAssignment(id) {
@@ -139,6 +146,9 @@ export const canvasExport = () => {
     get isCanvasLoaded() {
       return this.isMatched && Boolean(this.submissions);
     },
+    get hasLoadFailed() {
+      return Boolean(this.error) && !this.isMatched;
+    },
     /** Decrypts and matches the marks again once they've refreshed. */
     rematch() {
       if (!this.rows.length) return;
@@ -162,8 +172,11 @@ export const canvasExport = () => {
 
     /** Every row's student, in order of student ID, and what sending does for them: "loading" until Canvas has
      * loaded. A matched student's `currentGrade` and `gradeToSend` are their grade in Canvas's gradebook now and once
-     * sent. Listed again only when what they depend on changes. */
+     * sent. Listed again only when what they depend on changes, and kept for the previous assignment until the chosen
+     * one's submissions load. */
     get students() {
+      if (cachedStudents && this.submissions && this.submissionsAssignmentId !== this.assignmentId)
+        return cachedStudents.students;
       const { rows, matches, submissions, sendSettings, chosenAssignment } = this;
       const { id, pointsPossible, gradingType } = chosenAssignment ?? {};
       const dependencies = [rows, matches, submissions, sendSettings, id, pointsPossible, gradingType];
@@ -242,12 +255,17 @@ export const canvasExport = () => {
     },
     get canSend() {
       return Boolean(
-        this.connected && this.chosenAssignment && this.studentsToSend.length && !this.isBusy && !this.isSending,
+        this.connected &&
+          this.chosenAssignment?.pointsPossible &&
+          this.studentsToSend.length &&
+          !this.isBusy &&
+          !this.isSending,
       );
     },
     get sendLabel() {
       if (!this.isCanvasLoaded || !this.matches.length) return "Send to Canvas";
       if (!this.chosenAssignment) return "Choose an assignment";
+      if (!this.chosenAssignment.pointsPossible) return "Set the assignment’s marks";
       const count = this.studentsToSend.length;
       return count ? `Send ${counted(count, "grade")}` : "Up to date";
     },
@@ -328,23 +346,30 @@ export const canvasExport = () => {
         async () => {
           let progress = await this.client.updateGrades(this.courseId, assignment.id, gradeData);
           document.getElementById("send-review").close();
-          const pollDeadline = Date.now() + POLL_LIMIT_MS;
-          while (progress.workflow_state === "queued" || progress.workflow_state === "running") {
-            if (Date.now() > pollDeadline)
-              throw new Error("Canvas is still updating the grades. Check the assignment in Canvas.");
-            await new Promise((resolve) => setTimeout(resolve, POLL_MS));
-            progress = await this.client.progress(progress.id);
+          try {
+            const pollDeadline = Date.now() + POLL_LIMIT_MS;
+            while (progress.workflow_state === "queued" || progress.workflow_state === "running") {
+              if (Date.now() > pollDeadline)
+                throw new Error("Canvas is still updating the grades. Check the assignment in Canvas.");
+              await new Promise((resolve) => setTimeout(resolve, POLL_MS));
+              // A dropped connection or a Canvas server error is polled again.
+              progress = await this.client.progress(progress.id).catch((error) => {
+                if (error.status >= 400 && error.status < 500) throw error;
+                return progress;
+              });
+            }
+            if (progress.workflow_state !== "completed")
+              throw new Error(progress.message || "Canvas couldn't update the grades.");
+            showToast(`Sent ${gradesLabel} to “${assignment.name}”.`, "success");
+            await htmx.ajax("POST", this.config.sentUrl, {
+              source: this.$root,
+              target: "#sent-marks",
+              swap: "outerHTML",
+              values: { assignment_name: assignment.name, student_count: studentsToSend.length },
+            });
+          } finally {
+            await this.run("Loading grades…", () => this.loadSubmissions());
           }
-          if (progress.workflow_state !== "completed")
-            throw new Error(progress.message || "Canvas couldn't update the grades.");
-          showToast(`Sent ${gradesLabel} to “${assignment.name}”.`, "success");
-          await htmx.ajax("POST", this.config.sentUrl, {
-            source: this.$root,
-            target: "#sent-marks",
-            swap: "outerHTML",
-            values: { assignment_name: assignment.name, student_count: studentsToSend.length },
-          });
-          await this.loadSubmissions();
         },
         this.sendRequestState,
       );
@@ -355,7 +380,14 @@ export const canvasExport = () => {
     preventNavigationWhileUpdating(event) {
       if (!this.isSending || event.detail.ctx.request.headers["HX-Request-Type"] !== "full") return;
       event.preventDefault();
-      showToast("Stay on this page until Canvas has updated the grades.", "info");
+      showToast(STAY_WHILE_UPDATING, "info");
+    },
+    /** Back or Forward has already changed the address, so this page's is pushed again. */
+    preventHistoryRestoreWhileUpdating(event) {
+      if (!this.isSending) return;
+      event.preventDefault();
+      history.pushState({ htmx: true }, "", this.config.exportUrl);
+      showToast(STAY_WHILE_UPDATING, "info");
     },
   });
 };

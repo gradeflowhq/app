@@ -80,6 +80,7 @@ def send_marks(request: Request, access: AssessmentAccess) -> HttpResponse:
                 name=assessment.name,
                 assignment=assessment_canvas.canvas_assignment,
                 sentUrl=reverse("export_record", args=[assessment.pk]),
+                exportUrl=reverse("export", args=[assessment.pk]),
             ),
         }
     return render(request, "exports/export.html", context)
