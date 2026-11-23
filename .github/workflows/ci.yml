@@ -30,7 +30,7 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 26
-      - run: uv sync
+      - run: uv sync --locked
       # The core branch with this branch's name, or else the one a pull request goes into.
       - run: |
           for branch in "$GITHUB_HEAD_REF" "$GITHUB_BASE_REF" "$GITHUB_REF_NAME"; do

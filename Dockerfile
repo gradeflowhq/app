@@ -11,9 +11,10 @@ WORKDIR /app
 
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync --no-dev --no-install-project
+    --mount=type=bind,source=uv.lock,target=uv.lock \
+    uv sync --locked --no-dev --no-install-project
 COPY . .
-RUN --mount=type=cache,target=/root/.cache/uv uv sync --no-dev
+RUN --mount=type=cache,target=/root/.cache/uv uv sync --locked --no-dev
 RUN GRADEFLOW_SECRET_KEY=build GRADEFLOW_NOMAD_URL=build GRADEFLOW_APP_URL_FOR_JOBS=build \
     GRADEFLOW_STATIC_ROOT=/app/staticfiles sh -c \
     ".venv/bin/python manage.py tailwind build && .venv/bin/python manage.py collectstatic --noinput -v 0" \

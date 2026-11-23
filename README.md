@@ -71,7 +71,7 @@ Leave out `--build-context` to build with the core on GitHub.
 
 ### Working on the core
 
-The app follows the core's `main` branch; `uv lock --upgrade-package gradeflow-core` picks up its latest commit. To change both at once, install a core checkout in its place and stop `uv run` from syncing it back:
+The app pins a core release: its tag in `pyproject.toml`, its commit in `uv.lock`. To move to a new release, change the tag and run `uv lock --upgrade-package gradeflow-core`. To change both at once, install a core checkout in its place and stop `uv run` from syncing it back:
 
 ```sh
 uv pip install -e 'path/to/core[llm]'

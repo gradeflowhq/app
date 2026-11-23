@@ -12,12 +12,13 @@ ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy UV_PYTHON_DOWNLOADS=never UV_PROJECT
 
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    --mount=type=bind,source=uv.lock,target=uv.lock \
     --mount=from=core,target=/core,rw \
     if [ -e /core/pyproject.toml ]; then \
         uv venv /opt/sandbox \
         && uv pip install --python /opt/sandbox --no-sources --group pyproject.toml:sandbox "gradeflow-core[ml,llm] @ /core"; \
     else \
-        uv sync --only-group sandbox; \
+        uv sync --locked --only-group sandbox; \
     fi
 
 FROM python:3.14-slim

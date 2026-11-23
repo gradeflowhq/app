@@ -11,4 +11,3 @@ dev.env
 # Deployment settings with secrets, read by compose
 .env
 prod.env
-uv.lock
