@@ -12,7 +12,7 @@
     </div>
     <footer class="panel-foot">
       <span class="flex items-center gap-1.5 text-sm text-muted">{% icon "lock-closed" %}Stored encrypted</span>
-      <button type="button" class="btn ml-auto" x-on:click="connect" :disabled="isBusy"><span class="loading loading-spinner loading-xs" x-show="isBusy" x-cloak></span>Connect</button>
+      <button type="button" class="btn ml-auto" x-on:click="connect" :disabled="isBusy" :data-spinner="isBusy">Connect</button>
     </footer>
   </div>
   <div class="setting-rows" x-show="connected" x-cloak>

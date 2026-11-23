@@ -8,7 +8,7 @@
     {% if latest_file %}
     <c-setting-row icon="table-cells" label="{{ latest_file.name }}" detail="{{ latest_file.student_count }} student{{ latest_file.student_count|pluralize }} · {{ questions|length }} question{{ questions|length|pluralize }} · imported {{ latest_file.uploaded_at|ago }}{% if latest_file.uploaded_by %} by {{ latest_file.uploaded_by }}{% endif %}">
       <c-slot name="status"><c-chip>Submissions</c-chip></c-slot>
-      {% if import_settings %}<button class="btn btn-sm" x-on:click="reopenFile" :disabled="opening"><span class="loading loading-spinner loading-sm" x-show="opening" x-cloak></span>{% icon "table-cells" %}{% if latest_file.file_pattern %}Check students and files{% else %}Check columns{% endif %}</button>{% endif %}
+      {% if import_settings %}<button class="btn btn-sm" x-on:click="reopenFile" :disabled="opening" :data-spinner="opening">{% icon "table-cells" %}{% if latest_file.file_pattern %}Check students and files{% else %}Check columns{% endif %}</button>{% endif %}
       <button class="btn btn-sm" x-on:click="replacing = true" x-show="!replacing">{% icon "arrow-up-tray" %}Replace</button>
       <button class="btn btn-sm" x-on:click="replacing = false" x-show="replacing" x-cloak>Cancel</button>
     </c-setting-row>

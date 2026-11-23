@@ -882,8 +882,8 @@
 :is([aria-busy="true"]:not(.contents, .btn, .method-choice), .contents[aria-busy="true"] > *, .workspace-cards.htmx-request) {
   @apply opacity-50 transition-opacity delay-100 duration-200;
 }
-/* A pressed button whose request takes a moment (behaviours/busy-buttons.js) shows a spinner in place of its label, at the same size; a
-   method choice, in place of its About button. */
+/* A pressed button whose request takes a moment (behaviours/busy-buttons.js), or an Alpine button that binds `data-spinner`, shows
+   a spinner in place of its label, at the same size; a method choice, in place of its About button. */
 .btn[data-spinner] {
   @apply relative;
 }

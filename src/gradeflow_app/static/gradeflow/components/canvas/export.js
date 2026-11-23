@@ -287,7 +287,6 @@ export const canvasExport = () => {
       return this.busyLabel === SENDING;
     },
     get sendLabel() {
-      if (this.sending) return "Sending…";
       if (this.gradeUpdateStatus.busyLabel) return "Updating in Canvas…";
       if (!this.isCanvasLoaded || !this.matched.length) return "Send to Canvas";
       if (!this.chosenAssignment) return "Choose an assignment";

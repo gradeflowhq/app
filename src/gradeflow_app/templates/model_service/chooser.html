@@ -1,9 +1,7 @@
 {# The Models dialog's body: every model the endpoint lists, how each did as the fast and the careful model, and which are in use. #}
 <c-dialog.head id="model-chooser" title="Models" />
 <div class="px-6 pt-2">
-  {% if loading %}
-    <div class="grid place-items-center py-10"><span class="loading loading-spinner" aria-label="Loading"></span></div>
-  {% elif error %}
+  {% if error %}
     <c-alert>{{ error }}</c-alert>
   {% else %}
     <div class="grid gap-4" x-data="searchList" x-on:htmx:after:swap="filter">

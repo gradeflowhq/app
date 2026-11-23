@@ -17,7 +17,7 @@
       </div>
       {% if connect_error %}<c-alert>{{ connect_error }}</c-alert>{% endif %}
     </div>
-    <footer class="panel-foot"><span class="flex items-center gap-1.5 text-sm text-muted">{% icon "lock-closed" %}Stored encrypted</span><button type="button" class="btn btn-primary ml-auto" x-on:click="connect" :disabled="connecting"><span class="loading loading-spinner loading-xs" x-show="connecting" x-cloak></span>Connect</button></footer>
+    <footer class="panel-foot"><span class="flex items-center gap-1.5 text-sm text-muted">{% icon "lock-closed" %}Stored encrypted</span><button type="button" class="btn btn-primary ml-auto" x-on:click="connect" :disabled="connecting" :data-spinner="connecting">Connect</button></footer>
     {% else %}
     <p class="p-4 text-muted">This server offers no AI service.</p>
     {% endif %}
@@ -71,4 +71,4 @@
   </div>
 </c-panel>
 {% endpartialdef %}
-<c-dialog id="model-chooser" body_id="model-chooser-body" box_class="max-w-2xl">{% include "model_service/chooser.html" with loading=True %}</c-dialog>
+<c-dialog id="model-chooser" body_id="model-chooser-body" box_class="max-w-2xl" />

@@ -29,7 +29,7 @@
         {% if access.can_edit %}
         <div class="setting-summary-row">
           <span class="setting-summary-label">{% icon "document-text" %}Assignment</span>
-          <span class="flex flex-1 items-center gap-2 text-sm text-muted" x-show="!loaded || (connected && isLoadingAssignments)"><span class="loading loading-spinner loading-sm"></span>Loading…</span>
+          <span class="skeleton h-4 w-56" x-show="!loaded || (connected && isLoadingAssignments)"></span>
           <template x-if="loaded && !connected">
             <div class="flex min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-2">
               <p class="min-w-0 flex-1 text-sm" :class="error ? 'text-error' : 'text-muted'" x-text="error || 'Connect to Canvas to choose'"></p>
@@ -157,7 +157,7 @@
         </div>
         <c-dialog.footer>
           <button type="button" class="btn" data-close :disabled="sending">Cancel</button>
-          <button type="button" class="btn btn-primary" x-on:click="send" :disabled="!canSend"><span class="loading loading-spinner loading-sm" x-show="sending"></span><span x-text="sendLabel"></span></button>
+          <button type="button" class="btn btn-primary" x-on:click="send" :disabled="!canSend" :data-spinner="sending"><span x-text="sendLabel"></span></button>
         </c-dialog.footer>
       </c-dialog>
       {% endif %}
