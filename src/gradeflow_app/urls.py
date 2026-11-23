@@ -77,7 +77,6 @@ assessment_urls = [
     path("download/", results.download, name="download"),
     path("export/", exports.send_marks, name="export"),
     path("export/rows/", exports.canvas_rows, name="export_rows"),
-    path("export/comment/", exports.comment, name="export_comment"),
     path("export/settings/", exports.save_sending, name="export_sending"),
     path("export/sent/", exports.record_sent, name="export_record"),
 ]

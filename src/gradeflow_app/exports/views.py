@@ -3,8 +3,7 @@ from dataclasses import dataclass
 
 from django.conf import settings
 from django.contrib import messages
-from django.core.paginator import Paginator
-from django.http import Http404, HttpResponse
+from django.http import HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils.html import format_html_join
@@ -121,23 +120,6 @@ def _comment(results: Results, row: StudentMarks) -> str:
     )
 
 
-@require_GET
-@assessment_member()
-@fragment_of("export")
-def comment(request: Request, access: AssessmentAccess) -> HttpResponse:
-    """A student's comment as it's sent with their marks, a page per student."""
-    page = Paginator(access.assessment.students.all(), 1).get_page(request.GET.get("page"))
-    if not (students := list(page.object_list)):
-        raise Http404
-    results = assessment_results(access.assessment, students)
-    (row,) = results.rows
-    return render(
-        request,
-        "exports/comment.html",
-        {"access": access, "page": page, "student": row.student, "comment": _comment(results, row)},
-    )
-
-
 @dataclass(frozen=True)
 class Sending:
     """How an assessment's marks go to Canvas, and how many of its course's settings it overrides."""
@@ -181,7 +163,7 @@ def save_sending(request: Request, access: AssessmentAccess) -> HttpResponse:
     return render(
         request,
         "exports/export.html#send_settings",
-        {"access": access, "sending": sending, "out_of_band": True},
+        {"access": access, "sending": sending},
     )
 
 

@@ -4,7 +4,6 @@
 {% with assessment=access.assessment course=access.course %}
 {% partialdef send_settings %}
 <span id="send-settings" class="flex min-w-0 flex-1 flex-wrap items-center gap-2 font-semibold" data-mode="{{ sending.mode }}" data-rounding="{{ sending.rounding|default_if_none:'' }}" data-feedback="{{ sending.include_feedback|yesno:'true,false' }}">{{ sending.summary }}{% if sending.override_count %}<c-chip tone="primary" title="Differs from the course">Custom</c-chip>{% endif %}</span>
-{% if out_of_band %}{% partial comment_preview %}{% endif %}
 {% endpartialdef %}
 <c-page title="Export">
   {% if not student_count %}
@@ -65,7 +64,8 @@
         {% else %}
         <div class="setting-summary-row"><span class="setting-summary-label">{% icon "adjustments-horizontal" %}How marks are sent</span>{% partial send_settings %}</div>
         {% endif %}
-        <c-slot name="footer">{% partialdef comment_preview inline %}<button type="button" id="comment-preview" class="btn" hx-get="{% url 'export_comment' access.assessment.pk %}" hx-target="#comment-body" data-dialog="comment"{% if out_of_band %} hx-swap-oob="true"{% endif %}{% if not sending.include_feedback %} hidden{% endif %}>{% icon "chat-bubble-left" %}Preview comment</button>{% endpartialdef %}{% if access.can_edit %}
+        <c-slot name="footer">{% if access.can_edit %}
+          <button type="button" class="btn" data-dialog="preview" x-on:click="openPreview">{% icon "eye" %}Preview</button>
           <span class="flex items-center gap-2 text-sm text-muted" x-show="isBusy && !reviewing" x-cloak><span class="loading loading-spinner loading-sm"></span><span x-text="busyLabel"></span></span>
           <button type="button" class="btn btn-primary ml-auto" x-on:click="review" :disabled="!canReview">{% icon "paper-airplane" %}Send to Canvas</button>
         {% else %}
@@ -75,8 +75,30 @@
       {% if access.can_edit %}
       {% partialdef canvas_rows inline %}<div id="export-rows" hx-get="{% url 'export_rows' access.assessment.pk %}" hx-trigger="{% listen 'marks' access.assessment.pk %}" hx-swap="outerHTML">{{ canvas_rows|json_script:"export-rows-data" }}</div>{% endpartialdef %}
       {% endif %}
-      <c-dialog id="comment" title="Comment in Canvas"><div id="comment-body"></div></c-dialog>
       {% if access.can_edit %}
+      <c-dialog id="preview" title="Preview in Canvas" box_class="flex h-[32rem] max-h-[80vh] max-w-lg flex-col" x-on:keydown.arrow-left="showPreview(preview.index - 1)" x-on:keydown.arrow-right="showPreview(preview.index + 1)">
+        <div class="flex min-h-0 flex-1 flex-col gap-4 px-6 pb-6 pt-1">
+          <div class="flex items-center gap-3">
+            <span class="font-mono font-medium tabular-nums" x-text="preview.studentId"></span>
+            <span class="ml-auto text-sm tabular-nums text-muted" aria-live="polite" x-text="previewPosition"></span>
+            <div class="join">
+              <button type="button" class="btn btn-square btn-sm join-item" x-on:click="showPreview(preview.index - 1)" :disabled="preview.index === 0" aria-label="Previous student" aria-keyshortcuts="ArrowLeft">{% icon "chevron-left" %}</button>
+              <button type="button" class="btn btn-square btn-sm join-item" x-on:click="showPreview(preview.index + 1)" :disabled="preview.index === preview.rows.length - 1" aria-label="Next student" aria-keyshortcuts="ArrowRight">{% icon "chevron-right" %}</button>
+            </div>
+          </div>
+          <div class="surface flex min-h-0 flex-1 flex-col divide-y divide-line overflow-hidden">
+            <div class="flex items-baseline gap-4 px-4 py-3.5">
+              <div class="grid min-w-0 flex-1 gap-1">
+                <p class="truncate font-semibold" x-text="previewAssignmentName"></p>
+                <p class="flex flex-wrap items-center gap-2 text-sm text-muted" x-show="preview.gradeFlowMarks || preview.needsMarking"><span x-show="preview.gradeFlowMarks"><span class="tabular-nums" x-text="preview.gradeFlowMarks"></span> in GradeFlow</span><c-chip tone="warning" icon="exclamation-triangle" x-show="preview.needsMarking"><span x-text="preview.needsMarking"></span></c-chip></p>
+              </div>
+              <p class="text-lg font-semibold tabular-nums" x-text="preview.grade"></p>
+            </div>
+            <div class="min-h-0 flex-1 overflow-y-auto whitespace-pre-wrap wrap-break-word px-4 py-3.5 text-sm" x-ref="previewComment" x-show="!preview.commentPlaceholder"></div>
+            <p class="flex flex-1 items-center justify-center gap-2 px-4 py-3.5 text-sm text-muted" x-show="preview.commentPlaceholder">{% icon "chat-bubble-left" %}<span x-text="preview.commentPlaceholder"></span></p>
+          </div>
+        </div>
+      </c-dialog>
       <c-dialog id="send-review" title="Send to Canvas" x-on:close="closeReview" x-on:cancel="preventCloseWhileSending">
         <div class="grid gap-4 px-6 pt-1">
           <p class="-mt-1 truncate text-sm text-muted" x-text="reviewTarget"></p>

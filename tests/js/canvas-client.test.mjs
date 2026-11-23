@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { canvasClient, gradeFor, matchStudents } from "../../src/gradeflow_app/static/gradeflow/lib/canvas-client.js";
+import {
+  canvasClient,
+  displayedGrade,
+  gradeFor,
+  matchStudents,
+} from "../../src/gradeflow_app/static/gradeflow/lib/canvas-client.js";
 
 const jsonResponse = (body, headers = {}) =>
   new Response(JSON.stringify(body), { headers: { "Content-Type": "application/json", ...headers } });
@@ -233,4 +238,14 @@ test("gradeFor gives null without a usable total", () => {
   const options = { mode: "marks", rounding: null, pointsPossible: 40 };
   assert.equal(gradeFor({ marks: null, maxMarks: 40 }, options), null);
   assert.equal(gradeFor({ marks: 3, maxMarks: 0 }, options), null);
+});
+
+test("displayedGrade shows points on a points assignment and a percentage on a percent one", () => {
+  const points = { gradingType: "points", pointsPossible: 10 };
+  assert.equal(displayedGrade(7.5, points), "7.5 / 10");
+  assert.equal(displayedGrade("75.5%", points), "7.55 / 10");
+  assert.equal(displayedGrade(0.1 + 0.2, points), "0.3 / 10");
+  const percent = { gradingType: "percent", pointsPossible: 40 };
+  assert.equal(displayedGrade(30.3, percent), "75.75%");
+  assert.equal(displayedGrade("76%", percent), "76%");
 });

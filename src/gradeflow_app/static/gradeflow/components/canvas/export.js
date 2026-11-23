@@ -3,7 +3,7 @@
 // saves them. Sending decrypts the student IDs in #export-rows-data and matches them to Canvas users.
 
 import { decryptId } from "../../lib/assessment-crypto.js";
-import { gradeFor, matchStudents } from "../../lib/canvas-client.js";
+import { displayedGrade, gradeFor, matchStudents } from "../../lib/canvas-client.js";
 import { counted } from "../../lib/words.js";
 import { assessmentKeysFor, missingCourseKeyMessage } from "../../services/course-keys.js";
 import { readJson } from "../../services/page-data.js";
@@ -28,6 +28,15 @@ export const canvasExport = () => {
     unmatchedUsers: [],
     reviewing: false,
     isMatched: false,
+    preview: {
+      rows: [],
+      index: 0,
+      studentId: "",
+      grade: "",
+      gradeFlowMarks: "",
+      needsMarking: "",
+      commentPlaceholder: "",
+    },
 
     async init() {
       this.config = readConfig(this.$el);
@@ -112,7 +121,11 @@ export const canvasExport = () => {
         this.assignment.items = assignments.map((assignment) => {
           const points = assignment.points_possible != null && counted(assignment.points_possible, "mark");
           const detail = [groupName(assignment.assignment_group_id), points].filter(Boolean).join(" · ");
-          return { ...pickerItem(assignment.id, assignment.name, detail), pointsPossible: assignment.points_possible };
+          return {
+            ...pickerItem(assignment.id, assignment.name, detail),
+            pointsPossible: assignment.points_possible,
+            gradingType: assignment.grading_type,
+          };
         });
         return true;
       });
@@ -163,9 +176,46 @@ export const canvasExport = () => {
       return gradeFor(row, { mode, rounding: Number(rounding), pointsPossible: pointsPossible ?? row.maxMarks });
     },
 
-    /** The grade sent for `row` to the chosen assignment, or to a new one. */
+    /** The grade Canvas shows for `row` on the chosen assignment, or on a new one. */
     canvasGrade(row) {
-      return this.postedGrade(row, this.chosenAssignment?.pointsPossible) ?? "—";
+      const { gradingType = "points", pointsPossible } = this.chosenAssignment ?? {};
+      const grade = this.postedGrade(row, pointsPossible);
+      return grade === null
+        ? "—"
+        : displayedGrade(grade, { gradingType, pointsPossible: pointsPossible ?? row.maxMarks });
+    },
+
+    /** The assignment's name as students see it: the chosen one's, or the assessment's for a new one. */
+    get previewAssignmentName() {
+      return this.assignment.card.name || this.config.name;
+    },
+    get previewPosition() {
+      return `${this.preview.index + 1} of ${this.preview.rows.length}`;
+    },
+    openPreview() {
+      this.preview.rows = readJson("export-rows-data");
+      this.showPreview(0);
+    },
+    /** Shows the `index`th row's grade and comment as Canvas would; an index past either end does nothing. */
+    async showPreview(index) {
+      const row = this.preview.rows[index];
+      if (!row) return;
+      const grade = this.canvasGrade(row);
+      const gradeFlowMarks = displayedGrade(row.marks, { gradingType: "points", pointsPossible: row.maxMarks });
+      const sendsFeedback = document.getElementById("send-settings").dataset.feedback === "true";
+      this.$refs.previewComment.innerHTML = sendsFeedback ? row.comment : "";
+      this.$refs.previewComment.scrollTop = 0;
+      Object.assign(this.preview, {
+        index,
+        studentId: "",
+        grade,
+        gradeFlowMarks: grade === gradeFlowMarks ? "" : gradeFlowMarks,
+        needsMarking: row.unmarkedCount ? `${counted(row.unmarkedCount, "answer needs", "answers need")} marking` : "",
+        commentPlaceholder: !sendsFeedback ? "Feedback isn't sent." : row.comment ? "" : "Nothing marked yet.",
+      });
+      const keys = await assessmentKeysFor(this.$root.closest("[data-assessment]")).catch(() => null);
+      const studentId = keys && (await decryptId(row.studentId, keys).catch(() => null));
+      if (this.preview.index === index) this.preview.studentId = studentId || "Encrypted";
     },
 
     async send() {
@@ -217,7 +267,11 @@ export const canvasExport = () => {
         points_possible: maxMarks,
         assignment_group_id: this.group.id,
       });
-      const assignment = { ...pickerItem(created.id, created.name), pointsPossible: created.points_possible };
+      const assignment = {
+        ...pickerItem(created.id, created.name),
+        pointsPossible: created.points_possible,
+        gradingType: created.grading_type,
+      };
       this.assignment.items.push(assignment);
       this.assignment.id = assignment.id;
       this.changedAssignment();

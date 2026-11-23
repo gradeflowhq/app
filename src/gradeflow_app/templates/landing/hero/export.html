@@ -18,7 +18,7 @@
           <span class="flex min-w-0 flex-1 flex-wrap items-center gap-2 font-semibold">{{ hero.sending_summary }}</span>
           <span class="btn btn-sm">Change{% icon "chevron-down" %}</span>
         </div>
-        <c-slot name="footer"><span class="btn">{% icon "chat-bubble-left" %}Preview comment</span><span class="btn btn-primary ml-auto" data-send-to-canvas>{% icon "paper-airplane" %}Send to Canvas</span></c-slot>
+        <c-slot name="footer"><span class="btn">{% icon "eye" %}Preview</span><span class="btn btn-primary ml-auto" data-send-to-canvas>{% icon "paper-airplane" %}Send to Canvas</span></c-slot>
       </c-panel>
       <c-panel icon="clock" title="Sent to Canvas" body_class="overflow-x-auto rounded-b-box" data-shown="0" data-sent-to-canvas>
         <table class="table">

@@ -179,7 +179,6 @@ def test_parts_of_a_page_opened_on_their_own_go_to_the_page(client: Client, asse
     parts = {
         reverse("student", args=[assessment.pk, student.pk]): students,
         reverse("export_rows", args=[assessment.pk]): export,
-        reverse("export_comment", args=[assessment.pk]): export,
         reverse("activity", args=[assessment.pk]): reverse("overview", args=[assessment.pk]),
     }
     for part, page_url in parts.items():

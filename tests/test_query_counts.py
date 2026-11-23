@@ -115,11 +115,10 @@ def test_adjusting_an_answer_group_query_count_does_not_grow(
         assert client.post(url, {"students": " ".join(students[:4]), "marks": "1"}).status_code == 200
 
 
-@pytest.mark.parametrize("page", ["student", "export_comment"])
-def test_a_page_of_one_student_reads_only_their_results(client: Client, assessment: Assessment, page: str) -> None:
+def test_a_page_of_one_student_reads_only_their_results(client: Client, assessment: Assessment) -> None:
     student = assessment.students.first()
     assert student is not None
-    url = reverse(page, args=[assessment.pk, student.pk] if page == "student" else [assessment.pk])
+    url = reverse("student", args=[assessment.pk, student.pk])
     with CaptureQueriesContext(connection) as captured:
         assert client.get(url, headers=HTMX_HEADERS).status_code == 200
     results_read = [query["sql"] for query in captured if 'FROM "results_result"' in query["sql"]]

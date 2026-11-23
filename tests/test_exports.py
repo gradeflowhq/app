@@ -1,5 +1,4 @@
 import json
-import re
 
 import pytest
 from django.test import Client
@@ -93,7 +92,7 @@ def test_editors_get_the_rows_to_send_and_the_sending_form(client: Client, canva
     assert "As the course (percentage)" in page
     assert 'data-mode="percent" data-rounding="0.5" data-feedback="true"' in page
     assert "Percentages, rounded to 0.5, with feedback" in page
-    assert "Preview comment" in page
+    assert 'data-dialog="preview" x-on:click="openPreview"' in page
     assert 'id="send-review"' in page
 
 
@@ -106,6 +105,7 @@ def test_viewers_see_how_marks_are_sent_but_not_the_rows_or_controls(
     assert "export-rows" not in page
     assert encrypted_id("S001") not in page
     assert "canvasExport" not in page
+    assert "openPreview" not in page
     assert 'name="marks_mode"' not in page
     assert "assignment-picker" not in page
 
@@ -137,7 +137,6 @@ def test_overriding_how_marks_are_sent_answers_with_the_summary(client: Client, 
     ).text
     assert 'data-mode="marks" data-rounding="0.0" data-feedback="false"' in changed
     assert "Marks, not rounded, without feedback" in changed
-    assert re.search(r'<button type="button" id="comment-preview" [^>]* hx-swap-oob="true" hidden>', changed)
     assert "Custom" in changed
     assessment_canvas = AssessmentCanvas.objects.get(assessment=canvas_assessment)
     assert (assessment_canvas.canvas_assignment, assessment_canvas.marks_mode, assessment_canvas.include_feedback) == (
@@ -193,34 +192,6 @@ def test_each_comment_gives_the_marks_and_feedback_of_each_marked_question(
 
 
 EXPECTED_COMMENT = "<strong>Q1 [1/1]</strong>\nShow &lt;working&gt;."
-
-
-def test_the_comment_preview_pages_through_the_students(client: Client, canvas_assessment: Assessment) -> None:
-    Adjustment.objects.create(
-        student=canvas_assessment.students.get(encrypted_id=encrypted_id("S001")),
-        question=canvas_assessment.questions.get(key="Q1"),
-        feedback="Show <working>.",
-    )
-    url = reverse("export_comment", args=[canvas_assessment.pk])
-    first = client.get(url, headers=HTMX_HEADERS).text
-    assert encrypted_id("S001") in first
-    assert EXPECTED_COMMENT in first
-    assert "1 of 10" in first
-    assert 'aria-label="Previous student" disabled' in first
-    last = client.get(url, query_params={"page": 99}, headers=HTMX_HEADERS).text
-    assert "10 of 10" in last
-    assert 'aria-label="Next student" disabled' in last
-
-
-def test_the_comment_preview_says_when_nothing_is_marked(client: Client, canvas_assessment: Assessment) -> None:
-    upload(client, canvas_assessment, marks_columns="{}")
-    preview = client.get(reverse("export_comment", args=[canvas_assessment.pk]), headers=HTMX_HEADERS).text
-    assert "Nothing marked yet." in preview
-    assert "bg-base-200" not in preview
-
-
-def test_viewers_may_preview_comments(viewer: Client, canvas_assessment: Assessment) -> None:
-    assert viewer.get(reverse("export_comment", args=[canvas_assessment.pk]), headers=HTMX_HEADERS).status_code == 200
 
 
 @pytest.mark.parametrize("page", ["canvas_settings", "export"])

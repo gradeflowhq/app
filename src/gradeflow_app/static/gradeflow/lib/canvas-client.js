@@ -152,3 +152,14 @@ export const gradeFor = ({ marks, maxMarks }, { mode, rounding, pointsPossible }
   const grade = Number(rounded.toFixed(10));
   return mode === "percent" ? `${grade}%` : grade;
 };
+
+/** The grade Canvas shows for `postedGrade`: a percentage on a "percent" assignment, otherwise points out of
+ * `pointsPossible`. Canvas reads a "%" grade as that share of the points and shows 2 decimal places. */
+export const displayedGrade = (postedGrade, { gradingType, pointsPossible }) => {
+  const points =
+    typeof postedGrade === "string" ? (Number.parseFloat(postedGrade) / 100) * pointsPossible : postedGrade;
+  const toTwoDecimals = (value) => Number(value.toFixed(2));
+  return gradingType === "percent"
+    ? `${toTwoDecimals((points / pointsPossible) * 100)}%`
+    : `${toTwoDecimals(points)} / ${toTwoDecimals(pointsPossible)}`;
+};
