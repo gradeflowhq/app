@@ -169,14 +169,14 @@ test("a reply that is not Canvas's says it came from the proxy", async (t) => {
   await assert.rejects(client().progress(1), { status: 400, proxy: true });
 });
 
-test("matchStudents matches stable identifiers case-insensitively, never names", () => {
+test("matchStudents matches identifiers case-insensitively", () => {
   const users = [
     { id: 1, name: "Ann Tan", login_id: "U1000001", sis_user_id: "S1000001", email: "ann@example.edu" },
     { id: 2, name: "Ben Lim", login_id: "u1000002", integration_id: "INT-2", email: "Ben@example.edu" },
     { id: 3, name: "Cat Ng", login_id: "shared" },
     { id: 4, name: "Dan Ong", sis_user_id: "shared", login_id: "dan", email: "dan" },
   ];
-  const rows = ["s1000001", " u1000001 ", "ben@example.edu", "int-2", "Ann Tan", "shared", "DAN", "nobody", ""].map(
+  const rows = ["s1000001", " u1000001 ", "ben@example.edu", "int-2", "shared", "DAN", "nobody", ""].map(
     (studentId) => ({ studentId }),
   );
 
@@ -193,9 +193,32 @@ test("matchStudents matches stable identifiers case-insensitively, never names",
   );
   assert.deepEqual(
     unmatched.map((row) => row.studentId),
-    ["Ann Tan", "shared", "nobody", ""],
+    ["shared", "nobody", ""],
   );
   assert.equal(matched[0].row, rows[0]);
+});
+
+test("matchStudents matches a name nobody else has", () => {
+  const users = [
+    { id: 1, name: "Ann Tan", sortable_name: "Tan, Ann", login_id: "u1" },
+    { id: 2, name: "John Lee", sortable_name: "Lee, John", login_id: "u2" },
+    { id: 3, name: "John Lee", sortable_name: "Lee, John", login_id: "u3" },
+    { id: 4, name: "u1", sortable_name: "u1", login_id: "u4" },
+  ];
+  const rows = ["ann  tan", " Tan, Ann", "John Lee", "u1"].map((studentId) => ({ studentId }));
+
+  const { matched, unmatched } = matchStudents(rows, users);
+  assert.deepEqual(
+    matched.map(({ row, user }) => [row.studentId, user.id]),
+    [
+      ["ann  tan", 1],
+      [" Tan, Ann", 1],
+    ],
+  );
+  assert.deepEqual(
+    unmatched.map((row) => row.studentId),
+    ["John Lee", "u1"],
+  );
 });
 
 test("gradeFor posts marks scaled to the assignment, or a percentage", () => {

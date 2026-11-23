@@ -6,6 +6,7 @@ import { normalizedId } from "./cells.js";
 const PAGE_SIZE = 100;
 const TIMEOUT_MS = 60_000;
 const IDENTIFIERS = ["login_id", "sis_user_id", "integration_id", "email"];
+const MATCHED_FIELDS = [...IDENTIFIERS, "name", "sortable_name"];
 
 /** Canvas's array parameters are written `key[]=a&key[]=b`. */
 const queryString = (params) =>
@@ -109,19 +110,21 @@ export const canvasClient = ({ baseUrl, token, proxyUrl }) => {
   };
 };
 
-/** Rows matched to Canvas users by login ID, SIS ID, integration ID or email, and the rows that match nobody. An
- * identifier several users share matches none of them: a grade must never reach the wrong student. */
+const matchKey = (value) => normalizedId(value).replace(/\s+/g, " ");
+
+/** Rows matched to Canvas users by login ID, SIS ID, integration ID, email or name, and the rows that match nobody. A
+ * value several users share matches none of them: a grade must never reach the wrong student. */
 export const matchStudents = (rows, canvasUsers) => {
   const owners = new Map();
   for (const user of canvasUsers) {
-    for (const key of IDENTIFIERS.map((field) => normalizedId(user[field])).filter(Boolean)) {
+    for (const key of MATCHED_FIELDS.map((field) => matchKey(user[field])).filter(Boolean)) {
       owners.set(key, owners.has(key) && owners.get(key) !== user ? null : user);
     }
   }
   const matched = [];
   const unmatched = [];
   for (const row of rows) {
-    const user = owners.get(normalizedId(row.studentId));
+    const user = owners.get(matchKey(row.studentId));
     if (user) matched.push({ row, user });
     else unmatched.push(row);
   }

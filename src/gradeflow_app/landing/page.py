@@ -32,7 +32,7 @@ FEATURES = [
     (
         "paper-airplane",
         "Send marks to Canvas",
-        "Students are matched by login, SIS ID or email, with feedback as comments. Or download the marks as a "
+        "Students are matched by login, SIS ID, email or name, with feedback as comments. Or download the marks as a "
         "spreadsheet.",
     ),
     (
