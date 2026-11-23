@@ -1,6 +1,6 @@
 {# The Canvas course's assignments, a card per group, driven by `assignmentPickerMixin` (components/canvas/assignment-picker.js). #}
 {% partialdef name_field %}
-<label class="input input-sm min-w-0 flex-1"><span class="sr-only">Name</span><input x-model="form.name" x-init="focusForm($el)" required autocomplete="off"></label>
+<label class="input input-sm min-w-0 flex-1 basis-56"><span class="sr-only">Name</span><input x-model="form.name" x-init="focusForm($el)" required pattern=".*\S.*" title="Enter a name." autocomplete="off"></label>
 {% endpartialdef %}
 {% partialdef points_field %}
 <label class="input input-sm w-32 shrink-0"><input type="number" min="0" step="any" class="text-right tabular-nums" x-model.number="form.points" required><span class="text-muted">marks</span></label>
@@ -9,8 +9,10 @@
 <label class="input input-sm w-24 shrink-0" x-show="appliesGroupWeights"><span class="sr-only">Weight</span><input type="number" min="0" step="any" class="text-right tabular-nums" x-model.number="form.weight" :required="appliesGroupWeights"><span class="text-muted">%</span></label>
 {% endpartialdef %}
 {% partialdef form_buttons %}
-<button type="button" class="btn btn-ghost btn-sm" x-on:click="closeForm">Cancel</button>
-<button class="btn btn-primary btn-sm" :disabled="isPickerBusy">{{ label }}</button>
+<div class="ml-auto flex gap-2">
+  <button type="button" class="btn btn-ghost btn-sm" x-on:click="closeForm">Cancel</button>
+  <button class="btn btn-primary btn-sm" :disabled="isPickerBusy">{{ label }}</button>
+</div>
 {% endpartialdef %}
 <c-dialog id="assignment-picker" title="Assignment" box_class="flex h-[44rem] max-h-[85vh] max-w-2xl flex-col">
   <div class="flex items-center gap-2 border-b border-line px-6 pb-4 pt-1">
@@ -39,7 +41,7 @@
         <template x-if="group.isEditing">
           <form class="flex flex-wrap items-center gap-2 border-b border-line px-3 py-2.5" x-on:submit.prevent="saveForm">
             {% partial name_field %}{% partial weight_field %}
-            <div class="ml-auto flex gap-2">{% with label="Save" %}{% partial form_buttons %}{% endwith %}</div>
+            {% with label="Save" %}{% partial form_buttons %}{% endwith %}
           </form>
         </template>
         <template x-if="group.isConfirmingDelete">
@@ -104,7 +106,7 @@
       <section class="surface" aria-label="New group">
         <form class="flex flex-wrap items-center gap-2 px-3 py-2.5" x-on:submit.prevent="saveForm">
           {% partial name_field %}{% partial weight_field %}
-          <div class="ml-auto flex gap-2">{% with label="Create group" %}{% partial form_buttons %}{% endwith %}</div>
+          {% with label="Create group" %}{% partial form_buttons %}{% endwith %}
         </form>
       </section>
     </template>

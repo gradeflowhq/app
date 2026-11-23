@@ -65,10 +65,11 @@ export const assignmentPickerMixin = () => ({
     const query = this.assignmentQuery;
     const { form } = this;
     return this.groups.flatMap((group) => {
-      const assignments = matches(group.name.toLowerCase(), query)
+      const nameMatches = matches(group.name.toLowerCase(), query);
+      const assignments = nameMatches
         ? group.assignments
         : group.assignments.filter((assignment) => matches(assignment.name.toLowerCase(), query));
-      if (query && !assignments.length) return [];
+      if (!nameMatches && !assignments.length) return [];
       return {
         ...group,
         weightLabel: this.appliesGroupWeights ? `${group.weight}%` : "",
