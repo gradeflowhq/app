@@ -145,19 +145,29 @@ export function heroTimeline(timeline, mockup, [importing, writing, marking, adj
     "<",
   );
 
+  // Canvas updates the grades after the review closes; then they're up to date and the send is listed.
   const sendReview = $("[data-send-review]");
   const confirmSend = $("[data-confirm-send]");
-  const [spinner, sendLabel, sendingLabel] = confirmSend.children;
+  const [confirmLabel, confirmSpinner] = confirmSend.children;
+  const sendGrades = $("[data-send-grades]");
+  const sendingGrades = $("[data-sending-grades]");
+  const updating = $("[data-updating]");
   timeline
     .addLabel(sending, "+=1")
     .click(tab("export"), {}, sending)
     .switchPage(tab("export"))
-    .click($("[data-send-to-canvas]"))
+    .click(sendGrades, {}, "+=0.4")
     .openDialog(sendReview)
     .click(confirmSend, {}, "+=0.3")
-    .swap([sendLabel, sendingLabel])
-    .set(spinner, { attr: { "data-shown": 1 } }, "<")
-    .to(sendReview, { autoAlpha: 0, duration: 0.2 }, "+=1.1")
+    .to(confirmLabel, { autoAlpha: 0, duration: 0 })
+    .to(confirmSpinner, { attr: { "data-shown": 1 }, duration: 0 }, "<")
+    .to(sendReview, { autoAlpha: 0, duration: 0.2 }, "+=0.5")
+    .swap([sendGrades, sendingGrades], "<")
+    .show(updating, {}, "<")
+    .hide(updating, "+=1.6")
+    .swap([sendingGrades, $("[data-up-to-date]")], "<")
+    .swap([$("[data-students-to-send]"), $("[data-students-sent]")], "<")
+    .hide($("[data-filter-to-send]"), "<")
     .show($("[data-sent-to-canvas]"), {}, "<")
     .showToast($('[data-toast="sent"]'), {}, "<")
     .set({}, {}, "+=0.6");

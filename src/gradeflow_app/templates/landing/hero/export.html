@@ -1,7 +1,7 @@
-{# The Export page (exports/export.html) with a Canvas course and assignment chosen, before and after the marks are sent. #}
-<div class="page landing-hero-page" data-page="export">
-  <div class="main-with-aside items-start">
-    <div class="grid gap-5">
+{# The Export page (exports/export.html) with a Canvas course and assignment chosen, before and after the grades are sent. #}
+<div class="page landing-hero-page grid-rows-[minmax(0,1fr)]" data-page="export">
+  <div class="grid grid-cols-[minmax(0,1fr)_26.25rem] grid-rows-[minmax(0,1fr)] gap-5">
+    <div class="grid min-w-0 grid-rows-[auto_minmax(0,1fr)] gap-5">
       <c-panel icon="paper-airplane" title="Canvas" body_class="setting-rows">
         <c-slot name="actions"><span class="flex items-center gap-2"><span class="muted-link text-xs">{{ content.canvas_host }}</span><c-chip icon="check" tone="success">Connected</c-chip></span></c-slot>
         <div class="setting-summary-row">
@@ -11,24 +11,51 @@
         </div>
         <div class="setting-summary-row">
           <span class="setting-summary-label">{% icon "document-text" %}Assignment</span>
-          <div class="flex min-w-0 flex-1 items-center gap-4"><div class="min-w-0 flex-1"><p class="truncate font-semibold">{{ content.assessment }}</p></div><span class="btn btn-sm">Change</span></div>
+          <div class="flex min-w-0 flex-1 items-center gap-4"><div class="min-w-0 flex-1"><p class="truncate font-semibold">{{ content.assessment }}</p><p class="truncate text-sm text-muted">{{ hero.total_max_marks|marks }} marks</p></div><span class="btn btn-sm">Change</span></div>
         </div>
         <div class="setting-summary-row">
           <span class="setting-summary-label">{% icon "adjustments-horizontal" %}How marks are sent</span>
           <span class="flex min-w-0 flex-1 flex-wrap items-center gap-2 font-semibold">{{ hero.sending_summary }}</span>
           <span class="btn btn-sm">Change{% icon "chevron-down" %}</span>
         </div>
-        <c-slot name="footer"><span class="btn btn-primary ml-auto" data-send-to-canvas>{% icon "paper-airplane" %}Send to Canvas</span></c-slot>
       </c-panel>
-      <c-panel icon="clock" title="Sent to Canvas" body_class="overflow-x-auto rounded-b-box" data-shown="0" data-sent-to-canvas>
-        <table class="table">
-          <thead><tr><th>Assignment</th><th class="text-right">Students</th><th>Sent by</th><th>When</th></tr></thead>
-          <tbody><tr><td><span class="flex items-center gap-2">{% icon "check-circle" "text-success" %}<span class="font-medium">{{ content.assessment }}</span></span></td><td class="tabular-nums text-right">{{ hero.student_count }}</td><td><span class="flex items-center gap-2"><c-avatar :user="hero.marker" size="size-6" />{{ hero.marker }}</span></td><td class="whitespace-nowrap text-muted">{{ hero.last_save.saved_at|ago }}</td></tr></tbody>
-        </table>
+      <c-panel icon="users" title="Students" class="flex min-h-0 flex-col" body_class="flex min-h-0 flex-1 flex-col">
+        <c-slot name="actions"><span class="text-xs text-muted">{{ hero.student_count }} of {{ hero.student_count }} matched in Canvas</span></c-slot>
+        <div class="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line bg-base-200/50 px-4 py-2.5">
+          <div class="segmented" role="radiogroup" aria-label="Show">
+            <label class="segment"><input type="radio" name="hero-export-show" value="all" class="sr-only" checked>All<span class="tabular-nums text-subtle">{{ hero.student_count }}</span></label>
+            <label class="segment" data-shown="1" data-filter-to-send><input type="radio" name="hero-export-show" value="to_send" class="sr-only">To send<span class="tabular-nums text-subtle">{{ hero.student_count }}</span></label>
+          </div>
+          <c-search label="Search ID or name" class="input-sm ml-auto w-56 max-w-full" />
+        </div>
+        <div class="min-h-0 flex-1 overflow-hidden">
+          <table class="table">
+            <thead><tr><th>Student</th><th class="text-right max-sm:hidden">Marks</th><th class="text-right">Canvas grade</th><th>Status</th></tr></thead>
+            <tbody data-shown="1" data-students-to-send>
+              {% for row in hero.students %}<tr><td class="w-full max-w-0 font-mono">{{ row.student_id }}</td><td class="whitespace-nowrap text-right tabular-nums max-sm:hidden">{{ row.total|marks }} / {{ hero.total_max_marks|marks }}</td><td class="whitespace-nowrap text-right tabular-nums"><span class="inline-flex items-center gap-1.5"><span class="text-subtle" title="New comment">{% icon "chat-bubble-left" "size-3.5" %}</span><span class="font-semibold">{{ row.total|marks }}</span></span></td><td><c-chip tone="primary">To send</c-chip></td></tr>{% endfor %}
+            </tbody>
+            <tbody data-shown="0" data-students-sent>
+              {% for row in hero.students %}<tr><td class="w-full max-w-0 font-mono">{{ row.student_id }}</td><td class="whitespace-nowrap text-right tabular-nums max-sm:hidden">{{ row.total|marks }} / {{ hero.total_max_marks|marks }}</td><td class="whitespace-nowrap text-right tabular-nums text-muted">{{ row.total|marks }}</td><td></td></tr>{% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <c-slot name="footer">
+          <span class="flex items-center gap-2 text-sm text-muted" data-shown="0" data-updating><span class="loading loading-spinner loading-sm"></span>Canvas is updating {{ hero.student_count }} grades…</span>
+          <span class="btn btn-primary ml-auto" data-shown="1" data-send-grades>{% icon "paper-airplane" %}Send {{ hero.student_count }} grades</span>
+          <span class="btn btn-primary btn-disabled ml-auto" data-shown="0" data-sending-grades>{% icon "paper-airplane" %}Send {{ hero.student_count }} grades</span>
+          <span class="btn btn-primary btn-disabled ml-auto" data-shown="0" data-up-to-date>{% icon "check" %}Up to date</span>
+        </c-slot>
       </c-panel>
     </div>
-    <c-panel icon="arrow-down-tray" title="Download" body_class="setting-rows">
-      <c-setting-row icon="table-cells" label="Results as CSV" detail="{{ hero.student_count }} students"><span class="btn btn-sm">{% icon "arrow-down-tray" %}Download</span></c-setting-row>
-    </c-panel>
+    <div class="grid min-w-0 content-start gap-5">
+      <c-panel icon="arrow-down-tray" title="Download" body_class="setting-rows">
+        <c-setting-row icon="table-cells" label="Results as CSV" detail="{{ hero.student_count }} students"><span class="btn btn-sm">{% icon "arrow-down-tray" %}Download</span></c-setting-row>
+      </c-panel>
+      <c-panel icon="clock" title="Sent to Canvas" body_class="px-4" data-shown="0" data-sent-to-canvas>
+        <ul class="divide-y divide-line">
+          <li class="flex items-start gap-2.5 py-2.5 text-sm">{% icon "check-circle" "mt-0.5 text-success" %}<div class="min-w-0"><p class="truncate font-medium">{{ content.assessment }} · <span class="tabular-nums">{{ hero.student_count }}</span> grades</p><p class="text-xs text-muted">{{ hero.marker }} · {{ hero.last_save.saved_at|ago }}</p></div></li>
+        </ul>
+      </c-panel>
+    </div>
   </div>
 </div>

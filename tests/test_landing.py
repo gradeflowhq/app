@@ -68,7 +68,7 @@ def test_the_hero_shows_an_assessment_from_its_import_to_canvas() -> None:
         *(stage.open_step.label for stage in core_output().hero.editing_stages if stage.open_step),
         hero.adjustment.feedback,
         *(student.student_id for student in hero.students),
-        f"Sent {sum(answer.student_count for answer in hero.answers)} students' marks to “{hero.assessment}”.",
+        f"Sent {sum(answer.student_count for answer in hero.answers)} grades to “{hero.assessment}”.",
     ]
     for text in [*CHAPTERS, *expected_texts]:
         assert text in page
