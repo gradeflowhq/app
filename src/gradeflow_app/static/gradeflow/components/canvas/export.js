@@ -16,7 +16,6 @@ const POLL_MS = 2000;
 const POLL_LIMIT_MS = 5 * 60_000;
 const SENDING = "Sending marks…";
 
-const STATUS_ORDER = { not_in_canvas: 0, duplicate_id: 1, changed: 2, unchanged: 3 };
 const FILTERS = [
   { key: "all", label: "All", test: () => true },
   { key: "changed", label: "To send", test: (student) => student.status === "changed" },
@@ -25,19 +24,16 @@ const FILTERS = [
   { key: "duplicate_id", label: "Duplicate ID", test: (student) => student.status === "duplicate_id" },
 ];
 
-/** The marks to send, as the server last rendered them in #export-rows-data. */
-const readRows = () => JSON.parse(document.getElementById("export-rows-data").textContent);
-
 /** A comment's text, as Canvas lists the comments it has. */
 const commentText = (html) => new DOMParser().parseFromString(html, "text/html").body.textContent;
 
 export const canvasExport = () => {
   let canvasUsers = []; // the Canvas course's students
+  let cachedStudents = null; // the last `students`, with what they depended on
 
   return mergeMixins(connectionMixin(), assignmentPickerMixin(), {
     settings: {},
-    maxMarks: 0,
-    rowCount: 0,
+    rows: [], // the marks to send, their student IDs decrypted, in order of student ID
     matched: [],
     unmatched: [],
     conflicts: [],
@@ -60,9 +56,11 @@ export const canvasExport = () => {
     async init() {
       this.config = readConfig(this.$el);
       this.assignmentId = this.config.assignment;
-      this.maxMarks = readRows()[0]?.maxMarks ?? 0;
       await this.loadConnection();
       if (this.canvasConnection) this.load();
+    },
+    get maxMarks() {
+      return this.rows[0]?.maxMarks ?? 0;
     },
     get courseId() {
       return this.config.course;
@@ -88,19 +86,29 @@ export const canvasExport = () => {
       this.settings = { ...document.getElementById("send-settings").dataset };
     },
 
-    /** Loads the course's students and assignments, choosing the one named after the assessment when none is saved,
-     * and the chosen assignment's submissions. */
+    /** Decrypts the marks' student IDs, so the students show while Canvas loads. Loads the Canvas course's students
+     * and assignments, choosing the one named after the assessment when none is saved, and its submissions. */
     load() {
       return this.run("Loading the Canvas course…", async () => {
+        const { assignmentId } = this;
+        const savedSubmissions = assignmentId ? this.client.submissions(this.courseId, assignmentId) : null;
+        savedSubmissions?.catch(() => {}); // left unawaited if Canvas no longer has the saved assignment
         [canvasUsers] = await Promise.all([
           this.client.students(this.courseId),
-          this.loadGroups().then(() => {
-            if (!this.chosenAssignment)
-              this.assignmentId = this.assignments.find(({ name }) => name === this.config.name)?.id ?? "";
-            return this.loadSubmissions();
+          this.loadGroups().then(async () => {
+            if (this.chosenAssignment) {
+              const submissions = await savedSubmissions;
+              if (this.assignmentId === assignmentId) this.submissions = submissions;
+              return;
+            }
+            this.assignmentId = this.assignments.find(({ name }) => name === this.config.name)?.id ?? "";
+            await this.loadSubmissions();
+          }),
+          this.decryptRows().then((rows) => {
+            this.rows = rows;
           }),
         ]);
-        await this.match();
+        this.match();
         return true;
       });
     },
@@ -118,32 +126,36 @@ export const canvasExport = () => {
       this.$nextTick(() => document.getElementById("send-settings-form").dispatchEvent(new Event("change")));
     },
 
-    /** Matches the marks as they are now to the Canvas course's students. */
-    async match() {
-      const rows = readRows();
+    /** The marks as the server last rendered them, their student IDs decrypted, in order of student ID. */
+    async decryptRows() {
       const assessmentElement = this.$root.closest("[data-assessment]");
       const keys = await assessmentKeysFor(assessmentElement);
       if (!keys) throw new Error(missingCourseKeyMessage(assessmentElement));
-      const decryptedRows = await Promise.all(
-        rows.map(async (row) => ({
+      const rows = await Promise.all(
+        JSON.parse(document.getElementById("export-rows-data").textContent).map(async (row) => ({
           ...row,
           studentId: await decryptId(row.studentId, keys),
           commentText: commentText(row.comment),
         })),
       );
-      Object.assign(this, matchStudents(decryptedRows, canvasUsers), {
-        maxMarks: rows[0]?.maxMarks ?? 0,
-        rowCount: rows.length,
-        isMatched: true,
-      });
+      return rows.sort((a, b) => naturalOrder(a.studentId, b.studentId));
+    },
+    /** Matches the rows to the Canvas course's students. */
+    match() {
+      Object.assign(this, matchStudents(this.rows, canvasUsers), { isMatched: true });
     },
     /** Once the students are matched and the chosen assignment's submissions have loaded. */
-    get isStudentListReady() {
+    get isCanvasLoaded() {
       return this.isMatched && Boolean(this.submissions);
     },
-    /** Matches the marks again once they've refreshed. */
+    /** Decrypts and matches the marks again once they've refreshed. */
     rematch() {
-      if (this.isMatched) this.run("Matching students…", () => this.match());
+      if (!this.rows.length) return;
+      this.run("Matching students…", async () => {
+        const rows = await this.decryptRows();
+        this.rows = rows;
+        if (this.isMatched) this.match();
+      });
     },
 
     /** The chosen assignment's grading type and points. Without an assignment, or points on it, the points are
@@ -167,10 +179,30 @@ export const canvasExport = () => {
       return grade === null ? "—" : displayedGrade(grade, this.assignmentGrading(row));
     },
 
-    /** Every row's student and what sending does for them, the ones to look at first. A matched student's
-     * `currentGrade` and `sentGrade` are their grade in Canvas's gradebook now and once sent. */
+    /** Every row's student, in order of student ID, and what sending does for them: "loading" until Canvas has
+     * loaded. A matched student's `currentGrade` and `sentGrade` are their grade in Canvas's gradebook now and once
+     * sent. They're listed again only once what they depend on changes, so each row keeps its object between reads. */
     get students() {
-      if (!this.submissions) return [];
+      const { rows, isCanvasLoaded, matched, unmatched, conflicts, submissions, settings, chosenAssignment } = this;
+      const { id, pointsPossible, gradingType } = chosenAssignment ?? {};
+      const dependencies = [
+        rows,
+        isCanvasLoaded,
+        matched,
+        unmatched,
+        conflicts,
+        submissions,
+        settings,
+        id,
+        pointsPossible,
+        gradingType,
+      ];
+      if (cachedStudents?.dependencies.every((dependency, i) => dependency === dependencies[i]))
+        return cachedStudents.students;
+      cachedStudents = { dependencies, students: this.listStudents() };
+      return cachedStudents.students;
+    },
+    listStudents() {
       const inGradebook = (grade, row) => (grade == null ? null : gradebookGrade(grade, this.assignmentGrading(row)));
       const student = (row, user, status) => ({
         row,
@@ -196,16 +228,16 @@ export const canvasExport = () => {
           addsComment,
         };
       };
-      return [
-        ...this.unmatched.map((row) => student(row, null, "not_in_canvas")),
-        ...this.conflicts.flatMap(({ user, rows }) => rows.map((row) => student(row, user, "duplicate_id"))),
-        ...this.matched.map(matchedStudent),
-      ].sort(
-        (a, b) =>
-          STATUS_ORDER[a.status] - STATUS_ORDER[b.status] ||
-          b.row.unmarkedCount - a.row.unmarkedCount ||
-          naturalOrder(a.row.studentId, b.row.studentId),
+      if (!this.isCanvasLoaded) return this.rows.map((row) => student(row, null, "loading"));
+      const byId = new Map(
+        [
+          ...this.unmatched.map((row) => student(row, null, "not_in_canvas")),
+          ...this.conflicts.flatMap(({ user, rows }) => rows.map((row) => student(row, user, "duplicate_id"))),
+          ...this.matched.map(matchedStudent),
+        ].map((listedStudent) => [listedStudent.row.studentId, listedStudent]),
       );
+      // A student that refreshed marks add shows as loading until they're matched.
+      return this.rows.map((row) => byId.get(row.studentId) ?? student(row, null, "loading"));
     },
     get changes() {
       return this.students.filter((student) => student.status === "changed");
@@ -235,10 +267,10 @@ export const canvasExport = () => {
       return this.unmatchedUsers.filter((user) => matches(user.sortable_name.toLowerCase(), this.query));
     },
     get matchedNote() {
-      return `${this.matched.length} of ${this.rowCount} matched in Canvas`;
+      return `${this.matched.length} of ${this.rows.length} matched in Canvas`;
     },
     get upToDate() {
-      return Boolean(this.isStudentListReady && this.chosenAssignment && this.matched.length && !this.changes.length);
+      return Boolean(this.isCanvasLoaded && this.chosenAssignment && this.matched.length && !this.changes.length);
     },
 
     get canSend() {
@@ -249,7 +281,7 @@ export const canvasExport = () => {
     },
     get sendLabel() {
       if (this.sending) return "Sending…";
-      if (!this.isStudentListReady || !this.matched.length) return "Send to Canvas";
+      if (!this.isCanvasLoaded || !this.matched.length) return "Send to Canvas";
       if (!this.chosenAssignment) return "Choose an assignment";
       const count = this.changes.length;
       return count ? `Send ${counted(count, "grade")}` : "Up to date";
@@ -262,7 +294,7 @@ export const canvasExport = () => {
       return this.changes.reduce((count, { row }) => count + row.unmarkedCount, 0);
     },
     get notSentCount() {
-      return this.rowCount - this.matched.length;
+      return this.rows.length - this.matched.length;
     },
     get sameCount() {
       return this.matched.length - this.changes.length;

@@ -21,6 +21,11 @@ const stubFetch = (t, respond) => {
   return calls;
 };
 
+/** Answers the course request `students` makes first, without a count of students, and `respond` to the rest. */
+const withoutCount = (respond) => (url, init) =>
+  new URL(url).pathname.endsWith("/courses/5") ? jsonResponse({}) : respond(url, init);
+const usersCalls = (calls) => calls.filter(({ url }) => new URL(url).pathname.endsWith("/users"));
+
 const client = () =>
   canvasClient({ baseUrl: "https://canvas.example.edu/", token: "secret", proxyUrl: "https://proxy.example.org/" });
 
@@ -51,23 +56,80 @@ test("keeps a Canvas base path", async (t) => {
 
 test('list endpoints follow Link rel="next" through the proxy', async (t) => {
   const next = "https://canvas.example.edu/api/v1/courses/5/users?page=bookmark:abc&per_page=100";
-  const calls = stubFetch(t, (url) =>
-    url.includes("bookmark")
-      ? jsonResponse([{ id: 3 }], {
-          Link: `<${next}>; rel="current",<https://canvas.example.edu/api/v1/courses/5/users?page=first>; rel="first"`,
-        })
-      : jsonResponse([{ id: 1 }, { id: 2 }], {
-          Link: `<https://canvas.example.edu/api/v1/courses/5/users?page=first>; rel="current",<${next}>; rel="next"`,
-        }),
+  const calls = stubFetch(
+    t,
+    withoutCount((url) =>
+      url.includes("bookmark")
+        ? jsonResponse([{ id: 3 }], {
+            Link: `<${next}>; rel="current",<https://canvas.example.edu/api/v1/courses/5/users?page=first>; rel="first"`,
+          })
+        : jsonResponse([{ id: 1 }, { id: 2 }], {
+            Link: `<https://canvas.example.edu/api/v1/courses/5/users?page=first>; rel="current",<${next}>; rel="next"`,
+          }),
+    ),
   );
 
   assert.deepEqual(await client().students(5), [{ id: 1 }, { id: 2 }, { id: 3 }]);
-  const first = new URL(calls[0].url);
+  const [first, second] = usersCalls(calls).map(({ url }) => new URL(url));
   assert.equal(first.origin + first.pathname, "https://proxy.example.org/api/v1/courses/5/users");
   assert.deepEqual(first.searchParams.getAll("enrollment_type[]"), ["student"]);
   assert.deepEqual(first.searchParams.getAll("include[]"), ["login_id", "sis_user_id", "integration_id", "email"]);
   assert.equal(first.searchParams.get("per_page"), "100");
-  assert.equal(calls[1].url, "https://proxy.example.org/api/v1/courses/5/users?page=bookmark:abc&per_page=100");
+  assert.equal(second.href, "https://proxy.example.org/api/v1/courses/5/users?page=bookmark:abc&per_page=100");
+});
+
+test("pages Canvas numbers come at once after the first, in order", async (t) => {
+  const pageOf = (url) => Number(new URL(url).searchParams.get("page") ?? 1);
+  let pending = 0;
+  let mostPending = 0;
+  const calls = stubFetch(
+    t,
+    withoutCount(async (url) => {
+      mostPending = Math.max(mostPending, ++pending);
+      await new Promise((resolve) => setTimeout(resolve, 10 * (4 - pageOf(url))));
+      pending--;
+      return jsonResponse([{ id: pageOf(url) }], {
+        Link: '<https://canvas.example.edu/api/v1/courses/5/users?page=3&per_page=100>; rel="last"',
+      });
+    }),
+  );
+  assert.deepEqual(await client().students(5), [{ id: 1 }, { id: 2 }, { id: 3 }]);
+  assert.deepEqual(
+    usersCalls(calls).map(({ url }) => pageOf(url)),
+    [1, 2, 3],
+  );
+  assert.equal(mostPending, 2);
+});
+
+test("students come at once, in the pages the course's count of them fills", async (t) => {
+  const pageOf = (url) => Number(new URL(url).searchParams.get("page") ?? 1);
+  const people = (from, count) => Array.from({ length: count }, (_, i) => ({ id: from + i }));
+  let pending = 0;
+  let mostPending = 0;
+  const calls = stubFetch(t, async (url) => {
+    if (new URL(url).pathname.endsWith("/courses/5")) return jsonResponse({ id: 5, total_students: 250 });
+    mostPending = Math.max(mostPending, ++pending);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    pending--;
+    const page = pageOf(url);
+    return jsonResponse(people((page - 1) * 100, page === 3 ? 50 : 100));
+  });
+  assert.deepEqual(await client().students(5), people(0, 250));
+  assert.deepEqual(new URL(calls[0].url).searchParams.getAll("include[]"), ["total_students"]);
+  assert.equal(mostPending, 3);
+});
+
+test("the page after the count comes with the others, and a full one fetches the next", async (t) => {
+  const calls = stubFetch(t, (url) => {
+    if (new URL(url).pathname.endsWith("/courses/5")) return jsonResponse({ id: 5, total_students: 100 });
+    const page = Number(new URL(url).searchParams.get("page") ?? 1);
+    return jsonResponse(Array.from({ length: page < 3 ? 100 : 2 }, (_, i) => ({ id: `${page}-${i}` })));
+  });
+  assert.equal((await client().students(5)).length, 202);
+  assert.deepEqual(
+    usersCalls(calls).map(({ url }) => new URL(url).searchParams.get("page")),
+    [null, "2", "3"],
+  );
 });
 
 test("a proxy that hides the Link header still gets every page, by number", async (t) => {

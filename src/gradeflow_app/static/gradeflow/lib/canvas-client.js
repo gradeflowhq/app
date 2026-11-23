@@ -16,12 +16,10 @@ const queryString = (params) =>
     ),
   ).toString();
 
-/** The path and query of the Link header's next page, which the proxy needs instead of Canvas's URL. */
-const nextPath = (link) => {
-  const next = link?.match(/<([^>]*)>;\s*rel="next"/)?.[1];
-  if (!next) return null;
-  const { pathname, search } = new URL(next);
-  return pathname + search;
+/** The URL of the Link header's `rel` page, or null. */
+const linkedPage = (link, rel) => {
+  const url = link?.match(new RegExp(`<([^>]*)>;\\s*rel="${rel}"`))?.[1];
+  return url ? new URL(url) : null;
 };
 
 const requestError = async (response) => {
@@ -58,21 +56,35 @@ export const canvasClient = ({ baseUrl, token, proxyUrl }) => {
       })
     ).json();
 
-  const list = async (path, params = {}) => {
-    const items = [];
+  /** Every page of `path`. Pages come at once when their number is known: from `count`, the number of items to
+   * expect, with one page more for a full last page, or from the first page's `last` link. Otherwise each page's
+   * `next` link is followed. */
+  const list = async (path, params = {}, count) => {
     const pageUrl = (page) =>
       `${api}${path}?${queryString({ ...params, per_page: PAGE_SIZE, ...(page > 1 && { page }) })}`;
-    let page = 1;
-    let next = pageUrl(page);
-    while (next) {
-      const response = await request(next);
-      const pageItems = await response.json();
-      items.push(...pageItems);
-      next = nextPath(response.headers.get("Link"));
-      // A proxy that doesn't expose the Link header hides the next page; a full page means there may be one.
-      if (!response.headers.has("Link") && pageItems.length === PAGE_SIZE) next = pageUrl(++page);
+    const fetchPage = async (page) => (await request(pageUrl(page))).json();
+    const fetchPages = (from, to) => Promise.all(Array.from({ length: to - from + 1 }, (_, i) => fetchPage(from + i)));
+    if (count != null) {
+      const pages = await fetchPages(1, Math.floor(count / PAGE_SIZE) + 1);
+      // A full last page may have more after it, such as students who joined since the count.
+      while (pages.at(-1).length === PAGE_SIZE) pages.push(await fetchPage(pages.length + 1));
+      return pages.flat();
     }
-    return items;
+    const first = await request(pageUrl(1));
+    const items = await first.json();
+    const lastPage = Number(linkedPage(first.headers.get("Link"), "last")?.searchParams.get("page"));
+    if (lastPage > 1) return items.concat(...(await fetchPages(2, lastPage)));
+    let response = first;
+    let pageItems = items;
+    for (let page = 2; ; page++) {
+      const next = linkedPage(response.headers.get("Link"), "next");
+      // A proxy that doesn't expose the Link header hides the next page; a full page means there may be one.
+      const hiddenNext = !response.headers.has("Link") && pageItems.length === PAGE_SIZE;
+      if (!next && !hiddenNext) return items;
+      response = await request(next ? next.pathname + next.search : pageUrl(page));
+      pageItems = await response.json();
+      items.push(...pageItems);
+    }
   };
 
   return {
@@ -80,11 +92,15 @@ export const canvasClient = ({ baseUrl, token, proxyUrl }) => {
     course: (courseId) => get(`/courses/${courseId}`),
     /** The course's assignment groups in Canvas's order, each with its assignments. */
     assignmentGroups: (courseId) => list(`/courses/${courseId}/assignment_groups`, { include: ["assignments"] }),
-    students: (courseId) =>
-      list(`/courses/${courseId}/users`, {
-        enrollment_type: ["student"],
-        include: IDENTIFIERS,
-      }),
+    /** The course's students. Canvas doesn't say how many pages they fill, so the course's count of them does. */
+    students: async (courseId) => {
+      const course = await get(`/courses/${courseId}?${queryString({ include: ["total_students"] })}`);
+      return list(
+        `/courses/${courseId}/users`,
+        { enrollment_type: ["student"], include: IDENTIFIERS },
+        course.total_students,
+      );
+    },
     /** Each student's score and the texts of the comments on their submission, by user ID. */
     submissions: async (courseId, assignmentId) =>
       new Map(
