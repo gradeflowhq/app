@@ -53,7 +53,7 @@ export function heroTimeline(timeline, mockup, [importing, writing, marking, adj
     const field = $(`[name="${name}"]`, stage);
     switch (action) {
       case "add_tag":
-        timeline.type($(`[data-tag-input="${name}"] input`, stage), { text: value });
+        timeline.type($(`[data-tag-input="${name}"] textarea`, stage), { text: value });
         break;
       case "type":
         timeline.type(field, { text: value });

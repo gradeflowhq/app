@@ -31,6 +31,8 @@ export const tagInput = () => ({
       maxOptions: 100,
       plugins: ["remove_button", "drag_drop"],
       wrapperClass: "ts-wrapper input w-full",
+      // A textarea, so a long value wraps as it's typed.
+      controlInput: '<textarea rows="1" autocomplete="off"></textarea>',
       sortField: [{ field: "count", direction: "desc" }, { field: "$order" }],
       render: {
         option: (data, escapeHtml) =>
@@ -62,10 +64,16 @@ export const tagInput = () => ({
     this.select.wrapper.addEventListener("dragend", () => {
       if (this.select.items.join("\n") === order) this.select.focus();
     });
-    // Esc closes the list of suggestions, not the dialog the field is in, with what was typed in it.
-    this.select.wrapper.addEventListener("keydown", (event) => {
-      if (event.key === "Escape") event.preventDefault();
-    });
+    // Esc closes the list of suggestions, not the dialog the field is in, with what was typed in it. Enter adds what was
+    // typed rather than a line break; Shift+Enter adds a line break, kept from Tom Select, which treats it as Enter.
+    this.select.wrapper.addEventListener(
+      "keydown",
+      (event) => {
+        if (event.key === "Enter" && event.shiftKey) event.stopPropagation();
+        else if (event.key === "Escape" || event.key === "Enter") event.preventDefault();
+      },
+      { capture: true },
+    );
   },
   destroy() {
     this.select?.destroy();

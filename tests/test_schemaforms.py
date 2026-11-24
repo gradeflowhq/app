@@ -44,6 +44,15 @@ def test_a_regular_expression_is_typed_as_code() -> None:
     assert "font-mono" not in str(form["name"])
 
 
+def test_text_starts_on_one_line_and_grows_with_what_is_written() -> None:
+    form = ObjectForm(object_schema(pattern={"type": "string", "format": "regex"}, name={"type": "string"}), {})
+    for name in ("pattern", "name"):
+        html = str(form[name])
+        assert html.startswith("<textarea")
+        assert 'rows="1"' in html
+        assert "field-sizing-content" in html
+
+
 def test_rarely_changed_options_wait_under_more_options() -> None:
     form = ObjectForm(CHECK_SCHEMA, {})
     assert names(form.basic_sections) == ["combine", "max_marks", "points"], "beside the choice it follows"
