@@ -137,14 +137,40 @@ def answers_context(
     question = subject.question
     assert question is not None
     view = answers_view(request, question)
-    options = grouping_options(view)
     student_answers = answer_groups.student_answers(question)
-    grouped = group_answers(student_answers, options)
-    groups = grouped.groups
+    grouped = group_answers(student_answers, grouping_options(view))
     grouping = comparisons.grouping_state(question, grouped.texts) if grouped.needs_comparison else None
     grouping_job = grouping if grouping is not None and grouping.is_active else None
     failed_grouping_job = grouping if grouping is not None and grouping.status == "failed" else None
     job, preview_results = previews.preview_and_results(workspace)
+    column = answers_column(question, grouped.groups, view, preview_results)
+    _set_group_decisions(subject, workspace, column["answer_groups"])
+    accepted = assessment_checks(access.assessment) if accepted is None else accepted
+    return {
+        **column,
+        "access": access,
+        "out_of_date_notices": out_of_date_notices(accepted, [question.key]),
+        "asks_models": _asks_models(accepted, [question.key], workspace),
+        "student_count": len(student_answers),
+        "preview_job": job,
+        "marking_job": _marking_job(access.assessment, [question.key]),
+        "grouping_job": grouping_job,
+        "needs_grouping": grouped.needs_comparison and not grouping_job and not failed_grouping_job,
+        "failed_grouping_job": failed_grouping_job,
+        "too_many_to_compare": grouped.too_many_to_compare,
+        "can_mark_by_example": can_mark_by_example(question.core_question),
+        **draft_context(workspace, job),
+    }
+
+
+def answers_column(
+    question: Question,
+    groups: list[AnswerGroup],
+    view: dict[str, str],
+    preview_results: previews.PreviewResults | None,
+) -> dict[str, Any]:
+    """`groups` of answers to `question` as the answers column shows them in `view`, previewed with
+    `preview_results`."""
     preview_by_student = None
     if preview_results is not None:
         preview_by_student = {
@@ -159,32 +185,18 @@ def answers_context(
     shows = FILTERS[filter_name][1]
     filtered = [group for group in groups if shows(group)]
     count = shown_count(view)
-    _set_group_decisions(subject, workspace, filtered[:count])
-    accepted = assessment_checks(access.assessment) if accepted is None else accepted
     return {
-        "access": access,
         "question": question,
-        "out_of_date_notices": out_of_date_notices(accepted, [question.key]),
-        "asks_models": _asks_models(accepted, [question.key], workspace),
         "answer_groups": filtered[:count],
         "show_more": count + ANSWER_GROUPS_PER_PAGE,
         "hidden_count": max(len(filtered) - count, 0),
-        "student_count": len(student_answers),
-        "grouping_options": options,
+        "grouping_options": grouping_options(view),
         "grouping": grouping_of(view),
         "groupings": {name: label for name, (label, _) in GROUPINGS.items()},
         "filter": filter_name,
         "filters": filters,
-        "preview_job": job,
         "preview_summary": preview_summary(groups) if preview_by_student is not None else None,
-        "marking_job": _marking_job(access.assessment, [question.key]),
-        "grouping_job": grouping_job,
-        "needs_grouping": grouped.needs_comparison and not grouping_job and not failed_grouping_job,
-        "failed_grouping_job": failed_grouping_job,
-        "too_many_to_compare": grouped.too_many_to_compare,
-        "can_mark_by_example": can_mark_by_example(question.core_question),
         "decisions": DECISIONS.items(),
-        **draft_context(workspace, job),
     }
 
 

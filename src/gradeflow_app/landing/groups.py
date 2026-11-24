@@ -1,18 +1,19 @@
 """The grouping demo: Q1's answers grouped by the same answers, then similar spelling, then similar meaning, and one
 group adjusted, which components/landing/groups.js plays."""
 
+from collections.abc import Collection
 from dataclasses import dataclass
+from typing import Any
 
-from gradeflow_app.landing.content import AnswerWithMeaningGroup, Groups, landing_content
+from gradeflow_app.landing.content import Groups, landing_content
 from gradeflow_app.landing.demos import (
-    AnswersColumn,
-    largest_first,
     results_by_answer,
+    same_answer_groups,
     student_answers,
     unsaved_question,
 )
 from gradeflow_app.marking.answers.answer_groups import AnswerGroup, StudentAnswer, group
-from gradeflow_app.marking.answers.column import GROUPINGS
+from gradeflow_app.marking.answers.column import GROUPINGS, answers_column
 from gradeflow_app.questions.models import Question
 from gradeflow_app.results.models import Adjustment
 
@@ -27,7 +28,7 @@ CHAPTERS = {
 
 @dataclass(frozen=True)
 class Grouping:
-    column: AnswersColumn
+    column: dict[str, Any]
     next_group_indexes: list[int]
     """For each group, the index of the group it joins in the next grouping; empty when no regrouping follows."""
 
@@ -39,12 +40,9 @@ class GroupsView:
     groupings: list[Grouping]
     """By the same answers, similar spelling and similar meaning, then with one group adjusted."""
     adjusted_group_index: int
+    adjusted_count: int
 
     chapters = CHAPTERS
-
-    @property
-    def adjusted_count(self) -> int:
-        return self.groupings[-1].column.answer_groups[self.adjusted_group_index].adjusted_count
 
 
 def next_group_indexes(groups: list[AnswerGroup], next_groups: list[AnswerGroup]) -> list[int]:
@@ -58,52 +56,51 @@ def next_group_indexes(groups: list[AnswerGroup], next_groups: list[AnswerGroup]
 def groups_view() -> GroupsView:
     content = landing_content().groups
     question = unsaved_question(content.question_set, content.question_key)
-    answers = {answer.text: answer for answer in content.answers}
-    answer_results = results_by_answer(content.question_set, content.marking, list(answers), content.question_key)
-    adjusted_meaning_group = answers[content.adjustment.answer].meaning_group
-    adjustment = Adjustment(marks=content.adjustment.marks, feedback=content.adjustment.feedback)
-
-    def student_answers_for(answer: AnswerWithMeaningGroup, *, adjusted: bool = False) -> list[StudentAnswer]:
-        is_adjusted = adjusted and answer.meaning_group == adjusted_meaning_group
-        return student_answers(
-            question.core_question, answer, answer_results[answer.text], adjustment if is_adjusted else None
-        )
-
-    def answer_groups(answer_texts_by_group: list[list[str]], *, adjusted: bool = False) -> list[AnswerGroup]:
-        """A group of the answers in each of `answer_texts_by_group`, different answers joined by similarity."""
-        groups = []
-        for texts in answer_texts_by_group:
-            group_student_answers = [
-                entry for text in texts for entry in student_answers_for(answers[text], adjusted=adjusted)
-            ]
-            joined_by_similarity = len({entry.normalized for entry in group_student_answers}) > 1
-            groups.append(AnswerGroup(group_student_answers, joined_by_similarity=joined_by_similarity))
-        return largest_first(groups)
-
-    answers_by_meaning_group: dict[str, list[str]] = {}
-    for answer in content.answers:
-        answers_by_meaning_group.setdefault(answer.meaning_group, []).append(answer.text)
-    same_answer_groups = largest_first([AnswerGroup(student_answers_for(answer)) for answer in content.answers])
-    spelling_groups = group(
-        [entry for answer in content.answers for entry in student_answers_for(answer)], GROUPINGS["spelling"][1]
+    answer_results = results_by_answer(
+        content.question_set, content.marking, [answer.text for answer in content.answers], content.question_key
     )
-    meaning_groups = answer_groups(list(answers_by_meaning_group.values()))
-    adjusted_groups = answer_groups(list(answers_by_meaning_group.values()), adjusted=True)
+    adjustment = Adjustment(marks=content.adjustment.marks, feedback=content.adjustment.feedback)
+    meaning = GROUPINGS["meaning"][1]
+
+    def students(adjusted: Collection[str] = ()) -> list[StudentAnswer]:
+        """Every student's answer, adjusted for the answers in `adjusted`."""
+        return [
+            entry
+            for answer in content.answers
+            for entry in student_answers(
+                question.core_question,
+                answer,
+                answer_results[answer.text],
+                adjustment if answer.text in adjusted else None,
+            )
+        ]
+
+    unadjusted = students()
+    answer_groups = same_answer_groups(unadjusted)
+    spelling_groups = group(unadjusted, GROUPINGS["spelling"][1])
+    meaning_groups = group(unadjusted, meaning, content.meaning_comparison)
+    [adjusted_answers] = [
+        dict(meaning_group.answers)
+        for meaning_group in meaning_groups
+        if content.adjustment.answer in dict(meaning_group.answers)
+    ]
+    adjusted_groups = group(students(adjusted_answers), meaning, content.meaning_comparison)
     [adjusted_group_index] = [index for index, group in enumerate(adjusted_groups) if group.adjusted_count]
     return GroupsView(
         content=content,
         question=question,
         groupings=[
             Grouping(
-                AnswersColumn(question, "answers", same_answer_groups),
-                next_group_indexes(same_answer_groups, spelling_groups),
+                answers_column(question, answer_groups, {"group": "answers"}, None),
+                next_group_indexes(answer_groups, spelling_groups),
             ),
             Grouping(
-                AnswersColumn(question, "spelling", spelling_groups),
+                answers_column(question, spelling_groups, {"group": "spelling"}, None),
                 next_group_indexes(spelling_groups, meaning_groups),
             ),
-            Grouping(AnswersColumn(question, "meaning", meaning_groups), []),
-            Grouping(AnswersColumn(question, "meaning", adjusted_groups), []),
+            Grouping(answers_column(question, meaning_groups, {"group": "meaning"}, None), []),
+            Grouping(answers_column(question, adjusted_groups, {"group": "meaning"}, None), []),
         ],
         adjusted_group_index=adjusted_group_index,
+        adjusted_count=adjusted_groups[adjusted_group_index].adjusted_count,
     )

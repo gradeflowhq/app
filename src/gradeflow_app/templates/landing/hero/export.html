@@ -11,7 +11,7 @@
         </div>
         <div class="setting-summary-row">
           <span class="setting-summary-label">{% icon "document-text" %}Assignment</span>
-          <div class="flex min-w-0 flex-1 items-center gap-4"><div class="min-w-0 flex-1"><p class="truncate font-semibold">{{ content.assessment }}</p><p class="truncate text-sm text-muted">{{ hero.total_max_marks|marks }} marks</p></div><span class="btn btn-sm">Change</span></div>
+          <div class="flex min-w-0 flex-1 items-center gap-4"><div class="min-w-0 flex-1"><p class="truncate font-semibold">{{ content.assessment }}</p><p class="truncate text-sm text-muted">{{ hero.results.max_marks|marks }} marks</p></div><span class="btn btn-sm">Change</span></div>
         </div>
         <div class="setting-summary-row">
           <span class="setting-summary-label">{% icon "adjustments-horizontal" %}How marks are sent</span>
@@ -32,10 +32,10 @@
           <table class="table">
             <thead><tr><th>Student</th><th class="text-right max-sm:hidden">Marks</th><th class="text-right">Canvas grade</th><th>Status</th></tr></thead>
             <tbody data-shown="1" data-students-to-send>
-              {% for row in hero.students %}<tr><td class="w-full max-w-0 font-mono">{{ row.student_id }}</td><td class="whitespace-nowrap text-right tabular-nums max-sm:hidden">{{ row.total|marks }} / {{ hero.total_max_marks|marks }}</td><td class="whitespace-nowrap text-right tabular-nums"><span class="inline-flex items-center gap-1.5"><span class="text-subtle" title="New comment">{% icon "chat-bubble-left" "size-3.5" %}</span><span class="font-semibold">{{ row.total|marks }}</span></span></td><td><c-chip tone="primary">To send</c-chip></td></tr>{% endfor %}
+              {% for row in hero.results.rows %}<tr><td class="w-full max-w-0 font-mono">{{ row.student.encrypted_id }}</td><td class="whitespace-nowrap text-right tabular-nums max-sm:hidden">{{ row.total|marks }} / {{ hero.results.max_marks|marks }}</td><td class="whitespace-nowrap text-right tabular-nums"><span class="inline-flex items-center gap-1.5"><span class="text-subtle" title="New comment">{% icon "chat-bubble-left" "size-3.5" %}</span><span class="font-semibold">{{ row.total|marks }}</span></span></td><td><c-chip tone="primary">To send</c-chip></td></tr>{% endfor %}
             </tbody>
             <tbody data-shown="0" data-students-sent>
-              {% for row in hero.students %}<tr><td class="w-full max-w-0 font-mono">{{ row.student_id }}</td><td class="whitespace-nowrap text-right tabular-nums max-sm:hidden">{{ row.total|marks }} / {{ hero.total_max_marks|marks }}</td><td class="whitespace-nowrap text-right tabular-nums text-muted">{{ row.total|marks }}</td><td></td></tr>{% endfor %}
+              {% for row in hero.results.rows %}<tr><td class="w-full max-w-0 font-mono">{{ row.student.encrypted_id }}</td><td class="whitespace-nowrap text-right tabular-nums max-sm:hidden">{{ row.total|marks }} / {{ hero.results.max_marks|marks }}</td><td class="whitespace-nowrap text-right tabular-nums text-muted">{{ row.total|marks }}</td><td></td></tr>{% endfor %}
             </tbody>
           </table>
         </div>
@@ -53,7 +53,7 @@
       </c-panel>
       <c-panel icon="clock" title="Sent to Canvas" body_class="px-4" data-shown="0" data-sent-to-canvas>
         <ul class="divide-y divide-line">
-          <li class="flex items-start gap-2.5 py-2.5 text-sm">{% icon "check-circle" "mt-0.5 text-success" %}<div class="min-w-0"><p class="truncate font-medium">{{ content.assessment }} · <span class="tabular-nums">{{ hero.student_count }}</span> grades</p><p class="text-xs text-muted">{{ hero.marker }} · {{ hero.last_save.saved_at|ago }}</p></div></li>
+          <li class="flex items-start gap-2.5 py-2.5 text-sm">{% icon "check-circle" "mt-0.5 text-success" %}<div class="min-w-0"><p class="truncate font-medium">{{ content.assessment }} · <span class="tabular-nums">{{ hero.student_count }}</span> grades</p><p class="text-xs text-muted">{{ hero.marker }} · {{ hero.saved_panel.last_save.saved_at|ago }}</p></div></li>
         </ul>
       </c-panel>
     </div>

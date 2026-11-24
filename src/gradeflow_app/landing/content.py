@@ -4,7 +4,7 @@ from functools import cache
 from pathlib import Path
 from typing import Any
 
-from gradeflow_core import QuestionSet
+from gradeflow_core import AnswerComparison, QuestionResult, QuestionSet
 from gradeflow_core.editing import Decision
 from pydantic import BaseModel, ConfigDict
 
@@ -36,16 +36,13 @@ class GroupAdjustment(LandingModel):
 # The grouping demo.
 
 
-class AnswerWithMeaningGroup(Answer):
-    meaning_group: str
-    """Its group by meaning, at GradeFlow's default of 85% similar."""
-
-
 class Groups(LandingModel):
     question_key: str
     question_set: QuestionSet
-    answers: list[AnswerWithMeaningGroup]
+    answers: list[Answer]
     """The commonest first."""
+    meaning_comparison: AnswerComparison
+    """The meaning model's comparison of the answers, as the app stores it."""
     marking: MarkingJson
     adjustment: GroupAdjustment
 
@@ -73,17 +70,11 @@ class ExampleSubmission(LandingModel):
     student_count: int
 
 
-class LanguageModelResult(LandingModel):
-    marks: float | None
-    """None if unmarked."""
-    feedback: str
-
-
 class ExampleVariant(LandingModel):
     change: str
     """What changed from the variant before, or how the first starts."""
     marking: MarkingJson
-    results: list[LanguageModelResult] | None = None
+    results: list[QuestionResult] | None = None
     """Its answers' results when a language model marks them, from the core's example of the method."""
 
 
@@ -100,7 +91,7 @@ class Example(LandingModel):
 
 
 class HeroAnswer(Answer):
-    result: LanguageModelResult
+    result: QuestionResult
     """What the mark scheme gives it. Given here, as its Key Points need a local model and its Answer Criteria the AI
     service."""
 
@@ -108,7 +99,6 @@ class HeroAnswer(Answer):
 class OtherQuestion(LandingModel):
     question_key: str
     method_ref: str
-    average_percent: int
 
 
 class EditingStage(LandingModel):

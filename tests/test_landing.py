@@ -4,7 +4,7 @@ from html import unescape
 import pytest
 from django.test import Client
 from django.urls import reverse
-from gradeflow_core import BUILTINS
+from gradeflow_core import BUILTINS, compare_answers
 from gradeflow_core.editing import MarkingDraft
 
 from gradeflow_app.landing.by_example import CHAPTERS as BY_EXAMPLE_CHAPTERS
@@ -82,6 +82,12 @@ def test_the_demos_show_answers_grouped_and_marked_by_example() -> None:
         assert text in page
     for text in [*BY_EXAMPLE_CHAPTERS, *(answer.text for answer in by_example.answers)]:
         assert text in page
+
+
+def test_the_groups_demo_stores_the_meaning_models_comparison() -> None:
+    pytest.importorskip("fastembed")
+    stored = landing_content().groups.meaning_comparison
+    assert compare_answers(stored.texts, similarity="meaning").groups() == stored.groups()
 
 
 def test_people_signed_in_go_to_their_courses(client: Client) -> None:

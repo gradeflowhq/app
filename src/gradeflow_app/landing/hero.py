@@ -11,28 +11,30 @@ from gradeflow_core import BUILTINS, Method, Methods, QuestionSet
 from gradeflow_core.editing import MarkingDraft, Position, compatible_methods
 
 from gradeflow_app.accounts.models import User
+from gradeflow_app.assessments.models import Assessment
 from gradeflow_app.editor.editing import EditorActions, StepWorkspace
 from gradeflow_app.editor.guide import choices
 from gradeflow_app.editor.picker import PickerForm
 from gradeflow_app.editor.presenters import Editor, editor
 from gradeflow_app.exports.models import MarksMode
 from gradeflow_app.exports.views import Sending
+from gradeflow_app.imports.models import Student
 from gradeflow_app.jobs.runs import RunState
 from gradeflow_app.landing.content import EditingStage, Hero, HeroAnswer, landing_content
 from gradeflow_app.landing.demos import (
     ASSESSMENT_ID,
-    AnswersColumn,
-    language_model_result,
-    largest_first,
+    same_answer_groups,
     student_answers,
     unsaved_question,
 )
 from gradeflow_app.libraries.collection import OfferedMethods
 from gradeflow_app.marking.answers.answer_groups import AnswerGroup, StudentAnswer
-from gradeflow_app.marking.presenters import ListedQuestion, MarkingSummary, Save, marking_badge, summary_of
+from gradeflow_app.marking.answers.column import answers_column
+from gradeflow_app.marking.presenters import ListedQuestion, Panel, Save, marking_badge, summary_of
 from gradeflow_app.questions.models import Question
-from gradeflow_app.results.marks import Level, level_of
-from gradeflow_app.results.models import Adjustment
+from gradeflow_app.results.marks import Award, Results, StudentMarks
+from gradeflow_app.results.models import Adjustment, Result
+from gradeflow_app.results.views import GRID_PAGE_SIZE, Cell, grid
 from gradeflow_app.ui.schemaforms.fields import ListField
 from gradeflow_app.ui.schemaforms.forms import ObjectForm
 
@@ -119,47 +121,36 @@ class EditorStageView:
 
 
 @dataclass(frozen=True)
-class MarksCell:
-    marks: float
-    level: Level
-    adjusted: bool
-
-
-@dataclass(frozen=True)
-class StudentRow:
-    student_id: str
-    total: float
-    cells: list[MarksCell]
-
-    @property
-    def adjusted(self) -> bool:
-        return any(cell.adjusted for cell in self.cells)
-
-
-@dataclass(frozen=True)
 class HeroView:
     content: Hero
     question: Question
     student_count: int
-    total_max_marks: float
     question_lists: list[list[ListedQuestion]]
     """Not marked, Q1 being marked, everything marked, and Q1 adjusted."""
-    header_columns: list[AnswersColumn]
+    header_columns: list[dict[str, Any]]
     """The answers column's head, then while marking."""
     answer_group_lists: list[list[AnswerGroup]]
     """Not marked, marked, and one group adjusted."""
     adjusted_group_index: int
-    everyday: list[Method]
-    advanced_choices: list[Method]
+    choosing_panel: Panel
+    """Q1's marking column before it has a marking: the methods to choose from."""
     step_choices: list[Method]
     picker_title: str
     editor_stages: list[EditorStageView]
-    summary: MarkingSummary
-    students: list[StudentRow]
+    marker: User
+    saved_panel: Panel
+    """Q1's marking column once the marking is saved."""
+    results: Results
+    """The students' marks, one group adjusted."""
     sending_summary: str
     """How the marks go to Canvas."""
 
     chapters = CHAPTERS
+    page_size = GRID_PAGE_SIZE
+
+    @property
+    def grid(self) -> list[tuple[StudentMarks, list[Cell]]]:
+        return grid(self.results)
 
     @property
     def adjusted_count(self) -> int:
@@ -169,15 +160,6 @@ class HeroView:
     def hidden_count(self) -> int:
         """How many answer groups the mockup has no room for."""
         return len(self.content.answers) - SHOWN_GROUP_COUNT
-
-    @property
-    def marker(self) -> User:
-        return User(name=self.content.marker_name)
-
-    @property
-    def last_save(self) -> Save:
-        """The marker saving the marking just now."""
-        return Save(self.marker, timezone.now())
 
 
 def edit_between(
@@ -237,37 +219,50 @@ def editor_stages(stages: list[EditingStage], question_set: QuestionSet) -> list
 
 def hero_view() -> HeroView:
     content = landing_content().hero
-    question = unsaved_question(content.question_set, content.question_key)
+    questions = {key: unsaved_question(content.question_set, key) for key in content.question_set}
+    question = questions[content.question_key]
     core_question = question.core_question
     max_marks = core_question.max_marks
     adjustment = Adjustment(marks=content.adjustment.marks, feedback=content.adjustment.feedback)
+    marker = User(name=content.marker_name)
     draft = MarkingDraft(content.editing_stages[-1].marking, content.question_set, content.question_key)
     summary = summary_of(draft.finalized())
-    results = {
-        answer.text: language_model_result(answer.result, max_marks, summary.method_label) for answer in content.answers
-    }
+    answer_results = {answer.text: answer.result for answer in content.answers}
 
     def student_answers_for(answer: HeroAnswer, *, marked: bool = True, adjusted: bool = False) -> list[StudentAnswer]:
         is_adjusted = adjusted and answer.text == content.adjustment.answer
-        result = results[answer.text] if marked else None
+        result = answer_results[answer.text] if marked else None
         return student_answers(core_question, answer, result, adjustment if is_adjusted else None)
 
     def answer_groups(*, marked: bool = True, adjusted: bool = False) -> list[AnswerGroup]:
         """A group for each answer, as many as the mockup shows."""
-        groups = [
-            AnswerGroup(student_answers_for(answer, marked=marked, adjusted=adjusted)) for answer in content.answers
+        entries = [
+            entry
+            for answer in content.answers
+            for entry in student_answers_for(answer, marked=marked, adjusted=adjusted)
         ]
-        return largest_first(groups)[:SHOWN_GROUP_COUNT]
+        return same_answer_groups(entries)[:SHOWN_GROUP_COUNT]
 
-    def average_proportion(*, adjusted: bool) -> float:
-        return (
-            fmean(
-                entry.marks or 0
-                for answer in content.answers
-                for entry in student_answers_for(answer, adjusted=adjusted)
+    def results_of(*, adjusted: bool) -> Results:
+        """The listed students' marks, with or without the adjustment."""
+        rows = []
+        for student in content.students:
+            is_adjusted = adjusted and student.answer == content.adjustment.answer
+            awards = {
+                key: Award(questions[key].core_question.max_marks, imported_marks=marks)
+                for key, marks in student.marks.items()
+            }
+            awards[content.question_key] = Award(
+                max_marks,
+                Result.from_question_result(answer_results[student.answer], revision=1),
+                adjustment if is_adjusted else None,
             )
-            / max_marks
-        )
+            rows.append(
+                StudentMarks(
+                    Student(encrypted_id=student.student_id, answers={content.question_key: student.answer}), awards
+                )
+            )
+        return Results(Assessment(pk=ASSESSMENT_ID), list(questions.values()), rows)
 
     unmarked = answer_groups(marked=False)
     adjusted_groups = answer_groups(adjusted=True)
@@ -275,37 +270,35 @@ def hero_view() -> HeroView:
 
     labels = {other.question_key: BUILTINS.find(other.method_ref).label for other in content.other_questions}
     labels[content.question_key] = summary.method_label
-    averages = {other.question_key: other.average_percent / 100 for other in content.other_questions}
 
-    def question_list(progress: float | None = None, proportion: float | None = None) -> list[ListedQuestion]:
-        """The questions not marked, Q1's marking at `progress`; or all marked, Q1's average `proportion`."""
-        is_marked = proportion is not None
-        proportions = averages | {content.question_key: proportion}
+    def average_proportion(*, adjusted: bool) -> float:
+        """Q1's average over every student, as its answers column shows them."""
+        entries = [entry for answer in content.answers for entry in student_answers_for(answer, adjusted=adjusted)]
+        return fmean(entry.marks or 0 for entry in entries) / max_marks
+
+    def question_list(progress: float | None = None, adjusted: bool | None = None) -> list[ListedQuestion]:
+        """The questions not marked, Q1 marking at `progress`; or all marked, with or without the adjustment. Q1's
+        average is over every student, the others' over the students listed."""
+        is_marked = adjusted is not None
+        proportions: dict[str, float | None] = {}
+        if adjusted is not None:
+            marked = results_of(adjusted=adjusted)
+            proportions = {each.question.key: each.average_proportion for each in marked.summaries()}
+            proportions[content.question_key] = average_proportion(adjusted=adjusted)
         return [
             ListedQuestion(
-                question=Question(assessment_id=ASSESSMENT_ID, key=key, position=position),
+                question=question,
                 is_marked=is_marked,
                 badge=marking_badge(labels[key] if is_marked else None, has_problems=False, has_imported_marks=False),
-                proportion=proportions[key] if is_marked else None,
+                proportion=proportions.get(key),
                 unmarked_count=0,
                 progress=progress if key == content.question_key else None,
                 has_draft=False,
                 is_shown=key == content.question_key,
                 failure="",
             )
-            for position, key in enumerate(content.question_set)
+            for key, question in questions.items()
         ]
-
-    def marks_cell(key: str, marks: float, *, adjusted: bool = False) -> MarksCell:
-        return MarksCell(marks, level_of(marks, marks, content.question_set[key].max_marks), adjusted)
-
-    students = []
-    for student in content.students:
-        is_adjusted = student.answer == content.adjustment.answer
-        marked_question_marks = content.adjustment.marks if is_adjusted else results[student.answer].marks
-        cells = [marks_cell(content.question_key, marked_question_marks, adjusted=is_adjusted)]
-        cells += [marks_cell(key, marks) for key, marks in student.marks.items()]
-        students.append(StudentRow(student.student_id, sum(cell.marks for cell in cells), cells))
 
     position = Position(content.question_set, content.question_key, is_in_group=False)
     offered = choices(compatible_methods(position), NO_SAVED_METHODS)
@@ -314,25 +307,34 @@ def hero_view() -> HeroView:
         content=content,
         question=question,
         student_count=sum(answer.student_count for answer in content.answers),
-        total_max_marks=sum(core_question.max_marks for core_question in content.question_set.values()),
         question_lists=[
             question_list(),
             question_list(progress=STARTING_RUN.progress),
-            question_list(proportion=average_proportion(adjusted=False)),
-            question_list(proportion=average_proportion(adjusted=True)),
+            question_list(adjusted=False),
+            question_list(adjusted=True),
         ],
         header_columns=[
-            AnswersColumn(question, "answers", unmarked),
-            AnswersColumn(question, "answers", unmarked, marking_job=STARTING_RUN),
+            answers_column(question, unmarked, {"group": "answers"}, None),
+            answers_column(question, unmarked, {"group": "answers"}, None) | {"marking_job": STARTING_RUN},
         ],
         answer_group_lists=[unmarked, answer_groups(), adjusted_groups],
         adjusted_group_index=adjusted_group_index,
-        everyday=offered.everyday,
-        advanced_choices=offered.advanced,
+        choosing_panel=Panel(
+            None, None, offered, has_imported_marks=False, has_history=False, archived=False, last_save=None
+        ),
         step_choices=choices(draft.methods(steps_setting.new_step_path), NO_SAVED_METHODS).everyday,
         picker_title=PickerForm(action="").title,
         editor_stages=editor_stages(content.editing_stages, content.question_set),
-        summary=summary,
-        students=students,
+        marker=marker,
+        saved_panel=Panel(
+            None,
+            summary,
+            None,
+            has_imported_marks=False,
+            has_history=True,
+            archived=False,
+            last_save=Save(marker, timezone.now()),
+        ),
+        results=results_of(adjusted=True),
         sending_summary=Sending(MarksMode.MARKS, None, include_feedback=True, override_count=0).summary,
     )

@@ -3,6 +3,7 @@
 from functools import cache
 from typing import Any
 
+from django.http import HttpRequest
 from django.template.loader import render_to_string
 from django.utils.text import get_text_list
 from gradeflow_core import BUILTINS
@@ -55,8 +56,10 @@ FEATURES = [
 
 
 def demos() -> dict[str, str]:
-    """Each demo's HTML, by name. Rendered without the request: the demos' forms are inert and need no CSRF token."""
+    """Each demo's HTML, by name. Rendered with a blank request, not the visitor's: the demos' forms are inert and
+    their live refreshes never stream."""
     context = {
+        "request": HttpRequest(),
         "github_url": GITHUB_URL,
         "access": ACCESS,
         "hero": hero_view(),

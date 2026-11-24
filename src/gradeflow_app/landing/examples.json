@@ -59,38 +59,31 @@
     "other_questions": [
       {
         "question_key": "Q2",
-        "method_ref": "gradeflow/multiple-choice@1",
-        "average_percent": 88
+        "method_ref": "gradeflow/multiple-choice@1"
       },
       {
         "question_key": "Q3",
-        "method_ref": "gradeflow/key-points@1",
-        "average_percent": 76
+        "method_ref": "gradeflow/key-points@1"
       },
       {
         "question_key": "Q4",
-        "method_ref": "gradeflow/number-range@1",
-        "average_percent": 64
+        "method_ref": "gradeflow/number-range@1"
       },
       {
         "question_key": "Q5",
-        "method_ref": "gradeflow/accepted-answers@1",
-        "average_percent": 71
+        "method_ref": "gradeflow/accepted-answers@1"
       },
       {
         "question_key": "Q6",
-        "method_ref": "gradeflow/answer-criteria@1",
-        "average_percent": 58
+        "method_ref": "gradeflow/answer-criteria@1"
       },
       {
         "question_key": "Q7",
-        "method_ref": "gradeflow/key-points@1",
-        "average_percent": 67
+        "method_ref": "gradeflow/key-points@1"
       },
       {
         "question_key": "Q8",
-        "method_ref": "gradeflow/multiple-choice@1",
-        "average_percent": 91
+        "method_ref": "gradeflow/multiple-choice@1"
       }
     ],
     "answers": [
@@ -98,168 +91,210 @@
         "text": "The enzyme is denatured, so its active site changes shape and the substrate no longer fits.",
         "student_count": 46,
         "result": {
-          "marks": 3,
-          "feedback": "Has “the enzyme is denatured”.\nHas “the active site changes shape”.\nExplains that the substrate no longer fits the active site."
+          "proportion": 1.0,
+          "max_marks": 3.0,
+          "feedback": "Has “the enzyme is denatured”.\nHas “the active site changes shape”.\nExplains that the substrate no longer fits the active site.",
+          "method_label": "Workflow"
         }
       },
       {
         "text": "It denatures.",
         "student_count": 31,
         "result": {
-          "marks": 1,
-          "feedback": "Has “the enzyme is denatured”.\nMissing “the active site changes shape”.\nExplains that the substrate no longer fits the active site: Not met."
+          "proportion": 0.3333333333333333,
+          "max_marks": 3.0,
+          "feedback": "Has “the enzyme is denatured”.\nMissing “the active site changes shape”.\nExplains that the substrate no longer fits the active site: Not met.",
+          "method_label": "Workflow"
         }
       },
       {
         "text": "The active site changes shape so the substrate can't bind.",
         "student_count": 28,
         "result": {
-          "marks": 2,
-          "feedback": "Missing “the enzyme is denatured”.\nHas “the active site changes shape”.\nExplains that the substrate no longer fits the active site."
+          "proportion": 0.6666666666666666,
+          "max_marks": 3.0,
+          "feedback": "Missing “the enzyme is denatured”.\nHas “the active site changes shape”.\nExplains that the substrate no longer fits the active site.",
+          "method_label": "Workflow"
         }
       },
       {
         "text": "The enzyme melts.",
         "student_count": 17,
         "result": {
-          "marks": 0,
-          "feedback": "Missing “the enzyme is denatured”.\nMissing “the active site changes shape”.\nExplains that the substrate no longer fits the active site: Not met."
+          "proportion": 0.0,
+          "max_marks": 3.0,
+          "feedback": "Missing “the enzyme is denatured”.\nMissing “the active site changes shape”.\nExplains that the substrate no longer fits the active site: Not met.",
+          "method_label": "Workflow"
         }
       },
       {
         "text": "Enzyme gets denatured by the heat.",
         "student_count": 15,
         "result": {
-          "marks": 1,
-          "feedback": "Has “the enzyme is denatured”.\nMissing “the active site changes shape”.\nExplains that the substrate no longer fits the active site: Not met."
+          "proportion": 0.3333333333333333,
+          "max_marks": 3.0,
+          "feedback": "Has “the enzyme is denatured”.\nMissing “the active site changes shape”.\nExplains that the substrate no longer fits the active site: Not met.",
+          "method_label": "Workflow"
         }
       },
       {
         "text": "it melts at high temperatures",
         "student_count": 12,
         "result": {
-          "marks": 0,
-          "feedback": "Missing “the enzyme is denatured”.\nMissing “the active site changes shape”.\nExplains that the substrate no longer fits the active site: Not met."
+          "proportion": 0.0,
+          "max_marks": 3.0,
+          "feedback": "Missing “the enzyme is denatured”.\nMissing “the active site changes shape”.\nExplains that the substrate no longer fits the active site: Not met.",
+          "method_label": "Workflow"
         }
       },
       {
         "text": "Heat bends the active site out of shape, the substrate won't fit",
         "student_count": 9,
         "result": {
-          "marks": 2,
-          "feedback": "Missing “the enzyme is denatured”.\nHas “the active site changes shape”.\nExplains that the substrate no longer fits the active site."
+          "proportion": 0.6666666666666666,
+          "max_marks": 3.0,
+          "feedback": "Missing “the enzyme is denatured”.\nHas “the active site changes shape”.\nExplains that the substrate no longer fits the active site.",
+          "method_label": "Workflow"
         }
       },
       {
         "text": "Enzymes melt when they get too hot.",
         "student_count": 8,
         "result": {
-          "marks": 0,
-          "feedback": "Missing “the enzyme is denatured”.\nMissing “the active site changes shape”.\nExplains that the substrate no longer fits the active site: Not met."
+          "proportion": 0.0,
+          "max_marks": 3.0,
+          "feedback": "Missing “the enzyme is denatured”.\nMissing “the active site changes shape”.\nExplains that the substrate no longer fits the active site: Not met.",
+          "method_label": "Workflow"
         }
       },
       {
         "text": "Heat denatures the enzyme, so the active site changes shape and the substrate can't fit.",
         "student_count": 7,
         "result": {
-          "marks": 3,
-          "feedback": "Has “the enzyme is denatured”.\nHas “the active site changes shape”.\nExplains that the substrate no longer fits the active site."
+          "proportion": 1.0,
+          "max_marks": 3.0,
+          "feedback": "Has “the enzyme is denatured”.\nHas “the active site changes shape”.\nExplains that the substrate no longer fits the active site.",
+          "method_label": "Workflow"
         }
       },
       {
         "text": "The enzyme is denatured: its active site loses its shape, so the substrate no longer fits.",
         "student_count": 7,
         "result": {
-          "marks": 3,
-          "feedback": "Has “the enzyme is denatured”.\nHas “the active site changes shape”.\nExplains that the substrate no longer fits the active site."
+          "proportion": 1.0,
+          "max_marks": 3.0,
+          "feedback": "Has “the enzyme is denatured”.\nHas “the active site changes shape”.\nExplains that the substrate no longer fits the active site.",
+          "method_label": "Workflow"
         }
       },
       {
         "text": "High temperatures denature the enzyme, changing its active site so the substrate can't fit.",
         "student_count": 7,
         "result": {
-          "marks": 3,
-          "feedback": "Has “the enzyme is denatured”.\nHas “the active site changes shape”.\nExplains that the substrate no longer fits the active site."
+          "proportion": 1.0,
+          "max_marks": 3.0,
+          "feedback": "Has “the enzyme is denatured”.\nHas “the active site changes shape”.\nExplains that the substrate no longer fits the active site.",
+          "method_label": "Workflow"
         }
       },
       {
         "text": "The enzyme's active site changes shape, so the substrate no longer fits.",
         "student_count": 6,
         "result": {
-          "marks": 2,
-          "feedback": "Missing “the enzyme is denatured”.\nHas “the active site changes shape”.\nExplains that the substrate no longer fits the active site."
+          "proportion": 0.6666666666666666,
+          "max_marks": 3.0,
+          "feedback": "Missing “the enzyme is denatured”.\nHas “the active site changes shape”.\nExplains that the substrate no longer fits the active site.",
+          "method_label": "Workflow"
         }
       },
       {
         "text": "It gets denatured and stops working.",
         "student_count": 6,
         "result": {
-          "marks": 1,
-          "feedback": "Has “the enzyme is denatured”.\nMissing “the active site changes shape”.\nExplains that the substrate no longer fits the active site: Not met."
+          "proportion": 0.3333333333333333,
+          "max_marks": 3.0,
+          "feedback": "Has “the enzyme is denatured”.\nMissing “the active site changes shape”.\nExplains that the substrate no longer fits the active site: Not met.",
+          "method_label": "Workflow"
         }
       },
       {
         "text": "The bonds holding the enzyme's shape break, so the active site changes and the substrate can't bind.",
         "student_count": 6,
         "result": {
-          "marks": 2,
-          "feedback": "Missing “the enzyme is denatured”.\nHas “the active site changes shape”.\nExplains that the substrate no longer fits the active site."
+          "proportion": 0.6666666666666666,
+          "max_marks": 3.0,
+          "feedback": "Missing “the enzyme is denatured”.\nHas “the active site changes shape”.\nExplains that the substrate no longer fits the active site.",
+          "method_label": "Workflow"
         }
       },
       {
         "text": "Denaturation changes the shape of the active site, so substrates can't fit.",
         "student_count": 6,
         "result": {
-          "marks": 3,
-          "feedback": "Has “the enzyme is denatured”.\nHas “the active site changes shape”.\nExplains that the substrate no longer fits the active site."
+          "proportion": 1.0,
+          "max_marks": 3.0,
+          "feedback": "Has “the enzyme is denatured”.\nHas “the active site changes shape”.\nExplains that the substrate no longer fits the active site.",
+          "method_label": "Workflow"
         }
       },
       {
         "text": "The enzyme denatures and its active site changes shape.",
         "student_count": 6,
         "result": {
-          "marks": 2,
-          "feedback": "Has “the enzyme is denatured”.\nHas “the active site changes shape”.\nExplains that the substrate no longer fits the active site: Not met."
+          "proportion": 0.6666666666666666,
+          "max_marks": 3.0,
+          "feedback": "Has “the enzyme is denatured”.\nHas “the active site changes shape”.\nExplains that the substrate no longer fits the active site: Not met.",
+          "method_label": "Workflow"
         }
       },
       {
         "text": "The heat denatures it, the active site changes shape and the substrate won't fit any more.",
         "student_count": 5,
         "result": {
-          "marks": 3,
-          "feedback": "Has “the enzyme is denatured”.\nHas “the active site changes shape”.\nExplains that the substrate no longer fits the active site."
+          "proportion": 1.0,
+          "max_marks": 3.0,
+          "feedback": "Has “the enzyme is denatured”.\nHas “the active site changes shape”.\nExplains that the substrate no longer fits the active site.",
+          "method_label": "Workflow"
         }
       },
       {
         "text": "The enzyme is denatured and the substrate no longer fits.",
         "student_count": 5,
         "result": {
-          "marks": 2,
-          "feedback": "Has “the enzyme is denatured”.\nMissing “the active site changes shape”.\nExplains that the substrate no longer fits the active site."
+          "proportion": 0.6666666666666666,
+          "max_marks": 3.0,
+          "feedback": "Has “the enzyme is denatured”.\nMissing “the active site changes shape”.\nExplains that the substrate no longer fits the active site.",
+          "method_label": "Workflow"
         }
       },
       {
         "text": "Too much heat denatures the enzyme.",
         "student_count": 5,
         "result": {
-          "marks": 1,
-          "feedback": "Has “the enzyme is denatured”.\nMissing “the active site changes shape”.\nExplains that the substrate no longer fits the active site: Not met."
+          "proportion": 0.3333333333333333,
+          "max_marks": 3.0,
+          "feedback": "Has “the enzyme is denatured”.\nMissing “the active site changes shape”.\nExplains that the substrate no longer fits the active site: Not met.",
+          "method_label": "Workflow"
         }
       },
       {
         "text": "The active site changes shape.",
         "student_count": 5,
         "result": {
-          "marks": 1,
-          "feedback": "Missing “the enzyme is denatured”.\nHas “the active site changes shape”.\nExplains that the substrate no longer fits the active site: Not met."
+          "proportion": 0.3333333333333333,
+          "max_marks": 3.0,
+          "feedback": "Missing “the enzyme is denatured”.\nHas “the active site changes shape”.\nExplains that the substrate no longer fits the active site: Not met.",
+          "method_label": "Workflow"
         }
       },
       {
         "text": "The enzyme denatures.",
         "student_count": 4,
         "result": {
-          "marks": 1,
-          "feedback": "Has “the enzyme is denatured”.\nMissing “the active site changes shape”.\nExplains that the substrate no longer fits the active site: Not met."
+          "proportion": 0.3333333333333333,
+          "max_marks": 3.0,
+          "feedback": "Has “the enzyme is denatured”.\nMissing “the active site changes shape”.\nExplains that the substrate no longer fits the active site: Not met.",
+          "method_label": "Workflow"
         }
       }
     ],
@@ -1320,20 +1355,28 @@
           },
           "results": [
             {
-              "marks": 2.0,
-              "feedback": "Says light travels faster than sound."
+              "proportion": 1.0,
+              "max_marks": 2.0,
+              "feedback": "Says light travels faster than sound.",
+              "method_label": "Answer Criteria"
             },
             {
-              "marks": 2.0,
-              "feedback": "Says light travels faster than sound."
+              "proportion": 1.0,
+              "max_marks": 2.0,
+              "feedback": "Says light travels faster than sound.",
+              "method_label": "Answer Criteria"
             },
             {
-              "marks": 0.0,
-              "feedback": "Says light travels faster than sound: Not met."
+              "proportion": 0.0,
+              "max_marks": 2.0,
+              "feedback": "Says light travels faster than sound: Not met.",
+              "method_label": "Answer Criteria"
             },
             {
-              "marks": 0.0,
-              "feedback": "Says light travels faster than sound: Not met."
+              "proportion": 0.0,
+              "max_marks": 2.0,
+              "feedback": "Says light travels faster than sound: Not met.",
+              "method_label": "Answer Criteria"
             }
           ]
         }
@@ -1355,63 +1398,51 @@
     "answers": [
       {
         "text": "It falls",
-        "student_count": 58,
-        "meaning_group": "falls"
+        "student_count": 58
       },
       {
         "text": "Quantity demanded falls",
-        "student_count": 24,
-        "meaning_group": "falls"
+        "student_count": 24
       },
       {
         "text": "People buy less",
-        "student_count": 21,
-        "meaning_group": "less"
+        "student_count": 21
       },
       {
         "text": "Consumers buy less",
-        "student_count": 16,
-        "meaning_group": "less"
+        "student_count": 16
       },
       {
         "text": "People buy less of it",
-        "student_count": 9,
-        "meaning_group": "less"
+        "student_count": 9
       },
       {
         "text": "It rises",
-        "student_count": 8,
-        "meaning_group": "rises"
+        "student_count": 8
       },
       {
-        "text": "It fals",
-        "student_count": 7,
-        "meaning_group": "falls"
+        "text": "It fall",
+        "student_count": 7
       },
       {
         "text": "Supply rises",
-        "student_count": 6,
-        "meaning_group": "supply"
+        "student_count": 6
       },
       {
-        "text": "Quantity demanded fals",
-        "student_count": 5,
-        "meaning_group": "falls"
+        "text": "Quantity demanded fall",
+        "student_count": 5
       },
       {
         "text": "Demand goes up",
-        "student_count": 5,
-        "meaning_group": "rises"
+        "student_count": 5
       },
       {
-        "text": "Quantity demaned falls",
-        "student_count": 4,
-        "meaning_group": "falls"
+        "text": "Quantity demand falls",
+        "student_count": 4
       },
       {
-        "text": "Peple buy less",
-        "student_count": 4,
-        "meaning_group": "less"
+        "text": "People buys less",
+        "student_count": 4
       }
     ],
     "marking": {
@@ -1429,6 +1460,94 @@
       "answer": "People buy less",
       "marks": 1,
       "feedback": "Correct: buying less is the fall in quantity demanded."
+    },
+    "meaning_comparison": {
+      "texts": [
+        "Consumers buy less",
+        "Demand goes up",
+        "It fall",
+        "It falls",
+        "It rises",
+        "People buy less",
+        "People buy less of it",
+        "People buys less",
+        "Quantity demand falls",
+        "Quantity demanded fall",
+        "Quantity demanded falls",
+        "Supply rises"
+      ],
+      "similarity": "meaning",
+      "key_indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11
+      ],
+      "similarity_links": [
+        [
+          5,
+          7,
+          0.993854820728302
+        ],
+        [
+          9,
+          10,
+          0.9808259010314941
+        ],
+        [
+          6,
+          5,
+          0.9667301177978516
+        ],
+        [
+          2,
+          3,
+          0.9615609645843506
+        ],
+        [
+          0,
+          6,
+          0.9151972532272339
+        ],
+        [
+          8,
+          9,
+          0.9110618829727173
+        ],
+        [
+          1,
+          11,
+          0.8387497663497925
+        ],
+        [
+          4,
+          2,
+          0.8316239714622498
+        ],
+        [
+          8,
+          1,
+          0.7103856205940247
+        ],
+        [
+          0,
+          8,
+          0.5955187678337097
+        ],
+        [
+          4,
+          0,
+          0.4720414876937866
+        ]
+      ]
     }
   },
   "by_example": {
@@ -2365,16 +2484,22 @@
           },
           "results": [
             {
-              "marks": 2,
-              "feedback": "Correct total."
+              "proportion": 0.6666666666666666,
+              "max_marks": 3.0,
+              "feedback": "Correct total.",
+              "method_label": "Answer Criteria"
             },
             {
-              "marks": 2,
-              "feedback": "Correct total."
+              "proportion": 0.6666666666666666,
+              "max_marks": 3.0,
+              "feedback": "Correct total.",
+              "method_label": "Answer Criteria"
             },
             {
-              "marks": 0,
-              "feedback": "Correct total: Not met."
+              "proportion": 0.0,
+              "max_marks": 3.0,
+              "feedback": "Correct total: Not met.",
+              "method_label": "Answer Criteria"
             }
           ]
         },
@@ -2399,16 +2524,22 @@
           },
           "results": [
             {
-              "marks": 3,
-              "feedback": "Correct total.\nShows the working."
+              "proportion": 1.0,
+              "max_marks": 3.0,
+              "feedback": "Correct total.\nShows the working.",
+              "method_label": "Answer Criteria"
             },
             {
-              "marks": 2,
-              "feedback": "Correct total.\nShows the working: Not met."
+              "proportion": 0.6666666666666666,
+              "max_marks": 3.0,
+              "feedback": "Correct total.\nShows the working: Not met.",
+              "method_label": "Answer Criteria"
             },
             {
-              "marks": 1,
-              "feedback": "Correct total: Not met.\nShows the working."
+              "proportion": 0.3333333333333333,
+              "max_marks": 3.0,
+              "feedback": "Correct total: Not met.\nShows the working.",
+              "method_label": "Answer Criteria"
             }
           ]
         },
@@ -2437,16 +2568,22 @@
           },
           "results": [
             {
-              "marks": 3,
-              "feedback": "Correct total.\nShows the working."
+              "proportion": 1.0,
+              "max_marks": 3.0,
+              "feedback": "Correct total.\nShows the working.",
+              "method_label": "Answer Criteria"
             },
             {
-              "marks": 2,
-              "feedback": "Correct total.\nShows the working: Not met."
+              "proportion": 0.6666666666666666,
+              "max_marks": 3.0,
+              "feedback": "Correct total.\nShows the working: Not met.",
+              "method_label": "Answer Criteria"
             },
             {
-              "marks": 0,
-              "feedback": "Correct total: Not met.\nShows the working.\nPenalty: Forgot to sum."
+              "proportion": 0.0,
+              "max_marks": 3.0,
+              "feedback": "Correct total: Not met.\nShows the working.\nPenalty: Forgot to sum.",
+              "method_label": "Answer Criteria"
             }
           ]
         }

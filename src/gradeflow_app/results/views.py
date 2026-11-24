@@ -35,7 +35,7 @@ class Cell(NamedTuple):
     adjusted: bool
 
 
-def _grid(results: Results) -> list[tuple[StudentMarks, list[Cell]]]:
+def grid(results: Results) -> list[tuple[StudentMarks, list[Cell]]]:
     """Each student's marks and their cells, in question order."""
     is_blank_by_key = {question.key: cache(partial(is_blank, question)) for question in results.questions}
     format_marks = cache(marks)
@@ -67,7 +67,7 @@ def students(request: Request, access: AssessmentAccess) -> HttpResponse:
     context = {
         "access": access,
         "results": results,
-        "grid": _grid(results),
+        "grid": grid(results),
         "page_size": GRID_PAGE_SIZE,
         "download_form": download_form(),
         "unmarked_count": results.unmarked_count,

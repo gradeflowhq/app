@@ -1,29 +1,30 @@
 """The method demos: an example of each method, its settings changed one at a time, its answers' marks previewed after
 each change beside the marking's summary, which components/landing/methods.js plays."""
 
-from collections import Counter
 from collections.abc import Callable
-from dataclasses import dataclass, replace
-from itertools import pairwise
+from dataclasses import dataclass
+from itertools import islice, pairwise
+from typing import Any
 
 from gradeflow_core import BUILTINS, QuestionResult
 
+from gradeflow_app.imports.models import Student
 from gradeflow_app.landing.content import Answer, Example, ExampleVariant, landing_content
 from gradeflow_app.landing.demos import (
     DRAFT,
-    AnswersColumn,
+    STUDENT_IDS,
     editor_summary,
-    language_model_result,
-    largest_first,
     marked_submissions,
-    set_previews,
+    preview_results,
+    same_answer_groups,
     student_answers,
     unsaved_question,
 )
-from gradeflow_app.marking.answers.answer_groups import AnswerGroup
-from gradeflow_app.marking.answers.combinations import Cell, Combination
+from gradeflow_app.marking.answers.column import answers_column
+from gradeflow_app.marking.answers.combinations import Combination, combinations_of
 from gradeflow_app.marking.presenters import MarkingSummary
-from gradeflow_app.results.marks import Award
+from gradeflow_app.marking.previews import PreviewResults
+from gradeflow_app.results.marks import Award, StudentMarks
 from gradeflow_app.results.models import Result
 
 type VariantResults = list[dict[str, QuestionResult]]
@@ -48,7 +49,7 @@ class CombinationsColumn:
 class MethodView:
     example_key: str
     label: str
-    columns: list[AnswersColumn] | list[CombinationsColumn]
+    columns: list[dict[str, Any]] | list[CombinationsColumn]
     """The answers after each variant, the marks of the variant before beside the new ones."""
     summaries: list[MarkingSummary]
     chapters: dict[str, None]
@@ -61,13 +62,12 @@ class MethodView:
 
 def variant_results(example: Example) -> list[VariantResults]:
     """Each variant's results: the core's, or a language model's stored ones."""
-    label = BUILTINS.find(example.method_ref).label
     answers = [answer.answers for answer in example.answers]
 
     def results_of(variant: ExampleVariant) -> VariantResults:
         if variant.results is not None:
-            [(key, question)] = example.question_set.items()
-            return [{key: language_model_result(result, question.max_marks, label)} for result in variant.results]
+            [key] = example.question_set
+            return [{key: result} for result in variant.results]
         return [
             dict(submission.results)
             for submission in marked_submissions(example.question_set, variant.marking, answers)
@@ -80,74 +80,56 @@ def variant_summaries(example: Example) -> list[MarkingSummary]:
     return [editor_summary(example.question_set, variant.marking) for variant in example.variants]
 
 
-def answers_columns(example: Example) -> list[AnswersColumn]:
+def answers_columns(example: Example) -> list[dict[str, Any]]:
     """The question's answer groups after each variant."""
     [key] = example.question_set
     question = unsaved_question(example.question_set, key)
 
-    def column(results: VariantResults, previews: VariantResults | None) -> AnswersColumn:
-        groups = largest_first(
+    def column(results: VariantResults, previews: VariantResults | None) -> dict[str, Any]:
+        groups = same_answer_groups(
             [
-                AnswerGroup(
-                    student_answers(
-                        question.core_question,
-                        Answer(text=answer.answers[key], student_count=answer.student_count),
-                        result[key],
-                    )
-                )
+                entry
                 for answer, result in zip(example.answers, results, strict=True)
+                for entry in student_answers(
+                    question.core_question,
+                    Answer(text=answer.answers[key], student_count=answer.student_count),
+                    result[key],
+                )
             ]
         )
+        preview_by_student = None
         if previews is not None:
-            set_previews(
+            preview_by_student = preview_results(
                 groups,
+                key,
                 {answer.answers[key]: preview[key] for answer, preview in zip(example.answers, previews, strict=True)},
             )
-        return AnswersColumn(question, "answers", groups, draft=DRAFT)
+        return answers_column(question, groups, {"group": "answers"}, preview_by_student) | {"draft": DRAFT}
 
     return variant_columns(example, column)
 
 
 def combinations_columns(example: Example) -> list[CombinationsColumn]:
     """The question group's combinations of answers after each variant."""
-
-    def combination_cell(
-        key: str, answer: str, count: int, result: QuestionResult | None, preview: QuestionResult | None
-    ) -> Cell:
-        question = example.question_set[key]
-        if result is None:
-            return Cell(key, answer, question, read=True)
-        award = Award(question.max_marks, result=Result.from_question_result(result, revision=1))
-        cell = Cell(key, answer, question, marks={award.marks}, feedback_counts=Counter({award.feedback: count}))
-        if preview is not None:
-            preview_award = replace(award, preview_result=preview)
-            assert preview_award.marks is not None
-            cell.preview_marks.add(preview_award.marks)
-            cell.preview_feedback_counts[preview_award.feedback] = count
-            cell.changed_count = count if award.differs_from(preview_award) else 0
-        return cell
+    descriptions = {key: question.description for key, question in example.question_set.items() if question.description}
 
     def column(results: VariantResults, previews: VariantResults | None) -> CombinationsColumn:
-        rows = []
+        keys = [key for key in example.question_set if key in results[0]]
+        students = []
+        preview_by_student: PreviewResults = {}
         for index, (answer, result) in enumerate(zip(example.answers, results, strict=True)):
-            preview = None if previews is None else previews[index]
-            cells = [
-                combination_cell(
-                    key,
-                    question.normalize(answer.answers[key]),
-                    answer.student_count,
-                    result.get(key),
-                    None if preview is None else preview.get(key),
+            awards = {
+                key: Award(
+                    question.max_marks, Result.from_question_result(result[key], revision=1) if key in result else None
                 )
                 for key, question in example.question_set.items()
-            ]
-            changed = any(cell.changed for cell in cells)
-            rows.append(Combination(cells, answer.student_count, answer.student_count if changed else 0))
-        rows.sort(key=lambda row: -row.student_count)
+            }
+            for student_id in islice(STUDENT_IDS, answer.student_count):
+                students.append(StudentMarks(Student(encrypted_id=student_id, answers=answer.answers), awards))
+                if previews is not None:
+                    preview_by_student[student_id] = previews[index]
         return CombinationsColumn(
-            [key for key in example.question_set if key in results[0]],
-            {key: question.description for key, question in example.question_set.items() if question.description},
-            rows,
+            keys, descriptions, combinations_of(example.question_set, keys, students, preview_by_student)
         )
 
     return variant_columns(example, column)

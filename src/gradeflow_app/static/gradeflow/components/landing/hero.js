@@ -44,8 +44,9 @@ export function heroTimeline(timeline, mockup, [importing, writing, marking, adj
     .click($(".method-choice", advanced))
     .swap([methodChoices, $("[data-marking-editor]")])
     .add(fadeIn($("[data-marking-editor]")));
-  const editorBody = $("[data-editor-body]");
   const stages = $$("[data-stage]");
+  // Each stage is an editor panel with its own scrolling body; the next stage opens at the same scroll.
+  const body = (stage) => $(".workspace-panel > div", stage);
   stages.forEach((stage, index) => {
     const { editAction: action, editFieldName: name, editValue: value } = stage.dataset;
     if (!action) return;
@@ -68,15 +69,16 @@ export function heroTimeline(timeline, mockup, [importing, writing, marking, adj
         timeline.pickMethod($('[hx-get*="operation=add&"]', stage), { label: value });
         break;
       case "close_step":
-        timeline.click($('nav[aria-label="Where you are"] button', stage)).set(editorBody, { scrollTop: 0 });
+        timeline.click($('nav[aria-label="Where you are"] button', stage));
         break;
     }
-    timeline.swap([stage, stages[index + 1]], "+=0.1");
+    const scrollTop = action === "close_step" ? 0 : measured(timeline, () => body(stage).scrollTop);
+    timeline.swap([stage, stages[index + 1]], "+=0.1").set(body(stages[index + 1]), { scrollTop }, "<");
     // A step opening or closing replaces the whole form.
-    if (action === "add_step" || action === "close_step") timeline.add(fadeIn(stages[index + 1].children), "<");
+    if (action === "add_step" || action === "close_step") timeline.add(fadeIn(body(stages[index + 1])), "<");
   });
   timeline
-    .click($("[data-save]"), {}, "+=0.2")
+    .click($(".panel-foot .btn-primary", stages.at(-1)), {}, "+=0.2")
     .swap([$("[data-marking-editor]"), $("[data-saved-marking]")])
     .add(fadeIn($("[data-saved-marking]")));
 
@@ -125,8 +127,11 @@ export function heroTimeline(timeline, mockup, [importing, writing, marking, adj
   timeline.swap([allMarked, allAdjusted], "<").showToast($('[data-toast="adjusted"]'), {}, "<");
 
   const rows = $$("[data-page=students] tbody tr");
-  const unadjustedRows = rows.filter((row) => !row.hasAttribute("data-adjusted"));
-  const adjustedFilter = $("[data-filter-adjusted]");
+  // The app's rows have no data-shown: `hide` sets it to 0, and a rewind restores the value it replaced.
+  for (const row of rows) row.dataset.shown = "1";
+  const isAdjusted = (row) => row.querySelector("[data-adjusted]") !== null;
+  const unadjustedRows = rows.filter((row) => !isAdjusted(row));
+  const adjustedFilter = $("[data-page=students] input[value=adjusted]").closest("label");
   timeline
     .addLabel(students, "+=0.3")
     .click(tab("students"), {}, students)
@@ -134,7 +139,7 @@ export function heroTimeline(timeline, mockup, [importing, writing, marking, adj
     .from(rows, { autoAlpha: 0, y: 8, stagger: 0.03, immediateRender: false }, "<0.2")
     .click(adjustedFilter, {}, "+=0.5")
     .set($("input", adjustedFilter), { checked: true });
-  const adjustedRows = rows.filter((row) => row.hasAttribute("data-adjusted"));
+  const adjustedRows = rows.filter(isAdjusted);
   const rowTopsBefore = measured(timeline, () => adjustedRows.map((row) => row.offsetTop));
   timeline.to(unadjustedRows, { autoAlpha: 0, duration: 0.25 }).hide(unadjustedRows);
   const rowTopsAfter = measured(timeline, () => adjustedRows.map((row) => row.offsetTop));

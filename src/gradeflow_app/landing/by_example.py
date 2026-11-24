@@ -2,6 +2,7 @@
 changing with each, which components/landing/by-example.js plays."""
 
 from dataclasses import dataclass
+from typing import Any
 
 from gradeflow_core import QuestionResult
 from gradeflow_core.editing import Decision, MarkingDraft
@@ -9,16 +10,14 @@ from gradeflow_core.editing import Decision, MarkingDraft
 from gradeflow_app.landing.content import landing_content
 from gradeflow_app.landing.demos import (
     DRAFT,
-    AnswersColumn,
     editor_summary,
-    largest_first,
+    preview_results,
     results_by_answer,
-    set_previews,
+    same_answer_groups,
     student_answers,
     unsaved_question,
 )
-from gradeflow_app.marking.answers.answer_groups import AnswerGroup
-from gradeflow_app.marking.answers.column import preview_summary, set_decisions
+from gradeflow_app.marking.answers.column import answers_column, set_decisions
 from gradeflow_app.marking.presenters import MarkingSummary
 from gradeflow_app.questions.models import Question
 
@@ -29,7 +28,7 @@ CHAPTERS = {"Full marks": "check-circle", "Partial marks": "minus-circle", "Not 
 @dataclass(frozen=True)
 class ByExampleView:
     question: Question
-    columns: list[AnswersColumn]
+    columns: list[dict[str, Any]]
     """The answers in the draft before marking by example, then previewed after each decision, the answer decided
     open."""
     summaries: list[MarkingSummary]
@@ -70,30 +69,27 @@ def by_example_view() -> ByExampleView:
         draft.mark_by_example([answer], decision)
         stages.append(stage())
 
-    def column(stage: Stage, decided: str | None) -> AnswersColumn:
+    def column(stage: Stage, decided: str | None) -> dict[str, Any]:
         """The answers with the decisions of `stage`, previewed after the decision for the answer `decided`, its group
         open."""
-        groups = largest_first(
+        groups = same_answer_groups(
             [
-                AnswerGroup(student_answers(question.core_question, answer, stages[0].results[answer.text]))
+                entry
                 for answer in content.answers
+                for entry in student_answers(question.core_question, answer, stages[0].results[answer.text])
             ]
         )
         set_decisions(groups, stage.decisions)
-        if decided is None:
-            return AnswersColumn(question, "answers", groups, draft=DRAFT)
-        set_previews(groups, stage.results)
-        return AnswersColumn(
-            question,
-            "answers",
-            groups,
-            normalize(decided),
-            draft=DRAFT,
-            preview_summary=preview_summary(groups),
-        )
+        previews = None if decided is None else preview_results(groups, content.question_key, stage.results)
+        shown = answers_column(question, groups, {"group": "answers"}, previews)
+        opened = None if decided is None else normalize(decided)
+        return shown | {
+            "draft": DRAFT,
+            "groups_with_open": [(group, group.answer == opened) for group in shown["answer_groups"]],
+        }
 
     columns = [column(stage, decided) for stage, decided in zip(stages, [None, *content.decisions], strict=True)]
-    first_column_answers = [group.answer for group in columns[0].answer_groups]
+    first_column_answers = [group.answer for group in columns[0]["answer_groups"]]
     return ByExampleView(
         question=question,
         columns=columns,

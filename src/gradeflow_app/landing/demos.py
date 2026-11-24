@@ -1,23 +1,19 @@
-"""What the landing page's demos share: the app's answers column, shown with made-up students, and their marks and
-summaries from the core."""
+"""What the landing page's demos share: made-up students, and their marks and summaries from the core."""
 
 import uuid
-from collections.abc import ItemsView
-from dataclasses import dataclass
+from collections.abc import Iterator
 from itertools import count, islice
-from typing import ClassVar
 
 from gradeflow_core import Marked, MarkScheme, QuestionResult, QuestionSet, Submission, mark
 from gradeflow_core import Question as CoreQuestion
-from gradeflow_core.editing import DECISIONS, Decision, MarkingDraft
+from gradeflow_core.editing import MarkingDraft
 
-from gradeflow_app.jobs.runs import RunState
-from gradeflow_app.landing.content import Answer, LanguageModelResult, MarkingJson
-from gradeflow_app.marking.answers.answer_groups import AnswerGroup, GroupingOptions, StudentAnswer
-from gradeflow_app.marking.answers.column import FILTERS, GROUPINGS, preview_marks
+from gradeflow_app.landing.content import Answer, MarkingJson
+from gradeflow_app.marking.answers.answer_groups import AnswerGroup, StudentAnswer, group
+from gradeflow_app.marking.answers.column import GROUPINGS
 from gradeflow_app.marking.presenters import MarkingSummary
+from gradeflow_app.marking.previews import PreviewResults
 from gradeflow_app.questions.models import Question
-from gradeflow_app.results.marks import PreviewSummary
 from gradeflow_app.results.models import Adjustment, Result
 
 ASSESSMENT_ID = uuid.UUID(int=1)
@@ -25,39 +21,8 @@ ACCESS = {"can_edit": True, "assessment": {"pk": ASSESSMENT_ID}}
 """The visitor's access: they can edit."""
 DRAFT = {"assessment_id": ASSESSMENT_ID, "pk": uuid.UUID(int=2)}
 """The draft the preview bar links to while a marking is edited."""
-STUDENT_NUMBERS = count(1)
-"""The made-up students' numbers, each used once across the demos."""
-
-
-@dataclass(frozen=True)
-class AnswersColumn:
-    """An answers column, as the app's templates read it."""
-
-    question: Question
-    grouping: str
-    answer_groups: list[AnswerGroup]
-    open_answer: str = ""
-    """The answer, as the question reads it, whose group is open."""
-    draft: dict[str, uuid.UUID] | None = None
-    preview_summary: PreviewSummary | None = None
-    marking_job: RunState | None = None
-
-    groupings: ClassVar[dict[str, str]] = {name: label for name, (label, _) in GROUPINGS.items()}
-    decisions: ClassVar[ItemsView[Decision, str]] = DECISIONS.items()
-
-    @property
-    def grouping_options(self) -> GroupingOptions:
-        return GROUPINGS[self.grouping][1]
-
-    @property
-    def filters(self) -> dict[str, str]:
-        """The filters the app offers: "Changed" only while previewing."""
-        return {name: label for name, (label, _) in FILTERS.items() if name != "changed" or self.draft}
-
-    @property
-    def groups_with_open(self) -> list[tuple[AnswerGroup, bool]]:
-        """Each group, with whether it is open."""
-        return [(group, group.answer == self.open_answer) for group in self.answer_groups]
+STUDENT_IDS = (f"{number:08}" for number in count(1))
+"""The made-up students' IDs, each used once across the demos."""
 
 
 def unsaved_question(question_set: QuestionSet, key: str) -> Question:
@@ -82,17 +47,6 @@ def results_by_answer(
     return {answer: submission.results[key] for answer, submission in zip(answers, submissions, strict=True)}
 
 
-def language_model_result(result: LanguageModelResult, max_marks: float, method_label: str) -> QuestionResult:
-    """A language model's stored `result` as a `QuestionResult`."""
-    return QuestionResult(
-        proportion=(result.marks or 0) / max_marks,
-        max_marks=max_marks,
-        feedback=result.feedback,
-        method_label=method_label,
-        is_marked=result.marks is not None,
-    )
-
-
 def editor_summary(question_set: QuestionSet, marking: MarkingJson) -> MarkingSummary:
     """The summary the editor shows for `marking`."""
     draft = MarkingDraft(marking, question_set, marking.get("question"))
@@ -100,33 +54,35 @@ def editor_summary(question_set: QuestionSet, marking: MarkingJson) -> MarkingSu
 
 
 def student_answers(
-    question: CoreQuestion, answer: Answer, result: QuestionResult | None, adjustment: Adjustment | None = None
+    question: CoreQuestion,
+    answer: Answer,
+    result: QuestionResult | None,
+    adjustment: Adjustment | None = None,
+    student_ids: Iterator[str] = STUDENT_IDS,
 ) -> list[StudentAnswer]:
-    """A student answer for each student who gave `answer`; with no `result`, not marked yet."""
+    """A student answer for each student who gave `answer`, each with an ID from `student_ids`; with no `result`, not
+    marked yet."""
     normalized = question.normalize(answer.text)
     return [
         StudentAnswer(
             max_marks=question.max_marks,
             result=None if result is None else Result.from_question_result(result, revision=1),
             adjustment=adjustment,
-            student_pk=str(number),
-            encrypted_student_id=f"enc:v1:{number}",
+            student_pk=str(uuid.uuid5(uuid.NAMESPACE_URL, student_id)),
+            encrypted_student_id=student_id,
             answer=answer.text,
             normalized=normalized,
         )
-        for number in islice(STUDENT_NUMBERS, answer.student_count)
+        for student_id in islice(student_ids, answer.student_count)
     ]
 
 
-def largest_first(groups: list[AnswerGroup]) -> list[AnswerGroup]:
-    """The largest groups first, as the answers column orders them."""
-    return sorted(groups, key=lambda group: (-group.student_count, group.answer))
+def same_answer_groups(student_answers: list[StudentAnswer]) -> list[AnswerGroup]:
+    return group(student_answers, GROUPINGS["answers"][1])
 
 
-def set_previews(groups: list[AnswerGroup], results: dict[str, QuestionResult]) -> None:
-    """Gives each group the preview of `results`, by answer."""
-    by_student = {
-        entry.encrypted_student_id: results[entry.answer] for group in groups for entry in group.student_answers
+def preview_results(groups: list[AnswerGroup], key: str, results: dict[str, QuestionResult]) -> PreviewResults:
+    """Each student in `groups`, with the result in `results` for their answer to the question `key`."""
+    return {
+        entry.encrypted_student_id: {key: results[entry.answer]} for group in groups for entry in group.student_answers
     }
-    for group in groups:
-        group.preview = preview_marks(group, by_student)

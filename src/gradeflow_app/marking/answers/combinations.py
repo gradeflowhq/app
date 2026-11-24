@@ -1,14 +1,14 @@
 """The answers column of a question group: students grouped by their answers to the questions it marks and reads."""
 
 from collections import Counter
-from collections.abc import Sequence
+from collections.abc import Collection, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 
 from gradeflow_core import Question as CoreQuestion
 
 from gradeflow_app.assessments.models import Assessment
 from gradeflow_app.marking.previews import PreviewResults
-from gradeflow_app.results.marks import awards
+from gradeflow_app.results.marks import StudentMarks, awards
 
 
 @dataclass
@@ -72,28 +72,47 @@ def combinations(
 ) -> list[Combination]:
     """Every combination of answers to `keys`, and to the questions in `reads`, that students gave, most common
     first."""
-    questions = {question.key: question for question in assessment.questions.filter(key__in=[*keys, *reads])}
-    ordered_keys = list(questions)  # in the assessment's order, so a condition reads before what it decides
+    questions = list(assessment.questions.filter(key__in=[*keys, *reads]))
     students = list(assessment.students.all())
-    student_awards = awards(list(questions.values()), students)
+    student_awards = awards(questions, students)
+    return combinations_of(
+        {question.key: question.core_question for question in questions},
+        keys,
+        [
+            StudentMarks(student, {question.key: student_awards[student.pk, question.pk] for question in questions})
+            for student in students
+        ],
+        results,
+    )
+
+
+def combinations_of(
+    questions: Mapping[str, CoreQuestion],
+    keys: Collection[str],
+    students: Iterable[StudentMarks],
+    results: PreviewResults | None,
+) -> list[Combination]:
+    """Every combination of answers to `questions` that `students` gave, most common first. `keys` are the questions
+    marked; the others are only read. `questions` are in the assessment's order, so a condition reads before what it
+    decides."""
     by_answers: dict[tuple[str, ...], Combination] = {}
     for student in students:
-        answers = tuple(questions[key].core_question.normalize(student.answers.get(key, "")) for key in ordered_keys)
+        answers = tuple(question.normalize(student.student.answers.get(key, "")) for key, question in questions.items())
         combination = by_answers.get(answers)
         if combination is None:
             cells = [
-                Cell(key, answer, questions[key].core_question, read=key not in keys)
-                for key, answer in zip(ordered_keys, answers, strict=True)
+                Cell(key, answer, question, read=key not in keys)
+                for (key, question), answer in zip(questions.items(), answers, strict=True)
             ]
             combination = by_answers[answers] = Combination(cells)
         combination.student_count += 1
-        preview_results = (results or {}).get(student.encrypted_id, {})
+        preview_results = (results or {}).get(student.student.encrypted_id, {})
         changed = False
         unmarked = False
         for cell in combination.cells:
             if cell.read:
                 continue
-            award = student_awards[student.pk, questions[cell.key].pk]
+            award = student.awards[cell.key]
             cell.marks.add(award.marks)
             cell.feedback_counts[award.feedback] += 1
             if (result := preview_results.get(cell.key)) is not None:

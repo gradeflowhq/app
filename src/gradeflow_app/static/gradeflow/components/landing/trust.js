@@ -8,12 +8,6 @@ export function trustTimeline(timeline, mockup, [sameMark, breakdown, ai]) {
   const $$ = (selector, scope = mockup) => [...scope.querySelectorAll(selector)];
   const pane = (name) => $(`[data-pane="${name}"]`);
 
-  // The made-up students' IDs aren't encrypted.
-  for (const id of $$("[data-student-id]")) {
-    id.textContent = id.dataset.studentId;
-    id.dataset.studentIdState = "shown";
-  }
-
   const sameMarkGroup = $("[data-answer-list] > li", pane("same-mark"));
   const studentsToggle = $("[data-students]", sameMarkGroup);
   timeline
