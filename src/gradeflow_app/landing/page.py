@@ -5,9 +5,11 @@ from typing import Any
 
 from django.template.loader import render_to_string
 from django.utils.text import get_text_list
+from gradeflow_core import BUILTINS
+from gradeflow_core.editing import Position, compatible_methods
 
 from gradeflow_app.landing.by_example import by_example_view
-from gradeflow_app.landing.content import core_output
+from gradeflow_app.landing.content import landing_content
 from gradeflow_app.landing.demos import ACCESS
 from gradeflow_app.landing.groups import groups_view
 from gradeflow_app.landing.hero import hero_view
@@ -52,10 +54,8 @@ FEATURES = [
 """Each feature's icon, title and description."""
 
 
-@cache
 def demos() -> dict[str, str]:
-    """Each demo's HTML, by name. Rendered once, without the request: the demos' forms are inert and need no CSRF
-    token."""
+    """Each demo's HTML, by name. Rendered without the request: the demos' forms are inert and need no CSRF token."""
     context = {
         "github_url": GITHUB_URL,
         "access": ACCESS,
@@ -71,11 +71,29 @@ def demos() -> dict[str, str]:
     }
 
 
+def other_methods() -> list[str]:
+    """The labels of the methods for the page's questions that have no example, simplest first."""
+    content = landing_content()
+    question_sets = [content.hero.question_set, content.groups.question_set, content.by_example.question_set]
+    question_sets += [example.question_set for example in content.examples.values()]
+    compatible = {
+        method.ref: method
+        for question_set in question_sets
+        for question in [None, *question_set]
+        for method in compatible_methods(Position(question_set, question, is_in_group=question is None))
+    }
+    with_examples = {BUILTINS.find(example.method_ref).label for example in content.examples.values()}
+    by_level = sorted(compatible.values(), key=lambda method: method.level != "basic")
+    return list(dict.fromkeys(method.label for method in by_level if method.label not in with_examples))
+
+
+@cache
 def landing_context() -> dict[str, Any]:
+    """The page's context, built on the first visit."""
     return {
         "github_url": GITHUB_URL,
         "sections": SECTIONS,
         "features": FEATURES,
-        "other_methods": get_text_list(core_output().other_methods, "and"),
+        "other_methods": get_text_list(other_methods(), "and"),
         "demos": demos(),
     }

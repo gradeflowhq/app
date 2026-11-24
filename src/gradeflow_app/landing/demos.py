@@ -1,4 +1,5 @@
-"""What the landing page's demos share: the app's answers column and editor, shown with made-up students."""
+"""What the landing page's demos share: the app's answers column, shown with made-up students, and their marks and
+summaries from the core."""
 
 import uuid
 from collections.abc import ItemsView
@@ -6,19 +7,18 @@ from dataclasses import dataclass
 from itertools import count, islice
 from typing import ClassVar
 
-from gradeflow_core import QuestionResult, QuestionSet
-from gradeflow_core.editing import DECISIONS, Decision
+from gradeflow_core import Marked, MarkScheme, QuestionResult, QuestionSet, Submission, mark
+from gradeflow_core import Question as CoreQuestion
+from gradeflow_core.editing import DECISIONS, Decision, MarkingDraft
 
-from gradeflow_app.editor.editing import EditorActions
-from gradeflow_app.editor.presenters import Editor, StepsSettingView
 from gradeflow_app.jobs.runs import RunState
-from gradeflow_app.landing.content import Answer, EditorContent
+from gradeflow_app.landing.content import Answer, LanguageModelResult, MarkingJson
 from gradeflow_app.marking.answers.answer_groups import AnswerGroup, GroupingOptions, StudentAnswer
 from gradeflow_app.marking.answers.column import FILTERS, GROUPINGS, preview_marks
+from gradeflow_app.marking.presenters import MarkingSummary
 from gradeflow_app.questions.models import Question
 from gradeflow_app.results.marks import PreviewSummary
 from gradeflow_app.results.models import Adjustment, Result
-from gradeflow_app.ui.schemaforms.forms import ObjectForm
 
 ASSESSMENT_ID = uuid.UUID(int=1)
 ACCESS = {"can_edit": True, "assessment": {"pk": ASSESSMENT_ID}}
@@ -66,17 +66,47 @@ def unsaved_question(question_set: QuestionSet, key: str) -> Question:
     )
 
 
+def marked_submissions(
+    question_set: QuestionSet, marking: MarkingJson, answers: list[dict[str, str]]
+) -> list[Marked[Submission]]:
+    """Each student's `answers`, by question, marked with `marking`."""
+    submissions = [Submission(student_id=str(index), answers=answer) for index, answer in enumerate(answers)]
+    return list(mark(question_set, MarkScheme.load([marking]), submissions))
+
+
+def results_by_answer(
+    question_set: QuestionSet, marking: MarkingJson, answers: list[str], key: str
+) -> dict[str, QuestionResult]:
+    """Each of `answers` to the question `key`, marked with `marking`."""
+    submissions = marked_submissions(question_set, marking, [{key: answer} for answer in answers])
+    return {answer: submission.results[key] for answer, submission in zip(answers, submissions, strict=True)}
+
+
+def language_model_result(result: LanguageModelResult, max_marks: float, method_label: str) -> QuestionResult:
+    """A language model's stored `result` as a `QuestionResult`."""
+    return QuestionResult(
+        proportion=(result.marks or 0) / max_marks,
+        max_marks=max_marks,
+        feedback=result.feedback,
+        method_label=method_label,
+        is_marked=result.marks is not None,
+    )
+
+
+def editor_summary(question_set: QuestionSet, marking: MarkingJson) -> MarkingSummary:
+    """The summary the editor shows for `marking`."""
+    draft = MarkingDraft(marking, question_set, marking.get("question"))
+    return MarkingSummary(draft.label(""), draft.describe(""), needs_model_endpoint=draft.needs_model_endpoint(""))
+
+
 def student_answers(
-    max_marks: float,
-    answer: Answer,
-    normalized: str,
-    result: QuestionResult | None,
-    adjustment: Adjustment | None = None,
+    question: CoreQuestion, answer: Answer, result: QuestionResult | None, adjustment: Adjustment | None = None
 ) -> list[StudentAnswer]:
     """A student answer for each student who gave `answer`; with no `result`, not marked yet."""
+    normalized = question.normalize(answer.text)
     return [
         StudentAnswer(
-            max_marks=max_marks,
+            max_marks=question.max_marks,
             result=None if result is None else Result.from_question_result(result, revision=1),
             adjustment=adjustment,
             student_pk=str(number),
@@ -100,20 +130,3 @@ def set_previews(groups: list[AnswerGroup], results: dict[str, QuestionResult]) 
     }
     for group in groups:
         group.preview = preview_marks(group, by_student)
-
-
-def marking_editor(content: EditorContent, id_prefix: str) -> Editor:
-    """The editor showing `content`."""
-    return Editor(
-        actions=EditorActions(update="", methods=""),
-        path="",
-        form=ObjectForm(content.form_schema, content.values, auto_id=f"{id_prefix}-%s"),
-        label=content.label,
-        description=content.description,
-        settings_holding_steps=[
-            StepsSettingView(steps.setting, errors=[], children=steps.cards, questions=[], can_add=True)
-            for steps in content.steps
-        ],
-        can_change_method=True,
-        editable=True,
-    )

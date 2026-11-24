@@ -6,9 +6,9 @@ from collections.abc import Iterator
 from dataclasses import dataclass
 from itertools import count, islice
 
-from gradeflow_app.landing.content import CoreTrustQuestion, TrustQuestion, core_output, landing_content
-from gradeflow_app.landing.demos import AnswersColumn, largest_first, unsaved_question
-from gradeflow_app.landing.methods import answers_columns
+from gradeflow_app.landing.content import TrustQuestion, landing_content
+from gradeflow_app.landing.demos import AnswersColumn, largest_first, results_by_answer, unsaved_question
+from gradeflow_app.landing.methods import answers_columns, variant_summaries
 from gradeflow_app.marking.answers.answer_groups import AnswerGroup, StudentAnswer
 from gradeflow_app.marking.presenters import MarkingSummary
 from gradeflow_app.results.models import Result
@@ -40,21 +40,23 @@ class TrustView:
     chapters = CLAIMS
 
 
-def answers_column(content: TrustQuestion, core: CoreTrustQuestion, student_ids: Iterator[str]) -> AnswersColumn:
+def answers_column(content: TrustQuestion, student_ids: Iterator[str]) -> AnswersColumn:
     """The answers to `content`'s question, marked, each student with an ID from `student_ids`."""
     question = unsaved_question(content.question_set, content.question_key)
-    max_marks = question.core_question.max_marks
+    core_question = question.core_question
+    answers = [answer.text for answer in content.answers]
+    answer_results = results_by_answer(content.question_set, content.marking, answers, content.question_key)
     groups = [
         AnswerGroup(
             [
                 StudentAnswer(
-                    max_marks=max_marks,
-                    result=Result.from_question_result(core.results[answer.text], revision=1),
+                    max_marks=core_question.max_marks,
+                    result=Result.from_question_result(answer_results[answer.text], revision=1),
                     adjustment=None,
                     student_pk=str(uuid.uuid5(uuid.NAMESPACE_URL, student_id)),
                     encrypted_student_id=student_id,
                     answer=answer.text,
-                    normalized=core.normalized_answers[answer.text],
+                    normalized=core_question.normalize(answer.text),
                 )
                 for student_id in islice(student_ids, answer.student_count)
             ]
@@ -65,13 +67,13 @@ def answers_column(content: TrustQuestion, core: CoreTrustQuestion, student_ids:
 
 
 def trust_view() -> TrustView:
-    content, core = landing_content().trust, core_output().trust
-    breakdown = answers_column(content.breakdown, core.breakdown, map(str, count(1)))
-    opened = core.breakdown.normalized_answers[content.opened_answer]
+    content = landing_content().trust
+    breakdown = answers_column(content.breakdown, map(str, count(1)))
+    opened = breakdown.question.core_question.normalize(content.opened_answer)
     return TrustView(
-        same_mark=answers_column(content.same_mark, core.same_mark, iter(content.student_names)),
+        same_mark=answers_column(content.same_mark, iter(content.student_names)),
         breakdown=breakdown,
         opened_group_index=[group.answer for group in breakdown.answer_groups].index(opened),
-        ai_columns=answers_columns(content.ai, core.ai),
-        ai_summaries=[variant.summary for variant in core.ai.variants],
+        ai_columns=answers_columns(content.ai),
+        ai_summaries=variant_summaries(content.ai),
     )

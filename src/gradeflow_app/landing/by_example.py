@@ -3,13 +3,16 @@ changing with each, which components/landing/by-example.js plays."""
 
 from dataclasses import dataclass
 
-from gradeflow_core.editing import Decision
+from gradeflow_core import QuestionResult
+from gradeflow_core.editing import Decision, MarkingDraft
 
-from gradeflow_app.landing.content import CoreByExampleStage, core_output, landing_content
+from gradeflow_app.landing.content import landing_content
 from gradeflow_app.landing.demos import (
     DRAFT,
     AnswersColumn,
+    editor_summary,
     largest_first,
+    results_by_answer,
     set_previews,
     student_answers,
     unsaved_question,
@@ -37,22 +40,42 @@ class ByExampleView:
     chapters = CHAPTERS
 
 
-def by_example_view() -> ByExampleView:
-    content, core = landing_content().by_example, core_output().by_example
-    question = unsaved_question(content.question_set, content.question_key)
-    max_marks = question.core_question.max_marks
-    initial_stage = core.stages[0]
+@dataclass(frozen=True)
+class Stage:
+    """The marking after a decision, or before the first."""
 
-    def column(stage: CoreByExampleStage, decided: str | None) -> AnswersColumn:
+    results: dict[str, QuestionResult]
+    """By answer."""
+    summary: MarkingSummary
+    decisions: dict[str, Decision]
+    """The decisions so far, by answer as the question reads it."""
+
+
+def by_example_view() -> ByExampleView:
+    content = landing_content().by_example
+    question = unsaved_question(content.question_set, content.question_key)
+    normalize = question.core_question.normalize
+    answers = [answer.text for answer in content.answers]
+    draft = MarkingDraft(content.marking, content.question_set, content.question_key)
+
+    def stage() -> Stage:
+        return Stage(
+            results_by_answer(content.question_set, draft.data, answers, content.question_key),
+            editor_summary(content.question_set, draft.data),
+            draft.answer_decisions(),
+        )
+
+    stages = [stage()]
+    for answer, decision in content.decisions.items():
+        draft.mark_by_example([answer], decision)
+        stages.append(stage())
+
+    def column(stage: Stage, decided: str | None) -> AnswersColumn:
         """The answers with the decisions of `stage`, previewed after the decision for the answer `decided`, its group
         open."""
         groups = largest_first(
             [
-                AnswerGroup(
-                    student_answers(
-                        max_marks, answer, core.normalized_answers[answer.text], initial_stage.results[answer.text]
-                    )
-                )
+                AnswerGroup(student_answers(question.core_question, answer, stages[0].results[answer.text]))
                 for answer in content.answers
             ]
         )
@@ -64,19 +87,17 @@ def by_example_view() -> ByExampleView:
             question,
             "answers",
             groups,
-            core.normalized_answers[decided],
+            normalize(decided),
             draft=DRAFT,
             preview_summary=preview_summary(groups),
         )
 
-    columns = [column(stage, decided) for stage, decided in zip(core.stages, [None, *content.decisions], strict=True)]
+    columns = [column(stage, decided) for stage, decided in zip(stages, [None, *content.decisions], strict=True)]
     first_column_answers = [group.answer for group in columns[0].answer_groups]
     return ByExampleView(
         question=question,
         columns=columns,
-        summaries=[stage.summary for stage in core.stages],
-        decision_group_indexes=[
-            first_column_answers.index(core.normalized_answers[answer]) for answer in content.decisions
-        ],
+        summaries=[stage.summary for stage in stages],
+        decision_group_indexes=[first_column_answers.index(normalize(answer)) for answer in content.decisions],
         decisions=list(content.decisions.values()),
     )

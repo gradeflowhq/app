@@ -3,9 +3,16 @@ group adjusted, which components/landing/groups.js plays."""
 
 from dataclasses import dataclass
 
-from gradeflow_app.landing.content import AnswerWithMeaningGroup, Groups, core_output, landing_content
-from gradeflow_app.landing.demos import AnswersColumn, largest_first, student_answers, unsaved_question
-from gradeflow_app.marking.answers.answer_groups import AnswerGroup, StudentAnswer
+from gradeflow_app.landing.content import AnswerWithMeaningGroup, Groups, landing_content
+from gradeflow_app.landing.demos import (
+    AnswersColumn,
+    largest_first,
+    results_by_answer,
+    student_answers,
+    unsaved_question,
+)
+from gradeflow_app.marking.answers.answer_groups import AnswerGroup, StudentAnswer, group
+from gradeflow_app.marking.answers.column import GROUPINGS
 from gradeflow_app.questions.models import Question
 from gradeflow_app.results.models import Adjustment
 
@@ -49,21 +56,17 @@ def next_group_indexes(groups: list[AnswerGroup], next_groups: list[AnswerGroup]
 
 
 def groups_view() -> GroupsView:
-    content, core = landing_content().groups, core_output().groups
+    content = landing_content().groups
     question = unsaved_question(content.question_set, content.question_key)
-    max_marks = question.core_question.max_marks
     answers = {answer.text: answer for answer in content.answers}
+    answer_results = results_by_answer(content.question_set, content.marking, list(answers), content.question_key)
     adjusted_meaning_group = answers[content.adjustment.answer].meaning_group
     adjustment = Adjustment(marks=content.adjustment.marks, feedback=content.adjustment.feedback)
 
     def student_answers_for(answer: AnswerWithMeaningGroup, *, adjusted: bool = False) -> list[StudentAnswer]:
         is_adjusted = adjusted and answer.meaning_group == adjusted_meaning_group
         return student_answers(
-            max_marks,
-            answer,
-            core.normalized_answers[answer.text],
-            core.results[answer.text],
-            adjustment if is_adjusted else None,
+            question.core_question, answer, answer_results[answer.text], adjustment if is_adjusted else None
         )
 
     def answer_groups(answer_texts_by_group: list[list[str]], *, adjusted: bool = False) -> list[AnswerGroup]:
@@ -81,7 +84,9 @@ def groups_view() -> GroupsView:
     for answer in content.answers:
         answers_by_meaning_group.setdefault(answer.meaning_group, []).append(answer.text)
     same_answer_groups = largest_first([AnswerGroup(student_answers_for(answer)) for answer in content.answers])
-    spelling_groups = answer_groups(core.spelling_groups)
+    spelling_groups = group(
+        [entry for answer in content.answers for entry in student_answers_for(answer)], GROUPINGS["spelling"][1]
+    )
     meaning_groups = answer_groups(list(answers_by_meaning_group.values()))
     adjusted_groups = answer_groups(list(answers_by_meaning_group.values()), adjusted=True)
     [adjusted_group_index] = [index for index, group in enumerate(adjusted_groups) if group.adjusted_count]

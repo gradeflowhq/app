@@ -1,19 +1,14 @@
-"""The landing page's content, in examples.json, and what the core gives for it, in core.json."""
+"""The landing page's content, in examples.json."""
 
 from functools import cache
 from pathlib import Path
 from typing import Any
 
-from gradeflow_core import QuestionResult, QuestionSet
-from gradeflow_core.editing import Decision, StepsSetting
+from gradeflow_core import QuestionSet
+from gradeflow_core.editing import Decision
 from pydantic import BaseModel, ConfigDict
 
-from gradeflow_app.editor.presenters import StepCard
-from gradeflow_app.marking.presenters import MarkingSummary
-
 EXAMPLES = Path(__file__).with_name("examples.json")
-CORE = Path(__file__).with_name("core.json")
-"""What the core gives for examples.json. tests/test_landing.py checks it, and writes it when run."""
 
 
 type MarkingJson = dict[str, Any]
@@ -179,120 +174,3 @@ class LandingContent(LandingModel):
 @cache
 def landing_content() -> LandingContent:
     return LandingContent.model_validate_json(EXAMPLES.read_text())
-
-
-# What the core gives for the content.
-
-
-class StepCards(LandingModel):
-    setting: StepsSetting
-    cards: list[StepCard]
-
-
-class EditorContent(LandingModel):
-    """What the editor shows of a marking."""
-
-    label: str
-    description: str
-    form_schema: dict[str, Any]
-    values: dict[str, Any]
-    steps: list[StepCards]
-
-
-class MethodChoice(LandingModel):
-    """A method to choose, as the lists of methods show it."""
-
-    ref: str
-    label: str
-    summary: str
-    needs_model_endpoint: bool
-
-
-class CoreEditingStage(LandingModel):
-    """What the editor shows at a stage of writing the mark scheme."""
-
-    marking: EditorContent
-    open_step: EditorContent | None
-
-
-class CoreHero(LandingModel):
-    method_labels: dict[str, str]
-    """The label of each other question's method, by question."""
-    normalized_answers: dict[str, str]
-    """Each answer as the question reads it, by answer."""
-    results: dict[str, QuestionResult]
-    """Each answer's result, by answer."""
-    everyday: list[MethodChoice]
-    """The everyday methods offered for the question."""
-    advanced_choices: list[MethodChoice]
-    step_choices: list[MethodChoice]
-    """The everyday methods offered for a step of its marking."""
-    editing_stages: list[CoreEditingStage]
-    summary: MarkingSummary
-    """The mark scheme, saved."""
-
-
-class CoreGroups(LandingModel):
-    normalized_answers: dict[str, str]
-    """Each answer as the question reads it, by answer."""
-    results: dict[str, QuestionResult]
-    """Each answer's result, by answer."""
-    spelling_groups: list[list[str]]
-    """The answers of each group by similar spelling, as the answers column groups them."""
-
-
-class CoreByExampleStage(LandingModel):
-    """The marking after a decision of marking by example, or before the first."""
-
-    results: dict[str, QuestionResult]
-    """Each answer's result, by answer."""
-    summary: MarkingSummary
-    decisions: dict[str, Decision]
-    """The decisions so far, by answer as the question reads it."""
-
-
-class CoreByExample(LandingModel):
-    normalized_answers: dict[str, str]
-    """Each answer as the question reads it, by answer."""
-    stages: list[CoreByExampleStage]
-
-
-class CoreVariant(LandingModel):
-    summary: MarkingSummary
-    results: list[dict[str, QuestionResult]]
-    """Each answer's result for each question the marking gives marks to, by question."""
-
-
-class CoreExample(LandingModel):
-    method_label: str
-    normalized_answers: list[dict[str, str]]
-    """Each answer to each question, as the question reads it."""
-    variants: list[CoreVariant]
-
-
-class CoreTrustQuestion(LandingModel):
-    normalized_answers: dict[str, str]
-    """Each answer as the question reads it, by answer."""
-    results: dict[str, QuestionResult]
-    """Each answer's result, by answer."""
-
-
-class CoreTrust(LandingModel):
-    same_mark: CoreTrustQuestion
-    breakdown: CoreTrustQuestion
-    ai: CoreExample
-
-
-class CoreOutput(LandingModel):
-    hero: CoreHero
-    trust: CoreTrust
-    groups: CoreGroups
-    by_example: CoreByExample
-    examples: dict[str, CoreExample]
-    other_methods: list[str]
-    """The labels of the methods for the page's questions that have no example, simplest first."""
-
-
-@cache
-def core_output() -> CoreOutput:
-    return CoreOutput.model_validate_json(CORE.read_text())

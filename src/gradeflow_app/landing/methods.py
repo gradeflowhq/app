@@ -6,13 +6,16 @@ from collections.abc import Callable
 from dataclasses import dataclass, replace
 from itertools import pairwise
 
-from gradeflow_core import QuestionResult
+from gradeflow_core import BUILTINS, QuestionResult
 
-from gradeflow_app.landing.content import Answer, CoreExample, Example, core_output, landing_content
+from gradeflow_app.landing.content import Answer, Example, ExampleVariant, landing_content
 from gradeflow_app.landing.demos import (
     DRAFT,
     AnswersColumn,
+    editor_summary,
+    language_model_result,
     largest_first,
+    marked_submissions,
     set_previews,
     student_answers,
     unsaved_question,
@@ -56,24 +59,43 @@ class MethodView:
         return isinstance(self.columns[0], CombinationsColumn)
 
 
-def answers_columns(example: Example, core: CoreExample) -> list[AnswersColumn]:
+def variant_results(example: Example) -> list[VariantResults]:
+    """Each variant's results: the core's, or a language model's stored ones."""
+    label = BUILTINS.find(example.method_ref).label
+    answers = [answer.answers for answer in example.answers]
+
+    def results_of(variant: ExampleVariant) -> VariantResults:
+        if variant.results is not None:
+            [(key, question)] = example.question_set.items()
+            return [{key: language_model_result(result, question.max_marks, label)} for result in variant.results]
+        return [
+            dict(submission.results)
+            for submission in marked_submissions(example.question_set, variant.marking, answers)
+        ]
+
+    return [results_of(variant) for variant in example.variants]
+
+
+def variant_summaries(example: Example) -> list[MarkingSummary]:
+    return [editor_summary(example.question_set, variant.marking) for variant in example.variants]
+
+
+def answers_columns(example: Example) -> list[AnswersColumn]:
     """The question's answer groups after each variant."""
     [key] = example.question_set
     question = unsaved_question(example.question_set, key)
-    max_marks = question.core_question.max_marks
 
     def column(results: VariantResults, previews: VariantResults | None) -> AnswersColumn:
         groups = largest_first(
             [
                 AnswerGroup(
                     student_answers(
-                        max_marks,
+                        question.core_question,
                         Answer(text=answer.answers[key], student_count=answer.student_count),
-                        normalized[key],
                         result[key],
                     )
                 )
-                for answer, normalized, result in zip(example.answers, core.normalized_answers, results, strict=True)
+                for answer, result in zip(example.answers, results, strict=True)
             ]
         )
         if previews is not None:
@@ -83,10 +105,10 @@ def answers_columns(example: Example, core: CoreExample) -> list[AnswersColumn]:
             )
         return AnswersColumn(question, "answers", groups, draft=DRAFT)
 
-    return variant_columns(core, column)
+    return variant_columns(example, column)
 
 
-def combinations_columns(example: Example, core: CoreExample) -> list[CombinationsColumn]:
+def combinations_columns(example: Example) -> list[CombinationsColumn]:
     """The question group's combinations of answers after each variant."""
 
     def combination_cell(
@@ -107,19 +129,17 @@ def combinations_columns(example: Example, core: CoreExample) -> list[Combinatio
 
     def column(results: VariantResults, previews: VariantResults | None) -> CombinationsColumn:
         rows = []
-        for index, (answer, normalized, result) in enumerate(
-            zip(example.answers, core.normalized_answers, results, strict=True)
-        ):
+        for index, (answer, result) in enumerate(zip(example.answers, results, strict=True)):
             preview = None if previews is None else previews[index]
             cells = [
                 combination_cell(
                     key,
-                    normalized[key],
+                    question.normalize(answer.answers[key]),
                     answer.student_count,
                     result.get(key),
                     None if preview is None else preview.get(key),
                 )
-                for key in example.question_set
+                for key, question in example.question_set.items()
             ]
             changed = any(cell.changed for cell in cells)
             rows.append(Combination(cells, answer.student_count, answer.student_count if changed else 0))
@@ -130,30 +150,29 @@ def combinations_columns(example: Example, core: CoreExample) -> list[Combinatio
             rows,
         )
 
-    return variant_columns(core, column)
+    return variant_columns(example, column)
 
 
-def variant_columns[C](core: CoreExample, column: Callable[[VariantResults, VariantResults | None], C]) -> list[C]:
+def variant_columns[C](example: Example, column: Callable[[VariantResults, VariantResults | None], C]) -> list[C]:
     """`column` after each variant: the first variant's results, then each variant's previewed beside the variant
     before's."""
-    variant_results = [variant.results for variant in core.variants]
+    results = variant_results(example)
     return [
-        column(variant_results[0], None),
-        *(column(previous_results, results) for previous_results, results in pairwise(variant_results)),
+        column(results[0], None),
+        *(column(previous, current) for previous, current in pairwise(results)),
     ]
 
 
 def method_views() -> list[MethodView]:
     views = []
     for key, example in landing_content().examples.items():
-        core = core_output().examples[key]
-        columns = (combinations_columns if len(example.question_set) > 1 else answers_columns)(example, core)
+        columns = (combinations_columns if len(example.question_set) > 1 else answers_columns)(example)
         views.append(
             MethodView(
                 example_key=key,
-                label=core.method_label,
+                label=BUILTINS.find(example.method_ref).label,
                 columns=columns,
-                summaries=[variant.summary for variant in core.variants],
+                summaries=variant_summaries(example),
                 chapters=dict.fromkeys(variant.change for variant in example.variants),
             )
         )
