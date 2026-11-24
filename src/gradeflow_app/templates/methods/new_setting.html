@@ -1,0 +1,7 @@
+{# The Add setting dialog, swapped whole when it has errors. #}
+<c-dialog.head id="add-setting" title="Add setting" />
+<form hx-post="{{ action }}" hx-target="#method-work" hx-swap="outerMorph" hx-include="#method-state" hx-sync="#method-work:queue all" hx-status:422="swap:innerHTML target:#add-setting-body" hx-status:409="swap:innerHTML target:#method-notice" data-close-on-success>
+  {% csrf_token %}
+  <div class="grid gap-5 px-6 pt-2">{{ form }}</div>
+  <c-dialog.footer submit="Add" />
+</form>

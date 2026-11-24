@@ -40,6 +40,7 @@ from tests.conftest import (
     code_draft,
     create_assessment,
     encrypted_id,
+    make_code_question,
     new_account_fields,
     save_draft,
     signed_in_client,
@@ -279,7 +280,7 @@ def test_a_saved_methods_guide_says_what_using_it_asks_for() -> None:
             "label": "Terms",
             "summary": "Says the terms.",
             "question_types": ["text"],
-            "settings": {"terms": {"title": "Terms"}, "limit_to_three_words": {"default": False}},
+            "settings": {"terms": {"title": "Terms"}, "limit_to_three_words": {"type": "boolean", "default": False}},
             "steps": [
                 {"for_each": "{{ settings.terms }}", "uses": "gradeflow/key-point@1", "with": {"point": "{{ item }}"}},
                 {"if": "{{ settings.limit_to_three_words }}", "uses": "gradeflow/length@1", "with": {"max_length": 3}},
@@ -534,12 +535,13 @@ def test_marking_is_chosen_by_how_to_mark(client: Client, assessment: Assessment
     assert "Nothing matches." in picker
 
 
-def test_more_options_stay_open_while_their_rows_change(client: Client, assessment: Assessment) -> None:
-    url, fields = code_draft(client, assessment)
+def test_more_options_stay_open_while_rows_in_them_change(client: Client, assessment: Assessment) -> None:
+    make_code_question(assessment, "Q1")
+    url, _ = start_marking(client, assessment, "Q1", "gradeflow/code-tests@1")
     more_open = re.compile(rb'class="group/more[^"]*" open')
-    response = client.post(url, fields | {"operation": "add_row", "target": "parameters", "more_open": "1"})
+    response = client.post(url, {"path": "", "operation": "add_row", "target": "tests", "more_open": "1"})
     assert more_open.search(response.content)
-    response = client.post(url, fields | {"operation": "add_row", "target": "parameters"})
+    response = client.post(url, {"path": "", "operation": "add_row", "target": "tests"})
     assert not more_open.search(response.content), "closed unless the change came from inside"
 
 

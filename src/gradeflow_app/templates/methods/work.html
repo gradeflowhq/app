@@ -110,7 +110,6 @@
             {% include "forms/object.html#groups" with groups=values.basic_sections %}
             {% include "forms/object.html#groups" with groups=values.advanced_sections %}
             {% include "marking/step.html#row_lists" with field_sets=values.rows draft_url=urls.values editable=draft %}
-            {% include "marking/step.html#typed_maps" with field_sets=values.maps draft_url=urls.values editable=draft %}
             {% if draft and workspace.draft.test_values %}<div><button type="button" class="btn btn-sm" hx-post="{{ urls.values }}" hx-vals='{"operation": "reset"}'>Use defaults</button></div>{% endif %}
           </form>
         </c-more-options>

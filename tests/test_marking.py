@@ -319,77 +319,6 @@ def test_a_problem_with_the_assessment_shows_on_the_field_at_fault(client: Clien
     assert problem_message(draft, "correct") in errors
 
 
-def post_parameter_rows(url: str, client: Client, fields: dict[str, str], rows: list[tuple[str, str, str]]) -> str:
-    row_fields = {"parameters-posted": "1"}
-    for index, (key, tag, value) in enumerate(rows):
-        row_fields |= {
-            f"parameters-{index}-key": key,
-            f"parameters-{index}-tag": tag,
-            f"parameters-{index}-value": value,
-        }
-    return client.post(url, fields | row_fields).text
-
-
-def test_parameters_are_named_and_checked_as_the_core_says(client: Client, assessment: Assessment) -> None:
-    url, fields = code_draft(client, assessment)
-    client.post(url, fields | {"operation": "add_row", "target": "parameters"})
-    page = client.post(url, fields | {"operation": "add_row", "target": "parameters"}).text
-    draft = MarkingDraftRecord.objects.get()
-    assert list(definition_tree(draft)["with"]["parameters"]) == ["parameter_1", "parameter_2"]
-    assert "Add parameter" in page
-    assert 'pattern="^[A-Za-z_][A-Za-z0-9_]*$"' in page
-    rows = [("1st", "integer", "2"), ("parameter_2", "integer", "0.5")]
-    page = post_parameter_rows(url, client, fields | {"fields_posted": "1"}, rows)
-    first = between(page, 'id="parameters-0-error"', "</div>")
-    assert problem_message(draft, "1st") in first
-    assert problem_message(draft, "parameter_2") in between(page, 'id="parameters-1-error"', "</div>")
-    assert definition_tree(draft)["with"]["parameters"]["parameter_2"]["value"] == "0.5", (
-        "kept as typed, for the core to check"
-    )
-
-
-def test_a_new_parameter_never_replaces_another(client: Client, assessment: Assessment) -> None:
-    url, fields = code_draft(client, assessment)
-    for _ in range(2):
-        client.post(url, fields | {"operation": "add_row", "target": "parameters"})
-    client.post(url, fields | {"operation": "remove_row", "target": "parameters", "value": "parameter_1"})
-    client.post(url, fields | {"operation": "add_row", "target": "parameters"})
-    assert len(definition_tree(MarkingDraftRecord.objects.get())["with"]["parameters"]) == 2
-
-
-def test_parameters_the_editor_cant_edit_are_kept_as_they_are(client: Client, assessment: Assessment) -> None:
-    url, fields = code_draft(client, assessment)
-    draft = MarkingDraftRecord.objects.get()
-    listed = {"type": "list", "value": [{"type": "integer", "value": 1}]}
-    definition = definition_tree(draft)
-    definition["with"]["parameters"] = {"sizes": listed, "n": {"type": "integer", "value": 1}}
-    save_definition(draft, definition)
-    page = client.get(reverse("question", args=[assessment.pk, draft.question_id])).text
-    assert "Can't be edited here" in page
-    row_fields = {"parameters-posted": "1", "parameters-0-key": "sizes", "parameters-1-key": "n"}
-    row_fields |= {"parameters-1-tag": "integer", "parameters-1-value": "2"}
-    client.post(url, fields | {"fields_posted": "1"} | row_fields)
-    assert definition_tree(draft)["with"]["parameters"] == {"sizes": listed, "n": {"type": "integer", "value": 2}}
-
-
-def test_a_parameter_is_removed_by_the_name_its_row_has_now(client: Client, assessment: Assessment) -> None:
-    url, fields = code_draft(client, assessment)
-    draft = MarkingDraftRecord.objects.get()
-    definition = definition_tree(draft)
-    definition["with"]["parameters"] = {"n": {"type": "integer", "value": 1}}
-    save_definition(draft, definition)
-    page = client.get(reverse("question", args=[assessment.pk, draft.question_id])).text
-    (remove_values,) = re.findall(r'hx-vals="([^"]*remove_row[^"]*)"', page)
-    row = {
-        "parameters-posted": "1",
-        "parameters-0-key": 'a"b',
-        "parameters-0-tag": "integer",
-        "parameters-0-value": "1",
-    }
-    client.post(url, fields | row | json.loads(html.unescape(remove_values)))
-    assert "parameters" not in definition_tree(draft)["with"], "none left, as by default"
-
-
 def test_a_saved_marking_the_core_now_rejects_opens_and_says_so(
     client: Client, assessment: Assessment, django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks
 ) -> None:
@@ -399,7 +328,7 @@ def test_a_saved_marking_the_core_now_rejects_opens_and_says_so(
     )
     marking = Marking.objects.get()
     definition = definition_data(marking.definition)
-    definition["with"]["parameters"] = {"answer": {"type": "integer", "value": 1}}
+    definition["with"]["time_limit"] = 0
     marking.definition = dump_yaml(definition)
     marking.save()
     question = marking.question
@@ -411,7 +340,7 @@ def test_a_saved_marking_the_core_now_rejects_opens_and_says_so(
         saved = client.post(settings_url, {"question_type": "text", "save": "1", "max_marks": "2"})
     assert saved.status_code == 200, "marking the question again skips what can't mark"
     started = client.post(reverse("marking_start", args=[assessment.pk, question.pk])).text
-    assert problem_message(MarkingDraftRecord.objects.get(), "answer") in started
+    assert problem_message(MarkingDraftRecord.objects.get(), "time_limit") in started
     assert Marking.objects.filter(pk=marking.pk).exists(), "kept until it's fixed"
 
 

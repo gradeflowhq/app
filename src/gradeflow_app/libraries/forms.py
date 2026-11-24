@@ -1,4 +1,4 @@
-"""Forms of a method: a new one, a saved marking, and a copy."""
+"""Forms of a method: a new one, a saved marking, a copy, and a new setting."""
 
 from functools import partial
 from typing import Any
@@ -33,3 +33,11 @@ class CopyForm(forms.Form):
         library = self.fields["library"]
         assert isinstance(library, forms.ChoiceField)
         library.choices = choices
+
+
+class NewSettingForm(forms.Form):
+    name = forms.CharField(
+        label="Name",
+        help_text="How the method's steps refer to it, such as pass_mark.",
+        widget=forms.TextInput(attrs={"class": "font-mono", "autocomplete": "off", "spellcheck": "false"}),
+    )

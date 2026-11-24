@@ -10,14 +10,13 @@ from typing import Any
 
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.core.validators import EMPTY_VALUES
 from django.db import transaction
 from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 from gradeflow_core import GradeFlowError, InvalidError, QuestionSet
-from gradeflow_core.editing import QUESTION_CLASSES, EditingError, new_question
+from gradeflow_core.editing import QUESTION_CLASSES, EditingError, MethodDraft, new_question
 
 from gradeflow_app.editor import operations
 from gradeflow_app.editor.picker import PickerForm, step_picker
@@ -33,6 +32,7 @@ from gradeflow_app.libraries.designer.workspace import (
     start_draft,
     version_tests_of,
 )
+from gradeflow_app.libraries.forms import NewSettingForm
 from gradeflow_app.libraries.models import Method, MethodDraftRecord
 from gradeflow_app.libraries.services import method_draft
 from gradeflow_app.libraries.views import library_url
@@ -261,6 +261,30 @@ def fill_field(request: Request, access: MethodAccess) -> HttpResponse:
     return _edit(request, access, None, change)
 
 
+@method_viewer(edit=True)
+@transaction.atomic
+def new_setting(request: Request, access: MethodAccess) -> HttpResponse:
+    """The Add setting dialog; posting declares the setting once the core accepts its name."""
+    workspace = _workspace(request, access, None)
+    form = NewSettingForm(request.POST if request.method == "POST" else None)
+    if form.is_valid():
+        name = form.cleaned_data["name"]
+        try:
+            workspace.draft.add_declared_setting(name)
+        except EditingError as error:
+            form.add_error("name", str(error))
+        else:
+
+            def change(current: MethodWorkspace) -> dict[str, Any]:
+                current.draft.add_declared_setting(name)
+                current.save()
+                return {"tab": "settings", "setting": name}
+
+            return _edit(request, access, None, change)
+    context = {"action": workspace.url("method_new_setting"), "form": form}
+    return render(request, "methods/new_setting.html", context, status=422 if form.is_bound else 200)
+
+
 @method_viewer()
 @transaction.atomic
 def settings_tab(request: Request, access: MethodAccess, number: int | None = None) -> HttpResponse:
@@ -289,11 +313,17 @@ def settings_tab(request: Request, access: MethodAccess, number: int | None = No
                 "setting": name,
                 "declared_setting_view": presenters.declared_setting_view(workspace, name, initial_object=edited),
             }
+        declaration = declared_setting_view.declaration()
+        if request.POST.get("operation") == "retype":
+            _retype(workspace.draft, name, declaration)
+            workspace.save()
+            return {
+                "tab": "settings",
+                "setting": name,
+                "declared_setting_view": presenters.declared_setting_view(workspace, name),
+            }
         if not form.is_valid():
             return showing_form
-        declaration = {key: value for key, value in values.items() if value not in EMPTY_VALUES}
-        if declaration.get("advanced") == declared_setting_view.advanced:
-            del declaration["advanced"]
         try:
             workspace.draft.update_declared_setting(name, declaration)
         except InvalidError as error:
@@ -306,6 +336,16 @@ def settings_tab(request: Request, access: MethodAccess, number: int | None = No
         return {"tab": "settings", "setting": ""}
 
     return _edit(request, access, number, change)
+
+
+def _retype(draft: MethodDraft, name: str, declaration: dict[str, Any]) -> None:
+    """Change a declared setting to `declaration`, without its default and choices if its type doesn't take them."""
+    try:
+        draft.update_declared_setting(name, declaration)
+    except InvalidError:
+        draft.update_declared_setting(
+            name, {key: value for key, value in declaration.items() if key not in ("default", "choices")}
+        )
 
 
 @method_viewer()

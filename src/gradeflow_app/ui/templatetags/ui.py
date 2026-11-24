@@ -113,7 +113,7 @@ def initials(name: object) -> str:
 
 @register.filter
 def short_value(value: object) -> str:
-    """A setting's value in a few words; a group of settings by its first text, a table of them by its row names."""
+    """A setting's value in a few words; a group of settings by its first text."""
     if isinstance(value, bool):
         return "Yes" if value else "No"
     if value is None:
@@ -121,8 +121,6 @@ def short_value(value: object) -> str:
     if isinstance(value, list):
         return ", ".join(map(short_value, value)) or "None"
     if isinstance(value, dict):
-        if value and all(isinstance(row, dict) for row in value.values()):
-            return ", ".join(value)
         return next(
             (text for text in value.values() if isinstance(text, str) and text),
             f"{len(value)} setting{pluralize(len(value))}",

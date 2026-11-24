@@ -8,9 +8,11 @@
     <fieldset class="grid gap-4"{% if not workspace.editable %} disabled{% endif %}>
       {% with form=declared_setting_view.form %}
       <c-form-errors :errors="form.non_field_errors" />
-      {% for _, fields in form.basic_sections %}{% for field in fields %}{% if field.name != "advanced" %}{{ field.as_field_group }}{% endif %}{% endfor %}{% endfor %}
+      {% for _, fields in form.basic_sections %}{% for field in fields %}
+        {% if field.name == "type" %}<div class="contents" hx-post="{{ urls.settings }}" hx-trigger="change" hx-vals="{% hx_vals operation="retype" %}">{{ field.as_field_group }}</div>
+        {% elif field.name != "advanced" %}{{ field.as_field_group }}{% endif %}
+      {% endfor %}{% endfor %}
       {% include "marking/step.html#row_lists" with field_sets=form.rows draft_url=urls.settings editable=workspace.editable %}
-      {% include "marking/step.html#typed_maps" with field_sets=form.maps draft_url=urls.settings editable=workspace.editable %}
       {{ form.advanced.as_field_group }}
       {% endwith %}
     </fieldset>
@@ -28,19 +30,20 @@
   </div>
   {% endif %}
 {% elif declared_settings %}
+  {% if workspace.editable %}<button type="button" class="btn btn-sm justify-self-end" hx-get="{{ urls.new_setting }}" hx-target="#add-setting-body" hx-swap="innerHTML" data-dialog="add-setting">{% icon "plus" %}Add setting</button>{% endif %}
   <ul class="grid gap-2" aria-label="Settings">
-    {% for name, declaration, default in declared_settings %}
+    {% for name, declaration, default, type_label in declared_settings %}
     <li><button type="button" class="surface flex w-full items-start gap-3 p-4 text-left hover:border-primary/50" hx-get="{{ urls.settings }}" hx-vals="{% hx_vals setting=name %}">
       <span class="grid min-w-0 flex-1 gap-0.5">
         <span class="font-medium">{{ declaration.title|default:name }}</span>
         {% if declaration.description %}<span class="line-clamp-2 text-sm text-muted">{{ declaration.description|inline_markdown|striptags }}</span>{% endif %}
-        <span class="truncate text-sm text-muted">{% if "default" in declaration %}Default: {{ default|short_value }}{% else %}No default{% endif %}</span>
+        <span class="truncate text-sm text-muted"><code>{{ name }}</code>{% if type_label %} · {{ type_label }}{% endif %} · {% if "default" in declaration %}Default: {{ default|short_value }}{% else %}No default{% endif %}</span>
       </span>
       {% icon "chevron-right" "mt-1 text-muted" %}
     </button></li>
     {% endfor %}
   </ul>
 {% else %}
-  <c-empty-state icon="adjustments-horizontal" title="No settings" />
+  <c-empty-state icon="adjustments-horizontal" title="No settings">{% if workspace.editable %}<c-slot name="action"><button type="button" class="btn" hx-get="{{ urls.new_setting }}" hx-target="#add-setting-body" hx-swap="innerHTML" data-dialog="add-setting">{% icon "plus" %}Add setting</button></c-slot>{% endif %}</c-empty-state>
 {% endif %}
 </div>

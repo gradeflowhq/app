@@ -79,7 +79,9 @@ class TagsWidget(forms.SelectMultiple):
         return context
 
     def format_value(self, value: Any) -> list[str]:
-        return [str(item) for item in value or []]
+        if value is None:
+            return []
+        return [str(item) for item in value] if isinstance(value, list) else [str(value)]
 
 
 class ConditionWidget(forms.Widget):

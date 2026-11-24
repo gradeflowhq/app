@@ -25,6 +25,7 @@ from gradeflow_app.questions.models import QUESTION_TYPE_LABELS
 from tests.conftest import (
     HTMX_HEADERS,
     FakeRunner,
+    between,
     create_course,
     designer_record,
     designer_url,
@@ -426,11 +427,80 @@ def field_error(page: str, name: str) -> str:
 
 
 def test_a_table_default_of_a_setting_comes_before_advanced(client: Client, method: Method) -> None:
-    check = {"uses": "gradeflow/custom-code@1", "with": {"code": "correct = True\n"}}
+    check = {"uses": "gradeflow/answer-criteria@1", "with": {"criteria": [{"text": "Names light.", "marks": 1}]}}
+    text = dump_yaml({"label": "Light", "summary": "Criteria.", "question_types": ["text"], "steps": [check]})
+    post_to_designer(client, method, "method_yaml", definition=text)
+    page = declared_setting_page(client, method, bind_new_setting(client, method, "/with/steps/0/with/criteria"))
+    assert page.index('name="default-posted"') < page.index('name="setting-advanced"')
+
+
+def test_an_added_setting_gives_its_type_and_default(client: Client, method: Method) -> None:
+    code = 'correct = len(answer.split()) >= settings["minimum"]\n'
+    check = {"uses": "gradeflow/custom-code@1", "with": {"code": code}}
     text = dump_yaml({"label": "Light", "summary": "Code.", "question_types": ["text"], "steps": [check]})
     post_to_designer(client, method, "method_yaml", definition=text)
-    page = declared_setting_page(client, method, bind_new_setting(client, method, "/with/steps/0/with/parameters"))
-    assert page.index('name="default-posted"') < page.index('name="setting-advanced"')
+    assert 'name="name"' in client.get(designer_url(method, "method_new_setting")).text
+    page = post_to_designer(client, method, "method_new_setting", None, name="minimum").text
+    assert "(optional)" not in between(page, 'for="id_setting-type"', "</label>")
+    assert [option for option in options_of(page, "type") if option[0]] == [
+        ("number", "Number"),
+        ("integer", "Whole number"),
+        ("text", "Text"),
+        ("boolean", "Yes/No"),
+        ("text_list", "List of text"),
+        ("number_list", "List of numbers"),
+    ]
+    fields = {"setting": "minimum", "setting-title": "Minimum", "setting-type": "integer"}
+    post_to_designer(client, method, "method_settings", None, **fields)
+    post_to_designer(client, method, "method_settings", None, **fields, **{"setting-default": "3"})
+    assert core_draft(method).declared_settings["minimum"] == {"title": "Minimum", "type": "integer", "default": 3}
+    assert core_draft(method).problems == []
+    listing = client.get(designer_url(method, "method_settings"), {"tab": "settings"}).text
+    assert "<code>minimum</code> · Whole number · Default: 3" in listing
+
+
+def test_a_default_yaml_wrote_against_its_type_shows_as_written(client: Client, method: Method) -> None:
+    check = {"uses": "gradeflow/custom-code@1", "with": {"code": 'correct = answer in settings["words"]\n'}}
+    settings = {"words": {"type": "text_list", "default": "light"}}
+    text = dump_yaml(
+        {"label": "Light", "summary": "Code.", "question_types": ["text"], "settings": settings, "steps": [check]}
+    )
+    post_to_designer(client, method, "method_yaml", definition=text)
+    page = declared_setting_page(client, method, "words")
+    assert '<option value="light" selected' in setting_declaration_form(page)
+
+
+def test_choosing_another_type_saves_the_values_it_takes(client: Client, method: Method) -> None:
+    check = {"uses": "gradeflow/custom-code@1", "with": {"code": 'correct = answer in settings["words"]\n'}}
+    settings = {"words": {"title": "Words", "type": "number", "default": 3}}
+    text = dump_yaml(
+        {"label": "Light", "summary": "Code.", "question_types": ["text"], "settings": settings, "steps": [check]}
+    )
+    post_to_designer(client, method, "method_yaml", definition=text)
+    fields = {"setting": "words", "setting-title": "Words", "operation": "retype"}
+    post_to_designer(
+        client, method, "method_settings", None, **fields, **{"setting-type": "integer", "setting-default": "3"}
+    )
+    assert core_draft(method).declared_settings["words"] == {"title": "Words", "type": "integer", "default": 3}
+    page = post_to_designer(
+        client, method, "method_settings", None, **fields, **{"setting-type": "text_list", "setting-default": "3"}
+    ).text
+    assert 'name="setting-default" multiple' in setting_declaration_form(page)
+    assert core_draft(method).declared_settings["words"] == {"title": "Words", "type": "text_list"}
+    post_to_designer(client, method, "method_settings", None, **fields, **{"setting-type": "boolean"})
+    fields = {"setting": "words", "setting-title": "Words", "setting-type": "boolean", "setting-default": "True"}
+    post_to_designer(client, method, "method_settings", None, **fields)
+    assert core_draft(method).declared_settings["words"] == {"title": "Words", "type": "boolean", "default": True}
+
+
+def test_a_setting_name_taken_or_not_a_name_shows_why(client: Client, method: Method) -> None:
+    response = post_to_designer(client, method, "method_new_setting", None, name="2nd")
+    assert response.status_code == 422
+    assert "Use letters, digits and underscores" in response.text
+    assert core_draft(method).declared_settings == {}
+    post_to_designer(client, method, "method_new_setting", None, name="minimum")
+    page = post_to_designer(client, method, "method_new_setting", None, name="minimum").text
+    assert "There&#x27;s already a setting called minimum." in page
 
 
 def test_the_choices_of_a_setting_are_the_options_of_the_field_it_fills(client: Client, method: Method) -> None:
@@ -438,7 +508,6 @@ def test_the_choices_of_a_setting_are_the_options_of_the_field_it_fills(client: 
     page = declared_setting_page(client, method, name)
     options = [("exact", "Exactly"), ("spelling", "Similar spelling"), ("meaning", "Same meaning")]
     assert options_of(page, "choices") == options
-    assert 'name="setting-examples"' not in page, "a setting with fixed options has nothing to suggest"
     fields: dict[str, object] = {
         "setting": name,
         "setting-title": "Match",
@@ -457,19 +526,12 @@ def test_the_choices_of_a_setting_are_the_options_of_the_field_it_fills(client: 
     assert "Default: Similar spelling" in listing
 
 
-def test_choices_and_examples_show_only_where_they_apply(client: Client, method_with_length_check: Method) -> None:
-    for field in (FIRST_POINTS_PATH, WHOLE_WORDS_PATH):
+def test_choices_show_only_where_they_apply(client: Client, method_with_length_check: Method) -> None:
+    for field in (FIRST_POINTS_PATH, WHOLE_WORDS_PATH, MIN_LENGTH_PATH):
         page = declared_setting_page(
             client, method_with_length_check, bind_new_setting(client, method_with_length_check, field)
         )
         assert 'name="setting-choices"' not in page
-        assert 'name="setting-examples"' not in page
-    name = bind_new_setting(client, method_with_length_check, MIN_LENGTH_PATH)
-    assert 'name="setting-choices"' not in declared_setting_page(client, method_with_length_check, name)
-    post_to_designer(
-        client, method_with_length_check, "method_settings", None, **{"setting": name, "setting-examples": ["2", "5"]}
-    )
-    assert core_draft(method_with_length_check).declared_settings[name]["examples"] == [2, 5]
 
 
 def test_a_default_outside_the_choices_shows_on_the_default_with_what_was_typed(client: Client, method: Method) -> None:
@@ -543,32 +605,6 @@ def test_editing_a_check_keeps_the_fields_filled_by_settings(client: Client, met
     )
     assert core_draft(method).declared_settings == before
     assert before[points_setting]["default"] == ["light"]
-
-
-def test_examples_are_typed_like_the_setting(client: Client, method_with_length_check: Method) -> None:
-    name = bind_new_setting(client, method_with_length_check, MIN_LENGTH_PATH)
-    page = post_to_designer(
-        client, method_with_length_check, "method_settings", None, **{"setting": name, "setting-examples": ["2", "abc"]}
-    )
-    assert "examples" not in core_draft(method_with_length_check).declared_settings[name]
-    text = page.text
-    assert field_error(text, "examples") == "Must be a whole number."
-    assert '<option value="abc" selected>' in text
-
-
-def test_the_default_offers_the_examples_of_the_field_not_of_the_setting(
-    client: Client, method_with_length_check: Method
-) -> None:
-    name = bind_new_setting(client, method_with_length_check, MIN_LENGTH_PATH)
-    post_to_designer(
-        client, method_with_length_check, "method_settings", None, **{"setting": name, "setting-examples": ["7"]}
-    )
-    assert 'data-preset="7"' not in setting_declaration_form(
-        declared_setting_page(client, method_with_length_check, name)
-    )
-    assert 'data-preset="7"' in client.get(designer_url(method_with_length_check, "method_page")).text, (
-        "where it's filled in"
-    )
 
 
 def test_a_whole_number_default_is_saved_whole(client: Client, method_with_length_check: Method) -> None:

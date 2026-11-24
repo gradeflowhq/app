@@ -127,11 +127,6 @@ def test_a_list_of_settings_shows_each_by_its_first_text() -> None:
     assert short_value(rows) == "Wrong idea, Mentions sun, 1 setting"
 
 
-def test_a_table_of_settings_shows_its_row_names() -> None:
-    parameters = {"alpha": {"type": "integer", "value": 1}, "beta": {"type": "text", "value": "two"}}
-    assert short_value(parameters) == "alpha, beta"
-
-
 def test_marks_and_percentages_round_halves_up_alike() -> None:
     assert (marks(19 / 40), percent(19 / 40)) == ("0.48", "48%")
     assert (marks(2), marks(1.5), marks(1 / 3), percent(0.125)) == ("2", "1.5", "0.33", "13%")

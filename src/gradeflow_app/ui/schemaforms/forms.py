@@ -1,9 +1,9 @@
-"""A form of an object's schema, and what it reads of a post: its fields, rows of plain objects and maps of tagged
-values, with the core's problems shown on what holds them."""
+"""A form of an object's schema, and what it reads of a post: its fields and rows of plain objects, with the core's
+problems shown on what holds them."""
 
 import json
 from collections.abc import Iterable, Mapping, Sequence
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, replace
 from typing import Any, cast
 
 from django import forms
@@ -11,8 +11,7 @@ from gradeflow_core import Problem
 from jsonpointer import JsonPointer
 
 from gradeflow_app.ui.forms import BoundField, posted_indexes
-from gradeflow_app.ui.schemaforms.fields import field_for
-from gradeflow_app.ui.schemaforms.layout import NESTED_SEPARATOR, FieldHints, Layout, Tag, TaggedMap, layout
+from gradeflow_app.ui.schemaforms.layout import NESTED_SEPARATOR, FieldHints, Layout, layout
 from gradeflow_app.ui.schemaforms.schema import Schema
 from gradeflow_app.ui.schemaforms.widgets import NumberTextInput, Segmented
 
@@ -93,17 +92,6 @@ class HintedField(BoundField):
 
 
 @dataclass(frozen=True)
-class MapEntry:
-    """An entry of a map of tagged values, as a row."""
-
-    prefix: str
-    key: str
-    tag: Tag | None
-    value: Any
-    errors: list[str] = field(default_factory=list)
-
-
-@dataclass(frozen=True)
 class RowForms:
     """A list of plain objects, each a form, under its heading."""
 
@@ -113,18 +101,6 @@ class RowForms:
     forms: list[ObjectForm]
     label_controls: str = ""
     replaced_control: str = ""
-
-
-@dataclass(frozen=True)
-class MapEntries:
-    """A map of tagged values, as rows under its heading."""
-
-    name: str
-    label: str
-    help: str
-    map: TaggedMap
-    entries: list[MapEntry]
-    label_controls: str = ""
 
 
 class ObjectForm(forms.Form):
@@ -171,18 +147,6 @@ class ObjectForm(forms.Form):
             )
             for name, item in self.layout.rows.items()
         ]
-        self.maps = [
-            MapEntries(
-                name,
-                *self.layout.headings[name],
-                tagged,
-                [
-                    MapEntry(f"{name}-{index}", key, tagged.tag_of(entry), entry.get("value"))
-                    for index, (key, entry) in enumerate((initial_object.get(name) or {}).items())
-                ],
-            )
-            for name, tagged in self.layout.tagged.items()
-        ]
         self.steps_setting_errors: dict[str, list[str]] = {name: [] for name in self.layout.settings_holding_steps}
 
     def disable(self) -> None:
@@ -194,12 +158,9 @@ class ObjectForm(forms.Form):
                 form.disable()
 
     def add_label_controls(self, name: str, html: str) -> None:
-        """Show `html`, controls of the form's owner, beside the label of the field, list or map `name`."""
+        """Show `html`, controls of the form's owner, beside the label of the field or list `name`."""
         self.label_controls[name] = html
         self.rows = [replace(rows, label_controls=html) if rows.name == name else rows for rows in self.rows]
-        self.maps = [
-            replace(entries, label_controls=html) if entries.name == name else entries for entries in self.maps
-        ]
 
     def replace_control(self, name: str, html: str) -> None:
         """Show `html` in place of the control of the field or list `name`, which something else fills."""
@@ -221,19 +182,16 @@ class ObjectForm(forms.Form):
             self.add_problem(problem.field, problem.message)
 
     def add_problem(self, field: str, message: str) -> None:
-        """Show a problem the core found at `field`, a JSON Pointer into this object, on the field, steps setting, row
-        or map entry holding that value; otherwise on the whole form, after the setting's name."""
+        """Show a problem the core found at `field`, a JSON Pointer into this object, on the field, steps setting or row
+        holding that value; otherwise on the whole form, after the setting's name."""
         parts: list[str] = JsonPointer(field).parts
         name, *inner_parts = parts or [""]
         index = inner_parts[0] if inner_parts else ""
         row_forms = next((rows.forms for rows in self.rows if rows.name == name), [])
-        map_entries = next((entries.entries for entries in self.maps if entries.name == name), [])
         if name in self.steps_setting_errors:
             self.steps_setting_errors[name].append(message)
         elif index.isdecimal() and int(index) < len(row_forms):
             row_forms[int(index)].add_problem(JsonPointer.from_parts(inner_parts[1:]).path, message)
-        elif entry := next((entry for entry in map_entries if entry.key == index), None):
-            entry.errors.append(message)
         elif form_field := self._field_at(parts):
             self.add_error(form_field, message)
         else:
@@ -249,14 +207,6 @@ class ObjectForm(forms.Form):
         return [rows for rows in self.rows if rows.name in self.layout.advanced]
 
     @property
-    def basic_maps(self) -> list[MapEntries]:
-        return [entries for entries in self.maps if entries.name not in self.layout.advanced]
-
-    @property
-    def advanced_maps(self) -> list[MapEntries]:
-        return [entries for entries in self.maps if entries.name in self.layout.advanced]
-
-    @property
     def basic_sections(self) -> list[tuple[str, list[HintedField]]]:
         return self._sections(advanced=False)
 
@@ -267,22 +217,16 @@ class ObjectForm(forms.Form):
 
     @property
     def advanced_changed_count(self) -> int:
-        """How many advanced fields differ from their defaults, and advanced lists and maps have anything, for the
-        closed section's label."""
+        """How many advanced fields differ from their defaults, and advanced lists have anything, for the closed
+        section's label."""
         changed: int = sum(self[name].initial != self.fields[name].initial for name in self._advanced)
-        return (
-            changed
-            + sum(bool(rows.forms) for rows in self.advanced_rows)
-            + sum(bool(entries.entries) for entries in self.advanced_maps)
-        )
+        return changed + sum(bool(rows.forms) for rows in self.advanced_rows)
 
     @property
     def has_advanced_errors(self) -> bool:
-        """Whether an advanced field, row or entry has an error, which must not stay hidden."""
-        return (
-            any(self[name].errors for name in self._advanced)
-            or any(row.errors for rows in self.advanced_rows for row in rows.forms)
-            or any(entry.errors for entries in self.advanced_maps for entry in entries.entries)
+        """Whether an advanced field or row has an error, which must not stay hidden."""
+        return any(self[name].errors for name in self._advanced) or any(
+            row.errors for rows in self.advanced_rows for row in rows.forms
         )
 
     @property
@@ -311,11 +255,9 @@ class ObjectForm(forms.Form):
                 continue
             parent, last = _parent_of(result, name)
             parent[last] = value
-        posted = {name for name in [*self.layout.rows, *self.layout.tagged] if f"{name}-posted" in self.data}
-        for name in posted & self.layout.rows.keys():
-            result[name] = _read_rows(self.data, name, self.layout.rows[name], self.defs)
-        for name in posted & self.layout.tagged.keys():
-            result[name] = _read_tagged(self.data, name, self.layout.tagged[name], self.initial_object.get(name) or {})
+        for name, schema in self.layout.rows.items():
+            if f"{name}-posted" in self.data:
+                result[name] = _read_rows(self.data, name, schema, self.defs)
         return result
 
     def _is_omitted(self, name: str) -> bool:
@@ -345,19 +287,11 @@ def allow_unset(form: ObjectForm, name: str) -> None:
 
 
 def edit_collection(form_layout: Layout, name: str, current: Any, data: Mapping[str, Any]) -> Any:
-    if data.get("operation") == "add_row":
-        if (tagged := form_layout.tagged.get(name)) is not None:
-            key, entry = tagged.new_entry(current or {})
-            return {**(current or {}), key: entry}
-        if name in form_layout.rows:
-            return [*(current or []), {}]
-    elif data.get("operation") == "remove_row":
-        value = str(data.get("value", ""))
-        if isinstance(current, dict):
-            removed_key = str(data.get(f"{name}-{value}-key", value)).strip()
-            return {entry_key: entry for entry_key, entry in current.items() if entry_key != removed_key}
-        if isinstance(current, list) and value.isdigit():
-            return [row for index, row in enumerate(current) if index != int(value)]
+    operation, value = data.get("operation"), str(data.get("value", ""))
+    if operation == "add_row" and name in form_layout.rows:
+        return [*(current or []), {}]
+    if operation == "remove_row" and isinstance(current, list) and value.isdigit():
+        return [row for index, row in enumerate(current) if index != int(value)]
     return current
 
 
@@ -400,26 +334,3 @@ def _read_rows(data: Mapping[str, Any], name: str, schema: Schema, defs: Mapping
         form.full_clean()
         rows.append(form.values())
     return rows
-
-
-def _read_tagged(data: Mapping[str, Any], name: str, tagged: TaggedMap, current: Mapping[str, Any]) -> dict[str, Any]:
-    """A map of tagged values posted as rows of `name-<index>-key`, `-tag` and `-value`. A row posting only its key,
-    one the editor can't edit, keeps its `current` entry."""
-    by_tag = {tag.value: tag for tag in tagged.editable_tags}
-    result = {}
-    for index in posted_indexes(data, name):
-        key = str(data.get(f"{name}-{index}-key", "")).strip()
-        tag = by_tag.get(str(data.get(f"{name}-{index}-tag", "")))
-        if key and tag is not None:
-            result[key] = {
-                tag.field: tag.value,
-                "value": _typed_value(data.get(f"{name}-{index}-value", ""), tag.schema),
-            }
-        elif key in current:
-            result[key] = current[key]
-    return result
-
-
-def _typed_value(posted_value: Any, schema: Schema) -> Any:
-    form_field = field_for(schema, "", "", {})
-    return form_field.to_python(posted_value) if form_field is not None else posted_value

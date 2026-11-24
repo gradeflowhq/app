@@ -34,7 +34,9 @@ from gradeflow_app.ui.schemaforms.forms import ObjectForm
 from gradeflow_app.ui.schemaforms.layout import unrepresentable_fields
 from gradeflow_app.ui.schemaforms.schema import labels_of, resolve, unwrap_nullable
 
-DRAFT_ONLY_VIEWS = frozenset({"method_choices", "method_field", "method_publish", "method_discard"})
+DRAFT_ONLY_VIEWS = frozenset(
+    {"method_choices", "method_field", "method_new_setting", "method_publish", "method_discard"}
+)
 DRAFT_TESTS = "draft-tests"
 VERSION_TESTS = "version-tests"
 """The kinds of run that mark a draft's and a version's test answers."""
@@ -198,6 +200,13 @@ class MethodWorkspace(StepWorkspace):
         schema = self.draft.declared_setting_schema(name)
         default, _ = unwrap_nullable(resolve(schema["properties"].get("default", {}), schema.get("$defs", {})))
         return as_labels(self.draft.declared_settings[name].get("default"), labels_of(default))
+
+    def type_label(self, name: str) -> str:
+        """A declared setting's type as people read it."""
+        setting_type: str | None = self.draft.declared_settings[name].get("type")
+        if setting_type is None:
+            return ""
+        return labels_of(self.draft.declared_setting_schema(name)["properties"]["type"])[setting_type]
 
     def fields_filled_by(self, name: str) -> list[tuple[str, str]]:
         """The fields a declared setting fills: each one's step path and label."""

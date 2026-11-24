@@ -1,8 +1,7 @@
-"""How an object's schema is edited: its fields, groups, rows, maps of tagged values and settings that hold steps."""
+"""How an object's schema is edited: its fields, groups, rows and settings that hold steps."""
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field, replace
-from itertools import count
 from typing import Any
 
 from django import forms
@@ -21,50 +20,6 @@ from gradeflow_app.ui.templatetags.ui import inline_markdown
 
 NESTED_SEPARATOR = "__"
 """Joins a nested object's name and its field's in form field names, which become HTML IDs."""
-
-SCALAR_TYPES = frozenset({"string", "number", "integer", "boolean"})
-
-
-@dataclass(frozen=True)
-class Tag:
-    """A member of a union of tagged values: `{field: value, "value": ...}`."""
-
-    field: str
-    value: str
-    label: str
-    schema: Schema
-
-    @property
-    def is_editable(self) -> bool:
-        """Whether its value is one typed in; others, like lists, are kept as they are."""
-        return self.schema.get("type") in SCALAR_TYPES
-
-
-@dataclass(frozen=True)
-class TaggedMap:
-    """A map of named, tagged values, like Custom Code's parameters."""
-
-    tags: list[Tag]
-    item: str
-    """What one entry is called."""
-    pattern: str = ""
-    """What names must look like, as a regular expression."""
-
-    @property
-    def editable_tags(self) -> list[Tag]:
-        return [tag for tag in self.tags if tag.is_editable]
-
-    def tag_of(self, entry: object) -> Tag | None:
-        return next(
-            (tag for tag in self.tags if isinstance(entry, Mapping) and entry.get(tag.field) == tag.value), None
-        )
-
-    def new_entry(self, taken: Mapping[str, Any]) -> tuple[str, dict[str, Any]]:
-        """A name not yet `taken`, and an entry of the first type, its value left to fill in."""
-        stem = "_".join(self.item.split())
-        name = next(name for number in count(len(taken) + 1) if (name := f"{stem}_{number}") not in taken)
-        first = self.editable_tags[0]
-        return name, {first.field: first.value}
 
 
 @dataclass(frozen=True)
@@ -101,14 +56,12 @@ class Layout:
     """Labelled fieldsets of nested objects' fields."""
     rows: dict[str, Schema] = field(default_factory=dict)
     """Lists of plain objects by name: their item schema."""
-    tagged: dict[str, TaggedMap] = field(default_factory=dict)
-    """Maps of tagged values by name."""
     headings: dict[str, tuple[str, str]] = field(default_factory=dict)
-    """The label and help of each list of rows and map, by name."""
+    """The label and help of each list of rows, by name."""
     settings_holding_steps: list[str] = field(default_factory=list)
     """The names of the fields that hold steps."""
     advanced: set[str] = field(default_factory=set)
-    """Fields, rows, maps and groups most people leave as they are, by name."""
+    """Fields, rows and groups most people leave as they are, by name."""
 
     def add_group(self, name: str, label: str, nested: Layout) -> None:
         """A nested object's fields, as `<name>__<field>` fields in a labelled group."""
@@ -163,37 +116,10 @@ def layout(schema: Schema, defs: Mapping[str, Schema] | None = None) -> Layout:
         ):
             result.rows[name] = resolve(property_schema["items"], defs)
             result.headings[name] = label, help_text
-        elif (
-            isinstance(property_schema.get("additionalProperties"), dict)
-            and "oneOf" in property_schema["additionalProperties"]
-        ):
-            tags = _tags(property_schema["additionalProperties"], defs)
-            item = hint(property_schema).get("item_label") or "entry"
-            result.tagged[name] = TaggedMap(tags, item, property_schema.get("propertyNames", {}).get("pattern", ""))
-            result.headings[name] = label, help_text
         elif (made := field_for(property_schema, label, help_text, defs)) is not None:
             result.fields[name] = made
             result.hints[name] = field_hints(property_schema, name in required)
     return result
-
-
-def _tags(union: Schema, defs: Mapping[str, Schema]) -> list[Tag]:
-    tags = []
-    for option in union["oneOf"]:
-        member = resolve(option, defs)
-        properties = member.get("properties", {})
-        tagged = next(
-            (
-                (name, property_schema["const"])
-                for name, property_schema in properties.items()
-                if "const" in property_schema
-            ),
-            None,
-        )
-        if tagged is not None:
-            name, tag = tagged
-            tags.append(Tag(name, tag, title_of(member, tag), properties.get("value", {})))
-    return tags
 
 
 def unrepresentable_fields(schema: Schema, values: Mapping[str, Any]) -> list[str]:
@@ -203,7 +129,6 @@ def unrepresentable_fields(schema: Schema, values: Mapping[str, Any]) -> list[st
     represented = (
         {name.split(NESTED_SEPARATOR, 1)[0] for name in form_layout.fields}
         | set(form_layout.rows)
-        | set(form_layout.tagged)
         | set(form_layout.settings_holding_steps)
     )
     found = []
@@ -214,10 +139,6 @@ def unrepresentable_fields(schema: Schema, values: Mapping[str, Any]) -> list[st
         title, value = property_schema.get("title", name), values.get(name)
         if name not in represented:
             found.append(title)
-        elif name in form_layout.tagged and isinstance(value, dict):
-            tagged = form_layout.tagged[name]
-            if any((tag := tagged.tag_of(item)) is None or not tag.is_editable for item in value.values()):
-                found.append(title)
         elif property_schema.get("type") == "object" and "properties" in property_schema:
             found += unrepresentable_fields(
                 {**property_schema, "$defs": defs}, value if isinstance(value, dict) else {}

@@ -6,6 +6,7 @@ from dataclasses import dataclass, replace
 from typing import Any, cast
 
 from django import forms
+from django.core.validators import EMPTY_VALUES
 from django.http import QueryDict
 from gradeflow_core import GradeFlowError, Problem
 from gradeflow_core.editing import EditingError, field_in_values
@@ -32,6 +33,14 @@ class DeclaredSettingView:
     form: ObjectForm
     fields_filled: list[tuple[str, str]]
     advanced: bool
+
+    def declaration(self) -> dict[str, Any]:
+        """The declaration the form posts: its filled-in values, with `advanced` only where it differs from the
+        field's."""
+        declaration = {key: value for key, value in self.form.values().items() if value not in EMPTY_VALUES}
+        if declaration.get("advanced") == self.advanced:
+            del declaration["advanced"]
+        return declaration
 
 
 def state_of(request: Request, workspace: MethodWorkspace) -> dict[str, str]:
@@ -103,7 +112,7 @@ def workspace_context(
         if state["tab"] == "settings":
             context.setdefault("declared_setting_view", declared_setting_view(workspace, state["setting"]))
             context["declared_settings"] = [
-                (name, declaration, workspace.default_label(name))
+                (name, declaration, workspace.default_label(name), workspace.type_label(name))
                 for name, declaration in workspace.draft.declared_settings.items()
             ]
         else:
@@ -175,7 +184,7 @@ def _rows(workspace: MethodWorkspace, question: str, *, run_is_current: bool) ->
 def _urls(workspace: MethodWorkspace) -> dict[str, str]:
     names = ["page", "answers", "values", "run", "results", "step", "settings", "question", "details", "yaml"]
     if workspace.editable:
-        names += ["publish", "discard"]
+        names += ["publish", "discard", "new_setting"]
     return {name: workspace.url(f"method_{name}") for name in names}
 
 

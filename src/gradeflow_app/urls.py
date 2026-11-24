@@ -122,6 +122,7 @@ method_urls: list[URLPattern | URLResolver] = [
     path("delete/", libraries.delete, name="method_delete"),
     path("draft/methods/", designer.method_choices, name="method_choices"),
     path("draft/field/", designer.fill_field, name="method_field"),
+    path("draft/settings/new/", designer.new_setting, name="method_new_setting"),
     path("draft/publish/", designer.publish_draft, name="method_publish"),
     path("draft/discard/", designer.discard, name="method_discard"),
     path("draft/", include(method_workspace_urls)),
