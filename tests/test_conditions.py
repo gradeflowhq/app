@@ -1,7 +1,6 @@
 import pytest
 from django.test import Client
 from django.utils.html import escape
-from gradeflow_core.editing import Condition
 
 from gradeflow_app.assessments.models import Assessment
 from gradeflow_app.marking.workspace import MarkingWorkspace
@@ -29,10 +28,10 @@ def test_a_condition_on_an_earlier_check_names_that_check(client: Client, assess
     earlier_step_label = escape(MarkingWorkspace(draft).draft.label("/with/steps/0"))
     page = client.post(url, {"path": "", "operation": "open", "target": "/with/steps/1"}).text
     assert f'<option value="/with/steps/0">{earlier_step_label}</option>' in page
-    tests = [(test, escape(label)) for test, label in Condition.test_labels.items()]
-    assert all(f'<option value="{test}"' in page and f">{label}</option>" in page for test, label in tests)
+    [subject] = MarkingWorkspace(draft).draft.condition_subjects("/with/steps/1")
+    assert all(f">{escape(words)}</option>" in page for words in subject.rows.values())
     client.post(
-        url, {"path": "/with/steps/1", "fields_posted": "1", "if-check-0": "/with/steps/0", "if-test-0": "incorrect"}
+        url, {"path": "/with/steps/1", "fields_posted": "1", "if-subject-0": "/with/steps/0", "if-test-0": "incorrect"}
     )
     reloaded_page = client.post(url, {"path": "", "operation": "open", "target": "/with/steps/1"}).text
     assert f'<option value="/with/steps/0" selected>{earlier_step_label}</option>' in reloaded_page
@@ -45,7 +44,7 @@ def test_a_condition_on_a_removed_check_can_be_cleared(client: Client, assessmen
     for index, method in enumerate(("gradeflow/key-points@1", "gradeflow/length@1")):
         client.post(url, {"path": "", "operation": "add", "target": f"/with/steps/{index}", "method": method})
     client.post(
-        url, {"path": "/with/steps/1", "fields_posted": "1", "if-check-0": "/with/steps/0", "if-test-0": "incorrect"}
+        url, {"path": "/with/steps/1", "fields_posted": "1", "if-subject-0": "/with/steps/0", "if-test-0": "incorrect"}
     )
     client.post(url, {"path": "", "operation": "remove", "target": "/with/steps/0"})
     page = client.post(url, {"path": "", "operation": "open", "target": "/with/steps/0"}).text

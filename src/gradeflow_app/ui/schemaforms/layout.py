@@ -31,6 +31,8 @@ class FieldHints:
     """Show it only while these fields of the same form have these values."""
     presets: tuple[float, ...] = ()
     """The core's examples of a number, to pick at a click beside the field."""
+    template_parts: Mapping[str, str] = field(default_factory=dict)
+    """Template parts its text may include, by label."""
 
 
 def field_hints(schema: Schema, required: bool) -> FieldHints:
@@ -43,6 +45,7 @@ def field_hints(schema: Schema, required: bool) -> FieldHints:
         presets=tuple(value for value in schema.get("examples") or () if isinstance(value, int | float))
         if numeric
         else (),
+        template_parts=hints.get("template_parts") or {},
     )
 
 

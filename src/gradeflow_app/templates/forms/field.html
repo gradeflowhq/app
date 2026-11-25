@@ -1,4 +1,4 @@
-<div class="grid gap-1.5"{% if field.visible_when %} data-visible-when="{{ field.visible_when }}"{% if field.starts_hidden %} hidden{% endif %}{% endif %}>
+<div class="grid gap-1.5"{% if field.template_parts %} data-inserts{% endif %}{% if field.visible_when %} data-visible-when="{{ field.visible_when }}"{% if field.starts_hidden %} hidden{% endif %}{% endif %}>
   {% if field.replaced_control %}
     <div class="flex items-center gap-2"><span class="font-medium">{{ field.label }}</span>{{ field.label_controls }}</div>
     {{ field.replaced_control }}
@@ -19,6 +19,8 @@
   {% else %}
     <div class="flex items-center gap-2"><label class="font-medium" for="{{ field.id_for_label }}">{{ field.label }}{% if field.is_optional %} <span class="font-normal text-subtle">(optional)</span>{% endif %}</label>{{ field.label_controls }}</div>
     {% if field.help_text %}<div class="field-help -mt-1 text-sm text-muted [&_a]:text-link [&_li]:list-none" id="{{ field.auto_id }}_helptext">{{ field.help_text }}</div>{% endif %}
+    {# Above the control, which a tag input's suggestions cover. #}
+    {% if field.template_parts %}<div class="flex flex-wrap items-center gap-1.5 text-sm"><span class="text-muted">Insert</span>{% for value, label in field.template_parts.items %}<button type="button" class="btn btn-sm" data-insert="{{ value }}">{{ label }}</button>{% endfor %}</div>{% endif %}
     {{ field }}
     {% if field.presets %}<div class="segmented" data-presets="{{ field.auto_id }}" aria-label="Presets for {{ field.label }}">{% for value, label, is_chosen in field.presets %}<button type="button" class="segment" data-preset="{{ value }}" aria-pressed="{{ is_chosen|yesno:'true,false' }}">{{ label }}</button>{% endfor %}</div>{% endif %}
   {% endif %}

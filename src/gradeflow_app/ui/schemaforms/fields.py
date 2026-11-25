@@ -1,6 +1,6 @@
 """The form field for each kind of property, as its type and the core's hints say."""
 
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from typing import Any
 
 from django import forms
@@ -90,7 +90,7 @@ def _field_for(schema: Schema, label: str, help_text: str, defs: Mapping[str, Sc
     hints = hint(property_schema)
     if "enum" in property_schema:
         choices = _choices(property_schema, property_schema["enum"])
-        kwargs["coerce"] = _type_of(property_schema["enum"])
+        kwargs["coerce"] = _coercion(property_schema["enum"])
         if len(choices) <= MAX_SEGMENTS and sum(len(label) for _, label in choices) <= MAX_SEGMENT_LABEL_CHARS:
             return forms.TypedChoiceField(choices=choices, widget=Segmented, **kwargs)
         # A list shows its first choice as chosen: without a default among them, it starts with none.
@@ -99,7 +99,7 @@ def _field_for(schema: Schema, label: str, help_text: str, defs: Mapping[str, Sc
     if kind == "boolean":
         return forms.BooleanField(**kwargs)
     if hints.get("kind") == "feedback":
-        return forms.Field(widget=FeedbackWidget(_boxes(schema, defs), hints.get("template_parts") or {}), **kwargs)
+        return forms.Field(widget=FeedbackWidget(_boxes(schema, defs)), **kwargs)
     if kind == "string":
         made = _text_field(hints, kwargs)
         if property_schema.get("format") == "regex":
@@ -145,10 +145,10 @@ def _text_field(hints: Mapping[str, Any], kwargs: dict[str, Any]) -> forms.Field
     return forms.CharField(widget=widget, strip=False, **kwargs)
 
 
-def _type_of(options: Sequence[Any]) -> type[int | float | str]:
-    """The type a choice among `options` is posted back as: a number's options are numbers."""
+def _coercion(options: Sequence[Any]) -> Callable[[str], int | float | str]:
+    """What a posted choice among `options` is converted with."""
     kinds = {type(option) for option in options}
-    return kinds.pop() if len(kinds) == 1 and kinds <= {int, float} else str
+    return as_number if kinds and kinds <= {int, float} else str
 
 
 def _list_field(property_schema: Schema, kwargs: dict[str, Any]) -> forms.Field:

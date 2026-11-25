@@ -48,6 +48,11 @@ class HintedField(BoundField):
         return [(str(value), preset_label(value), value == current) for value in self._hints.presets]
 
     @property
+    def template_parts(self) -> Mapping[str, str]:
+        """Template parts to insert, by label; none if it is disabled."""
+        return {} if self.field.disabled else self._hints.template_parts
+
+    @property
     def is_optional(self) -> bool:
         """Whether it may be left empty. One shown only for another field's choice, as Function for a call, is
         what that choice asks for."""

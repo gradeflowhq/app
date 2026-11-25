@@ -10,7 +10,7 @@ from django.test import Client
 from django.urls import reverse
 from django.utils.html import escape
 from gradeflow_core import BUILTINS, Question
-from gradeflow_core.editing import MethodDraft, dump_yaml
+from gradeflow_core.editing import MethodDraft, dump_yaml, load_yaml
 from pytest_django import DjangoCaptureOnCommitCallbacks
 
 from gradeflow_app.accounts.models import User
@@ -527,11 +527,11 @@ def test_the_choices_of_a_setting_are_the_options_of_the_field_it_fills(client: 
 
 
 def test_choices_show_only_where_they_apply(client: Client, method_with_length_check: Method) -> None:
-    for field in (FIRST_POINTS_PATH, WHOLE_WORDS_PATH, MIN_LENGTH_PATH):
+    for field, has_choices in ((FIRST_POINTS_PATH, False), (WHOLE_WORDS_PATH, False), (MIN_LENGTH_PATH, True)):
         page = declared_setting_page(
             client, method_with_length_check, bind_new_setting(client, method_with_length_check, field)
         )
-        assert 'name="setting-choices"' not in page
+        assert ('name="setting-choices"' in page) is has_choices
 
 
 def test_a_default_outside_the_choices_shows_on_the_default_with_what_was_typed(client: Client, method: Method) -> None:
@@ -633,7 +633,7 @@ def test_a_check_named_by_a_setting_shows_the_name_it_gets(client: Client, metho
 
     def page_at(path: str) -> str:
         page = client.get(designer_url(method, "method_page"), {"path": path}).text
-        assert "{{ settings." not in page
+        assert "{{ settings." not in re.sub(r'data-insert="[^"]*"', "", page), "shown only to insert"
         return page
 
     label = BUILTINS.find("gradeflow/key-points@1").label
@@ -1200,3 +1200,91 @@ def test_the_page_says_which_questions_a_group_method_only_reads(
     page = client.get(designer_url(method, "method_page"))
     assert page.status_code == 200
     assert page.context["read_only"] == read_only
+
+
+def save_method_with_settings(client: Client, method: Method, settings: dict[str, Any], check: dict[str, Any]) -> None:
+    text = dump_yaml(
+        {"label": "Light", "summary": "Says light.", "question_types": ["text"], "settings": settings, "steps": [check]}
+    )
+    post_to_designer(client, method, "method_yaml", definition=text)
+
+
+def test_a_condition_may_test_a_yes_no_setting_or_a_setting_with_choices(client: Client, method: Method) -> None:
+    settings = {
+        "strict": {"title": "Strict", "type": "boolean", "default": False},
+        "level": {"title": "Level", "type": "text", "default": "easy", "choices": ["easy", "hard"]},
+        "unit": {"title": "Unit", "type": "text", "default": "cm"},
+    }
+    save_method_with_settings(
+        client, method, settings, {"uses": "gradeflow/key-points@1", "with": {"points": ["light"]}}
+    )
+    page = client.get(designer_url(method, "method_page"), {"path": "/with/steps/0"}).text
+    assert re.findall(r'<option value="(settings\.\w+)"', page) == ["settings.strict", "settings.level"]
+
+    def condition_after(**posted: str) -> str:
+        fields = {f"if-{key}-0": value for key, value in posted.items()}
+        post_to_designer(client, method, "method_step", path="/with/steps/0", fields_posted="1", **fields)
+        condition: str = load_yaml(core_draft(method).to_yaml())["steps"][0]["if"]
+        return condition
+
+    assert condition_after(subject="settings.strict", test="true") == "{{ settings.strict }}"
+    assert condition_after(subject="settings.level", test="true") == "{{ settings.level == 'easy' }}", "first choice"
+    assert condition_after(subject="settings.level", test='"hard"') == "{{ settings.level == 'hard' }}"
+    page = client.get(designer_url(method, "method_page"), {"path": "/with/steps/0"}).text
+    assert '<option value="&quot;hard&quot;" selected>is hard</option>' in page
+    assert "Only when Level is hard" in page
+    assert '<option value="">Another check or setting…</option>' in page
+
+
+def test_text_fields_and_feedback_insert_settings_of_text_or_a_number(client: Client, method: Method) -> None:
+    settings = {
+        "unit": {"title": "Unit", "type": "text", "default": "cm"},
+        "strict": {"title": "Strict", "type": "boolean", "default": False},
+    }
+    check = {"uses": "gradeflow/accepted-answers@1", "with": {"answers": ["5 {{ settings.unit }}"]}}
+    save_method_with_settings(client, method, settings, check)
+    page = client.get(designer_url(method, "method_page"), {"path": "/with/steps/0"}).text
+    assert page.count('data-insert="{{ settings.unit }}">Unit</button>') == 2, "Accepted answers and Feedback"
+    assert "settings.strict }}" not in page
+    assert '<option value="5 {{ settings.unit }}" selected>' in page, "edited as written"
+
+
+def test_a_text_setting_may_be_limited_to_choices(client: Client, method: Method) -> None:
+    settings = {"unit": {"title": "Unit", "type": "text", "default": "cm"}}
+    save_method_with_settings(
+        client, method, settings, {"uses": "gradeflow/custom-code@1", "with": {"code": "correct = True"}}
+    )
+    assert 'name="setting-choices"' in setting_declaration_form(declared_setting_page(client, method, "unit"))
+    fields = {"setting": "unit", "setting-title": "Unit", "setting-type": "text", "setting-default": "cm"}
+    post_to_designer(client, method, "method_settings", None, **fields, **{"setting-choices": ["cm", "m"]})
+    assert core_draft(method).declared_settings["unit"] == {
+        "title": "Unit",
+        "type": "text",
+        "default": "cm",
+        "choices": ["cm", "m"],
+    }
+    assert options_of(declared_setting_page(client, method, "unit"), "default")[1:] == [("cm", "cm"), ("m", "m")]
+
+
+def test_a_number_setting_may_have_choices_and_be_tested_in_a_condition(client: Client, method: Method) -> None:
+    settings = {"step": {"title": "Step", "type": "number", "default": 1}}
+    save_method_with_settings(
+        client, method, settings, {"uses": "gradeflow/key-points@1", "with": {"points": ["light"]}}
+    )
+    fields = {"setting": "step", "setting-title": "Step", "setting-type": "number"}
+    post_to_designer(
+        client, method, "method_settings", None, **fields, **{"setting-default": "1", "setting-choices": ["0.5", "1"]}
+    )
+    # The default is now picked from the choices.
+    post_to_designer(
+        client, method, "method_settings", None, **fields, **{"setting-default": "0.5", "setting-choices": ["0.5", "1"]}
+    )
+    assert core_draft(method).declared_settings["step"] == {
+        "title": "Step",
+        "type": "number",
+        "default": 0.5,
+        "choices": [0.5, 1],
+    }
+    condition = {"if-subject-0": "settings.step", "if-test-0": "1"}
+    post_to_designer(client, method, "method_step", path="/with/steps/0", fields_posted="1", **condition)
+    assert load_yaml(core_draft(method).to_yaml())["steps"][0]["if"] == "{{ settings.step == 1 }}"

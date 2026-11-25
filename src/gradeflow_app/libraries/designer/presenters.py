@@ -242,7 +242,9 @@ def _limit_default_to_choices(form: ObjectForm) -> None:
     choices = form["choices"].value() if "choices" in form.fields else None
     if isinstance(default, forms.TypedChoiceField) and choices:
         offered = cast(list[tuple[Any, str]], default.choices)
-        default.choices = [(value, label) for value, label in offered if value == "" or value in choices]
+        # Posted choices are text.
+        chosen_values = {str(choice) for choice in choices}
+        default.choices = [(value, label) for value, label in offered if value == "" or str(value) in chosen_values]
         chosen = form["default"].value()
         label = str(dict(offered).get(chosen, chosen)).replace("%", "%%")
         default.error_messages["invalid_choice"] = f"{label} isn't one of the choices."

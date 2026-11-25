@@ -6,23 +6,37 @@ const isValue = (value, wanted) =>
 const meetsCondition = (form, [name, wanted]) =>
   wanted.some((option) => isValue(currentValue(form.elements.namedItem(name)), option));
 
-let lastFeedbackField;
+const textBoxes = "textarea, input[type=text]";
+let lastTextBox;
 
 export function start() {
-  // A `data-insert` button types its value at the cursor of the feedback field used last.
+  // A `data-insert` button inserts its value at the cursor of its field's text box.
   document.addEventListener("focusin", (event) => {
-    if (event.target.matches("[data-feedback-fields] textarea")) lastFeedbackField = event.target;
+    if (event.target.matches(`[data-inserts] :is(${textBoxes})`)) lastTextBox = event.target;
   });
+  // Keeps the text box focused and a tag input open.
+  document.addEventListener(
+    "mousedown",
+    (event) => {
+      if (!event.target.closest("[data-insert]")) return;
+      event.preventDefault();
+      event.stopPropagation();
+    },
+    { capture: true },
+  );
   document.addEventListener("click", (event) => {
     const insert = event.target.closest("[data-insert]");
     if (!insert) return;
-    const fields = insert.closest("[data-feedback-fields]");
-    const field = fields.contains(lastFeedbackField) ? lastFeedbackField : fields.querySelector("textarea");
-    if (!field) return;
-    const cursor = field.selectionStart ?? field.value.length;
-    field.setRangeText(insert.dataset.insert, cursor, field.selectionEnd ?? cursor, "end");
-    field.focus();
-    field.dispatchEvent(new Event("change", { bubbles: true }));
+    const field = insert.closest("[data-inserts]");
+    const box =
+      [document.activeElement, lastTextBox].find((each) => field.contains(each) && each.matches(textBoxes)) ??
+      field.querySelector(textBoxes);
+    if (!box) return;
+    const cursor = box.selectionStart ?? box.value.length;
+    box.setRangeText(insert.dataset.insert, cursor, box.selectionEnd ?? cursor, "end");
+    box.focus();
+    // A tag input adds a tag on input; other boxes save on change.
+    box.dispatchEvent(new Event(box.closest(".ts-wrapper") ? "input" : "change", { bubbles: true }));
   });
   // A `data-preset` button sets the field its group names, as typing would.
   document.addEventListener("click", (event) => {

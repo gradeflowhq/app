@@ -109,9 +109,9 @@ class StepWorkspace(ABC):
             schema = {**schema, "properties": properties}
         form = ObjectForm(schema, self.draft.values(path), path=path, **kwargs)
         if conditions := [field for field in form.fields.values() if isinstance(field.widget, ConditionWidget)]:
-            earlier = [(at, self.draft.label(at)) for at in self.draft.earlier_checks(path)]
+            subjects = self.draft.condition_subjects(path)
             for field in conditions:
-                field.widget.checks = earlier
+                field.widget.subjects = subjects
         return form
 
     def editor_structure(self, path: str) -> tuple[object, ...]:

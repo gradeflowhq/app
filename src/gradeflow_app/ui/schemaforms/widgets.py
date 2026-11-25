@@ -1,15 +1,14 @@
 """The controls of schema forms beyond Django's own."""
 
+import json
 from collections.abc import Mapping, Sequence
 from decimal import Decimal
 from typing import Any
 
 from django import forms
-from gradeflow_core.editing import Condition, ConditionRow
+from gradeflow_core.editing import CheckRow, Condition, ConditionRow, ConditionSubject, SettingRow
 
 from gradeflow_app.ui.forms import posted_indexes
-
-DEFAULT_CONDITION_TEST = next(iter(Condition.test_labels))
 
 
 class NumberTextInput(forms.TextInput):
@@ -85,25 +84,35 @@ class TagsWidget(forms.SelectMultiple):
 
 
 class ConditionWidget(forms.Widget):
-    """A check's "Only when" condition, built from rows such as [Test ▾] [is correct ▾], all or any of them; any other
+    """A step's "Only when" condition, built from rows such as [Test ▾] [is correct ▾], all or any of them; any other
     condition is shown as text, as written."""
 
     template_name = "forms/widgets/condition.html"
 
     def __init__(self) -> None:
         super().__init__()
-        self.checks: list[tuple[str, str]] = []
-        """The earlier checks a condition may read, by path and label."""
+        self.subjects: list[ConditionSubject] = []
+        """The earlier checks and settings a condition may test."""
 
     def get_context(self, name: str, value: Any, attrs: dict[str, Any] | None) -> dict[str, Any]:
         context = super().get_context(name, value, attrs)
         condition = value if isinstance(value, Condition) else Condition() if not value else None
+        subjects_by_row = {row: subject for subject in self.subjects for row in subject.rows}
+        rows = [
+            {
+                "subject": _subject_key(subjects_by_row[row]),
+                "test": _test_key(row),
+                "tests": _tests(subjects_by_row[row]),
+            }
+            for row in (condition.rows if condition else ())
+        ]
         context["widget"] |= {
             "as_text": condition is None,
-            "rows": [*(condition.rows if condition else ()), ConditionRow("", DEFAULT_CONDITION_TEST)],
+            # The empty row's disabled tests keep the column's width.
+            "rows": [*rows, {"subject": "", "test": "", "tests": _tests(self.subjects[0]) if self.subjects else []}],
             "match": condition.match if condition else Condition().match,
-            "checks": self.checks,
-            "test_labels": Condition.test_labels,
+            "subjects": [(_subject_key(subject), subject.label) for subject in self.subjects],
+            "offers_settings": any(isinstance(row, SettingRow) for row in subjects_by_row),
             "match_labels": Condition.match_labels,
         }
         return context
@@ -111,19 +120,43 @@ class ConditionWidget(forms.Widget):
     def value_from_datadict(self, data: Mapping[str, Any], files: Any, name: str) -> Condition | str | None:
         if f"{name}-text" in data:
             return str(data[f"{name}-text"])
-        indexes = posted_indexes(data, f"{name}-check")
+        indexes = posted_indexes(data, f"{name}-subject")
         if not indexes:
             return None
+        subjects = {_subject_key(subject): subject for subject in self.subjects}
         rows = tuple(
-            ConditionRow(str(data.get(f"{name}-check-{i}", "")), test)
+            _posted_row(subject, str(data.get(f"{name}-test-{i}", "")))
             for i in indexes
-            if (test := data.get(f"{name}-test-{i}", DEFAULT_CONDITION_TEST)) in Condition.test_labels
+            if (subject := subjects.get(str(data.get(f"{name}-subject-{i}", ""))))
         )
         match = data.get(f"{name}-combine", "")
         return Condition(rows, match) if match in Condition.match_labels else Condition(rows)
 
     def value_omitted_from_data(self, data: Mapping[str, Any], files: Any, name: str) -> bool:
-        return f"{name}-text" not in data and not posted_indexes(data, f"{name}-check")
+        return f"{name}-text" not in data and not posted_indexes(data, f"{name}-subject")
+
+
+def _subject_key(subject: ConditionSubject) -> str:
+    """A check's path, or `settings.<name>` for a setting."""
+    match next(iter(subject.rows)):
+        case CheckRow(check=check):
+            return check
+        case SettingRow(setting=setting):
+            return f"settings.{setting}"
+
+
+def _test_key(row: ConditionRow) -> str:
+    """A row's test as posted: a check's test, or a setting's value as JSON."""
+    return row.test if isinstance(row, CheckRow) else json.dumps(row.value)
+
+
+def _tests(subject: ConditionSubject) -> list[tuple[str, str]]:
+    return [(_test_key(row), words) for row, words in subject.rows.items()]
+
+
+def _posted_row(subject: ConditionSubject, test: str) -> ConditionRow:
+    """The row of `subject` testing `test`, else its first."""
+    return next((row for row in subject.rows if _test_key(row) == test), next(iter(subject.rows)))
 
 
 class FeedbackWidget(forms.Widget):
@@ -132,9 +165,9 @@ class FeedbackWidget(forms.Widget):
 
     template_name = "forms/widgets/feedback.html"
 
-    def __init__(self, boxes: Sequence[tuple[str, str]], template_parts: Mapping[str, str]) -> None:
+    def __init__(self, boxes: Sequence[tuple[str, str]]) -> None:
         super().__init__()
-        self.boxes, self.template_parts = list(boxes), dict(template_parts)
+        self.boxes = list(boxes)
 
     def get_context(self, name: str, value: Any, attrs: dict[str, Any] | None) -> dict[str, Any]:
         context = super().get_context(name, value, attrs)
@@ -142,7 +175,6 @@ class FeedbackWidget(forms.Widget):
         context["widget"] |= {
             "as_text": isinstance(value, str) and bool(value),
             "boxes": [((box, label), feedback_by_outcome.get(box, "")) for box, label in self.boxes],
-            "template_parts": self.template_parts,
         }
         return context
 
