@@ -94,6 +94,7 @@
         {% else %}
           <span class="min-w-0 tabular-nums text-sm text-muted max-md:truncate">{{ preview_summary.full_marks_count }} full · {{ preview_summary.partial_marks_count }} partial · {{ preview_summary.no_marks_count }} no marks</span>
           {% if preview_summary.changed_count %}<c-chip tone="primary" class="ml-auto">{{ preview_summary.changed_count }} changed</c-chip>{% endif %}
+          {% if preview_summary.unexpected_marks_count %}<c-chip icon="exclamation-triangle" tone="warning" class="ml-auto">{{ preview_summary.unexpected_marks_count }} unexpected</c-chip>{% endif %}
         {% endif %}
       </div>
       {% if preview_summary.unmarked_count %}

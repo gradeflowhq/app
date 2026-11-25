@@ -122,7 +122,8 @@ class Award:
 @dataclass(frozen=True)
 class PreviewSummary:
     """How many students a preview changes the marks of, and how many it couldn't mark (`problem` says why for the
-    first). For a single question, also how many it gives full, partial and no marks."""
+    first). For a single question, also how many it gives full, partial and no marks, and how many test answers get
+    unexpected marks."""
 
     changed_count: int
     unmarked_count: int
@@ -130,6 +131,7 @@ class PreviewSummary:
     full_marks_count: int = 0
     partial_marks_count: int = 0
     no_marks_count: int = 0
+    unexpected_marks_count: int = 0
 
 
 @lru_cache(maxsize=4096)

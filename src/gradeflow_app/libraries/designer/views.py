@@ -120,7 +120,8 @@ def latest_version(request: Request, access: MethodAccess) -> HttpResponse:
 @method_viewer()
 @transaction.atomic
 def answers(request: Request, access: MethodAccess, number: int | None = None) -> HttpResponse:
-    """Change the test answers: add, write, clear or delete one, mark it as an example, or reset them all."""
+    """Change the test answers: add, write, clear or delete one, mark it as an example or expect its marks, or reset
+    them all."""
 
     def change(workspace: MethodWorkspace) -> None:
         tests, data = workspace.tests, request.POST
@@ -139,6 +140,9 @@ def answers(request: Request, access: MethodAccess, number: int | None = None) -
             case "example":
                 _draft_only(workspace)
                 method_tests.toggle_example(tests, row)
+            case "expect":
+                marks = data.get("marks")
+                method_tests.set_expected_marks(tests, row, question, float(marks) if marks else None)
             case "reset" if not workspace.editable:
                 assert workspace.version is not None
                 workspace.tests_record.save_revision(deepcopy(workspace.version.tests))

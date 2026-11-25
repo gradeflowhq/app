@@ -139,6 +139,9 @@
                 {% elif row.is_example %}
                 <span class="grid size-8 place-items-center text-primary" title="Shown among the method's examples">{% icon "bookmark" mini=True %}<span class="sr-only">Example</span></span>
                 {% endif %}
+                {% if can_edit_tests and state.question not in read_only %}
+                <button type="button" class="btn btn-ghost btn-square btn-sm{% if row.gets_unexpected_marks %} text-warning{% elif row.expected_marks is not None %} text-primary{% else %} text-subtle{% endif %}" hx-post="{{ urls.answers }}" hx-vals="{% if row.expected_marks is None %}{% hx_vals operation="expect" row=row.index marks=row.marks %}{% else %}{% hx_vals operation="expect" row=row.index %}{% endif %}" aria-pressed="{% if row.expected_marks is None %}false{% else %}true{% endif %}" aria-label="Expected mark" title="{% if row.expected_marks is None %}Expect this mark{% else %}Expecting {{ row.expected_marks|marks }} / {{ selected_question.max_marks|marks }}{% endif %}"{% if row.expected_marks is None and not row.result.is_marked %} disabled{% endif %}>{% if row.expected_marks is None %}{% icon "check-badge" %}{% else %}{% icon "check-badge" mini=True %}{% endif %}</button>
+                {% endif %}
                 <div class="px-1">{% if state.question in read_only %}<c-marks read_only />{% else %}<c-marks :low="row.marks" :high="row.marks" :max_marks="selected_question.max_marks" :unmarked="row.unmarked" />{% endif %}</div>
                 {% if can_edit_tests %}
                 <c-menu id="answer-menu-{{ row.index }}" label="Submission {{ row.number }} actions" panel_class="w-52">
@@ -213,7 +216,7 @@
 {% partialdef answer_shown %}{% include "results/answer_text.html" with answer=row.normalized core_question=selected_question expanded=True spans=row.spans %}{% endpartialdef %}
 
 {# A test answer's result in the last run. #}
-{% partialdef result %}{% include "results/answer_feedback.html" with feedback=row.result.feedback %}{% if row.result.breakdown %}<c-more-options label="Breakdown" class="mt-2"><c-breakdown :check="row.result.breakdown" :language="code" /></c-more-options>{% endif %}{% endpartialdef %}
+{% partialdef result %}{% include "results/answer_feedback.html" with feedback=row.result.feedback %}{% if row.gets_unexpected_marks %}<p class="mt-1 flex items-center gap-1.5 text-sm text-warning">{% icon "exclamation-triangle" %}Expected {{ row.expected_marks|marks }} / {{ selected_question.max_marks|marks }}</p>{% endif %}{% if row.result.breakdown %}<c-more-options label="Breakdown" class="mt-2"><c-breakdown :check="row.result.breakdown" :language="code" /></c-more-options>{% endif %}{% endpartialdef %}
 
 {# A test answer to write in place, inside a `testAnswer`: `operation` "add" for a new submission's, "save" for `row`'s. The field takes the text's place exactly (`edit-in-place`), so the text doesn't move; its buttons (answer_buttons) take the row's actions' place. #}
 {% partialdef answer_editor %}

@@ -171,6 +171,7 @@ def _preview_summary(rows: list[method_tests.TestAnswerView], max_marks: float) 
         full_marks_count=levels["full"],
         partial_marks_count=levels["partial"],
         no_marks_count=levels["no_marks"],
+        unexpected_marks_count=sum(row.gets_unexpected_marks for row in rows),
     )
 
 

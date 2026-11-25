@@ -173,6 +173,40 @@ def test_running_the_tests_shows_the_marks_until_the_answers_change(
     assert "Marking changed" in client.get(designer_url(method, "method_results")).text
 
 
+def test_a_test_answer_keeps_an_expected_mark_and_flags_a_preview_that_gives_another(
+    client: Client, method: Method, django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks
+) -> None:
+    post_to_designer(client, method, "method_answers", operation="add", answer="light")
+    post_to_designer(client, method, "method_answers", operation="add", answer="dark")
+    unpreviewed = client.get(designer_url(method, "method_page")).text
+    assert re.search(r'aria-label="Expected mark"[^>]*disabled', unpreviewed)
+    with django_capture_on_commit_callbacks(execute=True):
+        post_to_designer(client, method, "method_run")
+    post_to_designer(client, method, "method_answers", operation="expect", row="0", marks="1")
+    post_to_designer(client, method, "method_answers", operation="expect", row="1", marks="0")
+    assert [row.get("expected_marks") for row in saved_tests(method)["rows"]] == [{"Q1": 1}, {"Q1": 0}]
+    page = client.get(designer_url(method, "method_page")).text
+    assert "Expected 1 / 1" not in page
+    assert "unexpected" not in page
+    post_to_designer(client, method, "method_yaml", definition=method_definition(answer="dark"))
+    with django_capture_on_commit_callbacks(execute=True):
+        post_to_designer(client, method, "method_run")
+    page = client.get(designer_url(method, "method_page")).text
+    assert "2 unexpected" in page
+    assert "Expected 1 / 1" in page
+    assert "Expected 0 / 1" in page
+    criteria = {"uses": "gradeflow/answer-criteria@1", "with": {"criteria": [{"text": "Names light.", "marks": 1}]}}
+    definition = dump_yaml({"label": "Light", "summary": "Criteria.", "question_types": ["text"], "steps": [criteria]})
+    post_to_designer(client, method, "method_yaml", definition=definition)
+    with django_capture_on_commit_callbacks(execute=True):
+        post_to_designer(client, method, "method_run")
+    page = client.get(designer_url(method, "method_page")).text
+    assert "2 unexpected" in page
+    post_to_designer(client, method, "method_answers", operation="expect", row="0")
+    post_to_designer(client, method, "method_answers", operation="save", row="1", answer="sun")
+    assert [row.get("expected_marks") for row in saved_tests(method)["rows"]] == [{}, {}]
+
+
 def test_test_answers_show_how_each_check_marked_them(
     client: Client, method_with_length_check: Method, django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks
 ) -> None:
@@ -309,7 +343,7 @@ def test_a_checks_problems_show_while_a_setting_has_no_value_or_only_a_test_valu
     client: Client, method: Method
 ) -> None:
     key_points = {"uses": "gradeflow/key-points@1", "with": {"points": "{{ settings.points }}"}}
-    expression = {"uses": "gradeflow/equivalent-expression@1", "with": {"answers": ["x2"]}}
+    expression = {"uses": "gradeflow/equivalent-expression@1", "with": {"answers": ["2x +"]}}
 
     def page_with(*steps: dict[str, Any]) -> Any:
         definition = {

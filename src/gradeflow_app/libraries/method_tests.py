@@ -6,7 +6,7 @@ Rows chosen as examples become the method's example.
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, TypedDict
+from typing import Any, NotRequired, TypedDict
 
 from django import forms
 from gradeflow_core import GradeFlowError, Question, QuestionResult, QuestionSet, Span
@@ -20,6 +20,7 @@ MAX_ROWS = 200
 class TestAnswerRow(TypedDict):
     answers: dict[str, str]
     is_example: bool
+    expected_marks: NotRequired[dict[str, float]]
 
 
 class MethodTests(TypedDict, total=False):
@@ -62,7 +63,18 @@ def add_answer(tests: MethodTests, question: str, text: str) -> None:
 
 
 def set_answer(tests: MethodTests, row: int, question: str, text: str) -> None:
-    _row(tests, row)["answers"][question] = text
+    test_answer = _row(tests, row)
+    test_answer["answers"][question] = text
+    test_answer.get("expected_marks", {}).pop(question, None)
+
+
+def set_expected_marks(tests: MethodTests, row: int, question: str, marks: float | None) -> None:
+    """None removes the expected marks."""
+    expected_marks = _row(tests, row).setdefault("expected_marks", {})
+    if marks is None:
+        expected_marks.pop(question, None)
+    else:
+        expected_marks[question] = marks
 
 
 def delete_row(tests: MethodTests, row: int) -> None:
@@ -104,6 +116,7 @@ def remove_question(tests: MethodTests, key: str) -> None:
     tests.get("questions", {}).pop(key, None)
     for row in tests.get("rows", []):
         row["answers"].pop(key, None)
+        row.get("expected_marks", {}).pop(key, None)
 
 
 def answers_to(tests: MethodTests, question: str) -> list[str]:
@@ -149,6 +162,7 @@ class TestAnswerView:
     is_example: bool
     result: QuestionResult | None
     marks: float | None
+    expected_marks: float | None = None
     form: ObjectForm | None = None
     """The answer's values to change one by one, for a question whose answers have them."""
     spans: tuple[Span, ...] = ()
@@ -162,6 +176,15 @@ class TestAnswerView:
     def unmarked(self) -> bool:
         """Whether the last run couldn't mark it."""
         return self.result is not None and not self.result.is_marked
+
+    @property
+    def gets_unexpected_marks(self) -> bool:
+        """Whether the last run left it unmarked or gave it other marks than expected."""
+        return (
+            self.expected_marks is not None
+            and self.result is not None
+            and (self.unmarked or self.marks != self.expected_marks)
+        )
 
 
 def answer_rows(
@@ -186,5 +209,10 @@ def answer_rows(
         normalized = shown_question.normalize(answer) if shown_question is not None else answer
         form = answer_form(shown_question, answer, f"answer{index}")
         spans = question_result.spans if question_result is not None and run_is_current else ()
-        views.append(TestAnswerView(index, answer, normalized, row["is_example"], question_result, marks, form, spans))
+        expected_marks = row.get("expected_marks", {}).get(question)
+        views.append(
+            TestAnswerView(
+                index, answer, normalized, row["is_example"], question_result, marks, expected_marks, form, spans
+            )
+        )
     return views
