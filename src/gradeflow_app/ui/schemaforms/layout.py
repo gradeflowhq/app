@@ -118,6 +118,7 @@ def layout(schema: Schema, defs: Mapping[str, Schema] | None = None) -> Layout:
             and resolve(property_schema.get("items", {}), defs).get("type") == "object"
         ):
             result.rows[name] = resolve(property_schema["items"], defs)
+            result.hints[name] = field_hints(property_schema, required=False)
             result.headings[name] = label, help_text
         elif (made := field_for(property_schema, label, help_text, defs)) is not None:
             result.fields[name] = made

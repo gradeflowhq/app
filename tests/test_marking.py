@@ -483,7 +483,7 @@ def test_a_question_groups_answers_show_each_option(client: Client, assessment: 
     }
     marking = Marking.objects.create(assessment=assessment, definition=dump_yaml(conditional))
     page = htmx_page(client, reverse("question_group_answers", args=[assessment.pk, marking.pk]))
-    chips = r'<li class="badge[^"]*" title="Options"><span>([^<]*)</span></li>'
+    chips = r'<li class="badge[^"]*"><span>([^<]*)</span></li>'
     assert set(re.findall(chips, page)) == {"a", "b", "c", "d"}
 
 
@@ -613,20 +613,32 @@ def test_more_answer_groups_show_on_request_until_the_list_changes(
     assert shown(filter="all") == (4, True)
 
 
-def test_a_values_check_suggests_that_values_answers(assessment: Assessment) -> None:
+def test_a_check_of_a_part_suggests_that_parts_answers(assessment: Assessment) -> None:
     question = assessment.questions.get(key="Q1")
     question.core_question = Question.load(
-        {"type": "values", "value_types": ["text", "text"], "max_marks": question.core_question.max_marks}
+        {"type": "multipart", "parts": [{"name": "first"}, {"name": "second"}], "max_marks": 1}
     )
     question.save()
     assessment.students.filter(encrypted_id=encrypted_id("S001")).update(answers={"Q1": "light, water"})
     checks = [
-        {"input": f"{{{{ values[{index}] }}}}", "uses": "gradeflow/accepted-answers@1", "with": {"answers": []}}
-        for index in range(2)
+        {"input": f"{{{{ answer.{name} }}}}", "uses": "gradeflow/accepted-answers@1", "with": {"answers": []}}
+        for name in ("first", "second")
     ]
-    values = {"question": "Q1", "uses": "gradeflow/multiple-values@1", "with": {"checks": checks}}
-    workspace = workspace_of(assessment, values)
+    part_by_part = {"question": "Q1", "uses": "gradeflow/part-by-part@1", "with": {"checks": checks}}
+    workspace = workspace_of(assessment, part_by_part)
     assert workspace.suggestions_at(workspace.draft.position("/with/checks/1")) == {"water": 1}
+
+
+def test_a_check_of_items_suggests_each_item(assessment: Assessment) -> None:
+    question = assessment.questions.get(key="Q1")
+    question.core_question = Question.load({"type": "list", "max_marks": 1})
+    question.save()
+    assessment.students.filter(encrypted_id=encrypted_id("S001")).update(answers={"Q1": "light, water"})
+    check = {"uses": "gradeflow/accepted-answers@1", "with": {"answers": []}}
+    item_by_item = {"question": "Q1", "uses": "gradeflow/item-by-item@1", "with": {"checks": [check]}}
+    workspace = workspace_of(assessment, item_by_item)
+    suggestions = workspace.suggestions_at(workspace.draft.position("/with/checks/0"))
+    assert {"light": 1, "water": 1}.items() <= suggestions.items()
 
 
 def test_answers_the_question_reads_as_blank_arent_suggested(assessment: Assessment) -> None:

@@ -2,7 +2,7 @@ from django.db.models import F
 from django.template.loader import render_to_string
 from django.test import Client, TestCase
 from django.urls import reverse
-from gradeflow_core import QuestionResult, Span, ValuesQuestion
+from gradeflow_core import ListQuestion, MultipartQuestion, QuestionResult, Span
 from gradeflow_core.editing import dump_yaml
 
 from gradeflow_app.accounts.models import User
@@ -81,11 +81,25 @@ def test_highlighted_text_is_escaped_inside_and_outside_its_marks() -> None:
     assert highlight_spans("x < 3", []) == "x &lt; 3"
 
 
-def test_a_span_in_a_value_is_highlighted_in_that_values_chip() -> None:
-    question = ValuesQuestion(value_types=["number", "text"])
+def test_a_span_in_a_part_is_highlighted_in_that_parts_chip() -> None:
+    question = MultipartQuestion.load({"parts": [{"name": "count", "type": "number"}, {"name": "mass"}]})
     html = render_to_string(
         "results/answer_text.html",
-        {"answer": "3, about 42 kg", "core_question": question, "spans": (Span(6, 8, value_number=2),)},
+        {"answer": "3, about 42 kg", "core_question": question, "spans": (Span(6, 8, path="/mass"),)},
     )
     assert ">3<" in html
     assert "about <mark>42</mark> kg" in html
+
+
+def test_a_span_in_a_part_of_an_item_is_highlighted_in_that_chip() -> None:
+    question = ListQuestion.load({"item": "parts", "parts": [{"name": "ingredient"}, {"name": "amount"}]})
+    html = render_to_string(
+        "results/answer_text.html",
+        {
+            "answer": "water, 2 l, salt, about 42 g",
+            "core_question": question,
+            "spans": (Span(6, 8, path="/items/1/amount"),),
+        },
+    )
+    assert "about <mark>42</mark> g" in html
+    assert "<mark>2" not in html

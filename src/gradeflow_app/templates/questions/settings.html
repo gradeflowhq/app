@@ -1,10 +1,20 @@
 <c-drawer.form action="{{ action }}" title="{{ question.key }} settings">
   <div class="grid gap-5 p-6">
   {% partial question_type %}
-  {{ form }}
+  {% include "questions/settings.html#question_fields" with editable=True %}
   </div>
   <c-slot name="footer"><c-drawer.footer submit="Save" name="save" value="1" /></c-slot>
 </c-drawer.form>
+
+{# The question's settings: fields, lists of rows, then More options. Adding or removing a row re-renders the drawer. #}
+{% partialdef question_fields %}
+  <div class="contents" hx-target:inherited="#drawer-body" hx-swap:inherited="innerHTML">
+    <c-form-errors :errors="form.non_field_errors" />
+    {% include "forms/object.html#groups" with groups=form.basic_sections %}
+    {% include "marking/step.html#row_lists" with field_sets=form.basic_rows draft_url=action %}
+    {% include "forms/object.html#advanced" with draft_url=action %}
+  </div>
+{% endpartialdef %}
 
 {# The question type, which posts its form to show the chosen type's settings. #}
 {% partialdef question_type %}

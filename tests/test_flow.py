@@ -206,14 +206,14 @@ def test_non_members_get_not_found(client: Client) -> None:
     assert other.get(reverse("overview", args=[assessment.pk])).status_code == 404
 
 
-def test_a_multi_value_question_has_one_check_per_value(client: Client, assessment: Assessment) -> None:
+def test_a_multipart_answer_has_one_check_per_part(client: Client, assessment: Assessment) -> None:
     question = assessment.questions.get(key="Q1")
     question.core_question = Question.load(
-        {"type": "values", "value_types": ["text", "number"], "max_marks": question.core_question.max_marks}
+        {"type": "multipart", "parts": [{"name": "place"}, {"name": "year", "type": "number"}]}
     )
     question.save()
     editor_page = client.post(
-        reverse("marking_start", args=[assessment.pk, question.pk]), {"method": "gradeflow/multiple-values@1"}
+        reverse("marking_start", args=[assessment.pk, question.pk]), {"method": "gradeflow/part-by-part@1"}
     )
     assert editor_page.status_code == 200
     assert b"Add check" not in editor_page.content
@@ -541,6 +541,8 @@ def test_more_options_stay_open_while_rows_in_them_change(client: Client, assess
     more_open = re.compile(rb'class="group/more[^"]*" open')
     response = client.post(url, {"path": "", "operation": "add_row", "target": "tests", "more_open": "1"})
     assert more_open.search(response.content)
+    assert response.content.count(b"remove_row") == 1, "an editable row can be removed"
+    assert b"add_row" in response.content
     response = client.post(url, {"path": "", "operation": "add_row", "target": "tests"})
     assert not more_open.search(response.content), "closed unless the change came from inside"
 
@@ -614,30 +616,64 @@ def test_the_question_list_shows_unsaved_drafts(client: Client, assessment: Asse
     assert "0 / " in page, "a draft marks nothing yet"
 
 
-def test_multiple_values_are_listed_in_order_and_may_repeat(client: Client, assessment: Assessment) -> None:
+PLACE_AND_YEAR = {
+    "parts-posted": "1",
+    "parts-0-name": "place",
+    "parts-0-type": "text",
+    "parts-1-name": "year",
+    "parts-1-type": "number",
+}
+
+
+def test_a_multipart_answers_parts_are_edited_as_rows(client: Client, assessment: Assessment) -> None:
     question = assessment.questions.get(key="Q3")
     answers = [answer for *_, answer in EXAM_ROWS]
-    inferred_question = converted_question(question.core_question, "values", answers)
+    inferred_question = converted_question(question.core_question, "multipart", answers)
     url = reverse("question_settings", args=[assessment.pk, question.pk])
-    form = client.get(url, {"question_type": "values"}).text
-    assert 'x-data="orderedChoices"' in form
-    client.post(url, {"question_type": "values", "save": "1", "max_marks": "1", "value_types": ["number", "number"]})
+    form = client.get(url, {"question_type": "multipart"}).text
+    assert 'name="parts-1-name"' in form
+    client.post(url, {"question_type": "multipart", "save": "1", "max_marks": "1", **PLACE_AND_YEAR})
     question.refresh_from_db()
-    assert question.definition["value_types"] == ["number", "number"]
+    assert question.definition["parts"] == [{"name": "place", "type": "text"}, {"name": "year", "type": "number"}]
     assert (
         question.definition["reading"]["separator"] == inferred_question.model_dump(mode="json")["reading"]["separator"]
     ), "an option left out of the post keeps its setup"
 
 
-def test_multiple_values_accept_a_space_separator(client: Client, assessment: Assessment) -> None:
+def test_a_row_added_or_removed_shows_without_saving(client: Client, assessment: Assessment) -> None:
+    question = assessment.questions.get(key="Q3")
+    url = reverse("question_settings", args=[assessment.pk, question.pk])
+    data = {"question_type": "multipart", "max_marks": "1", **PLACE_AND_YEAR}
+    added = client.post(url, {**data, "operation": "add_row", "target": "parts"}).text
+    assert 'name="parts-2-name"' in added
+    removed = client.post(url, {**data, "operation": "remove_row", "target": "parts", "value": "0"}).text
+    assert 'name="parts-1-name"' not in removed
+    assert ">year</textarea>" in removed
+    question.refresh_from_db()
+    assert question.core_question.type == "choice"
+
+
+def test_a_lists_parts_show_only_for_items_in_parts(client: Client, assessment: Assessment) -> None:
+    question = assessment.questions.get(key="Q3")
+    url = reverse("question_settings", args=[assessment.pk, question.pk])
+    form = client.get(url, {"question_type": "list"}).text
+    parts = between(form, '-parts"', ">")
+    assert 'data-visible-when="{&quot;item&quot;: [&quot;parts&quot;]}" hidden' in parts
+    client.post(url, {"question_type": "list", "save": "1", "max_marks": "1", "item": "parts", **PLACE_AND_YEAR})
+    question.refresh_from_db()
+    assert question.definition["item"] == "parts"
+    assert [part["name"] for part in question.definition["parts"]] == ["place", "year"]
+
+
+def test_a_multipart_answer_accepts_a_space_separator(client: Client, assessment: Assessment) -> None:
     question = assessment.questions.get(key="Q3")
     response = client.post(
         reverse("question_settings", args=[assessment.pk, question.pk]),
         {
-            "question_type": "values",
+            "question_type": "multipart",
             "save": "1",
             "max_marks": "1",
-            "value_types": ["text", "text"],
+            **PLACE_AND_YEAR,
             "reading__separator": " ",
         },
     )
@@ -683,9 +719,8 @@ def test_a_question_the_core_rejects_says_why(client: Client, assessment: Assess
 def test_a_cleared_question_setting_says_what_the_core_needs(client: Client, assessment: Assessment) -> None:
     question = assessment.questions.get(key="Q3")
     url = reverse("question_settings", args=[assessment.pk, question.pk])
-    response = client.post(url, {"question_type": "values", "save": "1", "max_marks": "1"})
-    errors = between(response.text, 'id="id_value_types_error"', "</div>")
-    assert rejection_message("values", {"value_types": []}) in errors
+    response = client.post(url, {"question_type": "multipart", "save": "1", "max_marks": "1", "parts-posted": "1"})
+    assert rejection_message("multipart", {"parts": []}) in response.text
 
 
 def test_changing_only_the_maximum_marks_rescales_without_marking_again(
@@ -696,7 +731,7 @@ def test_changing_only_the_maximum_marks_rescales_without_marking_again(
         question_views, "remark", lambda _assessment, keys, _user, _endpoint: remarked_keys.append(keys)
     )
     question = assessment.questions.get(key="Q2")
-    form = QuestionForm(question.core_question)
+    form = QuestionForm(question.core_question.type, question.core_question.model_dump(mode="json"))
     shown = {name: form[name].value() for name in form.fields}
     data = {name: "on" if value is True else value for name, value in shown.items() if value not in (None, False)}
     url = reverse("question_settings", args=[assessment.pk, question.pk])
@@ -727,11 +762,11 @@ def test_a_chosen_type_is_set_up_from_the_answers(client: Client) -> None:
     rows = [f'{encrypted_id(student)},"{answer}"' for student, answer in (("S1", "3, -2"), ("S2", "2, -3"))]
     upload(client, assessment, "\n".join(["StudentID,Q1", *rows]), answer_columns='["Q1"]', marks_columns="{}")
     question = assessment.questions.get(key="Q1")
-    form = client.get(reverse("question_settings", args=[assessment.pk, question.pk]), {"question_type": "values"})
-    inferred = converted_question(question.core_question, "values", ["3, -2", "2, -3"]).model_dump()["value_types"]
+    form = client.get(reverse("question_settings", args=[assessment.pk, question.pk]), {"question_type": "multipart"})
+    inferred = converted_question(question.core_question, "multipart", ["3, -2", "2, -3"]).model_dump()["parts"]
     page = form.text
-    assert inferred
-    assert all(page.count(f'<option value="{kind}" selected>') == inferred.count(kind) for kind in set(inferred))
+    assert [part["type"] for part in inferred] == ["number", "number"]
+    assert page.count('value="number" checked') == 2
 
 
 def test_a_chosen_type_keeps_the_marks_and_description(client: Client, assessment: Assessment) -> None:

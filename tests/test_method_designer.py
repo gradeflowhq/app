@@ -739,10 +739,14 @@ def question_in_tests(method: Method) -> Question:
     return Question.load(saved_tests(method)["questions"]["Q1"])
 
 
-def test_an_answer_of_several_values_is_written_value_by_value(client: Client, method: Method) -> None:
-    set_question_in_tests(
-        method, {"type": "values", "value_types": ["number", "number"], "reading": {"separator": "~"}}
-    )
+TWO_NUMBERS: dict[str, object] = {
+    "type": "multipart",
+    "parts": [{"name": "x", "type": "number"}, {"name": "y", "type": "number"}],
+}
+
+
+def test_an_answer_in_parts_is_written_part_by_part(client: Client, method: Method) -> None:
+    set_question_in_tests(method, {**TWO_NUMBERS, "reading": {"separator": "~"}})
     question = question_in_tests(method)
     schema = question.answer_schema()
     titles = {name: escape(property_schema["title"]) for name, property_schema in schema["properties"].items()}
@@ -761,12 +765,12 @@ def test_an_answer_of_several_values_is_written_value_by_value(client: Client, m
     assert answer_rows(method) == [(answer, False) for answer in written]
     page = client.get(designer_url(method, "method_page"), headers=HTMX_HEADERS).text
     for name, value in question.answer_values(written[0]).items():
-        assert f'title="{titles[name]}"><span>{escape(value)}</span></li>' in page
+        assert f'<span class="mr-1 font-normal text-muted">{titles[name].lower()}</span>{escape(value)}' in page
         assert f'name="value-{name}" value="{escape(value)}"' in page
 
 
-def test_an_answer_its_values_cant_hold_is_written_whole(client: Client, method: Method) -> None:
-    set_question_in_tests(method, {"type": "values", "value_types": ["number", "number"]})
+def test_an_answer_its_parts_cant_hold_is_written_whole(client: Client, method: Method) -> None:
+    set_question_in_tests(method, TWO_NUMBERS)
     post_to_designer(client, method, "method_answers", None, operation="add", answer="3, 4, 5")
     assert answer_rows(method) == [("3, 4, 5", False)]
     page = client.get(designer_url(method, "method_page"), headers=HTMX_HEADERS).text
@@ -791,7 +795,7 @@ def test_an_answer_of_several_options_shows_each_option(client: Client, method: 
     set_question_in_tests(method, {"type": "choice", "options": ["a", "b", "c"], "allow_multiple": True})
     post_to_designer(client, method, "method_answers", None, **{"operation": "add", "value-options": ["c", "a"]})
     page = client.get(designer_url(method, "method_page"), headers=HTMX_HEADERS).text
-    shown = re.findall(r'<li class="badge[^"]*" title="[^"]+"><span>([^<]*)</span></li>', page)
+    shown = re.findall(r'<li class="badge[^"]*"><span>([^<]*)</span></li>', page)
     assert shown == ["a", "c"]
 
 

@@ -20,7 +20,7 @@ from gradeflow_app.ui.forms import MarkdownInput
 from gradeflow_app.ui.middleware import LIVE_REFRESH, MESSAGES_HEADER
 from gradeflow_app.ui.templatetags.ui import (
     ago,
-    answer_values,
+    answer_chips,
     browser,
     code_language,
     duration,
@@ -260,11 +260,32 @@ def test_the_browser_uses_the_names_the_server_reads_and_sends(name: str, value:
     assert f'const {name} = "{value}";' in path.read_text()
 
 
-def test_an_answer_of_several_values_shows_each_value_its_question_holds() -> None:
-    values = Question.load({"type": "values", "value_types": ["text", "number"], "reading": {"separator": "~"}})
-    assert answer_values("mitochondria~", values) == [("Value 1, text", "mitochondria"), ("Value 2, number", "")]
-    assert answer_values("mitochondria~36~ATP", values) is None, "more values than it holds"
-    assert answer_values("light", Question.load({"type": "text"})) is None
+def test_an_answer_in_parts_shows_each_part_its_question_holds() -> None:
+    question = Question.load(
+        {
+            "type": "multipart",
+            "parts": [{"name": "organelle"}, {"name": "count", "type": "number"}],
+            "reading": {"separator": "~"},
+        }
+    )
+    assert answer_chips("mitochondria~", question) == [
+        [("Organelle", "mitochondria", "/organelle")],
+        [("Count", "", "/count")],
+    ]
+    assert answer_chips("mitochondria~36~ATP", question) is None, "more parts than it holds"
+    assert answer_chips("light", Question.load({"type": "text"})) is None
+
+
+def test_a_list_answer_shows_each_item_and_each_part_of_one() -> None:
+    assert answer_chips("light, , water", Question.load({"type": "list"})) == [
+        [("", "light", "/items/0")],
+        [("", "water", "/items/1")],
+    ]
+    question = Question.load({"type": "list", "item": "parts", "parts": [{"name": "problem"}, {"name": "change"}]})
+    assert answer_chips("overfitting, add L2, imbalance,", question) == [
+        [("Problem", "overfitting", "/items/0/problem"), ("Change", "add L2", "/items/0/change")],
+        [("Problem", "imbalance", "/items/1/problem"), ("Change", "", "/items/1/change")],
+    ]
 
 
 def test_signed_out_in_page_requests_get_a_401(assessment: Assessment) -> None:

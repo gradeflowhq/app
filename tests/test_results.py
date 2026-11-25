@@ -343,7 +343,7 @@ def test_answers_of_several_options_show_each_option(client: Client, assessment:
     question = assessment.questions.get(key="Q3")
     question.core_question = Question.load({**question.definition, "allow_multiple": True})
     question.save()
-    chips = r'<li class="badge[^"]*" title="Options"><span>([^<]*)</span></li>'
+    chips = r'<li class="badge[^"]*"><span>([^<]*)</span></li>'
     page = client.get(reverse("question", args=[assessment.pk, question.pk])).text
     assert set(re.findall(chips, page)) == {"a", "b", "c", "d"}
     student = assessment.students.get(encrypted_id=encrypted_id("S001"))

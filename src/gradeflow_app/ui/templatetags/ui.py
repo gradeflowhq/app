@@ -1,8 +1,9 @@
 import json
 import re
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Iterable, Iterator, Mapping, Sequence
 from datetime import datetime, timedelta
 from functools import cache
+from typing import Any
 
 from allauth.usersessions.models import UserSession
 from django import template
@@ -156,8 +157,9 @@ def code_language(question: Question | Mapping[str, Question] | None, key: str |
 
 
 @register.filter
-def answer_values(answer: str, question: Question | None) -> list[tuple[str, str]] | None:
-    """`answer` as (title, value) pairs, one per value or list item. None if `answer` doesn't split into several
+def answer_chips(answer: str, question: Question | None) -> list[list[tuple[str, str, str]]] | None:
+    """`answer` as chips, one for each part or list item, each a list of (name, value, span path): one for a value,
+    one for each part of an item in parts. A list's items have no name. None if `answer` doesn't split into several
     values."""
     if question is None or not answer:
         return None
@@ -168,22 +170,36 @@ def answer_values(answer: str, question: Question | None) -> list[tuple[str, str
     properties = question.answer_schema()["properties"]
     if len(properties) < 2 and not any(isinstance(value, list) for value in values.values()):
         return None
-    items = {name: value if isinstance(value, list) else [value] for name, value in values.items()}
     return [
-        (property_schema.get("title", name), "" if item is None else str(item))
+        chip
         for name, property_schema in properties.items()
-        for item in items[name]
+        for chip in _chips(values[name], property_schema, f"/{name}")
     ]
 
 
+def _chips(value: Any, schema: Mapping[str, Any], path: str) -> Iterator[list[tuple[str, str, str]]]:
+    """The chips of `value`, which `schema` describes, at `path`: one for a value or each of a list's items, holding
+    the parts of an item in parts."""
+    if isinstance(value, list):
+        for index, item in enumerate(value):
+            yield from _chips(item, schema.get("items", {}), f"{path}/{index}")
+    elif isinstance(value, dict):
+        yield [
+            (part_schema.get("title", ""), str(value.get(name) or ""), f"{path}/{name}")
+            for name, part_schema in schema.get("properties", {}).items()
+        ]
+    else:
+        yield [(schema.get("title", ""), "" if value is None else str(value), path)]
+
+
 @register.simple_tag
-def highlight_spans(text: str, spans: Iterable[Span], value_number: int | None = None) -> SafeString:
-    """`text`, escaped, with each of `spans` in it wrapped in `<mark>`: those in value `value_number` of an answer,
-    from 1, or in the whole answer if that is None."""
+def highlight_spans(text: str, spans: Iterable[Span], path: str = "") -> SafeString:
+    """`text`, escaped, with each of `spans` in it wrapped in `<mark>`: those at `path` of an answer's values, or in
+    the whole answer if that is empty."""
     html: list[str] = []
     position = 0
     for span in spans:
-        if span.value_number == value_number:
+        if span.path == path:
             html += [
                 conditional_escape(text[position : span.start]),
                 format_html("<mark>{}</mark>", text[span.start : span.end]),

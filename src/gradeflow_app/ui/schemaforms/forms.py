@@ -70,30 +70,15 @@ class HintedField(BoundField):
 
     @property
     def visible_when(self) -> str:
-        """The fields, by HTML name, and values it is shown for, as JSON for behaviours/forms.js to apply as they
-        change."""
-        conditions = self._conditions
-        return json.dumps({self.form.add_prefix(key): value for key, value in conditions.items()}) if conditions else ""
+        return self.form.visible_when_json(self._hints.visible_when)
 
     @property
     def starts_hidden(self) -> bool:
-        return not all(
-            any(_matches(self.form[key].value(), option) for option in options)
-            for key, options in self._conditions.items()
-        )
+        return self.form.is_hidden_by(self._hints.visible_when)
 
     @property
     def _hints(self) -> FieldHints:
         return self.form.layout.hints[self.name]
-
-    @property
-    def _conditions(self) -> dict[str, Any]:
-        """Those on fields of this form; one filled from elsewhere may have any value."""
-        return {
-            key: value
-            for key, value in self._hints.visible_when.items()
-            if key in self.form.fields and key not in self.form.replaced_controls
-        }
 
 
 @dataclass(frozen=True)
@@ -106,6 +91,9 @@ class RowForms:
     forms: list[ObjectForm]
     label_controls: str = ""
     replaced_control: str = ""
+    visible_when: str = ""
+    """As `ObjectForm.visible_when_json` gives it."""
+    starts_hidden: bool = False
 
 
 class ObjectForm(forms.Form):
@@ -149,10 +137,33 @@ class ObjectForm(forms.Form):
                     ObjectForm(item, row, defs=defs, prefix=f"{name}-{index}")
                     for index, row in enumerate(initial_object.get(name) or [])
                 ],
+                visible_when=self.visible_when_json(self.layout.hints[name].visible_when),
+                starts_hidden=self.is_hidden_by(self.layout.hints[name].visible_when),
             )
             for name, item in self.layout.rows.items()
         ]
         self.steps_setting_errors: dict[str, list[str]] = {name: [] for name in self.layout.settings_holding_steps}
+
+    def visible_when_json(self, conditions: Mapping[str, Any]) -> str:
+        """`conditions` on this form's fields, by HTML name, as JSON for behaviours/forms.js to apply as they
+        change."""
+        own_conditions = self._conditions_on_own_fields(conditions)
+        return (
+            json.dumps({self.add_prefix(key): value for key, value in own_conditions.items()}) if own_conditions else ""
+        )
+
+    def is_hidden_by(self, conditions: Mapping[str, Any]) -> bool:
+        return not all(
+            any(_matches(self[key].value(), option) for option in options)
+            for key, options in self._conditions_on_own_fields(conditions).items()
+        )
+
+    def _conditions_on_own_fields(self, conditions: Mapping[str, Any]) -> dict[str, Any]:
+        """`conditions` on fields of this form, without those on fields filled from elsewhere, which may have any
+        value."""
+        return {
+            key: value for key, value in conditions.items() if key in self.fields and key not in self.replaced_controls
+        }
 
     def disable(self) -> None:
         """Show the values without letting them change."""

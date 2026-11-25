@@ -6,4 +6,5 @@
   {% if label %}</fieldset>{% endif %}
 {% endfor %}
 {% endpartialdef %}{% endwith %}
-{% if form.advanced_sections %}<c-more-options :open="form.has_advanced_errors" label="More options{% if form.advanced_changed_count %} · {{ form.advanced_changed_count }} changed{% endif %}">{% include "forms/object.html#groups" with groups=form.advanced_sections %}</c-more-options>{% endif %}
+{# More options, with the advanced lists of rows when `draft_url` takes their added and removed rows. #}
+{% partialdef advanced inline %}{% if form.advanced_sections or draft_url and form.advanced_rows %}<c-more-options :open="form.has_advanced_errors" label="More options{% if form.advanced_changed_count %} · {{ form.advanced_changed_count }} changed{% endif %}">{% include "forms/object.html#groups" with groups=form.advanced_sections %}{% if draft_url %}{% include "marking/step.html#row_lists" with field_sets=form.advanced_rows more=True %}{% endif %}</c-more-options>{% endif %}{% endpartialdef %}

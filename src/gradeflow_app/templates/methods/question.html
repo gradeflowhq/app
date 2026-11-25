@@ -4,7 +4,7 @@
   <c-drawer.head title="{% if key %}{{ key }} settings{% else %}New question{% endif %}" />
   <fieldset class="grid gap-5 p-6"{% if not workspace.editable %} disabled{% endif %}>
     {% include "questions/settings.html#question_type" %}
-    {{ form }}
+    {% include "questions/settings.html#question_fields" with editable=workspace.editable %}
   </fieldset>
   {% if workspace.editable %}
   <c-drawer.footer submit="{% if key %}Save{% else %}Add question{% endif %}" name="save" value="1">

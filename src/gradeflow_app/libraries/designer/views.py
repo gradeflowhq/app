@@ -37,7 +37,7 @@ from gradeflow_app.libraries.models import Method, MethodDraftRecord
 from gradeflow_app.libraries.services import method_draft
 from gradeflow_app.libraries.views import library_url
 from gradeflow_app.model_service.endpoints import endpoint
-from gradeflow_app.questions.forms import QuestionForm, question_type_named, retyped
+from gradeflow_app.questions.forms import question_form, question_type_named, retyped
 from gradeflow_app.questions.models import QUESTION_TYPE_LABELS
 from gradeflow_app.requests import Request
 from gradeflow_app.ui.fragments import is_fragment, morphed_into, redirect_page
@@ -370,7 +370,7 @@ def question(request: Request, access: MethodAccess, number: int | None = None) 
     question = retyped(existing, question_type, answers) if existing else new_question(question_type)
     operation = "save" if "save" in request.POST else request.POST.get("operation", "")
     saving = operation == "save"
-    form = QuestionForm(question, data=request.POST if saving else None)
+    form = question_form(question, request.POST)
     if not workspace.editable:
         form.disable()
     edited_question = form.posted_question() if saving else None

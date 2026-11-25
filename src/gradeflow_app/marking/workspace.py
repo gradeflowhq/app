@@ -157,11 +157,11 @@ class MarkingWorkspace(StepWorkspace):
         if position.question is None or position.question not in self.questions:
             return {}
         suggestions = self._most_common_answers(position.question)
-        if position.value is None:
+        if position.input_kind is None:
             return suggestions
         counts: Counter[str] = Counter()
         for answer, count in suggestions.items():
-            if value := position.answer_value(answer):
+            for value in position.values_read(answer):
                 counts[value] += count
         return dict(counts.most_common())
 

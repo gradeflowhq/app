@@ -77,7 +77,7 @@
       {% endpartialdef %}
     </div>
 
-    {% with field_sets=editor.form.basic_rows %}{% partial row_lists %}{% endwith %}
+    {% with field_sets=editor.form.basic_rows editable=editor.editable %}{% partial row_lists %}{% endwith %}
     {% include "forms/object.html#groups" with groups=editor.form.basic_sections %}
 
     {% for setting_view in editor.settings_holding_steps %}
@@ -124,7 +124,7 @@
     {% if editor.form.advanced_sections or editor.form.advanced_rows %}
     <c-more-options :open="editor.more_open" id="more-{{ editor.path|default:'marking' }}" label="More options{% if editor.form.advanced_changed_count %} · {{ editor.form.advanced_changed_count }} changed{% endif %}" class="border-t border-line pt-4">
       {% include "forms/object.html#groups" with groups=editor.form.advanced_sections %}
-      {% with field_sets=editor.form.advanced_rows more=True %}{% partial row_lists %}{% endwith %}
+      {% with field_sets=editor.form.advanced_rows editable=editor.editable more=True %}{% partial row_lists %}{% endwith %}
     </c-more-options>
     {% endif %}
 {% endpartialdef %}
@@ -153,7 +153,7 @@
 {# Lists of rows. `<name>-posted` lets an empty list clear its setting. #}
 {% partialdef row_lists %}
       {% for field_set in field_sets %}
-      <fieldset class="bordered-list min-w-0" aria-labelledby="{{ draft_url|slugify }}-{{ field_set.name }}"{% if not editable|default_if_none:editor.editable %} disabled{% endif %}>
+      <fieldset class="bordered-list min-w-0" aria-labelledby="{{ draft_url|slugify }}-{{ field_set.name }}"{% if not editable %} disabled{% endif %}{% if field_set.visible_when %} data-visible-when="{{ field_set.visible_when }}"{% if field_set.starts_hidden %} hidden{% endif %}{% endif %}>
         <header><div class="flex items-center gap-2"><h3 id="{{ draft_url|slugify }}-{{ field_set.name }}">{{ field_set.label }}</h3>{{ field_set.label_controls }}</div></header>
         {% if field_set.replaced_control %}<div class="px-3 py-2.5">{{ field_set.replaced_control }}</div>{% else %}
         {% if field_set.help %}<p class="field-help border-b border-line px-3 py-2 text-sm text-muted">{{ field_set.help }}</p>{% endif %}
@@ -165,10 +165,10 @@
               <c-form-errors :errors="row.non_field_errors" />
               {% for field in row %}{{ field.as_field_group }}{% endfor %}
             </div>
-            <button type="button" class="btn btn-ghost btn-square btn-sm -mr-1.5 self-start text-muted hover:text-error" hx-post="{{ draft_url }}" hx-vals="{% hx_vals operation="remove_row" target=field_set.name value=forloop.counter0 more_open=more %}" aria-label="Remove" data-confirm="Remove row {{ forloop.counter }}?" data-confirm-button="Remove">{% icon "trash" %}</button>
+            {% if editable %}<button type="button" class="btn btn-ghost btn-square btn-sm -mr-1.5 self-start text-muted hover:text-error" hx-post="{{ draft_url }}" hx-vals="{% hx_vals operation="remove_row" target=field_set.name value=forloop.counter0 more_open=more %}" aria-label="Remove" data-confirm="Remove row {{ forloop.counter }}?" data-confirm-button="Remove">{% icon "trash" %}</button>{% endif %}
           </li>
           {% endfor %}
-          <li><button type="button" class="btn btn-ghost btn-sm -mx-2 text-primary" hx-post="{{ draft_url }}" hx-vals="{% hx_vals operation="add_row" target=field_set.name more_open=more %}">{% icon "plus" %}Add</button></li>
+          {% if editable %}<li><button type="button" class="btn btn-ghost btn-sm -mx-2 text-primary" hx-post="{{ draft_url }}" hx-vals="{% hx_vals operation="add_row" target=field_set.name more_open=more %}">{% icon "plus" %}Add</button></li>{% endif %}
         </ul>
         {% endif %}
       </fieldset>

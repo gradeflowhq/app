@@ -15,7 +15,7 @@ from gradeflow_app.imports.models import answer_expression
 from gradeflow_app.live.topics import notify_change, topic
 from gradeflow_app.marking.remarks import remark
 from gradeflow_app.model_service.endpoints import endpoint
-from gradeflow_app.questions.forms import QuestionForm, question_type_named, retyped
+from gradeflow_app.questions.forms import question_form, question_type_named, retyped
 from gradeflow_app.questions.models import QUESTION_TYPE_LABELS
 from gradeflow_app.requests import Request
 
@@ -33,7 +33,7 @@ def question_settings(request: Request, access: AssessmentAccess, question_id: U
     )
     is_saving = request.method == "POST" and "save" in request.POST
     answers = access.assessment.students.values_list(answer_expression(question.key), flat=True)
-    form = QuestionForm(retyped(saved_question, question_type, answers), data=request.POST if is_saving else None)
+    form = question_form(retyped(saved_question, question_type, answers), request.POST)
     if is_saving and (posted_question := form.posted_question()) is not None:
         question.core_question = posted_question
         question.save()

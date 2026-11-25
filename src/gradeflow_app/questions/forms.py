@@ -1,19 +1,19 @@
 """A question's settings, as the core's schema of its type describes them."""
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from typing import Any
 
 from gradeflow_core import InvalidError, Question
 from gradeflow_core.editing import QUESTION_CLASSES, QuestionType, converted_question
 
 from gradeflow_app.questions.models import QUESTION_TYPE_LABELS
-from gradeflow_app.ui.schemaforms.forms import ObjectForm
+from gradeflow_app.ui.schemaforms.forms import ObjectForm, with_row_edit
 
 
 class QuestionForm(ObjectForm):
-    def __init__(self, question: Question, **kwargs: Any) -> None:
-        super().__init__(question.json_schema(), question.model_dump(mode="json"), **kwargs)
-        self.question_type = question.type
+    def __init__(self, question_type: QuestionType, values: Mapping[str, Any], **kwargs: Any) -> None:
+        super().__init__(QUESTION_CLASSES[question_type].json_schema(), values, **kwargs)
+        self.question_type = question_type
 
     def posted_question(self) -> Question | None:
         """The question as posted; None, with the core's problems on the form, if it isn't one."""
@@ -24,6 +24,18 @@ class QuestionForm(ObjectForm):
         except InvalidError as error:
             self.add_problems(error.problems)
             return None
+
+
+def question_form(question: Question, data: Mapping[str, Any]) -> QuestionForm:
+    """The form of `question`: bound to `data` when it saves, else a new one with the row `data` adds or removes, if
+    any."""
+    values = question.model_dump(mode="json")
+    if "save" in data:
+        return QuestionForm(question.type, values, data=data)
+    posted = QuestionForm(question.type, values, data=data)
+    posted.full_clean()
+    edited_values = with_row_edit(posted, posted.values(), data)
+    return QuestionForm(question.type, values if edited_values is None else edited_values)
 
 
 def question_type_named(value: str, default: QuestionType) -> QuestionType:
