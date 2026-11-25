@@ -1,7 +1,7 @@
 """The endpoints runs call: their input, and events as they go. Both are signed with the run's secret.
 
-A run sends `progress` and `marked` events as it goes, and its task's own events, then `finished` with its outcome or
-`failed` with why.
+A run sends `progress`, `stage` and `marked` events as it goes, and its task's own events, then `finished` with its
+outcome or `failed` with why.
 """
 
 import hashlib
@@ -70,6 +70,8 @@ def _apply_event(run: Run, event: dict[str, Any]) -> None:
             runs.record_progress(
                 run, progress_text=f"{event['step']}: {int(event['completed'])} of {int(event['total'])}"
             )
+        case "stage":
+            runs.record_progress(run, progress_text=f"{event['text']}…")
         case "marked":
             runs.record_progress(run, progress=int(event["count"]) / int(event["total"]))
         case "finished":

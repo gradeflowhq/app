@@ -29,6 +29,18 @@ class TestRun(BaseModel):
     rows: list[ExampleRow]
 
 
+class DraftRun(BaseModel):
+    """What AI drafts a question's marking from: its instructions, the marking to update if any, the methods and the
+    students' answers."""
+
+    questions: QuestionSet
+    question: str
+    instructions: str
+    marking: dict[str, Any] | None
+    methods: list[tuple[str, str]]
+    submissions: list[Submission]
+
+
 class ComparisonRun(BaseModel):
     """Answers to compare by meaning."""
 
@@ -43,7 +55,7 @@ class ModelChoiceRun(BaseModel):
 
 class ModelTrialRequest(BaseModel):
     model: str
-    role: Literal["fast", "careful"]
+    role: Literal["fast", "careful", "draft"]
 
 
 class ModelTrialRun(BaseModel):

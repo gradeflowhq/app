@@ -443,7 +443,7 @@
 /* A panel filling its workspace column: its body scrolls between its head and foot. */
 @utility workspace-panel {
   @apply flex min-h-0 flex-1 flex-col surface;
-  & > :not(header, footer) {
+  & > :not(header, footer, .panel-band) {
     @apply min-h-0 flex-1 overflow-y-auto;
   }
 }
@@ -506,6 +506,11 @@
       @apply text-primary;
     }
   }
+}
+
+/* A band under a panel's title row, in the job bars' tint, that stays in view while the panel's body scrolls. */
+@utility panel-band {
+  @apply relative grid shrink-0 grid-cols-1 gap-2 border-b border-line bg-secondary/60 px-4 py-3;
 }
 
 /* Methods to start marking with, as one list of rows. */

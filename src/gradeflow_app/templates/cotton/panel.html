@@ -1,5 +1,5 @@
-<c-vars icon="" title="" note="" actions="" footer="" class="" body_class="p-4" />
-{# A panel, with a title row when it has a `title`. Other attributes go on the panel. #}
+<c-vars icon="" title="" note="" actions="" band="" footer="" class="" body_class="p-4" />
+{# A panel, with a title row when it has a `title`, and a `band` under it. Other attributes go on the panel. #}
 <section class="surface {{ class }}" {{ attrs }}>
   {% if title %}
   <header class="panel-head">
@@ -8,6 +8,7 @@
     {% if note or actions %}<div class="ml-auto flex items-center gap-2">{% if note %}<span class="text-xs text-muted">{{ note }}</span>{% endif %}{{ actions }}</div>{% endif %}
   </header>
   {% endif %}
+  {{ band }}
   <div class="{{ body_class }}">{{ slot }}</div>
   {% if footer %}<footer class="panel-foot">{{ footer }}</footer>{% endif %}
 </section>

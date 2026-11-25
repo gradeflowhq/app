@@ -38,6 +38,7 @@
 {% partialdef open_step %}
     <div class="grid gap-1">
       <c-method-heading :label="editor.label" :archived="editor.archived" heading_id="open-step" ai_service_id="{% if editor.needs_model_endpoint %}ai-service-{{ editor.path|slugify|default:'marking' }}{% endif %}">
+        {% if drafting and not drafting.instructions and not editor.path and editor.editable %}{% include "marking/drafting.html#ask_ai_button" %}{% endif %}
         {% if editor.editable and editor.can_change_method %}<button type="button" class="btn btn-sm" hx-get="{{ editor.actions.methods }}?operation=change_method&amp;target={{ editor.path|urlencode }}" hx-target="#picker-body" hx-swap="innerHTML" data-dialog="picker">Change</button>{% endif %}
         {% if editor.parent_path is not None %}<button type="button" class="btn btn-ghost btn-square btn-sm -mr-2 text-muted" hx-post="{{ draft_url }}" hx-vals="{% hx_vals operation="open" target=editor.parent_path %}" aria-label="Close {{ editor.label }}" title="Close">{% icon "chevron-up" %}</button>{% endif %}
       </c-method-heading>

@@ -5,9 +5,9 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Literal, Protocol, Self
 
-type Task = Literal["mark", "test", "compare", "choose", "trial"]
+type Task = Literal["mark", "test", "compare", "choose", "trial", "draft"]
 """What the sandbox runs: submissions marked, a method's test answers marked, texts compared by meaning, a model
-endpoint's models chosen, or some of them tried."""
+endpoint's models chosen, some of them tried, or a marking drafted."""
 RUN_ID_PREFIX = "gf_"
 
 

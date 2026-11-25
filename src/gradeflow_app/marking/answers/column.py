@@ -95,9 +95,9 @@ def grouping_options(view: dict[str, str]) -> answer_groups.GroupingOptions:
 
 
 def draft_workspace(request: Request, access: AssessmentAccess, subject: MarkingSubject) -> MarkingWorkspace | None:
-    """The user's draft of the marking, if they're editing it."""
+    """The user's draft of the marking, if they're editing it; None for a draft with no marking yet."""
     draft = subject.user_draft(request.user) if access.can_edit else None
-    return MarkingWorkspace(draft) if draft else None
+    return MarkingWorkspace(draft) if draft and draft.definition else None
 
 
 def answers_column_html(

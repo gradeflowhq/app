@@ -112,6 +112,11 @@ def active(kind: str, owner: object = "") -> list[tuple[Run, RunState]]:
     return [(run, _running_state(run, state)) for run, state in listed]
 
 
+def state(kind: str, owner: object, key: str) -> RunState | None:
+    """How `owner`'s run of `kind` with `key` is going; None once it has ended."""
+    return next((state for run, state in active(kind, owner) if run.key == key), None)
+
+
 def end(run: Run, *, outcome: Any = None, error: str | None = None) -> None:
     """Store what `run` gave, or why it failed, unless it no longer applies or has ended already; then forget it."""
     run_handler = handler(run)

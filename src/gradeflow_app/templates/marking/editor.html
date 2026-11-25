@@ -1,18 +1,21 @@
-{# The editor of a question's or question group's marking: the step editor, between a header to edit it as YAML and a footer to save or discard the draft. #}
-<div id="marking-panel" class="workspace-panel active-ring"{% if out_of_band_editor %} hx-swap-oob="outerMorph"{% endif %} hx-target:inherited="#marking-panel" hx-swap:inherited="outerMorph">
+{# The editor of a question's or question group's marking: the step editor, between a header to edit it as YAML, with a question's marking instructions under it, and a footer to save or discard the draft. #}
+{% with busy=drafting.is_running %}
+<div id="marking-panel" class="workspace-panel active-ring"{% if out_of_band_editor %} hx-swap-oob="outerMorph"{% endif %}{% if drafting %} hx-get="{% url 'marking' access.assessment.pk drafting.question_id %}" hx-trigger="{% listen 'drafting' drafting.question_id request.user.pk %}"{% endif %} hx-target:inherited="#marking-panel" hx-swap:inherited="outerMorph">
   <header class="panel-head">
     <h2>Edit marking</h2><c-chip tone="primary">Draft</c-chip>
     <div class="ml-auto flex items-center gap-2">
       <button type="button" class="btn btn-ghost btn-square btn-sm text-muted" data-dialog="marking-guide" aria-label="How marking works" title="How marking works">{% icon "question-mark-circle" %}</button>
-      <c-menu id="editor-menu" button_class="btn btn-ghost btn-square btn-sm">
+      <div class="contents"{% if busy %} inert{% endif %}><c-menu id="editor-menu" button_class="btn btn-ghost btn-square btn-sm">
         <li><button type="button" hx-get="{{ editor.actions.yaml }}" hx-target="#drawer-body" hx-swap="innerHTML" data-dialog="drawer">{% icon "code-bracket" %}Edit as YAML</button></li>
-      </c-menu>
+      </c-menu></div>
     </div>
   </header>
-  <div>{% include "marking/step.html" %}</div>
+  {% if drafting %}{% include "marking/drafting.html#band" %}{% endif %}
+  <div{% if busy %} inert class="opacity-60"{% endif %}>{% include "marking/step.html" %}</div>
   <footer class="panel-foot">
-    {% partialdef editor-status inline %}<span id="editor-status"{% if fields_only_update %} hx-swap-oob="true"{% endif %} class="flex items-center gap-1.5 text-sm text-muted">{% if request.method == "POST" %}{% icon "check" %}Draft saved{% endif %}</span>{% endpartialdef %}
-    <button type="button" class="btn btn-ghost ml-auto text-error" hx-post="{{ editor.actions.discard }}" data-confirm="Discard your changes?" data-confirm-detail="{{ editor.discard_note }}" data-confirm-button="Discard">Discard</button>
-    <button type="button" class="btn btn-primary" hx-post="{{ editor.actions.save }}" hx-include="#marking-form" hx-vals="{% hx_vals operation="save" %}">{% icon "check" %}Save marking</button>
+    {% partialdef editor-status inline %}<span id="editor-status"{% if fields_only_update %} hx-swap-oob="true"{% endif %} class="flex items-center gap-1.5 text-sm text-muted">{% if request.method == "POST" and not busy %}{% icon "check" %}Draft saved{% endif %}</span>{% endpartialdef %}
+    <button type="button" class="btn btn-ghost ml-auto text-error" hx-post="{{ editor.actions.discard }}"{% if busy %} disabled{% endif %} data-confirm="Discard your changes?" data-confirm-detail="{{ editor.discard_note }}" data-confirm-button="Discard">Discard</button>
+    <button type="button" class="btn btn-primary" hx-post="{{ editor.actions.save }}"{% if busy %} disabled{% endif %} hx-include="#marking-form" hx-vals="{% hx_vals operation="save" %}">{% icon "check" %}Save marking</button>
   </footer>
 </div>
+{% endwith %}

@@ -22,6 +22,7 @@ class ModelService(models.Model):
     chosen_by = models.CharField(max_length=20, choices=ChosenBy, blank=True)
     fast_model = models.CharField(max_length=MODEL_NAME_LENGTH, blank=True)
     careful_model = models.CharField(max_length=MODEL_NAME_LENGTH, blank=True)
+    draft_model = models.CharField(max_length=MODEL_NAME_LENGTH, blank=True)
     """The models picked; choosing automatically uses the best tested instead."""
     answers_per_request = models.PositiveSmallIntegerField(
         default=ANSWERS_PER_REQUEST_LIMITS["default"],
@@ -45,12 +46,12 @@ class ModelService(models.Model):
     def trials(self) -> list[ModelTrial]:
         return [test.trial() for test in self.tests.exclude(seconds=None)]
 
-    def models_in_use(self) -> tuple[str, str]:
-        """The fast and the careful model marking asks; empty where there's none."""
+    def models_in_use(self) -> tuple[str, str, str]:
+        """The fast and the careful model marking asks, and the draft model; empty where there's none."""
         if self.chosen_by != self.ChosenBy.AUTOMATICALLY:
-            return self.fast_model, self.careful_model
-        fast_model, careful_model = best_models(self.trials())
-        return fast_model or "", careful_model or ""
+            return self.fast_model, self.careful_model, self.draft_model
+        fast_model, careful_model, draft_model = best_models(self.trials())
+        return fast_model or "", careful_model or "", draft_model or ""
 
 
 class ModelTest(models.Model):
@@ -59,6 +60,7 @@ class ModelTest(models.Model):
     class Role(models.TextChoices):
         FAST = "fast"
         CAREFUL = "careful"
+        DRAFT = "draft"
 
     service = models.ForeignKey(ModelService, on_delete=models.CASCADE, related_name="tests")
     model = models.CharField(max_length=MODEL_NAME_LENGTH)

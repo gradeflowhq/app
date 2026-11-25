@@ -23,7 +23,9 @@ class Command(BaseCommand):
             for ref, file in failures.items()
         ]
         markings = Marking.objects.select_related("assessment__course", "question")
-        drafts = MarkingDraftRecord.objects.select_related("assessment__course", "question", "user")
+        drafts = MarkingDraftRecord.objects.exclude(definition="").select_related(
+            "assessment__course", "question", "user"
+        )
         records = [(marking, str(marking)) for marking in markings] + [
             (draft, f"{draft.question.key if draft.question else 'Question group'}, draft by {draft.user}")
             for draft in drafts

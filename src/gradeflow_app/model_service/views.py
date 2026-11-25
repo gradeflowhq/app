@@ -81,7 +81,7 @@ def connect(request: Request) -> HttpResponse:
 
 @require_POST
 def models_dialog(request: Request) -> HttpResponse:
-    """The Models dialog: every model the endpoint lists, and how each did as the fast and the careful model."""
+    """The Models dialog: every model the endpoint lists, and how each did in each role."""
     service, model_names, error = connected_service(request), [], ""
     if service is None or (model_endpoint := endpoint(request, service)) is None:
         error = NOT_CONNECTED_ERROR
@@ -118,7 +118,7 @@ def automatic(request: Request) -> HttpResponse:
     if request.POST.get("automatically"):
         service.chosen_by = ModelService.ChosenBy.AUTOMATICALLY
     else:
-        service.fast_model, service.careful_model = service.models_in_use()
+        service.fast_model, service.careful_model, service.draft_model = service.models_in_use()
         service.chosen_by = ModelService.ChosenBy.MYSELF
     service.save()
     return _updated(request, service)
@@ -132,6 +132,7 @@ def use(request: Request) -> HttpResponse:
         return _models(request, service, error=NOT_CONNECTED_ERROR)
     service.fast_model = request.POST.get("fast_model", "")[:MODEL_NAME_LENGTH]
     service.careful_model = request.POST.get("careful_model", "")[:MODEL_NAME_LENGTH]
+    service.draft_model = request.POST.get("draft_model", "")[:MODEL_NAME_LENGTH]
     service.chosen_by = ModelService.ChosenBy.MYSELF
     service.save()
     return _updated(request, service)

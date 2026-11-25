@@ -16,6 +16,7 @@ from gradeflow_app.assessments.models import AssessmentAccess
 from gradeflow_app.courses.models import Role
 from gradeflow_app.editor.presenters import editor
 from gradeflow_app.marking.answers.column import answers_column_html
+from gradeflow_app.marking.drafting import drafting_of
 from gradeflow_app.marking.workspace import MarkingWorkspace
 from gradeflow_app.requests import Request
 
@@ -39,14 +40,14 @@ def draft_yaml(request: Request, access: AssessmentAccess, draft_id: UUID) -> Ht
             problems = [str(problem) for problem in error.problems]
         else:
             problems = [str(problem) for problem in draft.problems]
-            draft_record.definition = dump_yaml(draft.data)
-            draft_record.save(update_fields=["definition"])
+            draft_record.save_definition(dump_yaml(draft.data))
             if not problems:
                 return HttpResponseClientRefresh()
             saved = MarkingWorkspace(draft_record)
             context |= {
                 "access": access,
                 "editor": editor(saved, str(request.POST.get("path", ""))),
+                "drafting": drafting_of(saved.subject, request.user),
                 "answers_html": answers_column_html(request, access, saved.subject, saved, out_of_band=True),
                 "out_of_band_editor": True,
             }

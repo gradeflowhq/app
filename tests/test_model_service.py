@@ -98,8 +98,10 @@ def time_out(fake_runner: FakeRunner, run_id: str) -> None:
 
 
 def in_use(user: User) -> tuple[str, str, str]:
+    """The fast and the careful model in use, and how they were chosen."""
     service = ModelService.objects.get(user=user)
-    return (*service.models_in_use(), service.chosen_by)
+    fast_model, careful_model, _ = service.models_in_use()
+    return fast_model, careful_model, service.chosen_by
 
 
 def criteria_marking(assessment: Assessment) -> Marking:
@@ -165,6 +167,7 @@ def test_choosing_automatically_runs_a_job_with_the_token_and_whats_been_tested(
         "api_key": "secret-token",
         "fast_model": None,
         "careful_model": None,
+        "draft_model": None,
         "answers_per_request": ANSWERS_PER_REQUEST_LIMITS["default"],
     }
     assert run_input(run_id) == {"tried": TRIALS[1:]}
@@ -189,8 +192,17 @@ def test_the_models_dialog_lists_every_model_with_how_each_did(
     assert 'value="decider" class="radio radio-xs radio-primary"' in dialog
     assert dialog.count(">Best</span>") == 1
     assert 'hx-trigger="change" checked>' in dialog, "Use the best automatically is on"
-    assert dialog.count(">Test</button>") == 4, "each untested model in each role"
+    assert dialog.count(">Test</button>") == 7, "each untested model in each role"
     assert '<input type="hidden" name="listed" value="reasoner">' in dialog
+
+
+def test_picking_a_draft_model_uses_it_for_drafting(client: Client, user: User) -> None:
+    model_service(user, chosen_by="automatically")
+    post_model_service(client, "model_service_use", {"fast_model": "tiny", "draft_model": "drafter"})
+    assert ModelService.objects.get(user=user).models_in_use() == ("tiny", "", "drafter")
+    model_endpoint = endpoint(request_with_model_service(user))
+    assert model_endpoint is not None
+    assert model_endpoint.draft_model == "drafter"
 
 
 def test_picking_a_model_uses_it_from_then_on(client: Client, user: User) -> None:

@@ -57,11 +57,14 @@ def files_needed_by(refs: Iterable[str]) -> MethodFiles:
     return method_files(MethodVersion.objects.named(refs).with_used_versions())
 
 
+def course_method_files(course: Course) -> MethodFiles:
+    """Every version the course's markings use, and those they use in turn."""
+    return method_files(MethodVersion.objects.filter(markings__assessment__course=course).with_used_versions())
+
+
 def loaded_course_methods(course: Course) -> LoadedFiles:
     """The core's methods and every version the course's markings use."""
-    return load_saved(
-        method_files(MethodVersion.objects.filter(markings__assessment__course=course).with_used_versions())
-    )
+    return load_saved(course_method_files(course))
 
 
 def course_methods(course: Course) -> Methods:

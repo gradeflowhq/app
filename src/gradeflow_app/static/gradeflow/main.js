@@ -27,6 +27,7 @@ import { collapsible } from "./components/collapsible.js";
 import { fileDrop } from "./components/file-drop.js";
 import { histogram } from "./components/histogram.js";
 import { importer } from "./components/import/importer.js";
+import { markingInstructions, markingInstructionsToggle } from "./components/marking-instructions.js";
 import { markdownEditor } from "./components/markdown-editor.js";
 import { markingResizer } from "./components/marking-resizer.js";
 import { math } from "./components/math.js";
@@ -81,6 +82,8 @@ const components = {
   histogram,
   importer,
   markdownEditor,
+  markingInstructions,
+  markingInstructionsToggle,
   markingResizer,
   math,
   methodPicker,

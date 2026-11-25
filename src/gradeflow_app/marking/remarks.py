@@ -1,6 +1,6 @@
 """Marking every student with the saved markings, as remark runs whose results replace those of earlier runs."""
 
-from collections.abc import Iterable
+from collections.abc import Collection, Iterable
 from typing import Any
 
 from django.db import transaction
@@ -77,19 +77,23 @@ def schedule_marking(marking: Marking, user: User, model_endpoint: ModelEndpoint
 
 def marking_run(assessment: Assessment, check: Step, methods: MethodFiles) -> MarkingRun:
     """Every student of the assessment marked with `check`, which uses `methods`, given only the answers it reads."""
-    questions_read = check.questions_read()
     return MarkingRun(
         questions=assessment.question_set(),
         markings=[check.dump()],
         methods=list(methods),
-        submissions=[
-            Submission(
-                student_id=student.encrypted_id,
-                answers={key: answer for key, answer in student.answers.items() if key in questions_read},
-            )
-            for student in assessment.students.all()
-        ],
+        submissions=student_submissions(assessment, check.questions_read()),
     )
+
+
+def student_submissions(assessment: Assessment, keys: Collection[str]) -> list[Submission]:
+    """Every student of the assessment, with only their answers to `keys`."""
+    return [
+        Submission(
+            student_id=student.encrypted_id,
+            answers={key: answer for key, answer in student.answers.items() if key in keys},
+        )
+        for student in assessment.students.all()
+    ]
 
 
 def marked_submissions(outcome: Any, assessment: Assessment, keys: Iterable[str]) -> list[Marked[Submission]]:

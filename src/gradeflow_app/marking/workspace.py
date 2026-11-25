@@ -30,6 +30,8 @@ MAX_SUGGESTIONS = 100
 """The most common answers offered as suggestions."""
 PREVIEW = "preview"
 """The kind of run that previews a draft."""
+DRAFTING = "drafting"
+"""The kind of run that drafts a marking with AI."""
 
 
 @dataclass
@@ -116,17 +118,18 @@ class MarkingWorkspace(StepWorkspace):
         """Saves the draft; once it is finished, as the core writes it, without what it leaves at defaults."""
         if not self.draft.data:
             return
-        self.record.definition = dump_yaml(self.draft.data if self.draft.problems else self.draft.finalized().dump())
-        self.record.save(update_fields=["definition"])
+        definition = dump_yaml(self.draft.data if self.draft.problems else self.draft.finalized().dump())
+        if definition != self.record.definition:
+            self.record.save_definition(definition)
 
     def save_marking(self, model_endpoint: ModelEndpoint | None) -> Marking:
         """Save the draft as the subject's marking, end the draft, and mark the students with it, asking language
         models at `model_endpoint` if it does."""
         subject = self.subject
         marking = subject.marking or Marking(assessment=subject.assessment, question=subject.question)
-        marking.definition = self.record.definition
+        marking.definition, marking.instructions = self.record.definition, self.record.instructions
         marking.save()
-        runs.stop(PREVIEW, self.record.pk)
+        self._stop_runs()
         self.record.delete()
         schedule_marking(marking, self.record.user, model_endpoint)
         notify_change(topic("questions", subject.assessment.pk))
@@ -134,9 +137,13 @@ class MarkingWorkspace(StepWorkspace):
 
     def discard(self) -> None:
         """End the draft, leaving the saved marking as it was."""
-        runs.stop(PREVIEW, self.record.pk)
+        self._stop_runs()
         self.record.delete()
         notify_drafts_changed(self.record.assessment, self.record.user)
+
+    def _stop_runs(self) -> None:
+        runs.stop(PREVIEW, self.record.pk)
+        runs.stop(DRAFTING, self.record.pk)
 
     @cached_property
     def _answer_counts(self) -> dict[str, dict[str, int]]:
@@ -186,23 +193,29 @@ class MarkingWorkspace(StepWorkspace):
 
 
 @transaction.atomic
-def start_draft(subject: MarkingSubject, user: User, definition: str) -> None:
-    """Start the user's draft of the subject's marking from `definition`, replacing any they had."""
+def start_draft(subject: MarkingSubject, user: User, definition: str, instructions: str = "") -> MarkingDraftRecord:
+    """Start the user's draft of the subject's marking from `definition` and its marking `instructions`, replacing any
+    draft they had."""
     subject.assessment.lock()
     draft_target = {"question": subject.question} if subject.question else {"marking": subject.marking}
-    MarkingDraftRecord.objects.update_or_create(
+    draft, _ = MarkingDraftRecord.objects.update_or_create(
         user=user,
         **draft_target,
         defaults={
             "assessment": subject.assessment,
             "definition": definition,
+            "instructions": instructions,
             "saved_marking_updated_at": subject.marking.updated_at if subject.marking else None,
             "preview_input": None,
             "preview_results": None,
             "preview_failure": "",
+            "drafting_run_key": "",
+            "drafting_failure": "",
+            "drafting_summary": "",
         },
     )
     notify_drafts_changed(subject.assessment, user)
+    return draft
 
 
 def notify_drafts_changed(assessment: Assessment, user: User) -> None:

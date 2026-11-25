@@ -49,9 +49,7 @@ def start_grouping(question: Question, texts: Sequence[str]) -> None:
 def grouping_state(question: Question, texts: Sequence[str]) -> RunState | None:
     """How comparing `texts`, the question's answers, is going, or why it failed."""
     key = _key(texts)
-    if (
-        state := next((state for run, state in runs.active(GROUPING, question.pk) if run.key == key), None)
-    ) is not None:
+    if (state := runs.state(GROUPING, question.pk, key)) is not None:
         return state
     failure = cache.get(_failure_key(key))
     return RunState("failed", failure) if failure is not None else None

@@ -1,7 +1,7 @@
 """Runs one GradeFlow job: marks submissions or test answers with the core, compares answers for grouping by
-meaning, or tries a model endpoint's models.
+meaning, tries a model endpoint's models, or drafts a marking with AI.
 
-Usage: sandbox.py mark|compare|test|choose|trial. It fetches its input, calls back as it goes and ends with its
+Usage: sandbox.py mark|compare|test|choose|trial|draft. It fetches its input, calls back as it goes and ends with its
 outcome. After reporting a failure it exits normally, so it isn't run again.
 """
 
@@ -146,12 +146,34 @@ def trial(job: dict[str, Any]) -> None:
         call_back({"event": "tried", "trial": model_trial.model_dump(mode="json")})
 
 
+def draft(job: dict[str, Any]) -> dict[str, Any]:
+    from gradeflow_core import BUILTINS, MarkScheme, QuestionSet, Submission, draft_marking
+
+    def report_stage(stage: str) -> None:
+        call_back({"event": "stage", "text": stage})
+
+    methods = BUILTINS.with_files(job["methods"])
+    marking = MarkScheme.load([job["marking"]], methods=methods).markings[0] if job["marking"] else None
+    drafted = draft_marking(
+        QuestionSet.model_validate(job["questions"]),
+        job["question"],
+        job["instructions"],
+        [Submission.model_validate(raw) for raw in job["submissions"]],
+        model_endpoint=model_endpoint(),
+        marking=marking,
+        methods=methods,
+        on_stage=report_stage,
+    )
+    return {"marking": drafted.marking.dump(), "summary": drafted.summary}
+
+
 TASKS: dict[str, Callable[[dict[str, Any]], Any]] = {
     "mark": mark,
     "compare": compare,
     "test": test,
     "choose": choose,
     "trial": trial,
+    "draft": draft,
 }
 """Each task by name, returning the job's outcome."""
 

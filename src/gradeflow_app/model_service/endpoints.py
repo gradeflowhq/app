@@ -24,11 +24,12 @@ def endpoint(request: Request, service: ModelService | None = None) -> ModelEndp
     service, token = service or connected_service(request), request.headers.get(TOKEN_HEADER, "")
     if service is None or not token:
         return None
-    fast_model, careful_model = service.models_in_use()
+    fast_model, careful_model, draft_model = service.models_in_use()
     return ModelEndpoint(
         url=service.url,
         api_key=SecretStr(token),
         fast_model=fast_model or None,
         careful_model=careful_model or None,
+        draft_model=draft_model or None,
         answers_per_request=service.answers_per_request,
     )

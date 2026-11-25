@@ -1,4 +1,5 @@
 from collections.abc import Mapping
+from dataclasses import replace
 from functools import partial
 from typing import Any, Literal, cast
 from uuid import UUID
@@ -25,7 +26,7 @@ from gradeflow_app.libraries import services as libraries
 from gradeflow_app.libraries.collection import loaded_usable_methods, offers, usable
 from gradeflow_app.libraries.forms import SaveMethodForm
 from gradeflow_app.live.topics import notify_change, topic
-from gradeflow_app.marking import presenters, previews
+from gradeflow_app.marking import drafting, presenters, previews
 from gradeflow_app.marking.answers.column import answers_column_html, draft_workspace, preview_bar
 from gradeflow_app.marking.checks import assessment_checks, check_for, check_of, methods_for, questions_marked
 from gradeflow_app.marking.models import Marking, MarkingDraftRecord, MarkingSubject
@@ -108,12 +109,20 @@ def _marking_column_context(
 ) -> dict[str, Any]:
     """The marking column of a question: the user's draft in `workspace`, or else the saved marking."""
     if workspace is not None:
-        return {"access": access, "editor": _editor(request, workspace, request.GET.get("path", ""))}
+        return _editor_context(request, access, workspace, _editor(request, workspace, request.GET.get("path", "")))
     return {
         "access": access,
         "question": question,
         "panel": presenters.panel(access, question, subject.marking, accepted),
+        "drafting": drafting.drafting_of(subject, request.user) if access.can_edit else None,
     }
+
+
+def _editor_context(
+    request: Request, access: AssessmentAccess, workspace: MarkingWorkspace, editor: Editor
+) -> dict[str, Any]:
+    """The marking column of the user's draft, in `editor`."""
+    return {"access": access, "editor": editor, "drafting": drafting.drafting_of(workspace.subject, request.user)}
 
 
 def _editor(request: Request, workspace: MarkingWorkspace, path: str) -> Editor:
@@ -123,12 +132,17 @@ def _editor(request: Request, workspace: MarkingWorkspace, path: str) -> Editor:
 
 
 def _render_marking_column(
-    request: Request, access: AssessmentAccess, question: Question, *, answers: bool = False
+    request: Request, access: AssessmentAccess, question: Question, *, answers: bool = False, start_error: str = ""
 ) -> HttpResponse:
-    """The marking column; with `answers`, the answers column too, swapped in beside it."""
+    """The marking column; with `answers`, the answers column too, swapped in beside it. `start_error` says why
+    drafting with AI from the instructions posted couldn't start."""
     subject = MarkingSubject.of(access.assessment, question)
     workspace = draft_workspace(request, access, subject)
     context = _marking_column_context(request, access, question, subject, workspace)
+    if start_error:
+        context["drafting"] = replace(
+            context["drafting"], start_error=start_error, instructions=request.POST.get("instructions", "")
+        )
     if answers:
         context["answers_html"] = answers_column_html(request, access, subject, workspace, out_of_band=True)
     return render(request, "marking/panel.html", context)
@@ -153,7 +167,8 @@ def start_marking(request: Request, access: AssessmentAccess, question_id: UUID)
         definition = subject.marking.definition
     else:
         raise Http404
-    start_draft(subject, request.user, definition)
+    source = subject.user_draft(request.user) or subject.marking
+    start_draft(subject, request.user, definition, source.instructions if source else "")
     return _render_marking_column(request, access, question, answers=True)
 
 
@@ -168,6 +183,44 @@ def _new_marking(request: Request, subject: MarkingSubject, method: str) -> str:
     except GradeFlowError:
         raise Http404 from None
     return dump_yaml(draft.data)
+
+
+@require_POST
+@assessment_member(Role.EDITOR)
+def start_drafting(request: Request, access: AssessmentAccess, question_id: UUID) -> HttpResponse:
+    """Draft or update the question's marking with AI from the instructions posted. When drafting can't start, the
+    panel says why."""
+    question = access.question(question_id)
+    subject = MarkingSubject.of(access.assessment, question)
+    start_error = drafting.start_drafting(request, subject, request.POST.get("instructions", "").strip())
+    return _render_marking_column(request, access, question, answers=not start_error, start_error=start_error)
+
+
+@require_POST
+@assessment_member(Role.EDITOR)
+def cancel_drafting(request: Request, access: AssessmentAccess, question_id: UUID) -> HttpResponse:
+    """Stop drafting, leaving the draft as it was."""
+    question = access.question(question_id)
+    drafting.cancel_drafting(MarkingSubject.of(access.assessment, question), request.user)
+    return _render_marking_column(request, access, question)
+
+
+@require_POST
+@assessment_member(Role.EDITOR)
+def remove_instructions(request: Request, access: AssessmentAccess, question_id: UUID) -> HttpResponse:
+    """Remove the marking instructions from the user's draft, leaving its marking as it is."""
+    question = access.question(question_id)
+    drafting.remove_instructions(MarkingSubject.of(access.assessment, question), request.user)
+    return _render_marking_column(request, access, question)
+
+
+@require_POST
+@assessment_member(Role.EDITOR)
+def dismiss_drafting_summary(request: Request, access: AssessmentAccess, question_id: UUID) -> HttpResponse:
+    """Stop showing what AI said it did."""
+    question = access.question(question_id)
+    drafting.dismiss_drafting_summary(MarkingSubject.of(access.assessment, question), request.user)
+    return _render_marking_column(request, access, question)
 
 
 @assessment_member(Role.EDITOR)
@@ -194,14 +247,15 @@ def draft_view(request: Request, access: AssessmentAccess, draft_id: UUID) -> Ht
                     ),
                 },
             )
-        return render(request, "marking/panel.html", {"access": access, "editor": _editor(request, workspace, path)})
+        context = _editor_context(request, access, workspace, _editor(request, workspace, path))
+        return render(request, "marking/panel.html", context)
     fields_only = not request.POST.get("operation")
     structure_before = workspace.editor_structure(path) if workspace.draft.is_step(path) else None
     decisions = workspace.draft.answer_decisions()
     method = drafted_method(workspace.draft)
     next_editor = _editor(request, workspace, _apply(request, workspace, path))
     _refresh_list_if_method_changed(request, workspace, method)
-    context: dict[str, Any] = {"access": access, "editor": next_editor}
+    context = _editor_context(request, access, workspace, next_editor)
     # Typing keeps the form in place unless its fields change; answer decisions refresh beside it, and so does the
     # preview once the draft is back to what it previewed.
     if fields_only and workspace.editor_structure(next_editor.path) == structure_before:
@@ -275,7 +329,7 @@ def save(request: Request, access: AssessmentAccess, draft_id: UUID) -> HttpResp
             if workspace.problems_at(path, saving=True)
             else next((problem.step_path for problem in workspace.draft.step_problems), path)
         )
-        context = {"access": access, "editor": _editor(request, workspace, path)}
+        context = _editor_context(request, access, workspace, _editor(request, workspace, path))
         return render(request, "marking/editor.html", context)
     subject = workspace.subject
     marking = workspace.save_marking(endpoint(request))
@@ -359,7 +413,8 @@ def history(request: Request, access: AssessmentAccess, question_id: UUID) -> Ht
 def restore(request: Request, access: AssessmentAccess, question_id: UUID, history_id: int) -> HttpResponse:
     question = access.question(question_id)
     historical = get_object_or_404(Marking.history, history_id=history_id, question_id=question.pk)
-    start_draft(MarkingSubject.of(access.assessment, question), request.user, historical.definition)
+    subject = MarkingSubject.of(access.assessment, question)
+    start_draft(subject, request.user, historical.definition, historical.instructions)
     messages.success(request, "Restored as your draft. Save it to use it.")
     return HttpResponseLocation(reverse("question", args=[access.assessment.pk, question.pk]))
 
@@ -385,9 +440,7 @@ def mark_example(request: Request, access: AssessmentAccess, question_id: UUID) 
     else:
         workspace.save()
         _refresh_list_if_method_changed(request, workspace, method)
-    context = {
-        "access": access,
-        "editor": _editor(request, workspace, ""),
+    context = _editor_context(request, access, workspace, _editor(request, workspace, "")) | {
         "answers_html": answers_column_html(request, access, subject, workspace, out_of_band=True),
     }
     return render(request, "marking/panel.html", context)

@@ -1,4 +1,4 @@
-<c-guide.dialog id="ai-service-guide" title="AI service" intro="Marking that uses AI sends answers to the AI service you connect.">
+<c-guide.dialog id="ai-service-guide" title="AI service" intro="Marking and drafting with AI send answers to the AI service you connect.">
   <c-guide.section title="Connect">
     <ol class="grid gap-4">
       <c-guide.step number="1"><p>Get a token, or API key, from one of the services listed</p></c-guide.step>
@@ -10,11 +10,12 @@
     <dl class="grid gap-2">
       <div><dt class="inline font-medium">Fast</dt> <dd class="inline text-muted">decides in seconds.</dd></div>
       <div><dt class="inline font-medium">Careful</dt> <dd class="inline text-muted">takes minutes. Answers it isn’t sure of need marking. Only markings set to decide carefully use it.</dd></div>
+      <div><dt class="inline font-medium">Draft</dt> <dd class="inline text-muted">writes markings from your marking instructions.</dd></div>
     </dl>
   </c-guide.section>
   <c-slot name="notes">
     <c-guide.note icon="sparkles">Markings that use it show this icon.</c-guide.note>
-    <c-guide.note icon="lock-closed">The token is stored encrypted, so only you can read it. While marking with AI runs, GradeFlow holds the token to send answers to the service, then deletes it.</c-guide.note>
+    <c-guide.note icon="lock-closed">The token is stored encrypted, so only you can read it. While marking or drafting with AI runs, GradeFlow holds the token to send answers to the service, then deletes it.</c-guide.note>
     <c-guide.note icon="adjustments-horizontal">If the service turns requests away as too long, lower <b>Answers per request</b> under <b>Advanced</b>.</c-guide.note>
   </c-slot>
 </c-guide.dialog>

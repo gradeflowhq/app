@@ -1,0 +1,71 @@
+{# Drafting a question's marking with AI from the lecturer's marking instructions, in a band under the marking panel's title row. #}
+
+{# A question without marking: a row that opens the band's field. The `div` keeps the list's height in the panel's grid. #}
+{% partialdef draft_with_ai_row %}<div x-data="markingInstructionsToggle" data-pressed="{{ drafting.is_shown|yesno:'true,false' }}" x-on:marking-instructions-shown.window="sync" x-bind:hidden="pressed"{% if drafting.is_shown %} hidden{% endif %}><ul class="method-choices">
+  <li><button type="button" class="method-choice flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-base-200/60" x-on:click="toggle" aria-controls="marking-instructions">
+    <span class="icon-tile bg-primary/10 text-primary">{% icon "sparkles" %}</span>
+    <span class="min-w-0 flex-1"><span class="block font-medium">Draft with AI</span><span class="mt-0.5 block text-sm text-muted">From your marking instructions.</span></span>
+    {% icon "chevron-right" "text-subtle" %}
+  </button></li>
+</ul></div>{% endpartialdef %}
+
+{# The editor's Ask AI toggle beside Change, for a marking without instructions: it opens the band's field. #}
+{% partialdef ask_ai_button %}<button type="button" class="btn btn-sm toggle-button" x-data="markingInstructionsToggle" data-pressed="{{ drafting.is_shown|yesno:'true,false' }}" x-on:marking-instructions-shown.window="sync" x-on:click="toggle" x-bind:aria-pressed="pressed" aria-pressed="{{ drafting.is_shown|yesno:'true,false' }}" aria-controls="marking-instructions"{% if drafting.is_running %} disabled{% endif %}>{% icon "sparkles" %}Ask AI</button>{% endpartialdef %}
+
+{# The band: the instructions with Edit and Remove, or their field; while AI drafts, its progress and Cancel; then AI's summary until it's dismissed. Hidden until opened when it has nothing to show. #}
+{% partialdef band %}{% with state=drafting.state %}
+<div id="marking-instructions" class="panel-band" x-data="markingInstructions" data-editing="{{ drafting.is_editing|yesno:'true,false' }}" data-shown="{{ drafting.is_shown|yesno:'true,false' }}" x-on:marking-instructions-toggle.window="toggleEditing" hx-target:inherited="#marking-panel" hx-swap:inherited="outerMorph" x-bind:hidden="isHidden"{% if not drafting.is_shown %} hidden{% endif %}>
+  <div class="flex min-h-7 items-center gap-2">
+    {% icon "sparkles" "text-primary" %}<label for="marking-instructions-text" class="whitespace-nowrap font-medium">Marking instructions</label>
+    {% if drafting.instructions and not drafting.is_running %}
+      <div class="ml-auto flex items-center gap-1">
+        {% if not drafting.is_editing %}<button type="button" class="btn btn-sm" x-on:click="edit" x-bind:hidden="editing" aria-controls="marking-instructions-text">Edit</button>{% endif %}
+        <button type="button" class="btn btn-ghost btn-square btn-sm text-muted hover:text-error" hx-post="{% url 'marking_instructions_remove' access.assessment.pk drafting.question_id %}" aria-label="Remove marking instructions" title="Remove marking instructions" data-confirm="Remove the marking instructions?"{% if drafting.is_update %} data-confirm-detail="The marking stays as it is."{% endif %} data-confirm-button="Remove">{% icon "trash" %}</button>
+      </div>
+    {% endif %}
+  </div>
+  {% if drafting.instructions %}<p class="line-clamp-3 whitespace-pre-line{% if drafting.is_running %} text-muted{% else %} cursor-text{% endif %}"{% if not drafting.is_running %} x-on:click="edit" x-bind:hidden="editing"{% if drafting.is_editing %} hidden{% endif %}{% endif %}>{{ drafting.instructions }}</p>{% endif %}
+  {% if drafting.is_running %}
+    <div class="flex items-center gap-2 text-sm" role="status">
+      <span class="loading loading-spinner loading-xs shrink-0 text-primary"></span>
+      <span class="min-w-0 flex-1 truncate text-muted">{{ state.progress_text|default:"Waiting to start…" }}</span>
+      <button type="button" class="btn btn-ghost btn-sm -my-1" hx-post="{% url 'marking_drafting_cancel' access.assessment.pk drafting.question_id %}">Cancel</button>
+    </div>
+    <progress class="progress progress-primary absolute inset-x-0 bottom-0 h-0.5 rounded-none" aria-hidden="true"></progress>
+  {% else %}
+    <form class="grid gap-2" hx-post="{% url 'marking_drafting' access.assessment.pk drafting.question_id %}" x-on:submit="stopEditing" x-bind:hidden="!editing"{% if not drafting.is_editing %} hidden{% endif %}>
+      <div class="textarea relative flex h-auto min-h-0 w-full cursor-text flex-col overflow-hidden p-0">
+        <textarea id="marking-instructions-text" class="block min-h-12 w-full resize-none border-0 bg-transparent px-3 pt-2.5 pb-0.5 outline-none field-sizing-content" name="instructions" rows="3" required placeholder="1 mark for photosynthesis.&#10;Half a mark for respiration.">{{ drafting.instructions }}</textarea>
+        <div class="flex items-center gap-1.5 p-1.5">
+          <c-ai-service id="ai-service-instructions" />
+          <button type="button" class="btn btn-ghost btn-sm ml-auto" x-on:click="stopEditing">Cancel</button>
+          <button class="btn btn-primary btn-sm btn-square" aria-label="{% if drafting.is_update %}Update marking{% else %}Draft marking{% endif %}" title="{% if drafting.is_update %}Update marking{% else %}Draft marking{% endif %}">{% icon "arrow-up" %}</button>
+        </div>
+      </div>
+      {% if drafting.start_error %}
+        <p class="flex items-start gap-1.5 text-sm" role="alert">{% icon "exclamation-triangle" "mt-0.5 text-warning" %}<span>{{ drafting.start_error }}{% if drafting.needs_ai_service %} <a class="text-link" href="{% url 'integrations' %}" hx-target="body" hx-swap="innerHTML">Go to Integrations</a>{% endif %}</span></p>
+      {% elif state.status == "failed" %}
+        <div class="flex items-start gap-1.5 text-sm text-error" role="alert">{% icon "exclamation-circle" "mt-0.5" %}<div class="min-w-0 flex-1"><c-failure :text="state.error">Couldn't {% if drafting.is_update %}update{% else %}draft{% endif %} the marking: {{ state.error.splitlines.0 }}</c-failure></div></div>
+      {% endif %}
+    </form>
+    {% if drafting.summary %}<div class="flex items-start gap-2 rounded-field border border-line bg-base-100 py-1.5 pl-3 pr-1.5 text-sm" role="status">
+      {% icon "check" "mt-1.5 text-primary" %}<p class="min-w-0 flex-1 py-1">{{ drafting.summary }}</p>
+      <button type="button" class="btn btn-ghost btn-square btn-sm text-muted" hx-post="{% url 'marking_drafting_summary_dismiss' access.assessment.pk drafting.question_id %}" aria-label="Dismiss" title="Dismiss">{% icon "x-mark" %}</button>
+    </div>{% endif %}
+  {% endif %}
+</div>
+{% endwith %}{% endpartialdef %}
+
+{# A saved marking's instructions, read only. #}
+{% partialdef saved_instructions %}{% if drafting.instructions %}<div class="panel-band">
+  <div class="flex min-h-7 items-center gap-2">{% icon "sparkles" "text-primary" %}<p class="whitespace-nowrap font-medium">Marking instructions</p></div>
+  <c-collapsible class="whitespace-pre-line">{{ drafting.instructions }}</c-collapsible>
+</div>{% endif %}{% endpartialdef %}
+
+{# The marking on its way while AI writes a new one. #}
+{% partialdef marking_skeleton %}<div class="grid gap-4" aria-hidden="true">
+  <div class="flex items-center gap-3"><span class="skeleton size-8 rounded-field"></span><span class="skeleton h-4 w-32"></span></div>
+  <span class="skeleton h-16 w-full"></span>
+  <span class="skeleton h-4 w-24"></span>
+  <span class="skeleton h-9 w-full"></span>
+</div>{% endpartialdef %}

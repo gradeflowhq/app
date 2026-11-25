@@ -200,7 +200,9 @@ def question_list(
     }
     imported_keys = imported_mark_keys(assessment)
     drafts = list(
-        MarkingDraftRecord.objects.filter(assessment=assessment, user=access.member.user).select_related("question")
+        MarkingDraftRecord.objects.filter(assessment=assessment, user=access.member.user)
+        .exclude(definition="")
+        .select_related("question")
     )
     drafted_ids = {draft.question_id for draft in drafts} | {draft.marking_id for draft in drafts}
     parsed = _parsed_drafts(access, drafts)

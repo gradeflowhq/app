@@ -2,7 +2,7 @@
 {% if editor %}
   {% include "marking/editor.html" %}
 {% else %}
-<c-panel id="marking-panel" class="workspace-panel" title="Marking" body_class="grid content-start gap-4 p-4" hx-get="{% url 'marking' question.assessment_id question.pk %}" hx-trigger="{% listen 'questions' question.assessment_id %}" hx-target="this" hx-swap="outerMorph">
+<c-panel id="marking-panel" class="workspace-panel" title="Marking" body_class="grid content-start gap-4 p-4" hx-get="{% url 'marking' question.assessment_id question.pk %}" hx-trigger="{% listen 'questions' question.assessment_id %}{% if drafting %}, {% listen 'drafting' question.pk request.user.pk %}{% endif %}" hx-target="this" hx-swap="outerMorph">
   <c-slot name="actions">
     <button type="button" class="btn btn-ghost btn-square btn-sm text-muted" data-dialog="marking-guide" aria-label="How marking works" title="How marking works">{% icon "question-mark-circle" %}</button>
     {% if access.can_edit %}
@@ -20,11 +20,15 @@
     {% endif %}
     {% if panel.mode == "question_group" %}<a class="btn btn-sm" href="{% url 'question_group' question.assessment_id panel.question_group.marking.pk %}">Open question group</a>{% endif %}
   </c-slot>
+  {% if drafting %}<c-slot name="band">{% if panel.mode == "summary" %}{% include "marking/drafting.html#saved_instructions" %}{% elif panel.mode != "question_group" %}{% include "marking/drafting.html#band" %}{% endif %}</c-slot>{% endif %}
   {% if panel.mode == "summary" %}
     <c-marking-summary :summary="panel.summary" :archived="panel.archived" />
   {% elif panel.mode == "question_group" %}
     <c-marking-summary :summary="panel.summary" question_group="{{ panel.question_group.involved_keys|join:', ' }}" />
+  {% elif drafting.is_running %}
+    {% include "marking/drafting.html#marking_skeleton" %}
   {% elif access.can_edit %}
+    {% include "marking/drafting.html#draft_with_ai_row" %}
     <div class="flex items-start gap-3">
       <div class="min-w-0 flex-1">
         <h3 class="font-semibold">Choose a method</h3>

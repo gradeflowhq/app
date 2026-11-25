@@ -22,6 +22,8 @@ class Marking(models.Model):
     assessment = models.ForeignKey(Assessment, on_delete=models.CASCADE, related_name="markings")
     question = models.OneToOneField(Question, null=True, blank=True, on_delete=models.CASCADE, related_name="marking")
     definition = models.TextField()
+    instructions = models.TextField(blank=True)
+    """The marking instructions AI drafted it from, if any."""
     used_versions = models.ManyToManyField(MethodVersion, through="MarkingUse", related_name="markings")
     """Every saved version it needs, directly or through others."""
     revision = models.PositiveIntegerField(default=0)
@@ -62,6 +64,8 @@ class MarkingDraftRecord(models.Model):
     question = models.ForeignKey(Question, null=True, blank=True, on_delete=models.CASCADE, related_name="+")
     marking = models.ForeignKey(Marking, null=True, blank=True, on_delete=models.CASCADE, related_name="+")
     definition = models.TextField()
+    instructions = models.TextField(blank=True)
+    """The marking instructions AI drafts it from."""
     saved_marking_updated_at = models.DateTimeField(null=True, blank=True)
     """When the saved marking this draft started from was saved; none for new marking."""
     preview_input = models.TextField(null=True, blank=True)  # noqa: DJ001 - null is "never previewed"
@@ -71,6 +75,12 @@ class MarkingDraftRecord(models.Model):
     """The marked submissions that preview gave."""
     preview_failure = models.TextField(blank=True)
     """Why that preview failed."""
+    drafting_run_key = models.CharField(max_length=16, blank=True)
+    """The key of the run drafting it with AI; blank when none is."""
+    drafting_failure = models.TextField(blank=True)
+    """Why the last drafting failed."""
+    drafting_summary = models.TextField(blank=True)
+    """What AI said it did; cleared when dismissed or when the draft changes."""
 
     class Meta:
         constraints = (
@@ -84,6 +94,11 @@ class MarkingDraftRecord(models.Model):
 
     def __str__(self) -> str:
         return f"Draft by {self.user}"
+
+    def save_definition(self, definition: str) -> None:
+        """Save `definition`, clearing AI's summary, which described the one before."""
+        self.definition, self.drafting_summary = definition, ""
+        self.save(update_fields=["definition", "drafting_summary"])
 
     @cached_property
     def subject(self) -> MarkingSubject:

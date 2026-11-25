@@ -5,7 +5,7 @@ import json
 from typing import Any
 
 from django.db import transaction
-from gradeflow_core import Marked, QuestionResult, Submission
+from gradeflow_core import Marked, ModelEndpoint, QuestionResult, Submission
 from gradeflow_core.editing import methods_used
 from pydantic import ValidationError
 
@@ -34,7 +34,7 @@ def preview_state(draft: MarkingDraftRecord) -> RunState | None:
     if draft.preview_input is None:
         return None
     key = _key(draft.preview_input)
-    if (state := next((state for run, state in runs.active(PREVIEW, draft.pk) if run.key == key), None)) is not None:
+    if (state := runs.state(PREVIEW, draft.pk, key)) is not None:
         return state
     if draft.preview_failure:
         return RunState("failed", draft.preview_failure)
@@ -58,17 +58,23 @@ def preview_and_results(workspace: MarkingWorkspace | None) -> tuple[RunState | 
 def run_preview(request: Request, access: AssessmentAccess, workspace: MarkingWorkspace) -> None:
     access.assessment.lock()
     draft = MarkingDraftRecord.objects.select_for_update().get(pk=workspace.record.pk)
-    current = MarkingWorkspace(draft)
-    if not current.valid or (preview_input := _preview_input(current)) is None:
+    start_preview(MarkingWorkspace(draft), endpoint(request))
+    workspace.record.refresh_from_db()
+
+
+def start_preview(workspace: MarkingWorkspace, model_endpoint: ModelEndpoint | None = None) -> None:
+    """Preview the locked draft, asking language models at `model_endpoint` if it does, unless it can't mark yet or
+    its latest preview is of it as it is."""
+    draft = workspace.record
+    if not workspace.valid or (preview_input := _preview_input(workspace)) is None:
         return
-    last, _ = preview_and_results(current)
+    last, _ = preview_and_results(workspace)
     if last is not None and last.status != "failed" and draft.preview_input == preview_input:
         return
+    asks_models = workspace.draft.finalized().needs_model_endpoint()
     draft.preview_input, draft.preview_results, draft.preview_failure = preview_input, None, ""
     draft.save(update_fields=["preview_input", "preview_results", "preview_failure"])
-    asks_models = current.draft.finalized().needs_model_endpoint()
-    runs.start(Run(PREVIEW, str(draft.pk), _key(preview_input)), endpoint(request) if asks_models else None)
-    workspace.record.refresh_from_db()
+    runs.start(Run(PREVIEW, str(draft.pk), _key(preview_input)), model_endpoint if asks_models else None)
 
 
 def preview_is_stale(workspace: MarkingWorkspace) -> bool:

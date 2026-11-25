@@ -42,6 +42,22 @@ assessment_urls = [
     path("questions/<uuid:question_id>/settings/", questions.question_settings, name="question_settings"),
     path("questions/<uuid:question_id>/marking/", marking.marking_panel, name="marking"),
     path("questions/<uuid:question_id>/marking/start/", marking.start_marking, name="marking_start"),
+    path("questions/<uuid:question_id>/marking/drafting/", marking.start_drafting, name="marking_drafting"),
+    path(
+        "questions/<uuid:question_id>/marking/drafting/cancel/",
+        marking.cancel_drafting,
+        name="marking_drafting_cancel",
+    ),
+    path(
+        "questions/<uuid:question_id>/marking/drafting/summary/dismiss/",
+        marking.dismiss_drafting_summary,
+        name="marking_drafting_summary_dismiss",
+    ),
+    path(
+        "questions/<uuid:question_id>/marking/instructions/remove/",
+        marking.remove_instructions,
+        name="marking_instructions_remove",
+    ),
     path("questions/<uuid:question_id>/methods/", marking.question_methods, name="question_methods"),
     path("questions/<uuid:question_id>/marking/remove/", marking.remove, name="marking_remove"),
     path("questions/<uuid:question_id>/marking/history/", marking.history, name="marking_history"),
