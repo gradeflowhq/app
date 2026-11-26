@@ -10,7 +10,7 @@
       "Q1": {
         "type": "text",
         "max_marks": 3,
-        "description": "Why does an enzyme stop working at high temperatures?",
+        "description": "Why does an enzyme stop working at high temperatures? Answer in 40 words or fewer.",
         "reading": {
           "ignore_case": false
         }
