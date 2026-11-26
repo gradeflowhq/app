@@ -35,8 +35,10 @@ export function start() {
     const cursor = box.selectionStart ?? box.value.length;
     box.setRangeText(insert.dataset.insert, cursor, box.selectionEnd ?? cursor, "end");
     box.focus();
-    // A tag input adds a tag on input; other boxes save on change.
-    box.dispatchEvent(new Event(box.closest(".ts-wrapper") ? "input" : "change", { bubbles: true }));
+    // A tag input adds the text as a tag; other boxes save as typing does, as saving at once could lose later typing.
+    const tomSelect = field.querySelector("select")?.tomselect;
+    if (tomSelect) tomSelect.createItem(box.value);
+    else box.dispatchEvent(new Event("input", { bubbles: true }));
   });
   // A select that sent its change shows what the server kept: a morph leaves it as picked, even when refused.
   document.addEventListener("htmx:after:swap", ({ detail: { ctx } }) => {

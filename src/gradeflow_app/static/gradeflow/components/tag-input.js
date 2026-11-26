@@ -7,6 +7,8 @@ export const tagInput = () => ({
   select: null,
   async init() {
     await loadScript("tom-select-2.6.2/tom-select.complete.min.js");
+    // Only a tag added or removed autosaves the form: typing, and Tom Select's own input events, stay inside.
+    this.$el.addEventListener("input", (event) => event.stopPropagation());
     // Morphs are synchronous: Tom Select is built again from the select once the morph has brought it up to date.
     this.$el.addEventListener("morph", () => {
       this.destroy();
@@ -45,6 +47,7 @@ export const tagInput = () => ({
         this.close();
       },
     });
+    this.select.wrapper.addEventListener("input", (event) => event.stopPropagation());
     // A click in the box keeps it focused for the next value: Tom Select's own click on an open box blurs it.
     const originalClick = this.select.onClick.bind(this.select);
     this.select.onClick = () => {
