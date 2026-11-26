@@ -641,6 +641,19 @@ def test_editing_a_check_keeps_the_fields_filled_by_settings(client: Client, met
     assert before[points_setting]["default"] == ["light"]
 
 
+def test_a_type_the_filled_field_cant_hold_shows_the_problem_at_the_type_field(client: Client, method: Method) -> None:
+    settings = {"shortest": {"title": "Shortest", "type": "integer", "default": 2}}
+    check = {"uses": "gradeflow/length@1", "with": {"min_length": "{{ settings.shortest }}"}}
+    save_method_with_settings(client, method, settings, check)
+    fields = {"setting": "shortest", "setting-title": "At least", "setting-type": "text", "operation": "retype"}
+    page = post_to_designer(client, method, "method_settings", None, **fields).text
+    assert core_draft(method).declared_settings == settings
+    form = setting_declaration_form(page)
+    assert field_error(page, "type").startswith("A Text setting can't fill")
+    assert '<option value="integer" selected' in form
+    assert "/type" not in page
+
+
 def test_a_whole_number_default_is_saved_whole(client: Client, method_with_length_check: Method) -> None:
     name = bind_new_setting(client, method_with_length_check, MIN_LENGTH_PATH)
     post_to_designer(

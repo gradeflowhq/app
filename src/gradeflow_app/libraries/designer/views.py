@@ -16,7 +16,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 from gradeflow_core import GradeFlowError, InvalidError, QuestionSet
-from gradeflow_core.editing import QUESTION_CLASSES, EditingError, MethodDraft, new_question
+from gradeflow_core.editing import QUESTION_CLASSES, EditingError, new_question
 
 from gradeflow_app.editor import operations
 from gradeflow_app.editor.picker import PickerForm, step_picker
@@ -317,15 +317,9 @@ def settings_tab(request: Request, access: MethodAccess, number: int | None = No
                 "setting": name,
                 "declared_setting_view": presenters.declared_setting_view(workspace, name, initial_object=edited),
             }
-        declaration = declared_setting_view.declaration()
         if request.POST.get("operation") == "retype":
-            _retype(workspace.draft, name, declaration)
-            workspace.save()
-            return {
-                "tab": "settings",
-                "setting": name,
-                "declared_setting_view": presenters.declared_setting_view(workspace, name),
-            }
+            return {**showing_form, "declared_setting_view": _retype(workspace, declared_setting_view)}
+        declaration = declared_setting_view.declaration()
         if not form.is_valid():
             return showing_form
         try:
@@ -342,14 +336,29 @@ def settings_tab(request: Request, access: MethodAccess, number: int | None = No
     return _edit(request, access, number, change)
 
 
-def _retype(draft: MethodDraft, name: str, declaration: dict[str, Any]) -> None:
-    """Change a declared setting to `declaration`, without its default and choices if its type doesn't take them."""
+def _retype(
+    workspace: MethodWorkspace, setting_view: presenters.DeclaredSettingView
+) -> presenters.DeclaredSettingView | None:
+    """Change a declared setting to the declaration its form posts, without its default and choices if the new type
+    doesn't accept them. A type a field it fills can't hold isn't saved; the form says why under Type."""
+    draft, name = workspace.draft, setting_view.name
+    declaration = setting_view.declaration()
     try:
-        draft.update_declared_setting(name, declaration)
-    except InvalidError:
-        draft.update_declared_setting(
-            name, {key: value for key, value in declaration.items() if key not in ("default", "choices")}
-        )
+        try:
+            draft.update_declared_setting(name, declaration)
+        except InvalidError:
+            draft.update_declared_setting(
+                name, {key: value for key, value in declaration.items() if key not in ("default", "choices")}
+            )
+    except InvalidError as error:
+        problems = error.problems
+    else:
+        workspace.save()
+        problems = []
+    view = presenters.declared_setting_view(workspace, name)
+    if view is not None:
+        view.form.add_problems(problems)
+    return view
 
 
 @method_viewer()

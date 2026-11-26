@@ -38,6 +38,12 @@ export function start() {
     // A tag input adds a tag on input; other boxes save on change.
     box.dispatchEvent(new Event(box.closest(".ts-wrapper") ? "input" : "change", { bubbles: true }));
   });
+  // A select that sent its change shows what the server kept: a morph leaves it as picked, even when refused.
+  document.addEventListener("htmx:after:swap", ({ detail: { ctx } }) => {
+    const select = ctx.sourceEvent?.target;
+    if (select?.type !== "select-one" || !select.isConnected) return;
+    for (const option of select.options) option.selected = option.defaultSelected;
+  });
   // A `data-preset` button sets the field its group names, as typing would.
   document.addEventListener("click", (event) => {
     const preset = event.target.closest("[data-preset]");
