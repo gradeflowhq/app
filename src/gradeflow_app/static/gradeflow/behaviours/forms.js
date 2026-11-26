@@ -46,6 +46,11 @@ export function start() {
     if (select?.type !== "select-one" || !select.isConnected) return;
     for (const option of select.options) option.selected = option.defaultSelected;
   });
+  // Enter in an autosaving form (hx-trigger without submit) would submit it as a GET, with the CSRF token in the URL.
+  document.addEventListener("submit", (event) => {
+    const hxTrigger = event.target.getAttribute("hx-trigger");
+    if (hxTrigger && !/\bsubmit\b/.test(hxTrigger)) event.preventDefault();
+  });
   // A `data-preset` button sets the field its group names, as typing would.
   document.addEventListener("click", (event) => {
     const preset = event.target.closest("[data-preset]");
