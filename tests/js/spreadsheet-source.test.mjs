@@ -45,3 +45,15 @@ test("a replacement without the saved columns is detected afresh", () => {
   ]);
   assert.deepEqual(roles(source), { "Student Number": "id", Q1: "answer", Q2: "answer" });
 });
+
+test("a column's sample values are its first three non-blank answers, each kept separate", () => {
+  const source = replacement([
+    ["Student Number", "Q1"],
+    ["51000000", "nucleus, ribosome"],
+    ["51000037", ""],
+    ["51000045", "golgi"],
+    ["51000053", "nucleus, golgi"],
+    ["51000061", "ribosome"],
+  ]);
+  assert.deepEqual(source.columns[1].sampleValues, ["nucleus, ribosome", "golgi", "nucleus, golgi"]);
+});

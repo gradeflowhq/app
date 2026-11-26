@@ -205,8 +205,7 @@ export function spreadsheetSource({ sheets, rows }, savedSettings = null, { isRe
         .map((row) => cellText(row[index]))
         .filter(Boolean)
         .take(3)
-        .toArray()
-        .join(", ");
+        .toArray();
     },
 
     pickSheet(event) {

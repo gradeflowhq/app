@@ -23,7 +23,7 @@
         <template x-for="column in source.columns" :key="column.index">
           <tr>
             <td class="font-medium" x-text="column.name"></td>
-            <td class="max-w-72 truncate text-muted max-sm:hidden" x-text="column.sampleValues"></td>
+            <td class="max-sm:hidden"><ul class="flex max-w-72 flex-wrap gap-1"><template x-for="sampleValue in column.sampleValues"><li class="badge max-w-full border-base-300 text-muted"><span class="truncate" x-text="sampleValue"></span></li></template></ul></td>
             <td>
               <select class="select select-sm w-full min-w-max" :data-index="column.index" x-on:change="source.setRole($event)" :aria-label="'Use of ' + column.name">
                 <template x-for="role in source.roles" :key="role[0]"><option :value="role[0]" x-text="role[1]" :selected="role[0] === column.role"></option></template>
