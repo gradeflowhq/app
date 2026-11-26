@@ -9,7 +9,7 @@
   <span class="flex min-w-0 flex-1 items-center gap-1.5 px-2 text-xs leading-tight text-muted">{% icon "exclamation-circle" "text-warning" %}<span class="line-clamp-2">{{ cell.trial.failure }}</span></span>
   <button type="button" class="btn btn-ghost btn-square btn-sm shrink-0 text-muted" hx-post="{{ test_url }}" hx-vals="{{ test_values }}" aria-label="Retry {{ row.model }} as the {{ cell.role }} model" title="Retry">{% icon "arrow-path" "size-3.5" %}</button>
 {% else %}
-  <label class="flex h-8 min-w-0 flex-1 cursor-pointer items-center gap-1.5 rounded-field px-2 text-sm hover:bg-base-200 has-checked:bg-primary/10 has-checked:ring-1 has-checked:ring-primary" title="{{ cell.trial.failure|default:'' }}">
+  <label class="flex h-8 min-w-0 cursor-pointer items-center gap-1.5 rounded-field px-2 text-sm hover:bg-base-200 has-checked:bg-primary/10 has-checked:ring-1 has-checked:ring-primary" title="{{ cell.trial.failure|default:'' }}">
     <input type="radio" name="{{ cell.role }}_model" value="{{ row.model }}" class="radio radio-xs radio-primary" hx-post="{% url 'model_service_use' %}" hx-trigger="change" aria-label="Use {{ row.model }} as the {{ cell.role }} model"{% if cell.in_use %} checked{% endif %}>
     {% include "model_service/score.html" with trial=cell.trial %}
     {% if cell.best %}<span class="text-yellow-500" title="Best">{% icon "trophy" "size-3.5" mini=True %}<span class="sr-only">Best</span></span>{% endif %}
