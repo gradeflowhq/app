@@ -73,6 +73,7 @@
           {% for field_set in editor.form.rows %}<c-field-errors :errors="field_set.errors" id="{{ editor.actions.update|slugify }}-{{ field_set.name }}-error" hx-swap-oob="innerHTML" />{% for row in field_set.forms %}{% for field in row %}<c-field-errors :errors="field.errors" id="{{ field.auto_id }}_error" hx-swap-oob="true" />{% endfor %}{% endfor %}{% endfor %}
           {% for setting_view in editor.settings_holding_steps %}<c-field-errors :errors="setting_view.errors" id="steps-setting-{{ setting_view.setting.name }}-error" hx-swap-oob="true" />{% endfor %}
           {{ update_html|default:"" }}
+          {% if drafting_summary_cleared %}{% include "marking/drafting.html#band" with out_of_band=True %}{% endif %}
           {% include "marking/editor.html#editor-status" %}
         {% endif %}
       {% endpartialdef %}

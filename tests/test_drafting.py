@@ -208,11 +208,14 @@ def test_a_change_to_the_draft_clears_the_summary(
     start_drafting(client, q1)
     finish_drafting(fake_runner.run_ids(DRAFTING)[0])
     draft = draft_record(q1)
-    client.post(
-        reverse("draft", args=[q1.assessment_id, draft.pk]), {"path": "", "fields_posted": "1", "answers": ["light"]}
-    )
+    url = reverse("draft", args=[q1.assessment_id, draft.pk])
+    page = client.post(url, {"path": "", "fields_posted": "1", "answers": ["light"]}).text
     draft.refresh_from_db()
     assert draft.drafting_summary == ""
+    assert '<div id="marking-instructions" hx-swap-oob="outerMorph"' in page
+    assert "Accepts one answer." not in page
+    page = client.post(url, {"path": "", "fields_posted": "1", "answers": ["light", "sun"]}).text
+    assert 'id="marking-instructions"' not in page, "the next change doesn't send the band again"
 
 
 @pytest.mark.usefixtures("idle_runner")

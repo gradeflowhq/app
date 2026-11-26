@@ -14,7 +14,7 @@
 
 {# The band: the instructions with Edit and Remove, or their field; while AI drafts, its progress and Cancel; then AI's summary until it's dismissed. Hidden until opened when it has nothing to show. #}
 {% partialdef band %}{% with state=drafting.state %}
-<div id="marking-instructions" class="panel-band" x-data="markingInstructions" data-editing="{{ drafting.is_editing|yesno:'true,false' }}" data-shown="{{ drafting.is_shown|yesno:'true,false' }}" x-on:marking-instructions-toggle.window="toggleEditing" hx-target:inherited="#marking-panel" hx-swap:inherited="outerMorph" x-bind:hidden="isHidden"{% if not drafting.is_shown %} hidden{% endif %}>
+<div id="marking-instructions"{% if out_of_band %} hx-swap-oob="outerMorph"{% endif %} class="panel-band" x-data="markingInstructions" data-editing="{{ drafting.is_editing|yesno:'true,false' }}" data-shown="{{ drafting.is_shown|yesno:'true,false' }}" x-on:marking-instructions-toggle.window="toggleEditing" hx-target:inherited="#marking-panel" hx-swap:inherited="outerMorph" x-bind:hidden="isHidden"{% if not drafting.is_shown %} hidden{% endif %}>
   <div class="flex min-h-7 items-center gap-2">
     {% icon "sparkles" "text-primary" %}<label for="marking-instructions-text" class="whitespace-nowrap font-medium">Marking instructions</label>
     {% if drafting.instructions and not drafting.is_running %}

@@ -253,6 +253,7 @@ def draft_view(request: Request, access: AssessmentAccess, draft_id: UUID) -> Ht
     structure_before = workspace.editor_structure(path) if workspace.draft.is_step(path) else None
     decisions = workspace.draft.answer_decisions()
     method = drafted_method(workspace.draft)
+    had_drafting_summary = bool(workspace.record.drafting_summary)
     next_editor = _editor(request, workspace, _apply(request, workspace, path))
     _refresh_list_if_method_changed(request, workspace, method)
     context = _editor_context(request, access, workspace, next_editor)
@@ -266,7 +267,11 @@ def draft_view(request: Request, access: AssessmentAccess, draft_id: UUID) -> Ht
             or not previews.preview_is_stale(workspace)
             else preview_bar(request, workspace)
         )
-        context |= {"fields_only_update": True, "update_html": answers_html}
+        context |= {
+            "fields_only_update": True,
+            "update_html": answers_html,
+            "drafting_summary_cleared": had_drafting_summary and not workspace.record.drafting_summary,
+        }
         return render(request, "marking/step.html#notices", context)
     context["answers_html"] = answers_column_html(request, access, workspace.subject, workspace, out_of_band=True)
     response = render(request, "marking/panel.html", context)
