@@ -649,6 +649,14 @@ def test_answers_the_question_reads_as_blank_arent_suggested(assessment: Assessm
     assert "respiration" in suggestions
 
 
+def test_answers_are_suggested_as_the_question_reads_them(assessment: Assessment) -> None:
+    assessment.students.filter(encrypted_id=encrypted_id("S002")).update(answers={"Q1": "Photosynthesis uses light"})
+    workspace = workspace_of(assessment, {"question": "Q1", "uses": "gradeflow/accepted-answers@1"})
+    suggestions = workspace.suggestions_at(workspace.draft.position(""))
+    assert suggestions["photosynthesis uses light"] == 2
+    assert "Photosynthesis uses light" not in suggestions
+
+
 def test_a_question_groups_checks_suggest_their_questions_answers(client: Client, assessment: Assessment) -> None:
     marking = question_group_marking(assessment)
     client.post(reverse("question_group_edit", args=[assessment.pk, marking.pk]))

@@ -163,11 +163,8 @@ class MarkingWorkspace(StepWorkspace):
         """What a step at `position` reads of the most common answers, with how many gave each."""
         if position.question is None or position.question not in self.questions:
             return {}
-        suggestions = self._most_common_answers(position.question)
-        if position.input_kind is None:
-            return suggestions
         counts: Counter[str] = Counter()
-        for answer, count in suggestions.items():
+        for answer, count in self._most_common_answers(position.question).items():
             for value in position.values_read(answer):
                 counts[value] += count
         return dict(counts.most_common())
