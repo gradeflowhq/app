@@ -21,7 +21,7 @@ from gradeflow_app.live.topics import topic
 from gradeflow_app.marking.models import MarkingDraftRecord, MarkingSubject
 from gradeflow_app.marking.previews import start_preview
 from gradeflow_app.marking.remarks import student_submissions
-from gradeflow_app.marking.workspace import DRAFTING, MarkingWorkspace, notify_drafts_changed, start_draft
+from gradeflow_app.marking.workspace import DRAFTING, PREVIEW, MarkingWorkspace, notify_drafts_changed, start_draft
 from gradeflow_app.model_service.endpoints import endpoint
 from gradeflow_app.requests import Request
 
@@ -204,7 +204,10 @@ def _lock(run: Run) -> None:
 
 def _topics(run: Run) -> list[str]:
     draft = MarkingDraftRecord.objects.filter(pk=run.owner).first()
-    return [topic(DRAFTING, draft.question_id, draft.user_id)] if draft is not None else []
+    if draft is None:
+        return []
+    # The answers column refreshes with the preview, which a marking that needs the AI service doesn't start.
+    return [topic(DRAFTING, draft.question_id, draft.user_id), topic(PREVIEW, draft.assessment_id, draft.user_id)]
 
 
 register(
