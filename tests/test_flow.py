@@ -640,6 +640,38 @@ def test_a_multipart_answers_parts_are_edited_as_rows(client: Client, assessment
     ), "an option left out of the post keeps its setup"
 
 
+def test_an_invalid_save_keeps_the_posted_rows_and_shows_the_problem_on_its_row(
+    client: Client, assessment: Assessment
+) -> None:
+    question = assessment.questions.get(key="Q3")
+    url = reverse("question_settings", args=[assessment.pk, question.pk])
+    posted_rows = {
+        "parts-posted": "1",
+        "parts-0-name": "species",
+        "parts-1-name": "Gram stain",
+        "parts-2-name": "third",
+    }
+    response = client.post(url, {"question_type": "multipart", "save": "1", "max_marks": "1", **posted_rows})
+    assert re.findall(r'name="parts-\d+-name"[^>]*>([^<]*)</textarea>', response.text) == [
+        "species",
+        "Gram stain",
+        "third",
+    ]
+    message = rejection_message("multipart", {"parts": [{"name": "species"}, {"name": "Gram stain"}]})
+    assert message in between(response.text, 'id="id_parts-1-name_error"', "</div>")
+    assert response.text.count(message) == 1
+
+
+def test_a_problem_with_the_whole_list_shows_below_the_list(client: Client, assessment: Assessment) -> None:
+    question = assessment.questions.get(key="Q3")
+    url = reverse("question_settings", args=[assessment.pk, question.pk])
+    posted_rows = {"parts-posted": "1", "parts-0-name": "species", "parts-1-name": "species"}
+    response = client.post(url, {"question_type": "multipart", "save": "1", "max_marks": "1", **posted_rows})
+    message = rejection_message("multipart", {"parts": [{"name": "species"}, {"name": "species"}]})
+    assert message in between(response.text, '-parts-error"', "</div>")
+    assert response.text.count(message) == 1
+
+
 def test_a_row_added_or_removed_shows_without_saving(client: Client, assessment: Assessment) -> None:
     question = assessment.questions.get(key="Q3")
     url = reverse("question_settings", args=[assessment.pk, question.pk])

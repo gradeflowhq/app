@@ -70,7 +70,7 @@
         <c-form-errors :errors="editor.form.non_field_errors" />
         {% if fields_only_update %}
           {% for field in editor.form %}<c-field-errors :errors="field.errors" id="{{ field.auto_id }}_error" hx-swap-oob="true" />{% endfor %}
-          {% for field_set in editor.form.rows %}{% for row in field_set.forms %}{% for field in row %}<c-field-errors :errors="field.errors" id="{{ field.auto_id }}_error" hx-swap-oob="true" />{% endfor %}{% endfor %}{% endfor %}
+          {% for field_set in editor.form.rows %}<c-field-errors :errors="field_set.errors" id="{{ editor.actions.update|slugify }}-{{ field_set.name }}-error" hx-swap-oob="innerHTML" />{% for row in field_set.forms %}{% for field in row %}<c-field-errors :errors="field.errors" id="{{ field.auto_id }}_error" hx-swap-oob="true" />{% endfor %}{% endfor %}{% endfor %}
           {% for setting_view in editor.settings_holding_steps %}<c-field-errors :errors="setting_view.errors" id="steps-setting-{{ setting_view.setting.name }}-error" hx-swap-oob="true" />{% endfor %}
           {{ update_html|default:"" }}
           {% include "marking/editor.html#editor-status" %}
@@ -171,6 +171,7 @@
           {% endfor %}
           {% if editable %}<li><button type="button" class="btn btn-ghost btn-sm -mx-2 text-primary" hx-post="{{ draft_url }}" hx-vals="{% hx_vals operation="add_row" target=field_set.name more_open=more %}">{% icon "plus" %}Add</button></li>{% endif %}
         </ul>
+        <c-field-errors :errors="field_set.errors" id="{{ draft_url|slugify }}-{{ field_set.name }}-error" class="border-t border-line px-3 py-2 empty:hidden" />
         {% endif %}
       </fieldset>
       {% endfor %}

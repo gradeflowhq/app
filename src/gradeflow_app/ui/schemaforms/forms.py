@@ -3,7 +3,7 @@ problems shown on what holds them."""
 
 import json
 from collections.abc import Iterable, Mapping, Sequence
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from typing import Any, cast
 
 from django import forms
@@ -94,6 +94,8 @@ class RowForms:
     visible_when: str = ""
     """As `ObjectForm.visible_when_json` gives it."""
     starts_hidden: bool = False
+    errors: list[str] = field(default_factory=list)
+    """The core's problems with the list as a whole."""
 
 
 class ObjectForm(forms.Form):
@@ -133,16 +135,38 @@ class ObjectForm(forms.Form):
             RowForms(
                 name,
                 *self.layout.headings[name],
-                [
-                    ObjectForm(item, row, defs=defs, prefix=f"{name}-{index}")
-                    for index, row in enumerate(initial_object.get(name) or [])
-                ],
+                self._row_forms(name, row_schema),
                 visible_when=self.visible_when_json(self.layout.hints[name].visible_when),
                 starts_hidden=self.is_hidden_by(self.layout.hints[name].visible_when),
             )
-            for name, item in self.layout.rows.items()
+            for name, row_schema in self.layout.rows.items()
         ]
         self.steps_setting_errors: dict[str, list[str]] = {name: [] for name in self.layout.settings_holding_steps}
+
+    def _row_forms(self, name: str, row_schema: Schema) -> list[ObjectForm]:
+        """The forms of the rows of `name`, as posted, or else as in `initial_object`."""
+        if f"{name}-posted" in self.data:
+            return [
+                ObjectForm(row_schema, {}, defs=self.defs, data=self.data, prefix=f"{name}-{index}")
+                for index in posted_indexes(self.data, name)
+            ]
+        return [
+            ObjectForm(row_schema, row, defs=self.defs, prefix=f"{name}-{index}")
+            for index, row in enumerate(self.initial_object.get(name) or [])
+        ]
+
+    def full_clean(self) -> None:
+        super().full_clean()
+        for row in self._bound_row_forms:
+            row.full_clean()
+
+    def is_valid(self) -> bool:
+        """Whether the fields and the posted rows are valid."""
+        return super().is_valid() and not any(row.errors for row in self._bound_row_forms)
+
+    @property
+    def _bound_row_forms(self) -> list[ObjectForm]:
+        return [row for rows in self.rows for row in rows.forms if row.is_bound]
 
     def visible_when_json(self, conditions: Mapping[str, Any]) -> str:
         """`conditions` on this form's fields, by HTML name, as JSON for behaviours/forms.js to apply as they
@@ -198,16 +222,18 @@ class ObjectForm(forms.Form):
             self.add_problem(problem.field, problem.message)
 
     def add_problem(self, field: str, message: str) -> None:
-        """Show a problem the core found at `field`, a JSON Pointer into this object, on the field, steps setting or row
-        holding that value; otherwise on the whole form, after the setting's name."""
+        """Show a problem the core found at `field`, a JSON Pointer into this object, on the field, steps setting, list
+        or row holding that value; otherwise on the whole form, after the setting's name."""
         parts: list[str] = JsonPointer(field).parts
         name, *inner_parts = parts or [""]
         index = inner_parts[0] if inner_parts else ""
-        row_forms = next((rows.forms for rows in self.rows if rows.name == name), [])
+        row_forms = next((rows for rows in self.rows if rows.name == name), None)
         if name in self.steps_setting_errors:
             self.steps_setting_errors[name].append(message)
-        elif index.isdecimal() and int(index) < len(row_forms):
-            row_forms[int(index)].add_problem(JsonPointer.from_parts(inner_parts[1:]).path, message)
+        elif row_forms is not None and not inner_parts:
+            row_forms.errors.append(message)
+        elif row_forms is not None and index.isdecimal() and int(index) < len(row_forms.forms):
+            row_forms.forms[int(index)].add_problem(JsonPointer.from_parts(inner_parts[1:]).path, message)
         elif form_field := self._field_at(parts):
             self.add_error(form_field, message)
         else:
@@ -242,7 +268,7 @@ class ObjectForm(forms.Form):
     def has_advanced_errors(self) -> bool:
         """Whether an advanced field or row has an error, which must not stay hidden."""
         return any(self[name].errors for name in self._advanced) or any(
-            row.errors for rows in self.advanced_rows for row in rows.forms
+            rows.errors or any(row.errors for row in rows.forms) for rows in self.advanced_rows
         )
 
     @property
@@ -271,9 +297,9 @@ class ObjectForm(forms.Form):
                 continue
             parent, last = _parent_of(result, name)
             parent[last] = value
-        for name, schema in self.layout.rows.items():
-            if f"{name}-posted" in self.data:
-                result[name] = _read_rows(self.data, name, schema, self.defs)
+        for rows in self.rows:
+            if f"{rows.name}-posted" in self.data:
+                result[rows.name] = [row.values() for row in rows.forms]
         return result
 
     def _is_omitted(self, name: str) -> bool:
@@ -340,13 +366,3 @@ def _parent_of(target: dict[str, Any], dotted: str) -> tuple[dict[str, Any], str
         nested = target[part] = dict(target.get(part) or {})
         target = nested
     return target, last
-
-
-def _read_rows(data: Mapping[str, Any], name: str, schema: Schema, defs: Mapping[str, Schema]) -> list[Any]:
-    """The rows of `name` posted as `name-<index>-<field>`, cleaned like an `ObjectForm`."""
-    rows = []
-    for index in posted_indexes(data, name):
-        form = ObjectForm(schema, {}, defs=defs, data=data, prefix=f"{name}-{index}")
-        form.full_clean()
-        rows.append(form.values())
-    return rows
