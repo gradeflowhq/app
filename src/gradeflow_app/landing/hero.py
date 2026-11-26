@@ -320,7 +320,14 @@ def hero_view() -> HeroView:
         answer_group_lists=[unmarked, answer_groups(), adjusted_groups],
         adjusted_group_index=adjusted_group_index,
         choosing_panel=Panel(
-            None, None, offered, has_imported_marks=False, has_history=False, archived=False, last_save=None
+            None,
+            None,
+            instructions="",
+            choices=offered,
+            has_imported_marks=False,
+            has_history=False,
+            archived=False,
+            last_save=None,
         ),
         step_choices=choices(draft.methods(steps_setting.new_step_path), NO_SAVED_METHODS).everyday,
         picker_title=PickerForm(action="").title,
@@ -329,7 +336,8 @@ def hero_view() -> HeroView:
         saved_panel=Panel(
             None,
             summary,
-            None,
+            instructions="",
+            choices=None,
             has_imported_marks=False,
             has_history=True,
             archived=False,

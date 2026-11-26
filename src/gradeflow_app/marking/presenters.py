@@ -330,6 +330,8 @@ class Panel:
 
     question_group: SavedGroup | None
     summary: MarkingSummary | None
+    instructions: str
+    """The marking instructions AI drafted the saved marking from, if any."""
     choices: Choices | None
     """The methods to choose from, when choosing one."""
     has_imported_marks: bool
@@ -363,6 +365,7 @@ def panel(
     return Panel(
         question_group=group,
         summary=_summary(marking, check, assessment) if marking else group.summary if group else None,
+        instructions=marking.instructions if marking else "",
         choices=choices(methods_for(user, assessment, question.key), offers(user, assessment.course))
         if choosing
         else None,

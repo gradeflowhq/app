@@ -9,10 +9,11 @@ from pytest_django import Settings
 
 from gradeflow_app.accounts.models import User
 from gradeflow_app.assessments.models import Assessment
+from gradeflow_app.courses.models import Role
 from gradeflow_app.marking.models import Marking, MarkingDraftRecord
 from gradeflow_app.marking.workspace import DRAFTING, PREVIEW
 from gradeflow_app.questions.models import Question
-from tests.conftest import FakeRunner, full_marks_marking, post_callback, sandbox_tasks
+from tests.conftest import FakeRunner, full_marks_marking, member_client, post_callback, sandbox_tasks
 from tests.test_model_service import (
     MODEL_SERVICE_HEADERS,
     PROVIDER,
@@ -82,6 +83,23 @@ def test_the_panel_drafts_new_markings_and_updates_saved_ones_from_their_instruc
     assert "Ask AI" not in editor, "with instructions, the band has its own Edit"
     assert 'aria-label="Update marking"' in editor
     assert f">{INSTRUCTIONS}</textarea>" in editor
+
+
+def test_viewers_see_a_saved_markings_instructions_read_only(assessment: Assessment, q1: Question) -> None:
+    marking = full_marks_marking(assessment, "Q1")
+    marking.instructions = INSTRUCTIONS
+    marking.save()
+    viewer = member_client(assessment, Role.VIEWER)
+    for page in (viewer.get(reverse("question", args=[q1.assessment_id, q1.pk])).text, panel(viewer, q1)):
+        assert INSTRUCTIONS in page
+        assert 'id="marking-instructions"' not in page, "no editable instructions band"
+    for url_name in (
+        "marking_drafting",
+        "marking_drafting_cancel",
+        "marking_drafting_summary_dismiss",
+        "marking_instructions_remove",
+    ):
+        assert post(viewer, q1, url_name).status_code == 403, url_name
 
 
 def test_a_marking_without_instructions_offers_ask_ai_beside_change(

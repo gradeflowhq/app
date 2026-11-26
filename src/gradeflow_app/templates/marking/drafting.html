@@ -57,9 +57,9 @@
 {% endwith %}{% endpartialdef %}
 
 {# A saved marking's instructions, read only. #}
-{% partialdef saved_instructions %}{% if drafting.instructions %}<div class="panel-band">
+{% partialdef saved_instructions %}{% if panel.instructions %}<div class="panel-band">
   <div class="flex min-h-7 items-center gap-2">{% icon "sparkles" "text-primary" %}<p class="whitespace-nowrap font-medium">Marking instructions</p></div>
-  <c-collapsible class="whitespace-pre-line">{{ drafting.instructions }}</c-collapsible>
+  <c-collapsible class="whitespace-pre-line">{{ panel.instructions }}</c-collapsible>
 </div>{% endif %}{% endpartialdef %}
 
 {# The marking on its way while AI writes a new one. #}

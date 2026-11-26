@@ -20,7 +20,7 @@
     {% endif %}
     {% if panel.mode == "question_group" %}<a class="btn btn-sm" href="{% url 'question_group' question.assessment_id panel.question_group.marking.pk %}">Open question group</a>{% endif %}
   </c-slot>
-  {% if drafting %}<c-slot name="band">{% if panel.mode == "summary" %}{% include "marking/drafting.html#saved_instructions" %}{% elif panel.mode != "question_group" %}{% include "marking/drafting.html#band" %}{% endif %}</c-slot>{% endif %}
+  <c-slot name="band">{% if panel.mode == "summary" %}{% include "marking/drafting.html#saved_instructions" %}{% elif drafting and panel.mode == "choose" %}{% include "marking/drafting.html#band" %}{% endif %}</c-slot>
   {% if panel.mode == "summary" %}
     <c-marking-summary :summary="panel.summary" :archived="panel.archived" />
   {% elif panel.mode == "question_group" %}
