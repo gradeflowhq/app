@@ -165,8 +165,7 @@ class MarkingWorkspace(StepWorkspace):
             return {}
         counts: Counter[str] = Counter()
         for answer, count in self._most_common_answers(position.question).items():
-            for value in position.values_read(answer):
-                counts[value] += count
+            counts.update(dict.fromkeys(position.values_read(answer), count))
         return dict(counts.most_common())
 
     @cached_property

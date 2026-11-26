@@ -89,7 +89,7 @@ def workspace_of(assessment: Assessment, definition: dict[str, Any], key: str | 
 def test_a_typing_post_reads_the_answers_once(
     client: Client, assessment: Assessment, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    url, _ = start_marking(client, assessment, "Q1", "gradeflow/key-points@1")
+    url, _ = start_marking(client, assessment, "Q1", "gradeflow/accepted-answers@1")
     keys_read: list[str] = []
     answer_expression = import_models.answer_expression
 
@@ -98,7 +98,7 @@ def test_a_typing_post_reads_the_answers_once(
         return answer_expression(key)
 
     monkeypatch.setattr("gradeflow_app.marking.workspace.answer_expression", recording_answer_expression)
-    response = client.post(url, {"path": "", "fields_posted": "1", "points": ["light"], "marks_by": "all_correct"})
+    response = client.post(url, {"path": "", "fields_posted": "1", "answers": ["light"]})
     assert response.status_code == 200
     assert keys_read == ["Q1"]
 
@@ -639,6 +639,25 @@ def test_a_check_of_items_suggests_each_item(assessment: Assessment) -> None:
     workspace = workspace_of(assessment, item_by_item)
     suggestions = workspace.suggestions_at(workspace.draft.position("/with/checks/0"))
     assert {"light": 1, "water": 1}.items() <= suggestions.items()
+
+
+def test_an_order_suggests_each_item_with_how_many_gave_it(assessment: Assessment) -> None:
+    question = assessment.questions.get(key="Q1")
+    question.core_question = Question.load({"type": "list", "max_marks": 1})
+    question.save()
+    assessment.students.filter(encrypted_id=encrypted_id("S001")).update(answers={"Q1": "light, Water, light"})
+    assessment.students.filter(encrypted_id=encrypted_id("S002")).update(answers={"Q1": "water, light"})
+    workspace = workspace_of(assessment, {"question": "Q1", "uses": "gradeflow/order@1"})
+    suggestions = workspace.form("").fields["order"].widget.suggestions
+    assert {"light": 2, "water": 2}.items() <= suggestions.items()
+    assert "water, light" not in suggestions
+
+
+def test_a_chosen_answer_keeps_its_count(client: Client, assessment: Assessment) -> None:
+    url, _ = start_marking(client, assessment, "Q1", "gradeflow/accepted-answers@1")
+    client.post(url, {"path": "", "fields_posted": "1", "answers": ["respiration"]})
+    page = client.post(url, {"path": "", "operation": "open"}).text
+    assert '<option value="respiration" data-data=\'{"count": 1}\' selected>' in page
 
 
 def test_answers_the_question_reads_as_blank_arent_suggested(assessment: Assessment) -> None:

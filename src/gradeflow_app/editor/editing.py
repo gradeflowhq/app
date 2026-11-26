@@ -10,7 +10,7 @@ from jsonpointer import JsonPointer
 
 from gradeflow_app.libraries.collection import OfferedMethods
 from gradeflow_app.ui.schemaforms.forms import ObjectForm
-from gradeflow_app.ui.schemaforms.schema import SUGGESTIONS_KEY, hint
+from gradeflow_app.ui.schemaforms.schema import SUGGESTIONS_KEY, Schema, hint
 from gradeflow_app.ui.schemaforms.widgets import ConditionWidget
 
 
@@ -99,20 +99,32 @@ class StepWorkspace(ABC):
 
     def form(self, path: str, **kwargs: Any) -> ObjectForm:
         schema = self.draft.schema(path)
-        if suggestions := self.suggestions_at(self.draft.position(path)):
-            properties = {
-                name: {**property_schema, SUGGESTIONS_KEY: suggestions}
-                if hint(property_schema).get("lists_answers")
-                else property_schema
-                for name, property_schema in schema["properties"].items()
-            }
-            schema = {**schema, "properties": properties}
-        form = ObjectForm(schema, self.draft.values(path), path=path, **kwargs)
+        position = self.draft.position(path)
+        properties = {
+            name: self._schema_with_suggestions(property_schema, position)
+            for name, property_schema in schema["properties"].items()
+        }
+        form = ObjectForm({**schema, "properties": properties}, self.draft.values(path), path=path, **kwargs)
         if conditions := [field for field in form.fields.values() if isinstance(field.widget, ConditionWidget)]:
             subjects = self.draft.condition_subjects(path)
             for field in conditions:
                 field.widget.subjects = subjects
         return form
+
+    def _schema_with_suggestions(self, property_schema: Schema, position: Position) -> Schema:
+        """`property_schema` with suggestions of what the step at `position` reads, if the field lists answers or
+        answer items."""
+        field_hint = hint(property_schema)
+        suggestion_position = (
+            position
+            if field_hint.get("lists_answers")
+            else position.item_check_position
+            if field_hint.get("lists_answer_items")
+            else None
+        )
+        if suggestion_position is None:
+            return property_schema
+        return {**property_schema, SUGGESTIONS_KEY: self.suggestions_at(suggestion_position)}
 
     def editor_structure(self, path: str) -> tuple[object, ...]:
         """What redraws the editor at `path` when it changes: schema, methods offered, condition rows, and the

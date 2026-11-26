@@ -68,8 +68,9 @@ class TagsWidget(forms.SelectMultiple):
 
     def get_context(self, name: str, value: Any, attrs: dict[str, Any] | None) -> dict[str, Any]:
         context = super().get_context(name, value, attrs)
-        selected = context["widget"]["selected"] = context["widget"]["value"]
+        selected = context["widget"]["value"]
         suggestions = self.suggestions or dict.fromkeys((str(choice) for choice, _ in self.choices), 0)
+        context["widget"]["selected"] = [(text, suggestions.get(text, 0)) for text in selected]
         context["widget"]["suggestions"] = [
             (text, count)
             for text, count in sorted(suggestions.items(), key=lambda item: -item[1])
