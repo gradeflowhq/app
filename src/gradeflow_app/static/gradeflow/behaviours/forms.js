@@ -40,12 +40,24 @@ export function start() {
     if (tomSelect) tomSelect.createItem(box.value);
     else box.dispatchEvent(new Event("input", { bubbles: true }));
   });
-  // A select that sent its change shows what the server kept: a morph leaves it as picked, even when refused.
-  document.addEventListener("htmx:after:swap", ({ detail: { ctx } }) => {
-    const select = ctx.sourceEvent?.target;
-    if (select?.type !== "select-one" || !select.isConnected) return;
-    for (const option of select.options) option.selected = option.defaultSelected;
+  // A select the response to its change morphs shows what the server kept, as when it refused the change: a morph
+  // changes only the options' `selected` attribute, which a select once picked from ignores. One picked from again
+  // since keeps the newer pick, which its own request sends.
+  let swapping;
+  document.addEventListener("htmx:before:swap", ({ detail: { ctx } }) => {
+    swapping = ctx;
   });
+  document.addEventListener(
+    "morph",
+    ({ target }) => {
+      if (target.type !== "select-one" || target !== swapping?.sourceEvent?.target) return;
+      if (swapping.request.body?.get(target.name) !== target.value) return;
+      queueMicrotask(() => {
+        for (const option of target.options) option.selected = option.defaultSelected;
+      });
+    },
+    { capture: true },
+  );
   // Enter in an autosaving form (hx-trigger without submit) would submit it as a GET, with the CSRF token in the URL.
   document.addEventListener("submit", (event) => {
     const hxTrigger = event.target.getAttribute("hx-trigger");
