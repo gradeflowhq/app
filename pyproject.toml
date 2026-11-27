@@ -1,6 +1,6 @@
 [project]
 name = "gradeflow-app"
-version = "0.4.4"
+version = "0.5.0"
 description = "GradeFlow's web app: import exam results, mark them, and send the marks to Canvas."
 readme = "README.md"
 license = "MIT"
@@ -47,7 +47,7 @@ dev = [
 sandbox = ["gradeflow-core[ml,llm]", "httpx>=0.28"]
 
 [tool.uv.sources]
-gradeflow-core = { git = "https://github.com/gradeflowhq/core", tag = "v0.4.3" }
+gradeflow-core = { git = "https://github.com/gradeflowhq/core", tag = "v0.5.0" }
 
 [build-system]
 requires = ["uv_build>=0.12,<0.13"]
