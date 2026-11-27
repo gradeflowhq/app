@@ -4,11 +4,13 @@ from typing import Any
 from django import forms
 
 from gradeflow_app.exports.models import AssessmentCanvas, CourseCanvas, MarksMode, SentMarks
+from gradeflow_app.ui.forms import DecimalNotationNumberInput
 from gradeflow_app.ui.schemaforms.widgets import Segmented
 from gradeflow_app.ui.templatetags.ui import marks
 
 rounding_field = partial(
     forms.FloatField,
+    widget=DecimalNotationNumberInput,
     label="Round to the nearest",
     required=False,
     min_value=0,
@@ -21,7 +23,7 @@ CANVAS_FORM_LABELS = {"marks_mode": "Send as", "include_feedback": "Send feedbac
 class CourseCanvasForm(forms.ModelForm[CourseCanvas]):
     """The Canvas course a course's marks go to, and how they're sent."""
 
-    rounding = rounding_field(widget=forms.NumberInput(attrs={"placeholder": "0.5", "class": "max-w-40"}))
+    rounding = rounding_field(widget=DecimalNotationNumberInput(attrs={"placeholder": "0.5", "class": "max-w-40"}))
 
     class Meta:
         model = CourseCanvas

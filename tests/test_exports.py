@@ -198,3 +198,14 @@ def test_a_course_refuses_a_negative_rounding_step(client: Client, canvas_assess
     assert page.status_code == 200
     assert "Round to 0 or more." in page.text
     assert CourseCanvas.objects.get(course=canvas_assessment.course).rounding == 0.5
+
+
+def test_a_whole_number_rounding_step_shows_without_a_trailing_zero(
+    client: Client, canvas_assessment: Assessment
+) -> None:
+    CourseCanvas.objects.filter(course=canvas_assessment.course).update(rounding=1)
+    client.post(reverse("export_sending", args=[canvas_assessment.pk]), {"rounding": "2"})
+    course_page = client.get(reverse("canvas_settings", args=[canvas_assessment.course_id])).text
+    export_page = client.get(reverse("export", args=[canvas_assessment.pk])).text
+    assert 'name="rounding" value="1"' in course_page
+    assert 'name="rounding" value="2"' in export_page

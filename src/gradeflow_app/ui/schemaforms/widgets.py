@@ -2,25 +2,16 @@
 
 import json
 from collections.abc import Mapping, Sequence
-from decimal import Decimal
 from typing import Any
 
 from django import forms
 from gradeflow_core.editing import CheckRow, Condition, ConditionRow, ConditionSubject, SettingRow
 
-from gradeflow_app.ui.forms import posted_indexes
+from gradeflow_app.ui.forms import DecimalNotationMixin, posted_indexes
 
 
-class NumberTextInput(forms.TextInput):
-    """Numbers as people write them: `2` and `0.000001`, not `2.0` and `1e-06`. A text box, so a fraction such as
-    `1/3` can be typed."""
-
-    def format_value(self, value: Any) -> str | None:
-        if isinstance(value, float):
-            text = format(Decimal(repr(value)), "f")
-            return text.rstrip("0").rstrip(".") if "." in text else text
-        formatted: str | None = super().format_value(value)
-        return formatted
+class NumberTextInput(DecimalNotationMixin, forms.TextInput):
+    """A number in a text box, so a fraction such as `1/3` can be typed."""
 
 
 class CodeInput(forms.Textarea):

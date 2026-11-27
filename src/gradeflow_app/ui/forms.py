@@ -1,4 +1,5 @@
 from collections.abc import Mapping
+from decimal import Decimal
 from typing import Any
 
 from django import forms
@@ -20,6 +21,20 @@ class BoundField(forms.BoundField):
         attrs = super().build_widget_attrs(attrs, widget)
         attrs.pop("required", None)
         return attrs
+
+
+class DecimalNotationMixin(forms.Widget):
+    """Renders floats in decimal notation without trailing zeros: `2` and `0.000001`, not `2.0` and `1e-06`."""
+
+    def format_value(self, value: Any) -> str | None:
+        if isinstance(value, float):
+            return format(Decimal(repr(value)).normalize(), "f")
+        formatted: str | None = super().format_value(value)
+        return formatted
+
+
+class DecimalNotationNumberInput(DecimalNotationMixin, forms.NumberInput):
+    pass
 
 
 class MarkdownInput(forms.Textarea):
