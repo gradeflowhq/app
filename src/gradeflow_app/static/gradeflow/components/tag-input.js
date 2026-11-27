@@ -7,12 +7,37 @@ export const tagInput = () => ({
   select: null,
   async init() {
     await loadScript("tom-select-2.6.2/tom-select.complete.min.js");
-    // Only a tag added or removed autosaves the form: typing, and Tom Select's own input events, stay inside.
+    // Only a tag added or removed autosaves the form: typing, Tom Select's own input events and the text box's change
+    // events stay inside.
     this.$el.addEventListener("input", (event) => event.stopPropagation());
-    // Morphs are synchronous: Tom Select is built again from the select once the morph has brought it up to date.
+    // Morphs are synchronous: Tom Select is built again from the select once the morph has brought it up to date. A
+    // focused tag input keeps its state, as htmx keeps a focused text input's value: an item added while an earlier
+    // save was in flight would otherwise be lost.
     this.$el.addEventListener("morph", () => {
+      const controlInput = this.select?.control_input;
+      const focusedState = controlInput === document.activeElement && {
+        items: this.select.items,
+        inputValue: controlInput.value,
+        selectionStart: controlInput.selectionStart,
+        selectionEnd: controlInput.selectionEnd,
+        isOpen: this.select.isOpen,
+      };
+      // Chromium blurs a focused element when it's removed, and Tom Select adds the text typed in it as an item on blur.
+      if (focusedState) controlInput.value = "";
       this.destroy();
-      queueMicrotask(() => this.build());
+      queueMicrotask(() => {
+        this.build();
+        if (!focusedState || !this.select) return;
+        const { items, inputValue, selectionStart, selectionEnd, isOpen } = focusedState;
+        this.select.addOptions(items.map((value) => ({ value, text: value })));
+        // Silent, as their own change already saved them. Set before the text, which onItemAdd clears.
+        this.select.setValue(items, true);
+        this.select.setTextboxValue(inputValue);
+        // Focusing opens the dropdown.
+        this.select.control_input.focus();
+        this.select.control_input.setSelectionRange(selectionStart, selectionEnd);
+        if (!isOpen) this.select.close(false);
+      });
     });
     this.build();
   },
@@ -48,6 +73,7 @@ export const tagInput = () => ({
       },
     });
     this.select.wrapper.addEventListener("input", (event) => event.stopPropagation());
+    this.select.wrapper.addEventListener("change", (event) => event.stopPropagation());
     // A click in the box keeps it focused for the next value: Tom Select's own click on an open box blurs it.
     const originalClick = this.select.onClick.bind(this.select);
     this.select.onClick = () => {
