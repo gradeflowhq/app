@@ -69,6 +69,7 @@ def send_marks(request: Request, access: AssessmentAccess) -> HttpResponse:
         "sent_marks": _sent_marks(assessment),
         "student_count": len(results.rows),
         "unmarked_count": results.unmarked_count,
+        "incompatible_questions": [question for question in assessment.questions.all() if question.load_problems],
         "download_form": download_form(),
     }
     if canvas_available and course_canvas.canvas_course and access.can_edit:

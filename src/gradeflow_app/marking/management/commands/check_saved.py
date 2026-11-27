@@ -11,16 +11,23 @@ from gradeflow_app.libraries.collection import files_needed_by, method_files
 from gradeflow_app.libraries.models import MethodVersion
 from gradeflow_app.marking.checks import definition_data
 from gradeflow_app.marking.models import Marking, MarkingDraftRecord
+from gradeflow_app.questions.models import Question
 
 
 class Command(BaseCommand):
-    help = "List the saved method versions, markings and marking drafts the installed core can't load."
+    help = "List the saved method versions, questions, markings and marking drafts the installed core can't load."
 
     def handle(self, *args: Any, **options: Any) -> None:
         failures = load_method_files(method_files(MethodVersion.objects.all()), BUILTINS).failed
         problems = [
             f"{ref}: {' '.join(map(str, file.problems))}" if file.ref == ref else f"{ref}: uses {file.ref}"
             for ref, file in failures.items()
+        ]
+        problems += [
+            f"{question.assessment.course} › {question.assessment} › Question {question.key}: "
+            f"{' '.join(question.load_problems)}"
+            for question in Question.objects.select_related("assessment__course")
+            if question.load_problems
         ]
         markings = Marking.objects.select_related("assessment__course", "question")
         drafts = MarkingDraftRecord.objects.exclude(definition="").select_related(

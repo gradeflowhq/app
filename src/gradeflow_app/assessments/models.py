@@ -34,8 +34,12 @@ class Assessment(models.Model):
         """Take the lock that orders changes to the assessment's answers, markings and results."""
         Assessment.objects.select_for_update().get(pk=self.pk)
 
+    def compatible_questions(self) -> list[Question]:
+        """The questions the installed core can load. Only these are marked, totalled and exported."""
+        return [question for question in self.questions.all() if not question.load_problems]
+
     def question_set(self) -> QuestionSet:
-        return QuestionSet({question.key: question.core_question for question in self.questions.all()})
+        return QuestionSet({question.key: question.core_question for question in self.compatible_questions()})
 
 
 @dataclass(frozen=True)

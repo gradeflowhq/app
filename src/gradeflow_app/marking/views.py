@@ -67,11 +67,15 @@ def _question(
     key = _shown_question_key(access)
     if request.session.get(key) != str(question.pk):
         request.session[key] = str(question.pk)
+    question_list = presenters.question_list(access, str(question.pk), accepted)
+    if question.load_problems:
+        context = {"access": access, "question": question, "question_list": question_list}
+        return render(request, "marking/incompatible_question.html", context)
     subject = MarkingSubject.of(access.assessment, question)
     workspace = draft_workspace(request, access, subject)
     context = _marking_column_context(request, access, question, subject, workspace, accepted) | {
         "question": question,
-        "question_list": presenters.question_list(access, str(question.pk), accepted),
+        "question_list": question_list,
         "answers": answers_column_html(request, access, subject, workspace, accepted=accepted),
     }
     return render(request, "marking/workspace.html", context)

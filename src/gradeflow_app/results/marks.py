@@ -413,7 +413,7 @@ def histogram(totals: Sequence[float], max_marks: float, narrower_steps: int = 0
 
 def assessment_results(assessment: Assessment, students: Sequence[Student] | None = None) -> Results:
     """The marks of `students`, or else of every student."""
-    questions = list(assessment.questions.all())
+    questions = assessment.compatible_questions()
     students = list(assessment.students.all()) if students is None else students
     student_awards = awards(questions, students)
     rows = [
@@ -431,8 +431,8 @@ class QuestionMarks(NamedTuple):
 
 
 def question_marks(assessment: Assessment) -> dict[UUID, QuestionMarks]:
-    """The marks of each question, by question ID, without reading the answers."""
-    questions = list(assessment.questions.all())
+    """The marks of each question the installed core can load, by question ID, without reading the answers."""
+    questions = assessment.compatible_questions()
     students = list(assessment.students.only("imported_marks"))
     student_awards = awards(questions, students)
     summaries = {}

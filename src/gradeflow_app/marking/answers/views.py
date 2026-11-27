@@ -6,6 +6,7 @@ from django.http import Http404, HttpResponse
 from django.shortcuts import render
 from django.template.defaultfilters import pluralize
 from django.views.decorators.http import require_GET, require_POST
+from django_htmx.http import HttpResponseClientRefresh
 from simple_history.utils import bulk_create_with_history, bulk_update_with_history
 
 from gradeflow_app.assessments.access import assessment_member
@@ -30,6 +31,8 @@ from gradeflow_app.results.views import student_page
 
 
 def _answers(request: Request, access: AssessmentAccess, question: Question) -> HttpResponse:
+    if question.load_problems:
+        return HttpResponseClientRefresh()  # reload a page opened before the upgrade
     subject = MarkingSubject.of(access.assessment, question)
     context = answers_context(request, access, subject, draft_workspace(request, access, subject))
     return render(request, "results/answers.html#answers", context)

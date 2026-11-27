@@ -72,7 +72,9 @@ def combinations(
 ) -> list[Combination]:
     """Every combination of answers to `keys`, and to the questions in `reads`, that students gave, most common
     first."""
-    questions = list(assessment.questions.filter(key__in=[*keys, *reads]))
+    questions = [
+        question for question in assessment.questions.filter(key__in=[*keys, *reads]) if not question.load_problems
+    ]
     students = list(assessment.students.all())
     student_awards = awards(questions, students)
     return combinations_of(

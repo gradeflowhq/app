@@ -1,6 +1,7 @@
 import uuid
 
 from django.db import models
+from gradeflow_core import InvalidError
 from gradeflow_core import Question as CoreQuestion
 from gradeflow_core.editing import QUESTION_CLASSES, QuestionType
 from simple_history.models import HistoricalRecords
@@ -9,6 +10,8 @@ from gradeflow_app.assessments.models import Assessment
 
 QUESTION_TYPE_LABELS: dict[QuestionType, str] = {kind: question.label for kind, question in QUESTION_CLASSES.items()}
 """Each question type's name, in the core's order."""
+DEFAULT_QUESTION_TYPE: QuestionType = next(iter(QUESTION_CLASSES))
+"""The core's type for new questions."""
 
 
 class Question(models.Model):
@@ -32,6 +35,7 @@ class Question(models.Model):
 
     @property
     def core_question(self) -> CoreQuestion:
+        """Raises `InvalidError` for a question the installed core can't load."""
         if self._core_question is None or self._core_question[0] is not self.definition:
             self._core_question = (self.definition, CoreQuestion.load(self.definition))
         return self._core_question[1]
@@ -40,3 +44,12 @@ class Question(models.Model):
     def core_question(self, question: CoreQuestion) -> None:
         self.definition = question.model_dump(mode="json")
         self._core_question = (self.definition, question)
+
+    @property
+    def load_problems(self) -> tuple[str, ...]:
+        """Why the installed core can't load the question; empty if it can."""
+        try:
+            _ = self.core_question
+        except InvalidError as error:
+            return tuple(map(str, error.problems))
+        return ()

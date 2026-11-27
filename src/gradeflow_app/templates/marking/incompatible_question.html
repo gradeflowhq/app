@@ -1,0 +1,12 @@
+{% extends "marking/base.html" %}
+{% block page_title %}{{ question.key }} · {% endblock %}
+{% block work %}
+  <section class="surface relative flex flex-col md:col-span-2 md:min-h-0" aria-label="Question">
+    <div class="panel-head">
+      <c-questions-toggle />
+      <h2>{{ question.key }}</h2>
+      {% if access.can_edit %}<button class="btn btn-sm ml-auto" hx-get="{% url 'question_settings' question.assessment_id question.pk %}" hx-target="#drawer-body" hx-swap="innerHTML" data-dialog="drawer">{% icon "adjustments-horizontal" %}Settings</button>{% endif %}
+    </div>
+    <div class="p-4"><c-alert warning class="items-start"><div class="grid gap-1"><p class="font-medium">This question isn't compatible with the current GradeFlow</p><ul class="ml-5 list-disc">{% for problem in question.load_problems %}<li>{{ problem }}</li>{% endfor %}</ul>{% if access.can_edit %}<p>Fix it by choosing its type in Settings.</p>{% endif %}</div></c-alert></div>
+  </section>
+{% endblock %}

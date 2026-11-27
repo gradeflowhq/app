@@ -30,7 +30,7 @@ from gradeflow_app.marking.checks import (
 from gradeflow_app.marking.models import Marking, MarkingDraftRecord
 from gradeflow_app.marking.remarks import NO_MODEL_SERVICE, running_remarks
 from gradeflow_app.questions.models import Question
-from gradeflow_app.results.marks import question_marks
+from gradeflow_app.results.marks import QuestionMarks, question_marks
 
 
 @dataclass(frozen=True)
@@ -230,13 +230,16 @@ def question_list(
         # The list names a draft's method, styled as the saved marking until the draft is saved.
         if draft_method := draft_methods.get(question.pk):
             badge = replace(badge, label=draft_method)
+        if question.load_problems:
+            badge = MarkingBadge("Not compatible", "warning")
+        marks = marks_by_question.get(question.pk, QuestionMarks(average_proportion=None, unmarked_count=0))
         listed.append(
             ListedQuestion(
                 question=question,
                 is_marked=saved_marking is not None and not has_problems,
                 badge=badge,
-                proportion=marks_by_question[question.pk].average_proportion,
-                unmarked_count=marks_by_question[question.pk].unmarked_count,
+                proportion=marks.average_proportion,
+                unmarked_count=marks.unmarked_count,
                 progress=progress.get(question.key),
                 has_draft=has_draft,
                 is_shown=str(question.pk) == shown_id,

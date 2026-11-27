@@ -1,4 +1,5 @@
-"""Saved versions and markings the current core can't read: the rest keeps working, and each shows what is wrong."""
+"""Saved versions, markings and questions the current core can't read: the rest keeps working, and each shows what is
+wrong."""
 
 import logging
 import re
@@ -7,7 +8,7 @@ from io import StringIO
 
 import pytest
 from django.core.management import call_command
-from django.test import Client
+from django.test import Client, TestCase
 from django.urls import reverse
 from gradeflow_core.editing import dump_yaml
 
@@ -18,7 +19,8 @@ from gradeflow_app.libraries.collection import _log_failure, load_saved, loaded_
 from gradeflow_app.libraries.models import Method, MethodVersion
 from gradeflow_app.marking.models import Marking, MarkingDraftRecord
 from gradeflow_app.questions.models import Question
-from tests.conftest import HTMX_HEADERS, create_course, publish_light_method
+from gradeflow_app.results.models import Result
+from tests.conftest import HTMX_HEADERS, create_course, publish_light_method, save_full_marks_markings
 
 pytestmark = pytest.mark.django_db
 
@@ -192,3 +194,90 @@ def test_a_check_lists_what_this_core_cant_load(light: Method, wrapper: Method, 
         "Method laboratory › Assessment › Q1, draft by Ana Tan: evaluate_expected: Unknown setting. "
         "variables: Unknown setting.",
     ]
+
+
+@pytest.fixture
+def incompatible_question(assessment: Assessment) -> Question:
+    """Q2, of the question type "values", which an earlier core had; every question has a saved marking."""
+    save_full_marks_markings(assessment)
+    question = assessment.questions.get(key="Q2")
+    question.definition = {"type": "values", "max_marks": 2}
+    question.save()
+    return question
+
+
+def test_pages_load_with_a_question_an_earlier_core_saved(
+    client: Client, assessment: Assessment, incompatible_question: Question
+) -> None:
+    compatible_question = assessment.questions.get(key="Q1")
+    student = assessment.students.first()
+    assert student is not None
+    then = [{"question": "Q3", "uses": "gradeflow/full-marks@1"}]
+    condition = [{"question": "Q2", "uses": "gradeflow/full-marks@1"}]
+    definition = {"uses": "gradeflow/conditional@1", "with": {"condition": condition, "then": then}}
+    question_group = Marking.objects.create(
+        assessment=assessment, definition=dump_yaml(definition), questions_marked=["Q3"], questions_read=["Q2"]
+    )
+    pages = [
+        reverse("overview", args=[assessment.pk]),
+        reverse("course", args=[assessment.course.pk]),
+        reverse("question", args=[assessment.pk, incompatible_question.pk]),
+        reverse("question", args=[assessment.pk, compatible_question.pk]),
+        reverse("students", args=[assessment.pk]),
+        reverse("export", args=[assessment.pk]),
+        reverse("question_group", args=[assessment.pk, question_group.pk]),
+    ]
+    fragments = [
+        reverse("questions", args=[assessment.pk]),
+        reverse("question_list", args=[assessment.pk]),
+        reverse("answers", args=[assessment.pk, incompatible_question.pk]),
+        reverse("marking", args=[assessment.pk, incompatible_question.pk]),
+        reverse("question_settings", args=[assessment.pk, incompatible_question.pk]),
+        reverse("answers", args=[assessment.pk, compatible_question.pk]),
+        reverse("marking", args=[assessment.pk, compatible_question.pk]),
+        reverse("student", args=[assessment.pk, student.pk]),
+        reverse("export_rows", args=[assessment.pk]),
+    ]
+    statuses = {url: client.get(url).status_code for url in pages} | {
+        url: client.get(url, headers=HTMX_HEADERS).status_code for url in fragments
+    }
+    assert statuses == dict.fromkeys(pages + fragments, 200)
+    download = client.post(reverse("download", args=[assessment.pk]), {"student_id_column": "student_id"})
+    assert download.status_code == 200
+    assert "Q2" not in download.text.splitlines()[0], "left out, as the core can't load it"
+
+
+def test_a_question_an_earlier_core_saved_isnt_compatible(
+    client: Client, assessment: Assessment, incompatible_question: Question
+) -> None:
+    page = client.get(reverse("question", args=[assessment.pk, incompatible_question.pk])).text
+    assert "This question isn't compatible with the current GradeFlow" in page
+    assert bullets(page) == ["There's no type values."]
+    assert "Fix it by choosing its type in Settings." in page
+    assert "Not compatible" in client.get(reverse("question_list", args=[assessment.pk])).text
+    export = unescape(client.get(reverse("export", args=[assessment.pk])).text)
+    question_url = reverse("question", args=[assessment.pk, incompatible_question.pk])
+    assert f'<a class="text-link" href="{question_url}">Q2</a> isn\'t compatible with the current GradeFlow' in export
+    assert "and isn't counted." in export
+    answers = client.get(reverse("answers", args=[assessment.pk, incompatible_question.pk]), headers=HTMX_HEADERS)
+    assert answers.headers["HX-Refresh"] == "true", "a page opened before the upgrade reloads"
+
+
+def test_choosing_a_type_fixes_a_question_an_earlier_core_saved(
+    client: Client, assessment: Assessment, incompatible_question: Question
+) -> None:
+    url = reverse("question_settings", args=[assessment.pk, incompatible_question.pk])
+    with TestCase.captureOnCommitCallbacks(execute=True):
+        client.post(url, {"question_type": "number", "save": "1", "max_marks": "2"})
+    incompatible_question.refresh_from_db()
+    assert (incompatible_question.core_question.type, incompatible_question.core_question.max_marks) == ("number", 2)
+    assert Result.objects.filter(question=incompatible_question).count() == assessment.students.count(), "marked again"
+    page = client.get(reverse("question", args=[assessment.pk, incompatible_question.pk])).text
+    assert "compatible" not in page
+    assert "counted" not in client.get(reverse("export", args=[assessment.pk])).text
+
+
+def test_a_check_lists_questions_this_core_cant_load(incompatible_question: Question) -> None:
+    output = StringIO()
+    call_command("check_saved", stdout=output)
+    assert output.getvalue().splitlines() == ["BIO1010 › Midterm › Question Q2: There's no type values."]
