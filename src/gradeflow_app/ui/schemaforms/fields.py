@@ -104,7 +104,7 @@ def _field_for(schema: Schema, label: str, help_text: str, defs: Mapping[str, Sc
         made = _text_field(hints, kwargs)
         if property_schema.get("format") == "regex":
             made.widget.attrs |= {
-                "class": f"{made.widget.attrs['class']} font-mono text-sm",
+                "class": "font-mono text-sm",
                 "spellcheck": "false",
                 "autocapitalize": "off",
                 "autocorrect": "off",
@@ -141,7 +141,11 @@ def _text_field(hints: Mapping[str, Any], kwargs: dict[str, Any]) -> forms.Field
             return forms.CharField(widget=CodeInput(hints.get("language", "")), strip=False, **kwargs)
         case "markdown":
             return forms.CharField(widget=MarkdownInput(), strip=False, **kwargs)
-    widget = forms.Textarea(attrs={"rows": 1, "class": "field-sizing-content min-h-10 resize-none"})
+    widget = (
+        forms.Textarea(attrs={"rows": 1, "class": "field-sizing-content min-h-10 resize-none"})
+        if hints.get("multiline")
+        else forms.TextInput()
+    )
     return forms.CharField(widget=widget, strip=False, **kwargs)
 
 

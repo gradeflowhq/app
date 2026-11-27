@@ -580,7 +580,7 @@ def test_a_default_outside_the_choices_shows_on_the_default_with_what_was_typed(
     page = post_to_designer(client, method, "method_settings", None, **fields).text
     assert core_draft(method).declared_settings[name] == before
     assert field_error(page, "default") == "Similar spelling isn't one of the choices."
-    assert ">How to match</textarea>" in page
+    assert 'value="How to match"' in page
     assert re.search(r'name="setting-choices" value="exact"[^>]*checked', page)
     assert not re.search(r'name="setting-choices" value="spelling"[^>]*checked', page)
 

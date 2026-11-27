@@ -652,7 +652,7 @@ def test_an_invalid_save_keeps_the_posted_rows_and_shows_the_problem_on_its_row(
         "parts-2-name": "third",
     }
     response = client.post(url, {"question_type": "multipart", "save": "1", "max_marks": "1", **posted_rows})
-    assert re.findall(r'name="parts-\d+-name"[^>]*>([^<]*)</textarea>', response.text) == [
+    assert re.findall(r'name="parts-\d+-name" value="([^"]*)"', response.text) == [
         "species",
         "Gram stain",
         "third",
@@ -680,7 +680,7 @@ def test_a_row_added_or_removed_shows_without_saving(client: Client, assessment:
     assert 'name="parts-2-name"' in added
     removed = client.post(url, {**data, "operation": "remove_row", "target": "parts", "value": "0"}).text
     assert 'name="parts-1-name"' not in removed
-    assert ">year</textarea>" in removed
+    assert 'name="parts-0-name" value="year"' in removed
     question.refresh_from_db()
     assert question.core_question.type == "choice"
 

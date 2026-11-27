@@ -44,13 +44,19 @@ def test_a_regular_expression_is_typed_as_code() -> None:
     assert "font-mono" not in str(form["name"])
 
 
-def test_text_starts_on_one_line_and_grows_with_what_is_written() -> None:
-    form = ObjectForm(object_schema(pattern={"type": "string", "format": "regex"}, name={"type": "string"}), {})
+def test_text_is_a_single_line_input_unless_hinted_multiline() -> None:
+    schema = object_schema(
+        pattern={"type": "string", "format": "regex"},
+        name={"type": "string"},
+        model_answer=hinted({"type": "string"}, multiline=True),
+    )
+    form = ObjectForm(schema, {})
     for name in ("pattern", "name"):
-        html = str(form[name])
-        assert html.startswith("<textarea")
-        assert 'rows="1"' in html
-        assert "field-sizing-content" in html
+        assert form[name].widget_type == "text", "a text input can't hold a line break"
+    html = str(form["model_answer"])
+    assert form["model_answer"].widget_type == "textarea"
+    assert 'rows="1"' in html
+    assert "field-sizing-content" in html
 
 
 def test_rarely_changed_options_wait_under_more_options() -> None:

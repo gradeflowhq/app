@@ -135,10 +135,9 @@ def answer_form(
     except ValueError:
         return None
     form = ObjectForm(schema, value, prefix="value", auto_id=f"id_{key}_%s", data=data)
-    # Values stay on one line, as Enter saves the answer.
     for field in form.fields.values():
-        if isinstance(field.widget, forms.Textarea):
-            field.widget = forms.TextInput({"placeholder": field.label, "aria-label": field.label, "class": "input-sm"})
+        if isinstance(field.widget, forms.TextInput):
+            field.widget.attrs |= {"placeholder": field.label, "aria-label": field.label, "class": "input-sm"}
     return form
 
 
