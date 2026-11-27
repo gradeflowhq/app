@@ -10,7 +10,7 @@ const textBoxes = "textarea, input[type=text]";
 let lastTextBox;
 
 export function start() {
-  // A `data-insert` button inserts its value at the cursor of its field's text box.
+  // A `data-insert` button inserts its value at the cursor of its field's text box, or adds it as a tag to a tag input.
   document.addEventListener("focusin", (event) => {
     if (event.target.matches(`[data-inserts] :is(${textBoxes})`)) lastTextBox = event.target;
   });
@@ -32,13 +32,21 @@ export function start() {
       [document.activeElement, lastTextBox].find((each) => field.contains(each) && each.matches(textBoxes)) ??
       field.querySelector(textBoxes);
     if (!box) return;
+    const tomSelect = field.querySelector("select")?.tomselect;
+    if (tomSelect) {
+      // What was typed and the button's value become separate tags; `addItems` fires one change event, so the form
+      // saves once.
+      box.focus();
+      const tags = [tomSelect.inputValue(), insert.dataset.insert].filter(Boolean);
+      tomSelect.addOption(tags.map((tag) => ({ value: tag, text: tag })));
+      tomSelect.addItems(tags);
+      return;
+    }
     const cursor = box.selectionStart ?? box.value.length;
     box.setRangeText(insert.dataset.insert, cursor, box.selectionEnd ?? cursor, "end");
     box.focus();
-    // A tag input adds the text as a tag; other boxes save as typing does, as saving at once could lose later typing.
-    const tomSelect = field.querySelector("select")?.tomselect;
-    if (tomSelect) tomSelect.createItem(box.value);
-    else box.dispatchEvent(new Event("input", { bubbles: true }));
+    // An input event, so the debounced autosave runs; an immediate save could overwrite text typed after it.
+    box.dispatchEvent(new Event("input", { bubbles: true }));
   });
   // A select the response to its change morphs shows what the server kept, as when it refused the change: a morph
   // changes only the options' `selected` attribute, which a select once picked from ignores. One picked from again
