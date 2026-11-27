@@ -259,8 +259,16 @@ def test_a_question_an_earlier_core_saved_isnt_compatible(
     question_url = reverse("question", args=[assessment.pk, incompatible_question.pk])
     assert f'<a class="text-link" href="{question_url}">Q2</a> isn\'t compatible with the current GradeFlow' in export
     assert "and isn't counted." in export
-    answers = client.get(reverse("answers", args=[assessment.pk, incompatible_question.pk]), headers=HTMX_HEADERS)
-    assert answers.headers["HX-Refresh"] == "true", "a page opened before the upgrade reloads"
+    student = assessment.students.first()
+    assert student is not None
+    fragments = [
+        reverse("answers", args=[assessment.pk, incompatible_question.pk]),
+        reverse("answer_group", args=[assessment.pk, incompatible_question.pk], query={"student": student.pk}),
+        reverse("question_methods", args=[assessment.pk, incompatible_question.pk]),
+    ]
+    for url in fragments:
+        response = client.get(url, headers=HTMX_HEADERS)
+        assert response.headers["HX-Refresh"] == "true", "a page opened before the upgrade reloads"
 
 
 def test_choosing_a_type_fixes_a_question_an_earlier_core_saved(

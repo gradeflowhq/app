@@ -45,6 +45,8 @@ def answers(request: Request, access: AssessmentAccess, question_id: UUID) -> Ht
 def answer_group(request: Request, access: AssessmentAccess, question_id: UUID) -> HttpResponse:
     """The answer group with the student in `?student=`, as the user's answers column shows it when opened."""
     question = access.question(question_id)
+    if question.load_problems:
+        return HttpResponseClientRefresh()  # reload a page opened before the upgrade
     subject = MarkingSubject.of(access.assessment, question)
     context = answers_context(request, access, subject, draft_workspace(request, access, subject))
     student = request.GET.get("student")

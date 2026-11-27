@@ -11,7 +11,7 @@ from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
-from django_htmx.http import HttpResponseLocation, push_url
+from django_htmx.http import HttpResponseClientRefresh, HttpResponseLocation, push_url
 from gradeflow_core import GradeFlowError, Step
 from gradeflow_core.editing import Decision, MarkingDraft, MethodDraft, dump_yaml
 
@@ -480,6 +480,8 @@ def question_group_new(request: Request, access: AssessmentAccess) -> HttpRespon
 @assessment_member(Role.EDITOR)
 def question_methods(request: Request, access: AssessmentAccess, question_id: UUID) -> HttpResponse:
     question = access.question(question_id)
+    if question.load_problems:
+        return HttpResponseClientRefresh()  # reload a page opened before the upgrade
     methods = methods_for(request.user, access.assessment, question.key)
     action = reverse("marking_start", args=[access.assessment.pk, question.pk])
     picker_form = PickerForm(action=action, target="#marking-panel", swap="outerHTML")
