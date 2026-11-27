@@ -159,6 +159,11 @@ def answers_context(
         "failed_grouping_job": failed_grouping_job,
         "too_many_to_compare": grouped.too_many_to_compare,
         "can_mark_by_example": can_mark_by_example(question.core_question),
+        "open_answer_group_ids": [
+            group_id
+            for item in request.headers.get("X-Open-Answer-Groups", "").split(",")
+            if (group_id := item.strip())
+        ],
         **draft_context(workspace, job),
     }
 

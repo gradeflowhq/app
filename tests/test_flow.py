@@ -42,6 +42,7 @@ from tests.conftest import (
     encrypted_id,
     make_code_question,
     new_account_fields,
+    open_every_answer_group,
     save_draft,
     signed_in_client,
     start_marking,
@@ -125,6 +126,7 @@ def test_adjusting_several_students(client: Client, assessment: Assessment) -> N
 
 
 def test_answer_groups_joined_by_similarity_can_be_adjusted(client: Client, assessment: Assessment) -> None:
+    open_every_answer_group(client, assessment)
     question = assessment.questions.get(key="Q1")
     student = assessment.students.get(answers__Q1="light and chlorophyll")
     student.answers = student.answers | {"Q1": "Photosynthesis uses ligth"}

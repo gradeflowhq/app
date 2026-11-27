@@ -201,6 +201,11 @@ class AnswerGroup:
     def student_pks(self) -> list[str]:
         return [entry.student_pk for entry in self.student_answers]
 
+    @property
+    def id(self) -> str:
+        """Its first student's pk."""
+        return self.student_answers[0].student_pk
+
 
 def _without_invisible_whitespace(text: str) -> str:
     """``text`` without whitespace no one sees: at the ends of lines, and blank lines around it."""

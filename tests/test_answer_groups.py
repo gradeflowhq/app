@@ -130,13 +130,15 @@ def test_nonfinite_threshold_uses_the_selected_mode_default(threshold: str) -> N
     assert grouping_options({"group": "meaning", "threshold": threshold}).threshold == 0.85
 
 
-def test_an_answer_groups_students_load_grouped_as_the_answers_are(client: Client, assessment: Assessment) -> None:
+def test_an_answer_groups_body_lists_its_students_grouped_as_the_answers_are(
+    client: Client, assessment: Assessment
+) -> None:
     question = assessment.questions.get(key="Q1")
     student = assessment.students.get(answers__Q1="light and chlorophyll")
     student.answers = student.answers | {"Q1": "Photosynthesis uses ligth"}
     student.save(update_fields=["answers"])
     answers_url = reverse("answers", args=[assessment.pk, question.pk])
-    url = reverse("answer_group_students", args=[assessment.pk, question.pk])
+    url = reverse("answer_group", args=[assessment.pk, question.pk])
 
     def student_ids(grouping: str) -> set[str]:
         answers_page = client.get(answers_url, {"group": grouping}, headers=HTMX_HEADERS).text
@@ -147,3 +149,26 @@ def test_an_answer_groups_students_load_grouped_as_the_answers_are(client: Clien
     assert student_ids("answers") == {student.encrypted_id}
     assert student_ids("spelling") == {student.encrypted_id, encrypted_id("S001"), encrypted_id("S002")}
     assert client.get(url, {"student": str(uuid4())}, headers=HTMX_HEADERS).status_code == 404
+
+
+def test_an_answer_groups_body_loads_when_opened_unless_the_request_lists_it_as_open(
+    client: Client, assessment: Assessment
+) -> None:
+    question = assessment.questions.get(key="Q2")
+    answers_url = reverse("answers", args=[assessment.pk, question.pk])
+    url = reverse("answer_group", args=[assessment.pk, question.pk])
+    page = client.get(answers_url, headers=HTMX_HEADERS).text
+    assert "data-toggles" not in page
+    group_ids = re.findall(r'data-answer-group-id="([^"]+)"', page)
+    groups = [client.get(url, {"student": group_id}, headers=HTMX_HEADERS).text for group_id in group_ids]
+    assert all(f"{url}?student={group_id}" in page for group_id in group_ids)
+    assert all(group.count("data-toggles") == 1 for group in groups)
+    assert any("data-answers" in group for group in groups), "42 and 42.0, listed as written"
+
+    def bodies_shown(open_answer_groups: str) -> int:
+        page = client.get(answers_url, headers=HTMX_HEADERS | {"X-Open-Answer-Groups": open_answer_groups}).text
+        return page.count("data-toggles")
+
+    assert bodies_shown(group_ids[0]) == 1
+    assert bodies_shown(f"{group_ids[0]}, {group_ids[1]} ,") == 2
+    assert bodies_shown("") == 0

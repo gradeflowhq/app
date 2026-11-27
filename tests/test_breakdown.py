@@ -15,7 +15,7 @@ from gradeflow_app.results.marks import Award
 from gradeflow_app.results.models import Result
 from gradeflow_app.results.templatetags.results import Table, breakdown_blocks
 from gradeflow_app.ui.templatetags.ui import inline_markdown
-from tests.conftest import make_code_question
+from tests.conftest import make_code_question, open_every_answer_group
 
 LIGHT_IN_AT_MOST_THREE_WORDS = {
     "question": "Q1",
@@ -69,6 +69,7 @@ def test_a_breakdown_this_core_cant_read_is_left_out(client: Client, assessment:
 
 
 def test_the_breakdown_shows_the_fixed_code(client: Client, assessment: Assessment, user: User) -> None:
+    open_every_answer_group(client, assessment)
     question = make_code_question(assessment, "Q1")
     assessment.students.update(answers={"Q1": "def f():\nreturn 1"})
     tests = [{"expression": "f()", "expected": "1"}, {"expression": "f() + 1", "expected": "2"}]

@@ -4,6 +4,7 @@ import { modelHeaders, readModelService } from "../services/model-service.js";
 import { csrfToken, redirectToSignIn } from "../services/requests.js";
 
 const LIVE_REFRESH = "X-Live-Refresh";
+const OPEN_ANSWER_GROUPS = "X-Open-Answer-Groups";
 const TOPIC_PREFIX = "live-";
 
 export function start() {
@@ -12,11 +13,16 @@ export function start() {
   document.addEventListener("htmx:after:settle", () => readModelService());
 
   // Changes carry the CSRF token, and the AI service in case they start marking. Live refreshes (events named
-  // TOPIC_PREFIX… by live/topics.py) say so, and leave the messages to the next page.
+  // TOPIC_PREFIX… by live/topics.py) say so, and leave the messages to the next page. Requests list the open answer
+  // groups, which a response renders with their bodies.
   document.addEventListener("htmx:config:request", (event) => {
     const { request, sourceEvent } = event.detail.ctx;
     if (request.method !== "GET") Object.assign(request.headers, { "X-CSRFToken": csrfToken(), ...modelHeaders() });
     if (sourceEvent?.type?.startsWith(TOPIC_PREFIX)) request.headers[LIVE_REFRESH] = "true";
+    const ids = [...document.querySelectorAll("details[data-answer-group-id][open]")].map(
+      (group) => group.dataset.answerGroupId,
+    );
+    request.headers[OPEN_ANSWER_GROUPS] = ids.join(", ");
   });
   // A signed-out request goes to sign in rather than swapping in its 401.
   document.addEventListener("htmx:before:response", (event) => {

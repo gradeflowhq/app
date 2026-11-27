@@ -36,6 +36,7 @@ from tests.conftest import (
     encrypted_id,
     full_marks_marking,
     make_code_question,
+    open_every_answer_group,
     preview_draft,
     save_draft,
     start_marking,
@@ -276,6 +277,7 @@ def test_a_filter_matching_no_answers_offers_them_all(client: Client, assessment
 
 
 def test_original_answers_dont_repeat_the_answers_listed(client: Client, assessment: Assessment) -> None:
+    open_every_answer_group(client, assessment)
     question = assessment.questions.get(key="Q2")
     page = client.get(reverse("answers", args=[assessment.pk, question.pk]), {"group": "answers"}).text
     assert "data-answers" in page, "42 and 42.0, listed as written"
@@ -857,6 +859,7 @@ def decision_count(draft: MarkingDraftRecord) -> int:
 
 
 def test_an_answer_group_is_marked_by_example(client: Client, assessment: Assessment) -> None:
+    open_every_answer_group(client, assessment)
     url, draft = start_marking(client, assessment, "Q2", "gradeflow/accepted-answers@1")
     client.post(url, {"path": "", "fields_posted": "1", "answers": ["42"]})
     question = assessment.questions.get(key="Q2")
@@ -1018,6 +1021,7 @@ def test_a_problem_with_a_checks_settings_as_a_whole_names_only_the_check() -> N
 
 
 def test_text_answers_in_an_answer_group_are_listed_under_answers(client: Client, assessment: Assessment) -> None:
+    open_every_answer_group(client, assessment)
     first, second = assessment.students.order_by("pk")[:2]
     first.answers, second.answers = {"Q1": "Paris"}, {"Q1": "paris "}
     first.save()
@@ -1032,6 +1036,7 @@ def test_text_answers_in_an_answer_group_are_listed_under_answers(client: Client
 def test_an_answer_group_lists_its_six_commonest_answers_then_offers_the_rest(
     client: Client, assessment: Assessment
 ) -> None:
+    open_every_answer_group(client, assessment)
     spellings = ["Paris"] * 4 + ["paris", "PARIS", "Paris ", "paris ", "PARIS ", " Paris"]
     for student, answer in zip(assessment.students.order_by("pk"), spellings, strict=True):
         student.answers = {"Q1": answer}

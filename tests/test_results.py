@@ -30,7 +30,7 @@ from gradeflow_app.results.marks import (
 from gradeflow_app.results.models import Adjustment, Result
 from gradeflow_app.results.views import Cell
 from gradeflow_app.ui.templatetags.ui import percent
-from tests.conftest import HTMX_HEADERS, create_assessment, encrypted_id, start_marking
+from tests.conftest import HTMX_HEADERS, create_assessment, encrypted_id, open_every_answer_group, start_marking
 
 
 @pytest.mark.parametrize(("imported_marks", "marks", "level"), [(5, 3, "full"), (-1, 0, "no_marks")])
@@ -402,6 +402,7 @@ def test_activity_tells_clearing_adjustments_from_making_them(client: Client, ad
 def test_adjustment_request_can_clear_feedback_without_changing_no_marks(
     client: Client, assessment: Assessment, return_to: str
 ) -> None:
+    open_every_answer_group(client, assessment)
     question = assessment.questions.get(key="Q1")
     student = assessment.students.get(encrypted_id=encrypted_id("S001"))
     Result.objects.create(

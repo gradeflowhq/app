@@ -12,7 +12,7 @@ from gradeflow_app.marking.workspace import MarkingWorkspace
 from gradeflow_app.results.models import Result
 from gradeflow_app.ui.middleware import MESSAGES_HEADER
 
-from .conftest import HTMX_HEADERS, start_marking
+from .conftest import HTMX_HEADERS, open_every_answer_group, start_marking
 from .test_marking import definition_tree
 
 pytestmark = pytest.mark.django_db
@@ -26,6 +26,7 @@ def answer_card(page: str, answer: str) -> str:
     ("decision", "color"), [("full_marks", "success"), ("partial_marks", "warning"), ("not_allowed", "error")]
 )
 def test_decisions_lock_until_cancelled(client: Client, assessment: Assessment, decision: Decision, color: str) -> None:
+    open_every_answer_group(client, assessment)
     _, draft = start_marking(client, assessment, "Q2", "gradeflow/accepted-answers@1")
     url = reverse("mark_example", args=[assessment.pk, draft.question_id])
     response = client.post(url, {"answer": ["42", "42.0"], "decision": decision}, headers=HTMX_HEADERS)
@@ -64,6 +65,7 @@ def test_decisions_lock_until_cancelled(client: Client, assessment: Assessment, 
 
 
 def test_direct_form_edits_refresh_decisions(client: Client, assessment: Assessment) -> None:
+    open_every_answer_group(client, assessment)
     url, _ = start_marking(client, assessment, "Q2", "gradeflow/accepted-answers@1")
     added = client.post(url, {"path": "", "fields_posted": "1", "answers": ["42"]}, headers=HTMX_HEADERS)
     assert 'value="cancel"' in answer_card(added.text, "42")
@@ -72,6 +74,7 @@ def test_direct_form_edits_refresh_decisions(client: Client, assessment: Assessm
 
 
 def test_saved_decisions_show_again_once_the_marking_is_edited(client: Client, assessment: Assessment) -> None:
+    open_every_answer_group(client, assessment)
     _, draft = start_marking(client, assessment, "Q2", "gradeflow/accepted-answers@1")
     url = reverse("mark_example", args=[assessment.pk, draft.question_id])
     client.post(url, {"answer": ["41"], "decision": "not_allowed"})
@@ -86,6 +89,7 @@ def test_saved_decisions_show_again_once_the_marking_is_edited(client: Client, a
 
 
 def test_mixed_feedback_group_cannot_overwrite_an_existing_decision(client: Client, assessment: Assessment) -> None:
+    open_every_answer_group(client, assessment)
     _, draft = start_marking(client, assessment, "Q2", "gradeflow/accepted-answers@1")
     url = reverse("mark_example", args=[assessment.pk, draft.question_id])
     client.post(url, {"answer": ["42"], "decision": "full_marks"})

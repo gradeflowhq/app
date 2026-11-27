@@ -13,14 +13,10 @@ from gradeflow_app.assessments.access import assessment_member
 from gradeflow_app.assessments.models import AssessmentAccess
 from gradeflow_app.courses.models import Role
 from gradeflow_app.live.topics import notify_change, topic
-from gradeflow_app.marking.answers.answer_groups import student_answers
 from gradeflow_app.marking.answers.column import (
     answers_context,
-    answers_view,
     draft_workspace,
-    group_answers,
     group_by_meaning,
-    grouping_options,
 )
 from gradeflow_app.marking.models import MarkingSubject
 from gradeflow_app.questions.models import Question
@@ -46,16 +42,20 @@ def answers(request: Request, access: AssessmentAccess, question_id: UUID) -> Ht
 
 @require_GET
 @assessment_member()
-def answer_group_students(request: Request, access: AssessmentAccess, question_id: UUID) -> HttpResponse:
-    """The students of the answer group that has the query's student, as the user's answers column groups them."""
+def answer_group(request: Request, access: AssessmentAccess, question_id: UUID) -> HttpResponse:
+    """The answer group with the student in `?student=`, as the user's answers column shows it when opened."""
     question = access.question(question_id)
+    subject = MarkingSubject.of(access.assessment, question)
+    context = answers_context(request, access, subject, draft_workspace(request, access, subject))
     student = request.GET.get("student")
-    groups = group_answers(student_answers(question), grouping_options(answers_view(request, question))).groups
-    answer_group = next((group for group in groups if student in group.student_pks), None)
+    answer_group = next((group for group in context["answer_groups"] if student in group.student_pks), None)
     if answer_group is None:
         raise Http404
-    context = {"question": question, "students": answer_group.student_answers}
-    return render(request, "results/answer_group.html#students", context)
+    return render(
+        request,
+        "results/answer_group.html",
+        context | {"answer_group": answer_group, "students": answer_group.student_answers, "open": True},
+    )
 
 
 @require_POST

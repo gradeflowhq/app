@@ -263,6 +263,12 @@ def assessment(client: Client) -> Assessment:
     return created
 
 
+def open_every_answer_group(client: Client, assessment: Assessment) -> None:
+    """Makes the client's requests list every answer group of `assessment` as open."""
+    student_pks = assessment.students.values_list("pk", flat=True)
+    client.defaults["HTTP_X_OPEN_ANSWER_GROUPS"] = ", ".join(str(pk) for pk in student_pks)
+
+
 def start_marking(client: Client, assessment: Assessment, key: str, method: str) -> tuple[str, MarkingDraftRecord]:
     """The URL of a new draft marking question `key` with `method`, and the draft."""
     question = assessment.questions.get(key=key)

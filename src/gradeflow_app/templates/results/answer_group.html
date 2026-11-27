@@ -12,7 +12,7 @@
   {% if distinct_answers|length > 1 %}<label class="btn btn-sm toggle-button">{% icon "queue-list" %}Answers<c-chip class="tabular-nums">{{ distinct_answers|length }}</c-chip><input type="checkbox" class="sr-only" data-answers></label>{% endif %}
   {% if answer_group.original_answers and code or answer_group.original_answers and distinct_answers|length == 1 %}<label class="btn btn-sm toggle-button">{% icon "document-text" %}Original<c-chip class="tabular-nums">{{ answer_group.original_answers|length }}</c-chip><input type="checkbox" class="sr-only" data-original></label>{% endif %}
   <label class="btn btn-sm toggle-button">{% icon "users" %}Students<c-chip class="tabular-nums">{{ answer_group.student_count }}</c-chip><input type="checkbox" class="sr-only" data-students></label>
-  {% if access.can_edit and not draft %}<label class="btn btn-sm toggle-button ml-auto">{% icon "pencil" %}Adjust marks<input type="checkbox" class="sr-only" data-adjust aria-controls="adjust-{{ answer_group.student_pks.0 }}"></label>{% endif %}
+  {% if access.can_edit and not draft %}<label class="btn btn-sm toggle-button ml-auto">{% icon "pencil" %}Adjust marks<input type="checkbox" class="sr-only" data-adjust aria-controls="adjust-{{ answer_group.id }}"></label>{% endif %}
 </div>
 {% if distinct_answers|length > 1 %}
 <div class="bordered-list hidden group-has-[[data-answers]:checked]/body:block{% if answer_group.joined_by_similarity %} group-has-[[data-adjust]:checked]/body:block{% endif %}">
@@ -46,16 +46,15 @@
   </div>
 </li>
 {% endpartialdef %}
-{# The group's students, loaded when first shown. #}
 {% partialdef students %}
-<ul class="student-id-grid hidden group-has-[[data-students]:checked]/body:flex" aria-label="Students"{% if not students %} hx-get="{% url 'answer_group_students' question.assessment_id question.pk %}?student={{ answer_group.student_pks.0 }}" hx-trigger="intersect once" hx-swap="outerHTML"{% endif %}>
+<ul class="student-id-grid hidden group-has-[[data-students]:checked]/body:flex" aria-label="Students">
   {% for entry in students|slice:":40" %}<li><button type="button"{% if entry.adjustment %} data-adjusted{% endif %} hx-get="{% url 'student' question.assessment_id entry.student_pk %}" hx-target="#drawer-body" data-dialog="drawer"><c-student-id value="{{ entry.encrypted_student_id }}" />{% if entry.adjustment %}{% icon "pencil" %}<span class="sr-only">Adjusted</span>{% endif %}</button></li>{% endfor %}
   {% if students|length > 40 %}<li class="basis-full text-sm text-muted">and {{ students|length|add:"-40" }} more</li>{% endif %}
 </ul>
 {% endpartialdef %}
 {% with low=answer_group.marks_range.0 high=answer_group.marks_range.1 max_marks=question.core_question.max_marks core_question=question.core_question feedback=answer_group.preview.feedback|default:answer_group.feedback code=question.core_question|code_language %}
 <li>
-<details class="group/answer rounded-[inherit]{% if answer_group.preview.changed %} changed{% endif %}"{% if open %} open{% endif %}>
+<details class="group/answer rounded-[inherit]{% if answer_group.preview.changed %} changed{% endif %}"{% if open %} open{% endif %} data-answer-group-id="{{ answer_group.id }}">
   <summary class="flex cursor-pointer list-none flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3.5 transition-colors hover:bg-base-200/40">
     <div class="min-w-0 flex-1 basis-56">
       {% include "results/answer_text.html" with answer=answer_group.answer blank=answer_group.is_blank spans=answer_group.spans %}
@@ -80,6 +79,9 @@
       {% endif %}
     </div>
   </summary>
+  {% if lazy_body and answer_group.id not in open_answer_group_ids %}
+  <div class="group/body border-t border-line p-4" aria-busy="true" hx-get="{% url 'answer_group' question.assessment_id question.pk %}?student={{ answer_group.id }}" hx-trigger="intersect once" hx-target="closest li" hx-swap="outerMorph"><div class="skeleton h-8 w-48"></div></div>
+  {% else %}
   <div class="group/body grid gap-3.5 border-t border-line p-4">
     {% if answer_group.breakdown %}<c-breakdown :check="answer_group.breakdown.breakdown" :language="code" :note="answer_group.breakdown.note" />{% endif %}
     {% if answer_group.joined_by_similarity or answer_group.has_mixed_decisions %}
@@ -101,7 +103,7 @@
     {% if code %}{% with distinct_answers=answer_group.normalized_answers %}{% partial toggles %}{% endwith %}{% else %}{% with distinct_answers=answer_group.answers %}{% partial toggles %}{% endwith %}{% endif %}
     {% partial students %}
     {% if access.can_edit and not draft %}
-    <form id="adjust-{{ answer_group.student_pks.0 }}" class="shaded-box hidden gap-3 group-has-[[data-adjust]:checked]/body:grid" hx-post="{% url 'adjust' question.assessment_id question.pk %}" hx-target="#answers" hx-swap="outerMorph">
+    <form id="adjust-{{ answer_group.id }}" class="shaded-box hidden gap-3 group-has-[[data-adjust]:checked]/body:grid" hx-post="{% url 'adjust' question.assessment_id question.pk %}" hx-target="#answers" hx-swap="outerMorph">
       {% csrf_token %}
       <input type="hidden" name="students" value="{{ answer_group.student_pks|join:' ' }}">
       <div class="flex flex-wrap items-start gap-2.5">
@@ -119,6 +121,7 @@
     </form>
     {% endif %}
   </div>
+  {% endif %}
 </details>
 </li>
 {% endwith %}

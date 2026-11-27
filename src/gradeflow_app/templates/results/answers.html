@@ -9,7 +9,7 @@
   <div class="workspace-cards">
     {% if answer_groups %}
       <ul class="answer-groups" aria-label="Answers">
-        {% for answer_group in answer_groups %}{% include "results/answer_group.html" %}{% endfor %}
+        {% for answer_group in answer_groups %}{% include "results/answer_group.html" with lazy_body=True students=answer_group.student_answers %}{% endfor %}
       </ul>
       {% if hidden_count %}<button class="btn btn-ghost btn-sm justify-self-center" hx-get="{% url 'answers' question.assessment_id question.pk %}?shown_count={{ show_more }}" hx-target="#answers" hx-swap="outerMorph">Show more<c-chip class="tabular-nums">{{ hidden_count }}</c-chip></button>{% endif %}
     {% else %}
