@@ -1,0 +1,3 @@
+<c-vars questions />
+{# Says `questions`, each linked to its page, aren't compatible with the current GradeFlow. The slot ends the sentence. #}
+{% for question in questions %}<a class="text-link" href="{% url 'question' question.assessment_id question.pk %}">{{ question.key }}</a>{% if not forloop.last %}, {% endif %}{% endfor %} {{ questions|pluralize:"isn't,aren't" }} compatible with the current GradeFlow{{ slot }}

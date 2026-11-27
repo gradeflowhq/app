@@ -11,7 +11,7 @@
   {% else %}
   <div class="main-with-aside items-start">
     <div class="grid min-w-0 gap-5">
-      {% if incompatible_questions %}<c-alert warning role="">{% for question in incompatible_questions %}<a class="text-link" href="{% url 'question' assessment.pk question.pk %}">{{ question.key }}</a>{% if not forloop.last %}, {% endif %}{% endfor %} {{ incompatible_questions|pluralize:"isn't,aren't" }} compatible with the current GradeFlow and {{ incompatible_questions|pluralize:"isn't,aren't" }} counted.</c-alert>{% endif %}
+      {% if incompatible_questions %}<c-alert warning role=""><c-incompatible-questions :questions="incompatible_questions"> and {{ incompatible_questions|pluralize:"isn't,aren't" }} counted.</c-incompatible-questions></c-alert>{% endif %}
       {% if not canvas_available or not course_canvas.canvas_course %}
       <c-panel icon="paper-airplane" title="Canvas" body_class="setting-rows">
         {% if not canvas_available %}<p class="py-4 text-muted">Canvas isn't set up on this server.</p>

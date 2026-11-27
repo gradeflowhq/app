@@ -206,18 +206,23 @@ def incompatible_question(assessment: Assessment) -> Question:
     return question
 
 
+@pytest.fixture
+def question_group(assessment: Assessment) -> Marking:
+    """A question group that gives Q3 full marks when Q2 gets full marks."""
+    then = [{"question": "Q3", "uses": "gradeflow/full-marks@1"}]
+    condition = [{"question": "Q2", "uses": "gradeflow/full-marks@1"}]
+    definition = {"uses": "gradeflow/conditional@1", "with": {"condition": condition, "then": then}}
+    return Marking.objects.create(
+        assessment=assessment, definition=dump_yaml(definition), questions_marked=["Q3"], questions_read=["Q2"]
+    )
+
+
 def test_pages_load_with_a_question_an_earlier_core_saved(
-    client: Client, assessment: Assessment, incompatible_question: Question
+    client: Client, assessment: Assessment, incompatible_question: Question, question_group: Marking
 ) -> None:
     compatible_question = assessment.questions.get(key="Q1")
     student = assessment.students.first()
     assert student is not None
-    then = [{"question": "Q3", "uses": "gradeflow/full-marks@1"}]
-    condition = [{"question": "Q2", "uses": "gradeflow/full-marks@1"}]
-    definition = {"uses": "gradeflow/conditional@1", "with": {"condition": condition, "then": then}}
-    question_group = Marking.objects.create(
-        assessment=assessment, definition=dump_yaml(definition), questions_marked=["Q3"], questions_read=["Q2"]
-    )
     pages = [
         reverse("overview", args=[assessment.pk]),
         reverse("course", args=[assessment.course.pk]),
@@ -257,8 +262,8 @@ def test_a_question_an_earlier_core_saved_isnt_compatible(
     assert "Not compatible" in client.get(reverse("question_list", args=[assessment.pk])).text
     export = unescape(client.get(reverse("export", args=[assessment.pk])).text)
     question_url = reverse("question", args=[assessment.pk, incompatible_question.pk])
-    assert f'<a class="text-link" href="{question_url}">Q2</a> isn\'t compatible with the current GradeFlow' in export
-    assert "and isn't counted." in export
+    link = f'<a class="text-link" href="{question_url}">Q2</a>'
+    assert f"{link} isn't compatible with the current GradeFlow and isn't counted." in export
     student = assessment.students.first()
     assert student is not None
     fragments = [
@@ -269,6 +274,24 @@ def test_a_question_an_earlier_core_saved_isnt_compatible(
     for url in fragments:
         response = client.get(url, headers=HTMX_HEADERS)
         assert response.headers["HX-Refresh"] == "true", "a page opened before the upgrade reloads"
+
+
+def test_a_question_group_links_to_a_question_an_earlier_core_saved(
+    client: Client, assessment: Assessment, incompatible_question: Question, question_group: Marking
+) -> None:
+    Marking.objects.filter(question__key="Q3").delete()
+    question_url = reverse("question", args=[assessment.pk, incompatible_question.pk])
+    link = f'<a class="text-link" href="{question_url}">Q2</a>'
+    pages = [
+        reverse("question_group", args=[assessment.pk, question_group.pk]),
+        reverse("marking", args=[assessment.pk, assessment.questions.get(key="Q3").pk]),
+    ]
+    for url in pages:
+        page = unescape(client.get(url).text)
+        assert "This marking can't mark until it's fixed" in page
+        assert f"{link} isn't compatible with the current GradeFlow." in page
+        assert "one of the questions" not in page
+        assert "Save as a method" not in page
 
 
 def test_choosing_a_type_fixes_a_question_an_earlier_core_saved(

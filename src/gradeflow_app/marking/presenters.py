@@ -44,6 +44,9 @@ class MarkingSummary:
     """False when the core can no longer read it: an earlier core saved it, or a version it uses."""
     incompatible_version: str = ""
     """The version at fault, such as “Light” version 2, when it's one the marking uses."""
+    incompatible_questions: tuple[Question, ...] = ()
+    """The questions it marks or reads that the installed core can't load, shown instead of `problems`, which only say
+    they're missing."""
     needs_model_endpoint: bool = False
 
 
@@ -81,7 +84,16 @@ def _summary(marking: Marking, check: Step | None, assessment: Assessment) -> Ma
     if check is not None:
         return summary_of(check)
     key = marking.question.key if marking.question else None
-    return saved_summary(marking.definition, key, loaded_course_methods(assessment.course), assessment.question_set())
+    summary = saved_summary(
+        marking.definition, key, loaded_course_methods(assessment.course), assessment.question_set()
+    )
+    involved_questions = assessment.questions.filter(key__in=questions_involved(marking, None))
+    incompatible_questions = tuple(question for question in involved_questions if question.load_problems)
+    return (
+        replace(summary, incompatible_questions=incompatible_questions)
+        if summary.is_compatible and incompatible_questions
+        else summary
+    )
 
 
 @dataclass(frozen=True)
