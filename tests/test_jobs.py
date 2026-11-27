@@ -270,18 +270,18 @@ def test_a_remark_shows_its_progress_then_its_results(
 ) -> None:
     run_id = start_remark(start, assessment, "Q1", user)
     idle_runner.held[run_id] = State.RUNNING
-    assert post_callback(run_id, {"event": "progress", "step": "Deciding criteria", "completed": 3, "total": 4}) == 204
+    assert post_callback(run_id, {"event": "progress", "step": "Checking answers", "completed": 3, "total": 4}) == 204
     assert post_callback(run_id, {"event": "marked", "count": 5, "total": 10}) == 204
     [(marking, state)] = running_remarks(assessment)
     assert (marking.question_id, state) == (
         assessment.questions.get(key="Q1").pk,
-        runs.RunState("running", progress=0.5, progress_text="Deciding criteria: 3 of 4"),
+        runs.RunState("running", progress=0.5, progress_text="Checking answers…"),
     )
     listed = client.get(reverse("question_list", args=[assessment.pk]), {"question": ""}).text
     assert 'value="0.50" max="1"' in listed
     answers_column = client.get(reverse("answers", args=[assessment.pk, marking.question_id])).text
     assert "Marking…" in answers_column
-    assert "Deciding criteria: 3 of 4" in answers_column
+    assert "Checking answers…" in answers_column
     assert post_callback(run_id, {"event": "finished", "outcome": marked_outcome(run_id)}) == 204
     assert run_id not in idle_runner.held
     assert Result.objects.filter(question__key="Q1").count() == assessment.students.count()

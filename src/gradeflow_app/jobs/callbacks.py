@@ -67,9 +67,7 @@ def job_callback(request: HttpRequest, run_id: str) -> HttpResponse:
 def _apply_event(run: Run, event: dict[str, Any]) -> None:
     match event.get("event"):
         case "progress":
-            runs.record_progress(
-                run, progress_text=f"{event['step']}: {int(event['completed'])} of {int(event['total'])}"
-            )
+            runs.record_progress(run, progress_text=f"{event['step']}…")
         case "stage":
             runs.record_progress(run, progress_text=f"{event['text']}…")
         case "marked":

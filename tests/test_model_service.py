@@ -470,12 +470,12 @@ def test_marking_says_what_it_waits_on(
     client: Client, user: User, assessment: Assessment, idle_runner: FakeRunner
 ) -> None:
     run_id = mark_with_criteria(assessment, user)
-    progress = Progress(completed=12, total=30, step="Deciding criteria")
+    progress = Progress(completed=12, total=30, step="Checking answers")
     assert post_callback(run_id, {"event": "progress", **asdict(progress)}) == 204
     assert out_of_date_notices(assessment_checks(assessment), ["Q3"]) == []
     question = assessment.questions.get(key="Q3")
     column = client.get(reverse("answers", args=[assessment.pk, question.pk])).text
-    assert "Deciding criteria: 12 of 30" in column
+    assert "Checking answers…" in column
 
 
 def test_the_answers_column_asks_to_connect_when_marking_asks_a_model(client: Client, assessment: Assessment) -> None:
